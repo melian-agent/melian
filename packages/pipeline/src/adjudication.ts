@@ -50,6 +50,7 @@ type StoredCheck = {
 		model: string;
 		wanted?: string;
 		by: string;
+		answeredAt?: NonNullable<ModelRoute["thinking"]>;
 		moved?: { by: string; from: string; to: string };
 		outside: boolean;
 	};
@@ -159,7 +160,9 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 15,
+	version: 16,
+	// Version 16 lets a check's lineage name `answeredAt`, the level its model's own route entry ran it at, so an older
+	// build refuses a store this one wrote rather than drop that level; a version 15 document reads unchanged.
 	// Version 15 keeps walkthroughs by the light route that wrote them, so an older build refuses a store this one wrote
 	// rather than write a route-less walkthrough beside them; a version 14 or 13 document reads unchanged.
 	// Version 14 lets a provenance's plan hold lens routes; a version 13 plan has none and reads unchanged.

@@ -1,0 +1,81 @@
+{
+	"recordedBy": "2304de2a",
+	"revision": "606b7a54c93e10fd60f8d48d5b023998ee3ca080..492ce176fe285baec822e71bbe6d90fecbd9a031",
+	"root": 1,
+	"document": {
+		"verdicts": {
+			"606b7a54c93e10fd60f8d48d5b023998ee3ca080..492ce176fe285baec822e71bbe6d90fecbd9a031": {
+				"status": "passed",
+				"blocking": false,
+				"findings": {
+					"block": [],
+					"acknowledge": [],
+					"advisory": [],
+					"silent": []
+				},
+				"dismissed": [],
+				"notRun": [],
+				"ran": [
+					{
+						"name": "lens.correctness",
+						"status": "ran",
+						"level": "careful",
+						"version": "18c49f913df8"
+					}
+				]
+			}
+		},
+		"provenance": {
+			"606b7a54c93e10fd60f8d48d5b023998ee3ca080..492ce176fe285baec822e71bbe6d90fecbd9a031": {
+				"verifierVersion": "a19ab2f7fcb43ecc",
+				"kind": "range",
+				"policy": "config",
+				"manifest": [
+					"lens.correctness"
+				],
+				"lenses": [
+					"correctness@18c49f913df8@careful"
+				]
+			}
+		},
+		"details": {
+			"606b7a54c93e10fd60f8d48d5b023998ee3ca080..492ce176fe285baec822e71bbe6d90fecbd9a031": {
+				"policy": "config",
+				"manifest": [
+					"lens.correctness"
+				],
+				"lenses": [
+					{
+						"name": "correctness",
+						"version": "18c49f913df8",
+						"level": "careful",
+						"models": [
+							"faux/finder"
+						],
+						"standards": [],
+						"ran": "faux/finder",
+						"usage": {
+							"models": [
+								"faux/finder"
+							],
+							"tokens": 6872,
+							"cost": 0
+						},
+						"budget": {
+							"findings": 8,
+							"tokens": 200000,
+							"tools": 30
+						}
+					}
+				],
+				"standards": []
+			}
+		},
+		"decisions": {
+			"606b7a54c93e10fd60f8d48d5b023998ee3ca080..492ce176fe285baec822e71bbe6d90fecbd9a031": {
+				"task": 23,
+				"findingsVersion": 0
+			}
+		}
+	}
+}

@@ -1,10 +1,4 @@
-import type {
-	FindingEvidence,
-	ModelReference,
-	ModelRoute,
-	Severity,
-	StoredVerificationState,
-} from "@melian-agent/core";
+import type { FindingEvidence, ModelRoute, RoutedModel, Severity, StoredVerificationState } from "@melian-agent/core";
 import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
@@ -57,7 +51,7 @@ export type VerificationCandidate = {
 	key: string;
 	state: StoredVerificationState;
 	finder: string;
-	route: ModelReference[];
+	route: RoutedModel[];
 	thinking?: ModelRoute["thinking"];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
@@ -77,8 +71,14 @@ export type VerificationCandidate = {
 	// identity, so a wave outcome a final step reuses links only the dismissals that wave's verifier was shown.
 	dismissals?: Record<string, string>;
 };
-// A root dismissal a candidate may restate, as the verifier sees it: its claim, never its dismissal's reason.
-export type DismissedPredecessor = { id: string; failureScenario?: string; evidence?: FindingEvidence };
+// A root dismissal a candidate may restate: its claim, as the verifier sees it, never its dismissal's reason, and the ID
+// of its dismissal record, which keys the request and is never shown. A task version 4 stored has no record.
+export type DismissedPredecessor = {
+	id: string;
+	record?: string;
+	failureScenario?: string;
+	evidence?: FindingEvidence;
+};
 export type VerificationInput = {
 	root: ConversationId;
 	revision: ReviewState;
@@ -115,8 +115,11 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 	name: "melian.verification",
 	// Version 3, on main, lets a task reuse a wave's outcomes. Version 4 lets a candidate carry its claims' probes, so a
 	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
-	// optional, so a version 2 or 3 task reads unchanged.
-	version: 4,
+	// optional, so a version 2 or 3 task reads unchanged. Version 5 names each shown dismissal's record, so a request keys
+	// another host's dismissal; the field is optional, so a version 4 task reads unchanged and attaches to nothing new.
+	// Version 6 lets each model of a candidate's route name its own thinking level, so a build that knows version 5 alone,
+	// which would ask every model at the route's, refuses it.
+	version: 6,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -183,8 +186,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
 					await configure(tx, child.id, {
-						model: candidate.route[0],
-						thinkingLevel: candidate.thinking,
+						model: { provider: candidate.route[0]!.provider, modelId: candidate.route[0]!.modelId },
+						thinkingLevel: candidate.route[0]!.thinking ?? candidate.thinking,
 						instructions,
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
@@ -224,7 +227,7 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 						attempt === 0
 							? verifierInput(
 									candidate.state.claims.map(({ verification: _, ...claim }) => claim),
-									(candidate.dismissed ?? []).map(({ id: _, ...claim }) => claim),
+									(candidate.dismissed ?? []).map(({ id: _, record: __, ...claim }) => claim),
 									task.input.revision.nonce,
 								)
 							: continueJudging;
@@ -270,7 +273,10 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 							)
 						)
 							return undefined;
-						await configure(tx, id, { model: next });
+						await configure(tx, id, {
+							model: { provider: next.provider, modelId: next.modelId },
+							thinkingLevel: next.thinking ?? candidate.thinking ?? null,
+						});
 						(await tx.doc(LensDocument, id)).lens!.model = `${next.provider}/${next.modelId}`;
 						const checkpoint = current.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
 						return {

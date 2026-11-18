@@ -22,7 +22,10 @@ const sample = {
 		version: "1",
 		level: "careful",
 		band: "quick-thorough",
-		route: [{ provider: "anthropic", modelId: "claude-a" }],
+		route: [
+			{ provider: "anthropic", modelId: "claude-a" },
+			{ provider: "openai-codex", modelId: "gpt-c", thinking: "medium" },
+		],
 		thinking: "high",
 		verify: true,
 		instructions: "Find defects.",

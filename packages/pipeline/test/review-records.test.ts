@@ -1,4 +1,12 @@
-import { Finding, RecordError, reviewPayloads, SharedRecord, type StoredFinding } from "@melian-agent/core";
+import { readFileSync } from "node:fs";
+import {
+	Finding,
+	type RecordEnvelope,
+	RecordError,
+	reviewPayloads,
+	SharedRecord,
+	type StoredFinding,
+} from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 
@@ -43,7 +51,7 @@ describe("ReviewRecords", () => {
 			kind: "lens",
 			key: request,
 			payload: {
-				v: 1,
+				v: 2,
 				name: "security",
 				version: "abc",
 				level: "careful",
@@ -61,6 +69,95 @@ describe("ReviewRecords", () => {
 				check: null,
 			},
 		});
+	});
+
+	it("writes the level a lineage's model answered at, and null where it names none", () => {
+		const lineage = { model: "openai/terra", by: "melian.local.yaml", outside: true } as const;
+		const check = (answeredAt?: "high") =>
+			({
+				name: "lens.security",
+				status: "ran",
+				version: "abc",
+				level: "careful",
+				lineage: { ...lineage, ...(answeredAt === undefined ? {} : { answeredAt }) },
+			}) as const;
+		const written = (answeredAt?: "high") => {
+			const record = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, [], check(answeredAt));
+			expect(SharedRecord.parse(record.toJSON(), reviewPayloads).id).toBe(record.id);
+			return (record.toJSON().payload as { check: { lineage: unknown } }).check.lineage;
+		};
+		const expected = { ...lineage, thinking: null, wanted: null, moved: null };
+		expect(written("high")).toEqual({ ...expected, answeredAt: "high" });
+		expect(written()).toEqual({ ...expected, answeredAt: null });
+		const verification = records().verification(request, {
+			claims: [],
+			dismissals: [],
+			outcomes: [],
+			check: { name: "verifier", status: "ran", lineage: { ...lineage, answeredAt: "high" } },
+		});
+		expect(SharedRecord.parse(verification.toJSON(), reviewPayloads).id).toBe(verification.id);
+		expect(verification.toJSON().payload).toMatchObject({
+			v: 2,
+			check: { lineage: { ...expected, answeredAt: "high" } },
+		});
+	});
+
+	it("writes an account's lineage as version 1 did, and refuses one that names the level its model answered at", () => {
+		const lineage = { model: "openai/terra", by: "melian.local.yaml", outside: true } as const;
+		const filled = (answeredAt?: "high") => [
+			{
+				name: "lens.design",
+				status: "failed",
+				reason: "refused",
+				lineage: { ...lineage, ...(answeredAt === undefined ? {} : { answeredAt }) },
+			} as const,
+		];
+		const account = (answeredAt?: "high") =>
+			records().account({
+				checks: ["lens.design"],
+				records: [],
+				filled: filled(answeredAt),
+				allowSkip: [],
+				producers: [],
+				resolutionPolicy: null,
+			});
+		const written = account();
+		expect(SharedRecord.parse(written.toJSON(), reviewPayloads).id).toBe(written.id);
+		expect(written.toJSON().payload).toMatchObject({
+			filled: [{ lineage: { ...lineage, thinking: null, wanted: null, moved: null } }],
+		});
+		expect((written.toJSON().payload as { filled: { lineage: object }[] }).filled[0]?.lineage).not.toHaveProperty(
+			"answeredAt",
+		);
+		expect(() => account("high")).toThrow(
+			"lens.design's lineage names the level its model answered at, which an account cannot hold",
+		);
+	});
+
+	it("reads the version-1 lens and verification records main wrote, whose lineage names no answeredAt", () => {
+		const recorded = JSON.parse(
+			readFileSync(new URL("./fixtures/lineage-v1-main/recorded.json", import.meta.url), "utf8"),
+		) as { records: RecordEnvelope[] };
+		const lineage = {
+			model: "faux/backup",
+			wanted: "faux/heavy",
+			by: "melian.local.yaml",
+			moved: null,
+			outside: true,
+		};
+		const read = recorded.records
+			.filter(({ kind }) => kind === "lens" || kind === "verification")
+			.map((each) => SharedRecord.parse(each, reviewPayloads))
+			.flatMap(({ kind, payload }) => {
+				const { v, check } = payload as { v: number; check: { lineage: unknown } | null };
+				return check === null ? [] : [{ kind, v, lineage: check.lineage }];
+			});
+		const lowered = { ...lineage, thinking: { level: "low", wanted: "high", by: "melian.yaml" } };
+		expect(read).toEqual([
+			{ kind: "lens", v: 1, lineage: lowered },
+			{ kind: "lens", v: 1, lineage: lowered },
+			{ kind: "verification", v: 1, lineage: { ...lineage, thinking: null } },
+		]);
 	});
 
 	it("gives the same bytes and ID when a record is built twice", () => {
@@ -105,6 +202,22 @@ describe("ReviewRecords", () => {
 		expect(json.revision).toBeUndefined();
 		expect(json.key).toBe(sighting.properties.id);
 		expect((json.payload as { rounds: string[] }).rounds).toEqual(["1".repeat(64), "2".repeat(64)]);
+	});
+
+	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const earlier = "e".repeat(40);
+		const record = records().dismissal({
+			finding: sighting.properties.id,
+			by: "maintainer",
+			reason: "Accepted",
+			at: "2026-11-15T00:00:00.000Z",
+			severity: "P1",
+			sighting: { revision: `${base}..${earlier}`, finding: sighting },
+			rounds: [],
+			trigger: { hash: "h", proof: [] },
+		});
+		expect((record.toJSON().payload as { head: string }).head).toBe(earlier);
 	});
 
 	it("carries a writer's dismisser and reason as written, and nothing else a writer wrote", () => {
@@ -190,6 +303,7 @@ describe("ReviewRecords", () => {
 				{ check: "guardrails" },
 				{ check: "static.biome", version: "2.0.0" },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		};
 		const account = records().account(facts);
 		expect(SharedRecord.parse(account.toJSON(), reviewPayloads).id).toBe(account.id);
@@ -231,11 +345,17 @@ describe("ReviewRecords", () => {
 				{ check: "lens.security", version: "abc@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
 				{ check: "static.biome", version: "2.0.0", ids: null },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		});
 		const reordered = { ...facts, records: [check, lens], producers: [...facts.producers].reverse() };
 		expect(records().account(reordered).bytes).toBe(account.bytes);
 		expect(records().account({ ...facts, records: [check] }).key).not.toBe(account.key);
 		expect(records().account({ ...facts, allowSkip: [] }).key).toBe(account.key);
+		// Two reviews of one range under two policies count the same records, and must stay two accounts.
+		const other = records().account({ ...facts, resolutionPolicy: "2:fedcba9876543210" });
+		const none = records().account({ ...facts, resolutionPolicy: null });
+		expect(new Set([account.key, other.key, none.key]).size).toBe(3);
+		expect(none.toJSON().payload).toMatchObject({ resolutionPolicy: null });
 		const round = records().round([account, lens, check], undefined, [], []);
 		expect(round.manifest()?.read).toContainEqual({ kind: "account", key: account.key, id: account.id });
 	});

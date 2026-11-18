@@ -145,7 +145,7 @@ describe("a store main wrote at version 7 of the lens task", () => {
 		const entry = (await reviewer.snapshot(ReviewIndex, root, context))!.reviews[Revision.key(changeset.revision)]!;
 		expect(entry.task).not.toBe(recorded.lensTask.id);
 		const task = (await reviewer.getTask(entry.task as TaskId, context))!;
-		expect(task.version).toBe(8);
+		expect(task.version).toBe(9);
 		const state = task.state as { outcome: { result: Record<string, { status: string; probing: unknown }> } };
 		expect(Object.values(state.outcome.result)).toEqual([
 			expect.objectContaining({

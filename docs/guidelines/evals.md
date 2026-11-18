@@ -71,6 +71,14 @@ A lens meets the bar when, over three passes, its goldens' worst precision is at
 
 `MELIAN_EVAL_THINKING="heavy=medium,verifier=high"` overrides levels for one live run after its model routes are chosen. `EvalThinking.parse` refuses unknown or repeated tiers and unknown levels before credential discovery. Unlisted tiers keep their configured settings; overrides preserve models and fallbacks. Replacing the verifier model also retains its configured thinking. Live lens and verifier goldens accept the parsed override in their mode. Triage goldens use its light level, the role their direct model already serves. Scripted modes ignore live overrides. Each spend line uses recorded telemetry to print requested, sent and provider-reported levels. The gate tests live-run routing with fake models alone.
 
+`MELIAN_EVAL_FALLBACK` gives every tier `MELIAN_EVAL_MODEL` fills one or more fallbacks, comma-separated, each `provider/model-id` or `provider/model-id@level`. An entry with a level runs at it; a bare one runs at the route's level, as [the fallback level decision](../decisions/2026-11-16-fallback-own-thinking.md) sets. It applies to lens goldens. A route must name its own level whenever a fallback names one, and only `MELIAN_EVAL_THINKING` gives a level to a tier `MELIAN_EVAL_MODEL` fills. So the script refuses it without `MELIAN_EVAL_MODEL`, with a malformed entry, or with an entry that names a level while `MELIAN_EVAL_THINKING` leaves light, medium or heavy unnamed, before it reads a credential. To measure a fallback's level, make the first model fail with an error that fails over, such as an invalid key for a provider with no other credential on the host, since an authentication failure fails over, and compare a fallback with a level against a bare one on the same golden:
+
+```bash
+MELIAN_EVAL_LIVE=1 OPENAI_API_KEY=invalid MELIAN_EVAL_MODEL=openai/gpt-5.5 MELIAN_EVAL_FALLBACK=anthropic/claude-sonnet-5-5@medium MELIAN_EVAL_THINKING=light=low,medium=low,heavy=low MELIAN_EVAL_GOLDEN=correctness-deleted-guard npm run eval:live --workspace @melian-agent/evals
+```
+
+Run it again with `MELIAN_EVAL_FALLBACK=anthropic/claude-sonnet-5-5`, which runs the fallback at `low`, and read each spend line's tool calls, tokens and cost.
+
 ## A lens tool's before and after
 
 A change that gives a lens a new tool is measured at two commits of Melian, the one before it and the one that adds it, with one model route for both. [Issue #241](https://github.com/melian-agent/melian/issues/241) gave the `tests` lens `list_mutants`, and these commands measure it. Each commit runs from a worktree of its own, so its build and its lens files are that commit's. Set `before` and `after` to the two commits and `model` to the route, then repeat the block for each.

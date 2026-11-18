@@ -8,9 +8,11 @@ import {
 	ReviewPlan,
 	Revision,
 	RevisionError,
+	type RoutedModel,
 	readRevisionFile,
 	requestJson,
 	resolveModelForTier,
+	routeInOrder,
 	type Walkthrough,
 } from "@melian-agent/core";
 import { type ReviewOrigin, type StoredVerdictState, VerdictDocument } from "./adjudication.ts";
@@ -132,8 +134,9 @@ export function publishedWalkthrough(
 	const light = routes.light;
 	if (light?.model === undefined) return legacy;
 	const route = resolveModelForTier("light", routes);
-	for (const model of [route.model, ...route.fallbacks]) {
-		const written = routed[routeOf({ model, thinking: light.thinking })];
+	const models: RoutedModel[] = [route.model, ...route.fallbacks];
+	for (const model of models) {
+		const written = routed[routeOf({ model, thinking: model.thinking ?? light.thinking })];
 		if (written !== undefined) return written;
 	}
 	return legacy;
@@ -423,16 +426,19 @@ export async function summarizeReview(options: {
 				? undefined
 				: resolveModelForTier("light", routes);
 		let model: ModelReference | undefined;
-		for (const candidate of route === undefined ? [] : [route.model, ...route.fallbacks]) {
+		let thinking = routes.light?.thinking;
+		const candidates: RoutedModel[] = route === undefined ? [] : [route.model, ...route.fallbacks];
+		for (const candidate of candidates) {
 			if (
 				modelsOf(models).getModel(candidate.provider, candidate.modelId) !== undefined &&
 				(await hasCredentials(models, candidate.provider))
 			) {
-				model = candidate;
+				model = { provider: candidate.provider, modelId: candidate.modelId };
+				thinking = routeInOrder([candidate], thinking).thinking;
 				break;
 			}
 		}
-		const wanted = model === undefined ? undefined : routeOf({ model, thinking: routes.light?.thinking });
+		const wanted = model === undefined ? undefined : routeOf({ model, thinking });
 		const rerun = options.rerun === true;
 		const routed = stored?.routedWalkthroughs?.[revision] ?? {};
 		// A walkthrough an older Melian stored without its route stands, and so does any while no light model has
@@ -452,7 +458,6 @@ export async function summarizeReview(options: {
 			}, context);
 			return;
 		}
-		const thinking = routes.light?.thinking;
 		const read = await WalkthroughPrompt.read(changeset);
 		const request = walkthroughRequest({
 			revision,

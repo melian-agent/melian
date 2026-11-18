@@ -51,7 +51,9 @@ const candidate: VerificationCandidate = {
 	designAtBase: { sections: "sections", files: "files" },
 	fence: { coReported: false, silent: ["nit"] },
 	reportedAt: { "0123456789abcdef lens.correctness@1@careful": "P1" },
-	dismissed: [{ id: "fedcba9876543210", failureScenario: "an old scenario", evidence: [location] }],
+	dismissed: [
+		{ id: "fedcba9876543210", record: "1".repeat(64), failureScenario: "an old scenario", evidence: [location] },
+	],
 	dismissals: { fedcba9876543210: "identity" },
 };
 
@@ -77,7 +79,27 @@ describe("verificationRequest", () => {
 			"candidates.0.state.claims.0.verification",
 			"candidates.0.state.speaker.message",
 		];
-		expect(keyCoverage(verificationRequest, sample, { vary, excluded })).toEqual([]);
+		const levelled: VerificationInput = {
+			...sample,
+			candidates: [
+				{
+					...candidate,
+					route: [...candidate.route, { provider: "openai-codex", modelId: "gpt-c", thinking: "medium" }],
+				},
+			],
+		};
+		expect(keyCoverage(verificationRequest, levelled, { vary, excluded })).toEqual([]);
+	});
+
+	// Another host's dismissal of the same root is another record, so a verifier shown it judged under another ruling.
+	it("keys each shown dismissal's record, so a request that differs only by one has another key", () => {
+		const shownAs = (record: string): VerificationInput => ({
+			...sample,
+			candidates: [{ ...candidate, dismissed: [{ ...candidate.dismissed![0]!, record }] }],
+		});
+		expect(verificationRequest(shownAs("1".repeat(64))).key).toBe(verificationRequest(sample).key);
+		expect(verificationRequest(shownAs("2".repeat(64))).key).not.toBe(verificationRequest(sample).key);
+		expect(candidateKey(shownAs("2".repeat(64)).candidates[0]!)).not.toBe(candidateKey(candidate));
 	});
 
 	it("attaches a review with a fresh nonce to the same task", () => {
@@ -149,10 +171,11 @@ describe("verificationRequest", () => {
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
 // that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #493 changed the shared
 // evidence wording on purpose, for a probe that ended with no record of how and one that exited 125, so these values moved.
+// Issue #481 keys each shown dismissal's record, and the sample shows one, so the key moved again; the version did not.
 describe("a verification no probe evidence reaches", () => {
-	it("keeps the key and the verifier's version main gave it", () => {
+	it("keeps the verifier's version main gave it, and the key the dismissal record gives it", () => {
 		expect(verifierVersion).toBe("c458134278f8c3ab");
-		expect(verificationRequest(sample).key).toBe("3fd4e7e3989d48157fa7a7d4027588f3ff738ccf74773b3fe335cf075d0518d8");
+		expect(verificationRequest(sample).key).toBe("28a6f54b68f3a7a1f5217ad83f5c8d5462c6087f20a6538192239555182afee5");
 	});
 });
 

@@ -1534,6 +1534,232 @@ describe("a lens route", () => {
 		});
 	});
 
+	it("drops a moved route's accepted fallback at a level the guarded committed tier does not give it, and fails a run on it", () => {
+		const committed = {
+			heavy: {
+				model: opus,
+				thinking: "low" as const,
+				fallbacks: [{ model: gpt, thinking: "medium" as const }],
+				accept: [opus, gpt],
+				acceptOverridden: false as const,
+			},
+		};
+		const at = (thinking?: "medium" | "high") =>
+			plan(committed, both, {
+				lensRoutePreferences: {
+					correctness: {
+						model: opus,
+						thinking: "low",
+						fallbacks: [thinking === undefined ? gpt : { model: gpt, thinking }],
+					},
+				},
+			});
+		const models = (resolved: ReviewPlan) =>
+			resolved.lensRoute("correctness", "", "careful")?.models.map(({ model }) => model);
+		expect(models(at("medium"))).toEqual([opus, gpt]);
+		expect(models(at("high"))).toEqual([opus]);
+		expect(models(at())).toEqual([opus]);
+		expect(at("medium").judge("correctness", "careful", gpt).refusal).toBeUndefined();
+		const rerouted = plan(committed, both, {
+			preferences: { heavy: { model: opus, fallbacks: [] } },
+			lensRoutePreferences: { correctness: { model: opus, thinking: "low", fallbacks: [gpt] } },
+		});
+		expect(models(rerouted)).toEqual([opus]);
+		const [finished] = at("high").mark(
+			[{ name: "lens.correctness", status: "ran", level: "careful" }],
+			new Map([["correctness", [{ scope: "", version: "v", level: "careful" as const, model: gpt }]]]),
+		);
+		expect(finished).toMatchObject({
+			status: "failed",
+			reason:
+				"models.heavy.acceptOverridden is false, and melian.local.yaml runs openai/gpt-5.5 at thinking high; committed policy wants medium",
+		});
+	});
+
+	it("names the level a guarded tier's relevelled fallback runs at, and the level policy gives it", () => {
+		const committed = (fallback: string | { model: string; thinking: "medium" }) => ({
+			heavy: {
+				model: opus,
+				thinking: "low" as const,
+				fallbacks: [fallback],
+				accept: [opus, gpt],
+				acceptOverridden: false as const,
+			},
+		});
+		const unset = plan(committed({ model: gpt, thinking: "medium" }), both, {
+			preferences: { heavy: { model: gpt, fallbacks: [] } },
+		});
+		expect(unset.refusal("heavy")).toBe(
+			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking low; committed policy wants medium`,
+		);
+		const high = plan(
+			committed(gpt),
+			{ openai: "OPENAI_API_KEY" },
+			{
+				preferences: { heavy: { model: opus, fallbacks: [{ model: gpt, thinking: "high" }] } },
+			},
+		);
+		expect(high.refusal("heavy")).toBe(
+			`models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking high; committed policy wants low`,
+		);
+	});
+
+	it("names its own route when a guarded committed route can run only outside its accept", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt, accept: [opus], acceptOverridden: false } },
+			{ openai: "OPENAI_API_KEY" },
+		);
+		expect(resolved.refusal("heavy")).toBe(
+			`models.heavy.acceptOverridden is false, and its route puts it on ${gpt}, which models.heavy.accept does not list`,
+		);
+	});
+
+	it("names melian.yaml for an unknown committed fallback a preference route keeps", () => {
+		const typo = "anthropic/typo";
+		const resolved = plan({ heavy: { model: opus, fallbacks: [gpt, typo], accept: [opus, gpt] } }, both, {
+			preferences: { heavy: { model: opus } },
+		});
+		expect(resolved.warnings()).toContain(
+			`heavy: ${typo}, set by melian.yaml, is not a model the catalogue holds; a newer pi-ai may hold it`,
+		);
+	});
+
+	describe("a guarded tier's moved lens route", () => {
+		const mini = "openai/gpt-5.4-mini";
+		const guarded = { heavy: { model: opus, fallbacks: [gpt], accept: [opus, gpt], acceptOverridden: false } };
+		const anthropicOnly = { anthropic: "ANTHROPIC_API_KEY" };
+		const openaiOnly = { openai: "OPENAI_API_KEY" };
+		const ownMedium = { correctness: { model: opus, fallbacks: [{ model: gpt, thinking: "medium" as const }] } };
+		const moved = { by: "melian.local.yaml", from: "heavy", to: "lens route" };
+		const thinkingLines = ["light", "medium", "heavy", "decision", "verifier"].map((tier) => ({
+			state: "ok",
+			text: `${tier} thinking: unset; Pi default`,
+		}));
+
+		it("runs the route's first model at the level committed policy gives it", () => {
+			const resolved = plan(guarded, openaiOnly, { lensRoutePreferences: ownMedium });
+			expect(resolved.judge("correctness", "careful", opus)).toEqual({});
+		});
+
+		it("refuses a fallback that answers at its own entry's level, naming both levels", () => {
+			const resolved = plan(guarded, both, { lensRoutePreferences: ownMedium });
+			expect(resolved.judge("correctness", "careful", gpt)).toEqual({
+				refusal: `models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking medium; committed policy wants unset`,
+				lineage: { model: gpt, wanted: opus, by: "melian.local.yaml", outside: false, answeredAt: "medium", moved },
+			});
+		});
+
+		it("accepts a stored run on a model the route no longer holds when its level matches", () => {
+			const resolved = plan(guarded, both, { lensRoutePreferences: ownMedium });
+			expect(resolved.judge("correctness", "quick", mini)).toEqual({});
+		});
+
+		it("fails closed on a model of a rerouted tier that holds no committed level for it", () => {
+			const rerouted = plan(guarded, anthropicOnly, {
+				preferences: { heavy: { model: gpt, fallbacks: [] } },
+				lensRoutePreferences: ownMedium,
+			});
+			expect(rerouted.judge("correctness", "careful", gpt)).toEqual({
+				refusal: `models.heavy.acceptOverridden is false, and melian.local.yaml runs ${gpt} at thinking unset; committed policy wants unset`,
+				lineage: { model: gpt, wanted: opus, by: "melian.local.yaml", outside: false, moved },
+			});
+			const openai = plan(guarded, openaiOnly, {
+				preferences: { heavy: { model: gpt, fallbacks: [] } },
+				lensRoutePreferences: ownMedium,
+			});
+			expect(openai.judge("correctness", "careful", opus)).toEqual({
+				refusal: `models.heavy.acceptOverridden is false, and melian.local.yaml runs ${opus} at thinking unset; committed policy wants unset`,
+			});
+		});
+
+		it("leaves a moved route that names a level and no model to the run's own refusal", () => {
+			const resolved = plan(guarded, both, { lensRoutePreferences: { correctness: { thinking: "high" } } });
+			expect(resolved.judge("correctness", "careful")).toEqual({});
+		});
+
+		it("judges a lens on its tier, not a route's level, when no lens route moves it", () => {
+			const resolved = plan(guarded, both, { preferences: { heavy: { model: gpt, fallbacks: [] } } });
+			expect(resolved.judge("correctness", "careful", opus)).toEqual({});
+		});
+
+		it("names the model outside accept, not a level, for a run outside a rerouted tier's accept", () => {
+			const resolved = plan(guarded, both, {
+				preferences: { heavy: { model: gpt, fallbacks: [] } },
+				lensRoutePreferences: ownMedium,
+			});
+			expect(resolved.judge("correctness", "careful", mini)).toEqual({
+				refusal: `lenses.correctness.route moves it from heavy to its own route, and models.heavy.acceptOverridden is false; the route runs ${mini}, which models.heavy.accept does not list`,
+				lineage: { model: mini, wanted: opus, by: "melian.local.yaml", outside: true, moved },
+			});
+			const refused = `models.heavy.acceptOverridden is false, and melian.local.yaml runs ${opus} at thinking unset; committed policy wants unset`;
+			expect(resolved.lines()).toEqual([
+				...thinkingLines,
+				{ state: "ok", text: `heavy: ${gpt} with OPENAI_API_KEY; routed by melian.local.yaml` },
+				{
+					state: "ok",
+					text: `correctness route: ${opus} with ANTHROPIC_API_KEY, then ${gpt} at medium with OPENAI_API_KEY; routed by melian.local.yaml`,
+				},
+				{ state: "warn", text: `verifier: ${gpt} (gpt); fallback from lens tiers` },
+				{
+					state: "ok",
+					text: `correctness: quick on lens route (${opus}), careful on lens route (${opus}), deep on lens route (${opus})`,
+				},
+				{ state: "warn", text: `heavy runs ${gpt}, set by melian.local.yaml; the committed route wants ${opus}` },
+				{ state: "warn", text: `correctness fails at careful: ${refused}` },
+				{ state: "warn", text: `correctness fails at deep: ${refused}` },
+				{ state: "warn", text: fallbackWarning },
+				{ state: "warn", text: `${gpt} could be judged by ${gpt} (same family) if ${opus} fails` },
+			]);
+		});
+
+		it("says a moved route's model is one the committed route accepts, with no outside clause", () => {
+			const resolved = plan(guarded, openaiOnly, {
+				lensRoutePreferences: { correctness: { model: opus, fallbacks: [gpt] } },
+			});
+			expect(resolved.lines()).toEqual([
+				...thinkingLines,
+				{ state: "ok", text: `heavy: ${gpt} with OPENAI_API_KEY; routed by melian.yaml` },
+				{ state: "ok", text: `correctness route: ${gpt} with OPENAI_API_KEY; routed by melian.local.yaml` },
+				{ state: "warn", text: `verifier: ${gpt} (gpt); fallback from lens tiers` },
+				{
+					state: "ok",
+					text: `correctness: quick on lens route (${gpt}), careful on lens route (${gpt}), deep on lens route (${gpt})`,
+				},
+				{
+					state: "warn",
+					text: `heavy runs ${gpt}, which the committed route accepts, since ${opus} has no credentials`,
+				},
+				{
+					state: "warn",
+					text: `correctness runs ${gpt}, moved from heavy to lens route by melian.local.yaml, whose route is set by melian.local.yaml; the committed route wants ${opus}`,
+				},
+				{ state: "warn", text: fallbackWarning },
+				{ state: "warn", text: familyWarning },
+			]);
+		});
+	});
+
+	it("prints each model of a lens route and of a stored verifier route that lost its family", () => {
+		const resolved = plan({}, both, {
+			lensRoutes: { correctness: { model: opus, fallbacks: [{ model: gpt, thinking: "high" }] } },
+		});
+		expect(resolved.lines()).toContainEqual({
+			state: "ok",
+			text: `correctness route: ${opus} with ANTHROPIC_API_KEY, then ${gpt} at high with OPENAI_API_KEY; routed by melian.yaml`,
+		});
+		const verifier = plan({ verifier: { model: gpt } }, both).toJSON();
+		const stored = {
+			...verifier,
+			tiers: verifier.tiers.map((tier) =>
+				tier.tier === "verifier" ? { ...tier, models: tier.models.map(({ family: _, ...model }) => model) } : tier,
+			),
+		};
+		expect(ReviewPlan.from(stored).lines()).toContainEqual({
+			state: "ok",
+			text: `verifier: ${gpt} (unknown family) with OPENAI_API_KEY; routed by melian.yaml`,
+		});
+	});
+
 	it("refuses a moved route whose thinking differs from a guarded committed tier's", () => {
 		const committed = { heavy: { model: opus, accept: [opus], acceptOverridden: false } };
 		const resolved = plan(committed, both, {
@@ -1720,5 +1946,117 @@ describe("a lens route", () => {
 		expect(
 			ReviewPlan.from({ tiers: plan({}, both).toJSON().tiers, lenses: [] }).lensRoute("correctness", ""),
 		).toBeUndefined();
+	});
+});
+
+describe("a fallback's level in melian doctor", () => {
+	const both = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY" };
+	const sonnet = "anthropic/claude-sonnet-5-5";
+	const mini = "openai/gpt-5.4-mini";
+	const texts = (resolved: ReviewPlan) => resolved.lines().map(({ text }) => text);
+	const warning = (label: string, fallback: string, level: string, first: string) =>
+		`${label}: fallback ${fallback} names no thinking level, so it runs at ${level}, which was chosen for ${first}`;
+
+	it("prints a fallback's own level beside it, and none for a bare fallback", () => {
+		const resolved = plan(
+			{ heavy: { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "medium" }, sonnet] } },
+			both,
+		);
+		const route = texts(resolved).find((text) => text.startsWith("heavy") && text.includes(gpt))!;
+		expect(route).toContain(`${opus} at medium with ANTHROPIC_API_KEY`);
+		expect(route).toContain(`${sonnet} with ANTHROPIC_API_KEY`);
+		expect(route).not.toContain(`${sonnet} at`);
+	});
+
+	it.each(["off", "minimal", "low"] as const)(
+		"warns when a bare fallback on another provider inherits %s",
+		(level) => {
+			const resolved = plan({ heavy: { model: gpt, thinking: level, fallbacks: [opus] } }, both);
+			expect(resolved.lines()).toContainEqual({ state: "warn", text: warning("heavy", opus, level, gpt) });
+		},
+	);
+
+	it.each<[string, ModelRoute]>([
+		["the same provider", { model: opus, thinking: "low", fallbacks: [sonnet] }],
+		["a fallback with its own level", { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "low" }] }],
+		["medium", { model: gpt, thinking: "medium", fallbacks: [opus] }],
+		["no level", { model: gpt, fallbacks: [opus] }],
+	])("does not warn for %s", (_, route) => {
+		const resolved = plan({ heavy: route }, both);
+		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
+	it("warns only for the bare cross-provider fallback among several", () => {
+		const resolved = plan(
+			{ heavy: { model: opus, thinking: "low", fallbacks: [sonnet, gpt, { model: mini, thinking: "high" }] } },
+			both,
+		);
+		expect(texts(resolved).filter((text) => text.includes("names no thinking level"))).toEqual([
+			warning("heavy", gpt, "low", opus),
+		]);
+	});
+
+	it("names the committed route's model as the one a low level was chosen for, when a fallback promoted to first names its own", () => {
+		const unreachable = "nowhere/first";
+		const promoted = plan(
+			{ heavy: { model: unreachable, thinking: "low", fallbacks: [{ model: opus, thinking: "high" }, gpt] } },
+			both,
+		);
+		expect(promoted.lines()).toContainEqual({ state: "warn", text: warning("heavy", gpt, "low", unreachable) });
+		const named = plan(
+			{
+				heavy: {
+					model: unreachable,
+					thinking: "low",
+					fallbacks: [
+						{ model: opus, thinking: "low" },
+						{ model: gpt, thinking: "low" },
+					],
+				},
+			},
+			both,
+		);
+		expect(texts(named).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
+	it("names a bare fallback promoted to first as the model a low level was chosen for", () => {
+		const promoted = plan({ heavy: { model: "nowhere/first", thinking: "low", fallbacks: [opus, gpt] } }, both);
+		expect(promoted.warnings().filter((text) => text.startsWith("heavy: fallback"))).toEqual([
+			warning("heavy", gpt, "low", opus),
+		]);
+	});
+
+	it("does not warn for a route no committed route names, when a fallback promoted to first names its own level", () => {
+		const resolved = plan({}, both, {
+			preferences: {
+				heavy: { model: "nowhere/first", thinking: "low", fallbacks: [{ model: opus, thinking: "high" }, gpt] },
+			},
+		});
+		expect(resolved.tier("heavy").models.map(({ model }) => model)).toEqual([opus, gpt]);
+		expect(resolved.warnings()).toEqual([
+			"heavy: nowhere/first, set by melian.local.yaml, is not a model the catalogue holds; it knows no provider nowhere",
+			`heavy runs ${opus}, set by melian.local.yaml; the committed route accepts ${opus}; thinking low set by melian.yaml; committed policy wants unset; it answers at thinking high`,
+			"lenses verify, but the verifier tier routes no model of its own; verification falls back to lens tiers, heavy then medium then light",
+			`${opus} could be judged by ${opus} (same family) if ${gpt} fails`,
+			`${gpt} could be judged by ${gpt} (same family) if ${opus} fails and ${opus} fails`,
+		]);
+	});
+
+	it("does not warn for a route that does not run", () => {
+		const resolved = plan({ heavy: { model: gpt, thinking: "low", fallbacks: [opus] } }, {});
+		expect(texts(resolved).some((text) => text.includes("names no thinking level"))).toBe(false);
+	});
+
+	it("warns for a lens route and prints its fallback's level", () => {
+		const bare = plan({}, both, { lensRoutes: { correctness: { model: gpt, thinking: "low", fallbacks: [opus] } } });
+		expect(bare.lines()).toContainEqual({
+			state: "warn",
+			text: warning("correctness route", opus, "low", gpt),
+		});
+		const own = plan({}, both, {
+			lensRoutes: { correctness: { model: gpt, thinking: "low", fallbacks: [{ model: opus, thinking: "high" }] } },
+		});
+		expect(texts(own).some((text) => text.includes("names no thinking level"))).toBe(false);
+		expect(texts(own).some((text) => text.includes(`${opus} at high with ANTHROPIC_API_KEY`))).toBe(true);
 	});
 });

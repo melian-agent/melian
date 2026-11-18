@@ -118,12 +118,16 @@ export function createFakeModels(
 }
 
 /**
- * One scripted reply: a message, or a function of the messages the model was sent and the model's ID, which may return
- * a promise, such as one that never settles to hold a request open.
+ * One scripted reply: a message, or a function of the messages the model was sent, the model's ID and the thinking level
+ * the request asked for, which may return a promise, such as one that never settles to hold a request open.
  */
 export type ScriptedReply =
 	| AssistantMessage
-	| ((messages: readonly Message[], modelId: string) => AssistantMessage | Promise<AssistantMessage>);
+	| ((
+			messages: readonly Message[],
+			modelId: string,
+			thinking?: string,
+	  ) => AssistantMessage | Promise<AssistantMessage>);
 
 /** The replies for every conversation whose system prompt contains `match`, in order. */
 export type ConversationScript = { readonly match: string; readonly replies: readonly ScriptedReply[] };
@@ -165,7 +169,7 @@ export function scriptConversations(
 	const requests: Record<string, Message[][]> = Object.fromEntries(scripts.map((script) => [script.match, []]));
 	const respond = (
 		context: { readonly messages: readonly Message[] },
-		_options: unknown,
+		options: { readonly reasoning?: string } | undefined,
 		_state: unknown,
 		model: Model<string>,
 	): AssistantMessage | Promise<AssistantMessage> => {
@@ -183,7 +187,7 @@ export function scriptConversations(
 		if (reply === undefined) {
 			return fauxAssistantMessage("", { stopReason: "error", errorMessage: `script "${script.match}" ran out` });
 		}
-		return typeof reply === "function" ? reply(context.messages, model.id) : reply;
+		return typeof reply === "function" ? reply(context.messages, model.id, options?.reasoning) : reply;
 	};
 	const total = scripts.reduce((sum, script) => sum + script.replies.length, 0);
 	fake.provider.setResponses(Array.from({ length: total + scripts.length + 256 }, () => respond));

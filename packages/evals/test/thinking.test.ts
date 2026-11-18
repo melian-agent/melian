@@ -15,7 +15,7 @@ import {
 import { expect, it, vi } from "vitest";
 import { loadGoldens, runGolden } from "../src/goldens.ts";
 import { reportTriageGoldens } from "../src/live-output.ts";
-import { EvalThinking } from "../src/thinking.ts";
+import { EvalThinking, parseEvalFallbacks } from "../src/thinking.ts";
 import { loadTriageGoldens, runTriageGolden } from "../src/triage.ts";
 import { loadVerifierGoldens, runVerifierGolden } from "../src/verifier.ts";
 
@@ -55,6 +55,96 @@ it.each([
 	expect(() => EvalThinking.parse(entry)).toThrow(
 		`MELIAN_EVAL_THINKING needs distinct tier=level entries; invalid entry "heavy=${escaped}fake"`,
 	);
+});
+
+it("parses live fallbacks with and without their own level", () => {
+	expect(parseEvalFallbacks(undefined)).toEqual([]);
+	expect(parseEvalFallbacks("")).toEqual([]);
+	expect(parseEvalFallbacks("anthropic/claude-sonnet-5-5@medium, openai/gpt-5.5")).toEqual([
+		{ model: "anthropic/claude-sonnet-5-5", thinking: "medium" },
+		"openai/gpt-5.5",
+	]);
+});
+
+it.each(["anthropic", "/model", "anthropic/claude@none", "anthropic/claude@", "anthropic/claude@low@high", ","])(
+	"refuses an invalid fallback %s",
+	(value) => {
+		expect(() => parseEvalFallbacks(value)).toThrow("MELIAN_EVAL_FALLBACK");
+	},
+);
+
+it("asks a live fallback at its own level and a bare one at the route's", async () => {
+	for (const [entry, expected] of [
+		["@high", "high"],
+		["", "low"],
+	] as const) {
+		const fake = createFakeModels({ models: ["unavailable", "finder"].map((id) => ({ id })) });
+		const asked: [string, unknown][] = [];
+		fake.provider.setResponses(
+			Array.from({ length: 30 }, () => async (request, options, _state, model) => {
+				asked.push([model.id, options?.reasoning]);
+				if (model.id === "unavailable")
+					return fauxAssistantMessage("", { stopReason: "error", errorMessage: "Rate limit exceeded" });
+				if (systemPromptOf(request.messages).includes("Melian adversarial verifier"))
+					return scriptVerifier(request.messages);
+				return fauxAssistantMessage("Done.");
+			}),
+		);
+		const name = (id: string) => `${fake.ref(id).provider}/${fake.ref(id).modelId}`;
+		await runGolden(loadGoldens().find((golden) => golden.name === "correctness-deleted-guard")!, {
+			kind: "live",
+			models: fake.review,
+			model: name("unavailable"),
+			fallbacks: parseEvalFallbacks(`${name("finder")}${entry}`),
+			thinking: EvalThinking.parse("light=low,medium=low,heavy=low"),
+		});
+		expect(asked.filter(([id]) => id === "unavailable").length).toBeGreaterThan(0);
+		const finder = asked.filter(([id]) => id === "finder");
+		expect(finder.length).toBeGreaterThan(0);
+		expect(finder).toEqual(finder.map(() => ["finder", expected]));
+	}
+}, 60_000);
+
+it.each([
+	[{ MELIAN_EVAL_FALLBACK: "anthropic/claude@none" }, 'invalid entry "anthropic/claude@none"'],
+	[{ MELIAN_EVAL_FALLBACK: "anthropic/claude@medium" }, "MELIAN_EVAL_FALLBACK needs MELIAN_EVAL_MODEL"],
+	// Codex's adversarial review of pull request #489: a route whose fallback names a level must name its own, and the
+	// tiers MELIAN_EVAL_MODEL fills take their level from MELIAN_EVAL_THINKING alone.
+	[
+		{ MELIAN_EVAL_MODEL: "anthropic/claude", MELIAN_EVAL_FALLBACK: "anthropic/claude@medium" },
+		"MELIAN_EVAL_FALLBACK names a thinking level, so MELIAN_EVAL_THINKING must name light, medium and heavy",
+	],
+	[
+		{
+			MELIAN_EVAL_MODEL: "anthropic/claude",
+			MELIAN_EVAL_FALLBACK: "anthropic/other,anthropic/claude@medium",
+			MELIAN_EVAL_THINKING: "light=low,medium=low,verifier=high",
+		},
+		"MELIAN_EVAL_FALLBACK names a thinking level, so MELIAN_EVAL_THINKING must name light, medium and heavy",
+	],
+])("rejects a live fallback before opening live credentials", (variables, message) => {
+	const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-fallback-env-")));
+	try {
+		const result = spawnSync(
+			process.execPath,
+			["--conditions=@melian-agent/source", fileURLToPath(new URL("../src/live.ts", import.meta.url))],
+			{
+				cwd: directory,
+				encoding: "utf8",
+				env: {
+					PATH: process.env.PATH,
+					XDG_CONFIG_HOME: directory,
+					PI_CODING_AGENT_DIR: directory,
+					MELIAN_EVAL_LIVE: "1",
+					...variables,
+				},
+			},
+		);
+		expect(result.status).toBe(2);
+		expect(result.stderr).toContain(message);
+	} finally {
+		rmSync(directory, { recursive: true, force: true });
+	}
 });
 
 it("rejects an invalid environment override before opening live credentials", () => {

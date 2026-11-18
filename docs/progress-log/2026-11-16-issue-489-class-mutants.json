@@ -1,0 +1,1859 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6dfab6f161da437851f5edd872c6931e7da57191",
+		"head": "1584a8027dfb11ea0cfe0328f8cf27c7336c96df"
+	},
+	"claimsIn": [
+		"packages/core/src/plan.ts",
+		"packages/core/src/models.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/summarize.ts",
+		"packages/pipeline/src/models.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 43,
+			"column": 80,
+			"endLine": 53,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c5f509212ba9872c09a119a54bc88e30c8e5b17672b376007112bb0a6b711b28",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 44,
+			"column": 15,
+			"endLine": 44,
+			"endColumn": 46,
+			"mutatorName": "LogicalOperator",
+			"replacement": "models[0]?.thinking && thinking",
+			"status": "generated",
+			"id": "0e2a6e2c69119d4280f4d050e81832e360524bf24e83ce42d0348395ed813593",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 44,
+			"column": 15,
+			"endLine": 44,
+			"endColumn": 34,
+			"mutatorName": "OptionalChaining",
+			"replacement": "models[0].thinking",
+			"status": "generated",
+			"id": "76e3aa45cc89469d7f25fe9ba9b9dff3e3221149de710e2c304ff2918716d024",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/thinking-routes.test.ts",
+					"path": [
+						"refuses a review whose planned lens route names a level and no model, saying what to set"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 45,
+			"column": 12,
+			"endLine": 46,
+			"endColumn": 57,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4c2c6a252bb4be9e561aceb40a3e21f331891a2c63121a15ed7c87ba2c8e00cc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 46,
+			"column": 2,
+			"endLine": 46,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0df19e142e08a85a23929b07d7bb0b2721d71caa3c1a4ef926d7cd4b4cbc6c80",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 46,
+			"column": 2,
+			"endLine": 46,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3c9354862433c61995a3e5b97a2856ff8f9a821e63dea6de17c3bd6c828fcd4e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 46,
+			"column": 2,
+			"endLine": 46,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "own !== undefined",
+			"status": "generated",
+			"id": "32a230b45c7a09d8a52953e5b2a76293a17ea997151f5c5c25b7eff76eec0610",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 46,
+			"column": 30,
+			"endLine": 46,
+			"endColumn": 57,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "486782be325b82e9b43d3b3afa040e7a31ff088e77651d1ef3c6b90adf061519",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 47,
+			"column": 8,
+			"endLine": 52,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "86ba0224a874f91d2bc0f841f635ef34aaf0279b4f4b16b510191e2ffecb1e9a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 48,
+			"column": 6,
+			"endLine": 48,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4a7b5668b41e438374639ec46a2f87364ceb18f2a8cb87aeee6e7559175edb2f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 48,
+			"column": 6,
+			"endLine": 48,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "50cfa9a372be5aaedf5da1a22744aa250b259756d7f588b312feb4b0b2094a01",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 48,
+			"column": 6,
+			"endLine": 48,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level !== undefined",
+			"status": "generated",
+			"id": "e0c6e387a1016e734b7163a3c5994989c725758358b3e995a3e1441f2f18928e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 48,
+			"column": 33,
+			"endLine": 48,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0e09156bdb88aa86b05da4eb534b2273930276c29817d6232d94d52d7250378e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 49,
+			"column": 20,
+			"endLine": 50,
+			"endColumn": 101,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c20253586aec85e81b29a835a168e60bddb8bc5c77130b0e1994bc3d885a186e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 12,
+			"endLine": 50,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "325093fce1e6212b41afc808f74b86b2c1598e82c2fac481c4cab73b3c8105d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 12,
+			"endLine": 50,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fbf544bd8333cfcddcdbc4173a57ca3df4e3dbcead95799fb7c2951313c0be36",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 12,
+			"endLine": 50,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "index !== 0",
+			"status": "generated",
+			"id": "588b5ad6a5c01bb168edffd8a2acd5d93730d69a554d7530a2d8bc4a55da2421",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 39,
+			"endLine": 50,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.thinking && (level === thinking ? undefined : thinking)",
+			"status": "generated",
+			"id": "9739724716af89b681ac01ab7f1a7af9bb1353992db94d24e6ed4e90e7275949",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 57,
+			"endLine": 50,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "314bf8990f5a233a8126ff9b4c7bf5dc4481e27d88fb2e116803678fdb309886",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 57,
+			"endLine": 50,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5c3b47225318051bc0ce177444350f16f367da4b07f8b0f9e7812efed8cb7cd4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 50,
+			"column": 57,
+			"endLine": 50,
+			"endColumn": 75,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level !== thinking",
+			"status": "generated",
+			"id": "751d1dfbda2acfcf85bdd47a56cb2f02d59569b8b0e9878285aa63f208d817ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 59,
+			"column": 15,
+			"endLine": 67,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "11208ecf0ad7bfc338a24e1058626e9e8958f378ec7145ed236bbb861d434b3c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 61,
+			"column": 8,
+			"endLine": 66,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7be98da180851e5389c419c960426eafa39b005d1e9c5afabb40c6b779877717",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 62,
+			"column": 6,
+			"endLine": 62,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e5977e290008f136a0380e5df26594ac092bf2fb880d889ab9fc0a5f5fa08e37",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 62,
+			"column": 6,
+			"endLine": 62,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "03b3c3342dfb7e088e76d6482e1a4c30b57c941919bbe2c02ed000e8eec2e87e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"turns a route's reachable models into the route that runs, naming a level only where it differs from the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 62,
+			"column": 6,
+			"endLine": 62,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run.thinking !== undefined",
+			"status": "generated",
+			"id": "27e0fe74b8578a3fe9cdb88061decb956c9803db4b2084c549d8666575dce01d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 62,
+			"column": 40,
+			"endLine": 62,
+			"endColumn": 66,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "db2bbdc84fd7474591bf37181c4c86825c83af1ee909051b9803ff53491959aa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 63,
+			"column": 6,
+			"endLine": 63,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cc19300976eb5142cdbdb80cfea38fc8bea0b215ab653b2132ce00a769aabf13",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 63,
+			"column": 6,
+			"endLine": 63,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "097b58371c0c8711325055540a90a2d779de6c1672e5df71872d1ca7a226a536",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/thinking-routes.test.ts",
+					"path": [
+						"refuses a review whose planned lens route names a level and no model, saying what to set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 63,
+			"column": 6,
+			"endLine": 63,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "first !== undefined",
+			"status": "generated",
+			"id": "d61b275f1f3f8b03e2cc9c878e267c83d7c47be9e93d8a0c565432c3b13c0681",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 65,
+			"column": 5,
+			"endLine": 65,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e848b3399aae47817342cb5089dfda297795de1a4502e711f4a2ca16aa816e91",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/models.ts",
+			"line": 65,
+			"column": 47,
+			"endLine": 65,
+			"endColumn": 97,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "658a319763f9f81314365cf77f6752dcc433031579744d7d7956a4b608ae6e2e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c4adbf2b213c797e321f55f71664accd596b0251f97101285a26ca664c1d18f9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "af7b94c2dd6b25960f6609fa6a7901e9249c444e4250de566e63f93883cb38bb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 80,
+			"mutatorName": "LogicalOperator",
+			"replacement": "effective?.thinking === undefined || names[0] !== undefined",
+			"status": "generated",
+			"id": "8f04de5585a821ee3b9aa4ad93ce32c7321dc60ad845d6c947bf8ce3eb042966",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2812f9cb257becae566542e4b313b92d710be2eb6f8c6cfad729a0e6545f2d8b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs a fallback promoted past a first model it cannot reach at its own level, and the rest at the route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 54,
+			"mutatorName": "EqualityOperator",
+			"replacement": "effective?.thinking !== undefined",
+			"status": "generated",
+			"id": "2eab40d725b7e5eb2b03d792f3eca244cf6216e8d4f3c74da04e7ffb97b6826e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 21,
+			"endLine": 347,
+			"endColumn": 40,
+			"mutatorName": "OptionalChaining",
+			"replacement": "effective.thinking",
+			"status": "generated",
+			"id": "dfa25fa36a9f2060a300ee87e70a142b6ac7c9d8b24b64659cd36fd143d832fc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"runs --model at the route's level, though a fallback entry names that model's own"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 58,
+			"endLine": 347,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ecd462b63429237a58d62eaf3142387553b464a790f00c7be10e8e0a613b145a",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`inherited` is read only inside `names.map`, which calls back only when `names[0]` exists."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 347,
+			"column": 58,
+			"endLine": 347,
+			"endColumn": 80,
+			"mutatorName": "EqualityOperator",
+			"replacement": "names[0] === undefined",
+			"status": "generated",
+			"id": "27a03e7a13cf4ccb3ece4422507b031eb1c38c81a18095bd2cc48b56d2183b48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 8,
+			"endLine": 352,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f249196974269764e8efd05042f9236cfb96f2a60130db4677269411afee2d19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 8,
+			"endLine": 352,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5e306b683287d7ffa2082887903509dc55de9685221edb6fd8eae931022d9fad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"plans each model with its own level, and the route's elsewhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 8,
+			"endLine": 352,
+			"endColumn": 47,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(own(model) ?? inherited) !== undefined",
+			"status": "generated",
+			"id": "d5db3c2c05cd985a35fd31abf9adf6d11c1441fe54abdb330270e2f0e6b9cea3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 9,
+			"endLine": 352,
+			"endColumn": 32,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own(model) && inherited",
+			"status": "generated",
+			"id": "4d9d24065bffa56d900afed55426dba4579d711024ec45c55e2e1d46d5e21c03",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 55,
+			"endLine": 352,
+			"endColumn": 92,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6919c4c5be3b2c24321d3bb83e8156ca31473feefaea55423e4e25596639d586",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 352,
+			"column": 67,
+			"endLine": 352,
+			"endColumn": 90,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own(model) && inherited",
+			"status": "generated",
+			"id": "718a1ed7c03393fa0b3b9d36b3c221303bc032ae65629453e50fdc176092181e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"a fallback's own thinking level",
+						"names a promoted fallback's level as the one a later bare fallback answered at, when the route names none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 7,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9e61f90170678a5cf96859fe4949bd485acb8b2e6781ed25787610566d1e2393",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 7,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9e501c3c260249bc4666a9f70423d2351de1ef5ffad7d14657d6c5d4c68b0ea7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes every lens tier, and only those, to --model"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 7,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "LogicalOperator",
+			"replacement": "status !== \"routed\" || status !== \"uncredentialed\"",
+			"status": "generated",
+			"id": "882957e46873679aeb7b4468d29a7102536d1991f385ffc3202da6b7d3ed70bf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 7,
+			"endLine": 552,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "931ca7c4f55c1389339702cf74f3d76df6b11b694a3f906931a035b3074551e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 7,
+			"endLine": 552,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "status === \"routed\"",
+			"status": "generated",
+			"id": "db6a00436a00e12ed2796322c5354dbcaf035edca224b6a9adc048bd6fb650eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"routes the committed route, keeping only the models the catalogue holds and some credential covers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 18,
+			"endLine": 552,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cded5282b8966fd03c5514324ef9e6469f86940a9f70403561878dcb95caca5a"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 30,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "27a2e0b2fa2f81ad8c1d5a93aae2957bf00b34d8210fd5ff82fd7bd74452106c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"leaves a route uncredentialed when nothing can be derived, so the review says no model has credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 30,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "EqualityOperator",
+			"replacement": "status === \"uncredentialed\"",
+			"status": "generated",
+			"id": "44802c48cd5fbe8f6d0b9d8a0a2ee331d894092f06da32a11930eba2afec8bf3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/plan.test.ts",
+					"path": [
+						"ReviewPlan.resolve",
+						"leaves a route uncredentialed when nothing can be derived, so the review says no model has credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 552,
+			"column": 41,
+			"endLine": 552,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f5b25765ada228caef020493b545f484a480a220e4a174061aaac0f5674ec8c2"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 991,
+			"column": 14,
+			"endLine": 991,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fc6cd219e1e6d45574166b67ffe517498611be0aae65ca7ab91863f4a63cf2c3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"the lineage of a fallback with its own level",
+						"says in doctor the level a fallback the plan runs first answers at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 991,
+			"column": 14,
+			"endLine": 991,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bd93a0b88e81756a9b3cec81b020192a0da3dbcd2c7c676302e999b33baf524f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"the lineage of a fallback with its own level",
+						"says in doctor the level a fallback the plan runs first answers at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 991,
+			"column": 14,
+			"endLine": 991,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answeredAt !== undefined",
+			"status": "generated",
+			"id": "0e3c5ba2135bfe989fc8c9731adc6cf0d7ce28db517c4cf0d0e5bdbb40fad655",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/fallback-thinking.test.ts",
+					"path": [
+						"the lineage of a fallback with its own level",
+						"says in doctor the level a fallback the plan runs first answers at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 991,
+			"column": 41,
+			"endLine": 991,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9cc02b92018b56538566f84187959ad08b9394073661d495889027e9b892f52a"
+		},
+		{
+			"file": "packages/core/src/plan.ts",
+			"line": 991,
+			"column": 46,
+			"endLine": 991,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "79269972c7c5d543c3ec62953360d9b09db008d92b90b92e256873ff0b7e9cba"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 162,
+			"column": 13,
+			"endLine": 162,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "54458f55775b8a7bafe52d99deeee7b8ae06c14086efd7769240c2594dd2e2c0"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 162,
+			"column": 13,
+			"endLine": 162,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "84950b76c45c3ddb8179fd353dcd9742588ad82cf91329c3081ea5cfd3208fa8"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 162,
+			"column": 13,
+			"endLine": 162,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answeredAt !== undefined",
+			"status": "generated",
+			"id": "54f28a35d242a87380798626e144e816bb46322061fce5b3988ac7a7599ec6ff"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 162,
+			"column": 40,
+			"endLine": 162,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "282ad9f154d992b175f67f64cc4a16306c00628c0061ae9896c05b056bb182e2"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 162,
+			"column": 45,
+			"endLine": 162,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8d97bdc84ddd3c3d28279c054f51d9f39573f33e279c284df7eac7a8e25579f8"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 148,
+			"column": 62,
+			"endLine": 148,
+			"endColumn": 73,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "f4d479a6ee8f053c57e12585e7fb607495bc0a1f8cd3b9172c9c848d677ce5b0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with no plan",
+						"asks each model of a route, first unreachable, no level, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1184,
+			"column": 5,
+			"endLine": 1184,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "69712c9c95d1fcb0bab4ddd28331e6c318b4616e7887bba8a2020c72b45e0382",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review without a plan when a lens's configured route reaches no model"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1184,
+			"column": 5,
+			"endLine": 1184,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "280d01701412416bfbc5b1476e24c0321dec1d1471c7fd433219784a8a19e5ec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with a plan",
+						"asks each model of a route, first unreachable, no level, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1184,
+			"column": 5,
+			"endLine": 1184,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "available.length >= 0",
+			"status": "generated",
+			"id": "a95ed348e6c78e4d0486452c6091c675feb770887760ccec02981de2c5b8bcc6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review without a plan when a lens's configured route reaches no model"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1184,
+			"column": 5,
+			"endLine": 1184,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "available.length <= 0",
+			"status": "generated",
+			"id": "7bea120ae914331e85893372b75d0f70aec123b31e176ac68184357f91635036",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with a plan",
+						"asks each model of a route, first unreachable, no level, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1184,
+			"column": 58,
+			"endLine": 1184,
+			"endColumn": 79,
+			"mutatorName": "OptionalChaining",
+			"replacement": "level.route.thinking",
+			"status": "generated",
+			"id": "7e5c21de20f6576028d276fd5890ac5d0a8696b1adae9142d6718aae48289cd4",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`resolveModelRoute` throws for an absent route before this line, so `level.route` is always present here."
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 18,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "99a05c34695eef82525df928ab454be5f19cebc57e7c7400b94baeb49c561867",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Only a refused lens route holds models outside routed and uncredentialed, and the plan's refusal stops that lens before any model is asked, while `refused` counts the level as runnable either way."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 18,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "93ac31331f9f233737d0a1497d63b919882c37b768f2c8836445dd0036b7687c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 18,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "planned.status === \"routed\" && planned.status === \"uncredentialed\"",
+			"status": "generated",
+			"id": "4db0318c16d69f0f3bd8b01a27ab9b1f289b35aec162d8e682e657472bb99e99",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 18,
+			"endLine": 1215,
+			"endColumn": 45,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a4ff442c985ad4d59547540ec8e1494c16654c74db63cf5057d2894d031940a3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 18,
+			"endLine": 1215,
+			"endColumn": 45,
+			"mutatorName": "EqualityOperator",
+			"replacement": "planned.status !== \"routed\"",
+			"status": "generated",
+			"id": "4d0bda9922b4c354a4bc05104a639e7ddca3629170e2d45c0c6d0afe13289107",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 37,
+			"endLine": 1215,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c88c97558b916f9d47b6aa5a661d7e950a03e142a20e331d9690fb8758610d3b"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 49,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2784d7549bf98c7dc23097a9e73ef6b56156e9ff2d60a5d3cb3a9160f16add49",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 49,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "EqualityOperator",
+			"replacement": "planned.status !== \"uncredentialed\"",
+			"status": "generated",
+			"id": "391c424f7238c3b50dbf0b74915b3a164a7cc7a87d6edd573f129840fc9e83d5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/plan.test.ts",
+					"path": [
+						"reviewChangeset with a lens route",
+						"fails the review before any lens runs when a lens route reaches no model with credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 68,
+			"endLine": 1215,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3c0787d3a7ee7b9ed105564c53dd7c106d889770974d50cff14b1041117844a8"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1215,
+			"column": 104,
+			"endLine": 1215,
+			"endColumn": 106,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "1ba812f0179c34f3678f8bce0891a776b6acfe301940cde0dc0dbdda7ac45e79",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A string entry has no `model`, so `writtenRoute` writes a route with no model, which `resolveModelRoute` refuses with the same message as an empty route."
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2695,
+			"column": 12,
+			"endLine": 2695,
+			"endColumn": 29,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4e09566daf95071ebe84fb2cd8ac8fbd325bfdfaef516c5cb13edcae5a699ed2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2726,
+			"column": 17,
+			"endLine": 2726,
+			"endColumn": 34,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5fa57e45e25cdb2de9e67b33cb7c557c73a6750d0bc2f80872cc6a69b225d76d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with a plan",
+						"asks each model of a route, first unreachable, no level, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2942,
+			"column": 5,
+			"endLine": 2942,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "830e7ef8a8df8608d6ecd0c1baa2cc7a439b938f97a61642843f3900cabeae76",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with a plan",
+						"asks each model of a route, first unreachable, at low, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2942,
+			"column": 5,
+			"endLine": 2942,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5c7804e4a73dc7eaa761230e59797ad6b7614aedeabb5b310b6b235166f1a818",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with no plan",
+						"asks each model of a route, first unreachable, no level, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2942,
+			"column": 5,
+			"endLine": 2942,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "request.plan !== undefined",
+			"status": "generated",
+			"id": "bfc6becb26a5182468d0eb5696831ef6cc9f2c2e323b26d172b46481232e93a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/route-shapes.test.ts",
+					"path": [
+						"a failover with a plan",
+						"asks each model of a route, first unreachable, at low, at the level it runs at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2942,
+			"column": 34,
+			"endLine": 2942,
+			"endColumn": 66,
+			"mutatorName": "OptionalChaining",
+			"replacement": "config.models.verifier.thinking",
+			"status": "generated",
+			"id": "fbcbc131348741ee8e1f30c17c0ad4c06d4ef82fa0ac3192473e26ee27965f90",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"runs each lens as its own conversation and returns the findings on the root"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2942,
+			"column": 87,
+			"endLine": 2942,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d4c15877d487cea0a5c9ae4202c5ce4f6a4c7ee594a9fe466f3949dcda2c5ec8"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 437,
+			"column": 28,
+			"endLine": 437,
+			"endColumn": 39,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "1194206e2415dd16f2a1ea18ef01cfc16e53f0939e7b03b3560c57c39f2de258",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/fallback-thinking.test.ts",
+					"path": [
+						"asks each fallback at the level its entry names, and each first model at its route's"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 89,
+	"omitted": 0,
+	"unmutated": []
+}

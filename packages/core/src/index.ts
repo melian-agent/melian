@@ -277,11 +277,19 @@ export {
 	scrutinyLevels,
 } from "./lens.ts";
 export {
+	type AtLevel,
+	type FallbackEntry,
+	fallbackEntry,
+	fallbackModel,
+	fallbackThinking,
 	type ModelReference,
 	parseModelReference,
 	type ResolvedModelRoute,
+	type RoutedModel,
 	resolveModelForTier,
 	resolveModelRoute,
+	routeInOrder,
+	writtenRoute,
 } from "./models.ts";
 export { resolutionOverrides } from "./overrides.ts";
 export { analyserConfigNames, melianPaths, userFiles } from "./paths.ts";
@@ -525,7 +533,11 @@ export {
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
+	type LegacyLensPayload,
+	type LegacyVerificationPayload,
 	type LensPayload,
+	legacyLensPayloadSchema,
+	legacyVerificationPayloadSchema,
 	lensOutcomeSchema,
 	lensPayloadSchema,
 	reviewPayloads,

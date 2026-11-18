@@ -73,6 +73,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			filled: [{ name: "static.enola", status: "failed", reason: token, error: token }],
 			allowSkip: [],
 			producers: [],
+			resolutionPolicy: null,
 		});
 		expect(bytes(record)).not.toContain(token);
 	});
@@ -149,6 +150,7 @@ describe("an exported record keeps what Melian defines", () => {
 			filled: [{ name: "static.enola", status: "skipped", reason: "no record" }],
 			allowSkip: [],
 			producers: [],
+			resolutionPolicy: null,
 		});
 		expect(payload(record).filled).toEqual([
 			decided({ name: "static.enola", status: "skipped", reason: "no record" }),

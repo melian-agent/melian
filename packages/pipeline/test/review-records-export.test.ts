@@ -18,6 +18,7 @@ import {
 	type Message,
 	openHarness,
 	type ReviewOptions,
+	recordDismissal,
 	reviewChangeset,
 	summarizeReview,
 } from "@melian-agent/pipeline";
@@ -31,10 +32,10 @@ import {
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
-import { FindingsDocument } from "../src/findings.ts";
+import { dismissFinding, FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -117,7 +118,7 @@ async function review(
 			: fauxAssistantMessage("No findings.");
 	scriptConversations(fake, [
 		{ match: correctness, replies: [answer, answer] },
-		{ match: contracts, replies: [answer, answer, answer] },
+		{ match: contracts, replies: [answer, answer, answer, answer, answer, answer] },
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -301,6 +302,90 @@ describe("a review that names a record store", () => {
 		const first = (await review(store)).stored;
 		const second = (await review(store)).stored;
 		expect(second).toEqual(first);
+	});
+});
+
+const dismissal = { by: "Maintainer", reason: "a is meant to be 2 now.", at: "2026-11-16T00:00:00Z" };
+const dismissalsOf = (stored: RecordEnvelope[]) => stored.filter(({ kind }) => kind === "dismissal");
+
+async function dismissedReview(store: MemoryRecordStore) {
+	const first = await review(store);
+	const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+	await recordDismissal({ harness: harness!, repoRoot: repo, revision: first.changeset.revision, id, dismissal });
+	return { first, id };
+}
+
+describe("a review that names a record store after a dismissal", () => {
+	it("exports the dismissal as melian dismiss stored it, at the head it was made at", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		expect(dismissalsOf(first.stored)).toEqual([]);
+
+		const { stored } = await review(store);
+		const root = (await harness!.root(context)).id;
+		const { lifecycle } = (await harness!.snapshot(FindingsDocument, root, context))!.items[id]!;
+		const { base, head } = first.changeset.revision;
+		expect(dismissalsOf(stored)).toEqual([
+			{
+				v: 1,
+				changeset: first.changeset.id,
+				kind: "dismissal",
+				key: id,
+				payload: {
+					v: 1,
+					by: dismissal.by,
+					reason: dismissal.reason,
+					at: dismissal.at,
+					severity: "P2",
+					sighting: {
+						revision: `${base}..${head}`,
+						finding: JSON.parse(
+							JSON.stringify({
+								...lifecycle.dismissedSighting!.sighting,
+								properties: { ...lifecycle.dismissedSighting!.sighting.properties, status: "new" },
+							}),
+						),
+					},
+					head,
+					rounds: [],
+					trigger: {
+						hash: lifecycle.dismissedTrigger!.hash,
+						proof: JSON.parse(JSON.stringify(lifecycle.dismissedTrigger!.proof)),
+					},
+				},
+			},
+		]);
+	});
+
+	it("adds the same dismissal record, by its bytes and its ID, when a later round is exported", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const once = dismissalsOf((await review(store)).stored);
+		expect(once).toHaveLength(1);
+
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		expect(later.changeset.revision.head).not.toBe((once[0]!.payload as { head: string }).head);
+		const again = dismissalsOf(later.stored);
+		expect(again).toEqual(once);
+		expect(again.map((each) => SharedRecord.parseEnvelope(each).id)).toEqual(
+			once.map((each) => SharedRecord.parseEnvelope(each).id),
+		);
+	});
+
+	it("exports no record of a dismissal stored with no sighting, as one before findings document version 11 was", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const root = await harness!.root(context);
+		const { base, head } = first.changeset.revision;
+		await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, `${base}..${head}`), context);
+
+		const { stored } = await review(store);
+		expect((await harness!.snapshot(FindingsDocument, root.id, context))!.items[id]!.lifecycle.status).toBe(
+			"dismissed",
+		);
+		expect(dismissalsOf(stored)).toEqual([]);
 	});
 });
 

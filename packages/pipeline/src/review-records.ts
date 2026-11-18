@@ -30,6 +30,7 @@ import {
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
+import type { FindingsState } from "./findings.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
@@ -169,7 +170,7 @@ export class ReviewRecords {
 		check?: CheckRecord,
 	): SharedRecord {
 		const payload: LensPayload = {
-			v: 1,
+			v: 2,
 			name: run.name,
 			version: run.version,
 			level: run.level,
@@ -186,7 +187,7 @@ export class ReviewRecords {
 	/** A verification's record, keyed by its request's key. */
 	verification(key: string, facts: VerificationFacts): SharedRecord {
 		const payload: VerificationPayload = {
-			v: 1,
+			v: 2,
 			claims: [...facts.claims]
 				.sort((a, b) => compare(claimOrder(a), claimOrder(b)))
 				.map(({ id, source, verification }) => ({
@@ -261,8 +262,9 @@ export class ReviewRecords {
 
 	/**
 	 * How a round accounts for its tier: the tier's checks, the check and lens records it counts, the record it made for
-	 * each check no record holds, the skips it allows, and the producers whose findings count. Its key is a request of
-	 * the revision and the IDs of the records it counts, so the round that names it names what it counted.
+	 * each check no record holds, the skips it allows, the producers whose findings count, and the fingerprint of the
+	 * resolution policy it decided under. Its key is a request of the revision, the IDs of the records it counts and that
+	 * fingerprint, so the round that names it names what it counted and the policy it counted under.
 	 */
 	account(facts: {
 		readonly checks: readonly string[];
@@ -270,6 +272,7 @@ export class ReviewRecords {
 		readonly filled: readonly (CheckRecord & { readonly status: "skipped" | "failed" })[];
 		readonly allowSkip: readonly string[];
 		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
+		readonly resolutionPolicy: string | null;
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
 		const producers = [
@@ -292,7 +295,7 @@ export class ReviewRecords {
 			filled: [
 				...new Map(
 					facts.filled.map((record) => {
-						const entry = { ...decided(record), status: record.status };
+						const entry = { ...legacy(decided(record)), status: record.status };
 						return [canonicalJson(entry), entry] as const;
 					}),
 				),
@@ -301,8 +304,9 @@ export class ReviewRecords {
 				.map(([, entry]) => entry),
 			allowSkip: [...new Set(facts.allowSkip)].sort(compare),
 			producers,
+			resolutionPolicy: facts.resolutionPolicy,
 		};
-		const key = KeyedRequest.of("account", { revision: this.revision, records }).key;
+		const key = accountKey(this.revision, payload);
 		return this.#record("account", key, payload);
 	}
 
@@ -329,7 +333,35 @@ export class ReviewRecords {
 		return this.#record("round", key, manifest);
 	}
 
-	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
+	/**
+	 * The record of the dismissal of `id`, a finding `state` holds, as `melian dismiss` stored it, so every round builds the same
+	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
+	 * version 11 lacks and every reopen drops.
+	 */
+	dismissalOf(state: FindingsState, id: string): SharedRecord | undefined {
+		const { lifecycle } = state.items[id]!;
+		const sighting = lifecycle.dismissedSighting;
+		if (sighting === undefined) return undefined;
+		return this.dismissal({
+			finding: id,
+			by: lifecycle.dismissedBy!,
+			reason: lifecycle.dismissedReason!,
+			at: lifecycle.dismissedAt!,
+			severity: lifecycle.dismissedSeverity!,
+			// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+			sighting: {
+				revision: sighting.revision,
+				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+			},
+			rounds: [],
+			trigger: lifecycle.dismissedTrigger!,
+		});
+	}
+
+	/**
+	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
+	 * sighting, since a later round exports a dismissal made at an earlier head.
+	 */
 	dismissal(facts: DismissalFacts): SharedRecord {
 		const { check } = facts.sighting.finding.properties.source;
 		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
@@ -349,7 +381,7 @@ export class ReviewRecords {
 				revision: facts.sighting.revision,
 				finding: sighting(facts.sighting.finding) as unknown as RecordJson,
 			},
-			head: this.head,
+			head: Revision.parseKey(facts.sighting.revision)!.head,
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
@@ -372,6 +404,17 @@ export class ReviewRecords {
  * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
  * records order checks alike, so both write the same verdict.
  */
+/**
+ * An account's key: a request of its revision, the IDs of the records it counts, and the fingerprint of the policy it
+ * decided under. The rest of its payload follows from those records and that policy.
+ */
+export function accountKey(
+	revision: string | null,
+	{ records, resolutionPolicy }: Pick<AccountPayload, "records" | "resolutionPolicy">,
+): string {
+	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
+}
+
 export function inManifestOrder(checks: readonly string[], records: readonly CheckRecord[]): CheckRecord[] {
 	const at = (name: string) => {
 		const index = checks.indexOf(name);
@@ -528,8 +571,18 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 						by: lineage.by,
 						moved: lineage.moved === undefined ? null : { ...lineage.moved },
 						outside: lineage.outside,
+						answeredAt: orNull(lineage.answeredAt),
 					},
 	};
+}
+
+// An account is still version 1, whose lineage has no `answeredAt`, so one that names a level cannot be written there.
+function legacy<T extends { name: string; lineage: DecidedCheck["lineage"] }>(check: T) {
+	if (check.lineage === null) return { ...check, lineage: null };
+	const { answeredAt, ...lineage } = check.lineage;
+	if (answeredAt !== null)
+		throw new Error(`${check.name}'s lineage names the level its model answered at, which an account cannot hold`);
+	return { ...check, lineage };
 }
 
 function lensOutcome(outcome: LensRunOutcome): LensPayload["outcome"] {

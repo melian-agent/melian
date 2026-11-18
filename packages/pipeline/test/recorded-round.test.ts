@@ -1,10 +1,10 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	type AccountPayload,
 	Changeset,
 	defaultConfig,
 	everyRecordCounts,
-	KeyedRequest,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
@@ -14,6 +14,7 @@ import {
 	reviewPayloads,
 	SharedRecord,
 	Standards,
+	type StoredFinding,
 	type Verdict,
 } from "@melian-agent/core";
 import { RecordedDecider } from "@melian-agent/decisions";
@@ -39,7 +40,9 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ReviewRecords } from "../src/review-records.ts";
+import { mergeSightings } from "../src/findings.ts";
+import { provingHunk, reviewFiles } from "../src/lens-tools.ts";
+import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
@@ -95,6 +98,8 @@ type Scenario = {
 	readonly standards?: (changeset: Changeset) => Promise<Standards>;
 	// Triage's answer for contracts, so it can run at quick and escalate.
 	readonly triage?: RecordedDecider;
+	// Where the review reads per-path policy; without it, `config` applies to every path.
+	readonly policy?: RepositorySource;
 };
 
 // One review of the fixture under `scenario`, exporting to `store`. A review that throws carries the verdict it
@@ -137,6 +142,7 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		checks: [...(scenario.given ?? checks)],
 		records: store,
 		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
+		...(scenario.policy === undefined ? {} : { policy: scenario.policy }),
 	}).then(
 		(result) => result.verdict,
 		(error: unknown) => {
@@ -161,6 +167,15 @@ function read(reviewed: Reviewed, records: readonly RecordEnvelope[] = reviewed.
 	return RecordedRound.of(records, id, everyRecordCounts).verdict({
 		revision: reviewed.changeset.revision,
 		config: reviewed.config,
+	});
+}
+
+function readUnder(reviewed: Reviewed, policy: RepositorySource) {
+	return RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+		revision: reviewed.changeset.revision,
+		config: reviewed.config,
+		repoRoot: repo,
+		policy,
 	});
 }
 
@@ -351,7 +366,7 @@ describe("a round read back from its records", () => {
 		expect(after.status).toBe("findings");
 	});
 
-	it("resolves each finding under its own path's policy when a policy source is given", async () => {
+	it("resolves each finding under its own path's policy when the review and the reader read one source", async () => {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
 			{
@@ -361,17 +376,252 @@ describe("a round read back from its records", () => {
 			},
 			{ "src/a.ts": lines("export const a = 2;") },
 		);
+		const policy: RepositorySource = { kind: "revision", commit: gitIn(repo, "rev-parse", "main") };
+		const reviewed = await review(exported(), { policy });
+		const verdict = await readUnder(reviewed, policy);
+
+		expect(reviewed.verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
+	});
+});
+
+// The finding `reported` makes, dismissed by the maintainer after a first review, and a second review that exports
+// the dismissal.
+async function dismissedAndReviewedAgain(reported: object = changedReturn) {
+	const store = exported();
+	const first = await review(store, { contracts: [reports(reported), quiet, quiet] });
+	const { id } = Object.values(first.verdict.findings).flat()[0]!.properties;
+	await recordDismissal({
+		harness: harness!,
+		revision: first.changeset.revision,
+		id,
+		dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" },
+		repoRoot: repo,
+	});
+	return { reviewed: await review(store, { contracts: [reports(reported), quiet, quiet] }), id };
+}
+
+const isDismissal = (envelope: RecordEnvelope) => envelope.kind === "dismissal";
+const blocks = { ...changedReturn, severity: "P1" };
+
+// What a verdict says of each finding, live or dismissed: its ID, whether it stands, and the dismissal it carries.
+const standingOf = (verdict: Verdict) =>
+	[...Object.values(verdict.findings).flat(), ...verdict.dismissed].map(({ properties }) => [
+		properties.id,
+		properties.status,
+		properties.dismissal,
+	]);
+
+describe("a round read with the dismissals shared beside it", () => {
+	it("dismisses a finding as the host does once a later round exports the dismissal", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		expect(reviewed.stored.filter(isDismissal)).toHaveLength(1);
+		expect(reviewed.verdict.status).toBe("passed");
+		const verdict = await read(reviewed);
+		// The host's round ran no verifier, so its records hold no claim of the first round's verification.
+		const unverified = (each: Verdict) =>
+			JSON.parse(JSON.stringify(each.toJSON(), (key, value) => (key === "verification" ? undefined : value)));
+		expectSharedVerdict(unverified(verdict), unverified(reviewed.verdict));
+		expect(standingOf(verdict)).toEqual([
+			[id, "dismissed", { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" }],
+		]);
+	});
+
+	it("leaves the finding live and blocking, never dropped, when the dismissal record does not count", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const verdict = await RecordedRound.of(
+			reviewed.stored,
+			roundOf(reviewed.stored),
+			(record) => record.kind !== "dismissal",
+		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config });
+		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
+		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("leaves the finding live and blocking, never dropped, when its sighting no longer meets the trigger the dismissal accepted", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const stale = reviewed.stored.map((envelope) => {
+			if (!isDismissal(envelope)) return envelope;
+			const payload = envelope.payload as { trigger: { hash: string; proof: unknown[] } };
+			return SharedRecord.parseEnvelope({
+				...envelope,
+				payload: { ...payload, trigger: { ...payload.trigger, hash: "f".repeat(64) } },
+			}).toJSON();
+		});
+		expect(stale).not.toEqual(reviewed.stored);
+		const verdict = await read(reviewed, stale);
+		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
+		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+});
+
+type DismissalJson = { at: string; reason: string; trigger: { hash: string; proof: { file: string; hash: string }[] } };
+
+// `reviewed`'s records with each dismissal record replaced by `dismissals`.
+function withDismissals(reviewed: Reviewed, dismissals: readonly RecordEnvelope[]): RecordEnvelope[] {
+	return [...reviewed.stored.filter((each) => !isDismissal(each)), ...dismissals];
+}
+
+// The exported dismissal record with `change` made to its envelope and `payload` to its payload.
+function redismissed(reviewed: Reviewed, payload: Partial<DismissalJson> = {}, change: Partial<RecordEnvelope> = {}) {
+	const envelope = reviewed.stored.find(isDismissal)!;
+	return SharedRecord.parseEnvelope({
+		...envelope,
+		...change,
+		payload: { ...(envelope.payload as DismissalJson), ...payload },
+	}).toJSON();
+}
+
+const reasonOf = async (reviewed: Reviewed, records: readonly RecordEnvelope[]) =>
+	(await read(reviewed, records)).dismissed.map(({ properties }) => properties.dismissal?.reason);
+
+describe("the dismissal records a reader applies", () => {
+	it("applies no dismissal record of another changeset", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const elsewhere = redismissed(reviewed, {}, { changeset: "f".repeat(64) });
+		expect((await read(reviewed, withDismissals(reviewed, [redismissed(reviewed)]))).status).toBe("passed");
+		const verdict = await read(reviewed, withDismissals(reviewed, [elsewhere]));
+		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
+		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("applies the latest of two dismissals of one finding, whichever sorts first by ID", async () => {
+		const { reviewed } = await dismissedAndReviewedAgain(blocks);
+		const earlier = redismissed(reviewed, { reason: "earlier" });
+		const idOf = (envelope: RecordEnvelope) => SharedRecord.parseEnvelope(envelope).id;
+		const later = (first: boolean) => {
+			for (let n = 0; ; n++) {
+				const each = redismissed(reviewed, { reason: "later", at: `2026-11-17T00:00:0${n % 10}.${n}Z` });
+				if (idOf(each) < idOf(earlier) === first) return each;
+			}
+		};
+		for (const first of [true, false])
+			expect(await reasonOf(reviewed, withDismissals(reviewed, [earlier, later(first)]))).toEqual(["later"]);
+	});
+
+	it("applies the dismissal with the greater ID of two made at one time", async () => {
+		const { reviewed } = await dismissedAndReviewedAgain(blocks);
+		const pair = ["one", "two"].map((reason) => redismissed(reviewed, { reason }));
+		const greater = pair.toSorted((a, b) =>
+			SharedRecord.parseEnvelope(a).id < SharedRecord.parseEnvelope(b).id ? 1 : -1,
+		)[0]!;
+		for (const order of [pair, pair.toReversed()])
+			expect(await reasonOf(reviewed, withDismissals(reviewed, order))).toEqual([
+				(greater.payload as DismissalJson).reason,
+			]);
+	});
+
+	it("keeps an affected finding dismissed while the revision holds every hunk its proof names, and no longer", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
+		const lens = sighting(records, round);
+		const proof = reviewFiles(reviewed.changeset.revision.files).flatMap((file) => file.hunks.map(provingHunk));
+		expect(proof).toHaveLength(1);
+		const payload = lens.payload as { sightings: { properties: { trigger: object } }[] };
+		const affected = payload.sightings.map((each) => ({
+			...each,
+			properties: { ...each.properties, cause: "affected", trigger: { ...each.properties.trigger, proof } },
+		}));
+		const changed = rebuilt(reviewed, records, round, lens, { ...payload, sightings: affected } as RecordJson);
+		const under = async (accepted: DismissalJson["trigger"]["proof"]) => {
+			const dismissal = redismissed(reviewed, {
+				trigger: { ...(redismissed(reviewed).payload as DismissalJson).trigger, proof: accepted },
+			});
+			return read(reviewed, [...changed.records.filter((each) => !isDismissal(each)), dismissal], changed.round);
+		};
+		const standing = await under(proof);
+		expect(standingOf(standing)).toEqual([[id, "dismissed", expect.objectContaining({ by: "maintainer" })]]);
+		const gone = await under([...proof, { file: "src/a.ts", hash: "0".repeat(64) }]);
+		expect([gone.status, gone.blocking]).toEqual(["findings", true]);
+		expect(standingOf(gone)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("keeps a finding dismissed only while every producer's sighting meets the accepted trigger", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
+		const [seen] = (sighting(records, round).payload as { sightings: StoredFinding[] }).sightings;
+		const source = { check: "lens.correctness", version: "other@careful" };
+		const other = (hash: string) => ({
+			...seen!,
+			properties: { ...seen!.properties, source, trigger: { ...seen!.properties.trigger!, hash } },
+		});
+		const { by, reason, at, trigger } = redismissed(reviewed).payload as DismissalJson & { by: string };
+		const dismissals = new Map([[id, { by, reason, at, trigger }]]);
+		const producers = [seen!.properties.source, source];
+		const statusUnder = (hash: string) =>
+			mergeSightings([seen!, other(hash)], [], producers, dismissals, []).map(({ properties }) => properties.status);
+		expect(statusUnder(trigger.hash)).toEqual(["dismissed"]);
+		expect(statusUnder("0".repeat(64))).toEqual(["new"]);
+	});
+});
+
+describe("a round decided under another policy", () => {
+	const worktree: RepositorySource = { kind: "worktree" };
+	const accountOf = (reviewed: Reviewed) =>
+		reviewed.stored.find(({ kind }) => kind === "account")!.payload as AccountPayload;
+	const refusedWith = (verdict: Verdict, round: string, reason: string) => {
+		expect(verdict.status).toBe("not-reviewed");
+		expect(verdict.notRun).toEqual([{ name: "records", status: "failed", reason: `round ${round} ${reason}` }]);
+	};
+
+	it("decides as the review did when the reader holds the policy the review decided under", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		expect(accountOf(reviewed).resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(reviewed.verdict.status).toBe("findings");
+		expectSharedVerdict((await readUnder(reviewed, worktree)).toJSON(), reviewed.verdict.toJSON());
+	});
+
+	it("reads not reviewed once melian.yaml changes what blocks between the review and the read", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const decidedUnder = accountOf(reviewed).resolutionPolicy;
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
+		const verdict = await readUnder(reviewed, worktree);
+		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
+		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(readsUnder).not.toBe(decidedUnder);
+		refusedWith(
+			verdict,
+			roundOf(reviewed.stored),
+			`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${readsUnder}`,
+		);
+	});
+
+	it("reads not reviewed when the review read a policy source and the reader reads none", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		refusedWith(
+			await read(reviewed),
+			roundOf(reviewed.stored),
+			`was decided under resolution policy ${accountOf(reviewed).resolutionPolicy}, and the reader reads none`,
+		);
+	});
+
+	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>]>([
+		["a checkout and no policy source", { repoRoot: "." }],
+		["a policy source and no checkout", { policy: worktree }],
+	])("reads under the configuration alone, as the review did, when the reader holds %s", async (_, given) => {
 		const reviewed = await review(exported());
 		const verdict = await RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
 			revision: reviewed.changeset.revision,
 			config: reviewed.config,
-			repoRoot: repo,
-			policy: { kind: "revision", commit: gitIn(repo, "rev-parse", "main") },
+			...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
+			...(given.policy === undefined ? {} : { policy: given.policy }),
 		});
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
+	});
 
-		expect(reviewed.verdict.findings.acknowledge.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
-		expect(verdict.findings.acknowledge).toEqual([]);
+	it("reads not reviewed when the review read no policy source and the reader reads one", async () => {
+		const reviewed = await review(exported());
+		expect(accountOf(reviewed).resolutionPolicy).toBeNull();
+		const verdict = await readUnder(reviewed, worktree);
+		const readsUnder = verdict.notRun[0]?.reason?.match(/this checkout's reads (\S+)$/)?.[1];
+		refusedWith(
+			verdict,
+			roundOf(reviewed.stored),
+			`was decided under no resolution policy, and this checkout's reads ${readsUnder}`,
+		);
+		expect(readsUnder).toMatch(/^2:[0-9a-f]{16}$/);
 	});
 });
 
@@ -429,7 +679,7 @@ describe("a round its records cannot stand for", () => {
 				const account = namedOf(records, round, "account");
 				const payload = account.payload as AccountPayload;
 				const counted = payload.records.slice(1);
-				const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+				const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 				const other = SharedRecord.parseEnvelope({
 					...account.toJSON(),
 					key,
@@ -572,7 +822,7 @@ function added(
 	const account = namedOf(records, round, "account");
 	const payload = account.payload as AccountPayload;
 	const counted = [...payload.records, other.id].sort();
-	const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+	const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 	const next = SharedRecord.parseEnvelope({ ...account.toJSON(), key, payload: { ...payload, records: counted } });
 	const all = [...records.filter((each) => each !== account), next, other];
 	return renamed(reviewed, all, round, (read) => [...read.map((each) => (each === account ? next : each)), other], [
@@ -613,7 +863,7 @@ function rebuiltWith(
 	if (record.kind !== "account" && account !== undefined) {
 		const payload = account.payload as AccountPayload;
 		const counted = payload.records.map((id) => (id === record.id ? changed.id : id)).sort();
-		const key = KeyedRequest.of("account", { revision: account.revision ?? null, records: counted }).key;
+		const key = accountKey(account.revision ?? null, { ...payload, records: counted });
 		const next = SharedRecord.parseEnvelope({ ...account.toJSON(), key, payload: { ...payload, records: counted } });
 		swapped.splice(swapped.indexOf(account), 1, next);
 		account = next;

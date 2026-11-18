@@ -1514,3 +1514,91 @@ describe("a route error beside a nearer file", () => {
 		}
 	});
 });
+
+describe("a route whose fallback names a level", () => {
+	const levelled = "fallbacks: [faux/b, { model: faux/c, thinking: medium }]";
+	const refused = (key: string, file: string) => ({ code: "invalidValue", file, key: `${key}.thinking` });
+	const message = (key: string) =>
+		`"${key}.fallbacks" names a thinking level for faux/c, so the route must name its own; set "${key}.thinking"`;
+
+	it.each([
+		["models.heavy", lines("models:", "  heavy:", "    model: faux/a", `    ${levelled}`)],
+		["models.verifier", lines("models:", "  verifier:", "    model: faux/a", `    ${levelled}`)],
+		["lenses.design.route", lines("lenses:", "  design:", "    route:", "      model: faux/a", `      ${levelled}`)],
+	])("refuses %s with no level of its own", async (key, text) => {
+		writeFiles(repo, { "melian.yaml": text });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject(refused(key, "melian.yaml"));
+		expect(error.message).toBe(`melian.yaml: ${message(key)}`);
+	});
+
+	it.each([
+		["models.heavy", lines("models:", "  heavy:", "    model: faux/a", "    thinking: low", `    ${levelled}`)],
+		["models.verifier", lines("models:", "  verifier:", "    model: faux/a", "    thinking: low", `    ${levelled}`)],
+		[
+			"lenses.design.route",
+			lines("lenses:", "  design:", "    route:", "      model: faux/a", "      thinking: low", `      ${levelled}`),
+		],
+	])("loads %s that names its own level", async (_key, text) => {
+		writeFiles(repo, { "melian.yaml": text });
+		await expect(loadConfig(repo, { kind: "worktree" }, "a.ts")).resolves.toBeDefined();
+	});
+
+	it("refuses a preference file's levelled fallbacks on a committed route that names no level, naming that file", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a"),
+			"melian.local.yaml": lines("models:", "  heavy:", `    ${levelled}`),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject(refused("models.heavy", "melian.local.yaml"));
+	});
+
+	it("loads a preference file's levelled fallbacks on a committed route that names its level", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a", "    thinking: low"),
+			"melian.local.yaml": lines("models:", "  heavy:", `    ${levelled}`),
+		});
+		const { config } = await loadConfig(repo, { kind: "worktree" }, "a.ts");
+		expect(config.models.heavy).toMatchObject({ thinking: "low" });
+	});
+
+	it("refuses committed levelled fallbacks with no route level, though a preference file names one", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a", `    ${levelled}`),
+			"melian.local.yaml": lines("models:", "  heavy:", "    thinking: high"),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject(refused("models.heavy", "melian.yaml"));
+		expect(error.message).toBe(`melian.yaml: ${message("models.heavy")}`);
+	});
+
+	it("loads a route whose fallback entry is an object that names no level, with no level of its own", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a", "    fallbacks: [{ model: faux/b }]"),
+		});
+		await expect(loadConfig(repo, { kind: "worktree" }, "a.ts")).resolves.toBeDefined();
+	});
+
+	it("names the file that wrote the fallbacks, not a nearer melian.yaml that wrote none", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a", `    ${levelled}`),
+			"services/melian.yaml": lines("lenses:", "  correctness:", "    enabled: true"),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "services/a.ts"));
+		expect(error).toMatchObject(refused("models.heavy", "melian.yaml"));
+	});
+
+	it("names melian.yaml when committed fallbacks name a level the committed route does not, though a preference writes fallbacks and a level", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("models:", "  heavy:", "    model: faux/a", `    ${levelled}`),
+			"melian.local.yaml": lines("models:", "  heavy:", "    thinking: high", `    ${levelled}`),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject(refused("models.heavy", "melian.yaml"));
+	});
+
+	it("loads a route whose fallbacks name no level, with no level of its own", async () => {
+		writeFiles(repo, { "melian.yaml": lines("models:", "  heavy:", "    model: faux/a", "    fallbacks: [faux/b]") });
+		await expect(loadConfig(repo, { kind: "worktree" }, "a.ts")).resolves.toBeDefined();
+	});
+});

@@ -5,8 +5,11 @@ import {
 	injectionAttemptRuleId,
 	Lens,
 	type MelianConfig,
+	MemoryRecordStore,
 	Rendering,
 	Revision,
+	reviewPayloads,
+	SharedRecord,
 } from "@melian-agent/core";
 import {
 	backgroundContext as context,
@@ -31,7 +34,7 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument, findingsVersion } from "../src/findings.ts";
+import { FindingsDocument, findingsVersion, verificationClaims } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
@@ -124,6 +127,10 @@ afterEach(async () => {
 
 type Messages = Parameters<typeof scriptVerifier>[0];
 
+// How many times the verifier was asked to judge: each judgement opens with a request that holds no tool result.
+const judgements = (requests: readonly Messages[]) =>
+	requests.filter((messages) => !messages.some((message) => message.role === "toolResult")).length;
+
 const report = (args: Parameters<typeof fauxToolCall>[1]) =>
 	fauxAssistantMessage(fauxToolCall("report_finding", args), { stopReason: "toolUse" });
 
@@ -184,6 +191,33 @@ async function dismissedRoot(reported = nullDeref): Promise<string> {
 }
 
 describe("a dismissal carrying to a restatement", () => {
+	it("shares a verification's match only against a dismissal the verifier was shown", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const [restated] = (await review()).findings;
+		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+		const at = Revision.key(await revision());
+		const matchesShown = (shown: string[]) =>
+			verificationClaims(state, at, [restated!.properties.source], new Set(shown)).map(({ id, verification }) => [
+				id,
+				verification.matches,
+			]);
+		expect(matchesShown([root])).toEqual([[restated!.id, { [root]: "same" }]]);
+		expect(matchesShown(["0".repeat(16)])).toEqual([[restated!.id, undefined]]);
+	});
+
+	it("shows the verifier no dismissed finding when nothing was dismissed", async () => {
+		const requests = script([nullDeref]);
+		await review();
+		const input = requests[verifierMarker]!.at(-1)!
+			.filter((message) => message.role === "user")
+			.map(textOf)
+			.join("\n");
+		expect(input).toContain("Claim c1");
+		expect(input).not.toContain("Dismissed d");
+	});
+
 	it("dismisses a restatement the verifier judges the same, under the root's reason and never its dismisser", async () => {
 		const root = await dismissedRoot();
 		pushElsewhere("other");
@@ -357,8 +391,9 @@ describe("a dismissal carrying to a restatement", () => {
 		if (!verifier) expect(await findingsVersion(harness, owner, at, context)).toBe(version);
 	});
 
-	// Codex's adversarial review of round four: the verifier judged one dismissal, and the link must not bind to another.
-	it("links nothing when the root's dismissal is replaced while the verifier judges it", async () => {
+	// The maintainer's ruling of 2026-11-16 on issue #481: a replaced dismissal is another verification request, so the
+	// same review asks the verifier again and the restatement carries the dismissal that stands.
+	it("asks the verifier again when the root's dismissal is replaced while it judges, and carries the new dismissal", async () => {
 		const root = await dismissedRoot();
 		const first = await revision();
 		pushElsewhere("other");
@@ -377,20 +412,23 @@ describe("a dismissal carrying to a restatement", () => {
 				),
 			);
 		};
-		scriptConversations(fake, [
+		const asked = scriptConversations(fake, [
 			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
 			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
 			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
 		]);
 		const second = await review();
+		const [restated] = second.findings;
+		expect(judgements(asked[verifierMarker]!)).toBe(2);
+		expect(second.verdict.attention()).toEqual([]);
+		expect(second.verdict.dismissed.map((each) => [each.id, each.properties.dismissal])).toEqual([
+			[restated!.id, { by: "melian", reason: replaced.reason, at: replaced.at, inheritedFrom: root }],
+		]);
 		const owner = (await harness.root(context)).id;
-		expect((await harness.snapshot(FindingsDocument, owner, context))!.items[root]!.lifecycle.dismissedReason).toBe(
-			replaced.reason,
-		);
-		expect(second.verdict.attention().map((each) => each.id)).toEqual([second.findings[0]!.id]);
-		expect(
-			(await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[Revision.key(await revision())],
-		).toBeUndefined();
+		const links = (await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[
+			Revision.key(await revision())
+		];
+		expect(links?.[restated!.id]).toMatchObject({ from: root, kind: "inherited" });
 	});
 
 	// A review that attaches to a finished lens task starts no wave, so its own final task is what another review replaces.
@@ -536,8 +574,9 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	// The round on 14f2d16 (lens.durability): a call that crashed after its wave judged the root, and before its final
-	// step, leaves a retry nothing in memory to say which dismissal that wave was shown.
-	it("links nothing when the root's dismissal is replaced after a wave judged it and a retry reuses that wave", async () => {
+	// step, leaves a retry nothing in memory to say which dismissal that wave was shown. Under the ruling of 2026-11-16
+	// on issue #481, the replaced dismissal is another request, so the retry asks the verifier again.
+	it("asks the verifier again when the root's dismissal is replaced after a wave judged it and the call died", async () => {
 		const root = await dismissedRoot();
 		const first = await revision();
 		pushElsewhere("other");
@@ -608,9 +647,18 @@ describe("a dismissal carrying to a restatement", () => {
 		const options = { changeset, config, lenses, standards: [], models: fake.review, checks: [...deterministicRan] };
 		await expect(reviewChangeset({ ...options, harness: gated })).rejects.toThrow("the process died");
 		const retry = await reviewChangeset({ ...options, harness });
-		expect(asked[verifierMarker]).toHaveLength(2);
-		expect(retry.verdict.attention().map((each) => each.id)).toEqual([retry.findings[0]!.id]);
-		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]).toBeUndefined();
+		expect(judgements(asked[verifierMarker]!)).toBe(2);
+		const [restated] = retry.findings;
+		expect(retry.verdict.attention()).toEqual([]);
+		expect(retry.verdict.dismissed.map((each) => [each.id, each.properties.dismissal])).toEqual([
+			[restated!.id, { by: "melian", reason: replaced.reason, at: replaced.at, inheritedFrom: root }],
+		]);
+		expect((await harness.snapshot(FindingsDocument, owner, context))!.inherited?.[at]?.[restated!.id]).toMatchObject(
+			{
+				from: root,
+				kind: "inherited",
+			},
+		);
 	});
 
 	it("clears the links when a later round on the head has no verifier with credentials", async () => {
@@ -953,6 +1001,39 @@ describe("a dismissal carrying to a restatement", () => {
 		script([restatement]);
 		await review();
 		expect((await verification()).dismissed?.map(({ id }) => id)).toEqual([root]);
+	});
+
+	it("names each root by the ID of the dismissal record a round exports for it", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			records: store,
+		});
+		const exported = (await store.list(changeset.id)).filter(({ kind }) => kind === "dismissal");
+		expect(exported.map(({ key }) => key)).toEqual([root]);
+		const owner = (await harness.root(context)).id;
+		const entry = (await harness.snapshot(ReviewIndex, owner, context))!.reviews[Revision.key(changeset.revision)]!
+			.verification!;
+		const input = (await harness.getTask(entry.task as unknown as TaskId<string>, context))!
+			.input as unknown as VerificationInput;
+		const record = SharedRecord.parseEnvelope(exported[0]!).id;
+		expect(input.candidates[0]!.dismissed?.map(({ id, record }) => [id, record])).toEqual([[root, record]]);
+		const verification = (await store.list(changeset.id)).find(({ kind }) => kind === "verification")!.payload as {
+			claims: { verification: { matches?: Record<string, string> } }[];
+			dismissals: unknown[];
+		};
+		expect(verification.claims.map(({ verification }) => verification.matches)).toEqual([{ [root]: "same" }]);
+		expect(verification.dismissals).toEqual([{ finding: root, record }]);
 	});
 
 	it("links nothing when the verifier did not finish, though one candidate was judged the same", async () => {

@@ -339,7 +339,7 @@ describe("built-in lenses", () => {
 		const sol = {
 			model: "openai-codex/gpt-5.6-sol",
 			thinking: "high",
-			fallbacks: ["anthropic/claude-opus-5-5"],
+			fallbacks: [{ model: "anthropic/claude-opus-5-5", thinking: "high" }],
 			accept: ["openai-codex/gpt-5.6-sol", "anthropic/claude-opus-5-5"],
 		};
 		expect(Object.entries(config.lenses).flatMap(([name, { route }]) => (route === undefined ? [] : [name]))).toEqual(
@@ -368,7 +368,7 @@ describe("built-in lenses", () => {
 		const terra = {
 			model: "openai-codex/gpt-5.6-terra",
 			thinking: "low",
-			fallbacks: ["anthropic/claude-sonnet-5-5"],
+			fallbacks: [{ model: "anthropic/claude-sonnet-5-5", thinking: "medium" }],
 			accept: ["openai-codex/gpt-5.6-terra", "anthropic/claude-sonnet-5-5"],
 		};
 		expect(config.models.light).toEqual(terra);
