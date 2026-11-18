@@ -49,7 +49,7 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
-async function exported(chosen: "skip" | "quick") {
+async function exported(chosen: "skip" | "quick", floor: "skip" | "quick" = "skip") {
 	const fake = createFakeModels({
 		models: [{ id: "orchestrator" }, { id: "light" }, { id: "medium" }, { id: "heavy" }],
 	});
@@ -58,7 +58,7 @@ async function exported(chosen: "skip" | "quick") {
 		...defaultConfig,
 		tiers: { ...defaultConfig.tiers, full: ["guardrails", "static", "lens.correctness"] },
 		models: { light: route("light"), medium: route("medium"), heavy: route("heavy") },
-		lenses: { correctness: { level: { floor: "skip" } } },
+		lenses: { correctness: { level: { floor } } },
 	};
 	const decider = new RecordedDecider(
 		{ triage: { version: "1", answers: { correctness: { distribution: { [chosen]: 1 } } } } },
@@ -134,6 +134,18 @@ describe("a round's triage record", () => {
 		});
 		const account = named.find(({ kind }) => kind === "account")!.payload as AccountPayload;
 		expect(account.records).toContain(triage[0]!.id);
+	});
+
+	it("holds triage's failure, and no decision, when triage failed", async () => {
+		const { named } = await exported("skip", "quick");
+
+		const triage = named.filter(({ kind }) => kind === "triage");
+		expect(triage).toHaveLength(1);
+		expect(triage[0]!.payload).toMatchObject({
+			decision: null,
+			failure: "Melian shares none of this text, which the reviewing host's store and terminal hold",
+			inputCut: false,
+		});
 	});
 
 	it("lets a reader check an account that allows a triage skip", async () => {

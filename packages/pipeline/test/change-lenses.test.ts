@@ -77,6 +77,48 @@ describe("ChangeLenses", () => {
 		expect(lenses.tierLenses().selected.map(({ band }) => band.floor)).toEqual(["skip"]);
 	});
 
+	it("covers only the changed files a lens's paths hold", async () => {
+		writeFiles(repo, { "docs/a.md": "a\n" });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "docs");
+
+		const covers = Object.fromEntries((await read()).tierLenses().selected.map(({ name, covers }) => [name, covers]));
+
+		expect(covers).toEqual({
+			correctness: ["docs/a.md", "src/old/user.ts", "src/user.ts"],
+			contracts: ["docs/a.md"],
+		});
+	});
+
+	it("selects no lens whose name is the tail of a check that is not a lens", async () => {
+		const lens = [
+			"---",
+			"name: rails",
+			"description: Rails.",
+			"tier: medium",
+			"rules:",
+			"  - id: rails",
+			"    description: Rails.",
+			"---",
+			"Rails.",
+			"",
+		];
+		writeFiles(repo, { ".melian/lenses/rails/LENS.md": lens.join("\n") });
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "lens");
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const loaded = await Lens.load(
+			repo,
+			{ kind: "revision", commit: changeset.revision.head },
+			changeset.revision.paths(),
+		);
+		expect(loaded.map((each) => each.name)).toContain("rails");
+
+		const lenses = await ChangeLenses.read({ changeset, lenses: loaded, config, tier: "full", floor: "quick" });
+
+		expect(lenses.tierLenses().selected.map(({ name }) => name)).toEqual(["correctness"]);
+	});
+
 	it("refuses the band of a lens it did not select", async () => {
 		const lenses = await read();
 		const contracts = lenses.loaded.find((lens) => lens.name === "contracts")!;

@@ -69,7 +69,7 @@ const ran: CheckRecord[] = [
 	{ name: "static.tsc", status: "ran" },
 ];
 
-async function review(lensPaths?: string[]) {
+async function review(lensPaths?: string[], withDecider = true) {
 	const route = (id: string) => ({ model: `${fake.ref(id).provider}/${id}` });
 	const config: MelianConfig = {
 		...defaultConfig,
@@ -81,7 +81,10 @@ async function review(lensPaths?: string[]) {
 		{ triage: { version: "1", answers: { correctness: { distribution: { skip: 1 } } } } },
 		{ name: "recorded", calibrated: true },
 	);
-	reviewHarness = await ReviewHarness.open(createMemoryStorage(), fake.review, { retry: false, decider });
+	reviewHarness = await ReviewHarness.open(createMemoryStorage(), fake.review, {
+		retry: false,
+		...(withDecider ? { decider } : {}),
+	});
 	harness = reviewHarness.harness;
 	await harness.root(context, { agent: { model: fake.ref("orchestrator") } });
 	scriptConversations(fake, [{ match: correctness, replies: [fauxAssistantMessage("Done.")] }]);
@@ -95,7 +98,7 @@ async function review(lensPaths?: string[]) {
 		standards: [],
 		models: fake.review,
 		checks: ran,
-		decider,
+		...(withDecider ? { decider } : {}),
 		policy,
 	});
 }
@@ -138,6 +141,14 @@ describe("the lenses a review selects, and the band of each", () => {
 		await review();
 
 		expect(await account()).toEqual({ checks: [...ran, triageSkipped], allowSkip: ["lens.correctness"] });
+	});
+
+	it("runs a selected lens when an untrusted review has no decider", async () => {
+		repository({ "src/melian.yaml": skipFloor, "src/user.ts": user }, { "src/user.ts": "export const user = 2;\n" });
+
+		await review(undefined, false);
+
+		expect(await account()).toEqual({ checks: [...ran, { name: "lens.correctness", status: "ran" }], allowSkip: [] });
 	});
 
 	it("reads no floor from a nested melian.yaml beside the change", async () => {
