@@ -195,7 +195,7 @@ describe("a dismissal of a static finding whose sighting its run stamped", { tim
 					tx,
 					root.id,
 					id!,
-					{ by: "maintainer", reason: "Intended.", at: "2026-11-16" },
+					{ by: "maintainer", reason: "Intended.", at: "2026-11-16T00:00:00.000Z" },
 					revision,
 					"P1",
 				),
