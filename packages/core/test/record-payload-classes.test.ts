@@ -74,7 +74,7 @@ const verification = {
 	reason: "It is reachable",
 	executor: "llm",
 	model: "anthropic/opus",
-	version: "v1",
+	version: verifierVersion,
 };
 
 // One sample of each shape a field below lives in, every value as Melian's own build writes it.
@@ -239,6 +239,7 @@ const fields: readonly [Sample, string][] = [
 	["verification", "claims/0/source/version"],
 	["verification", "outcomes/0/outcome/reason"],
 	["verification", "check/version"],
+	["verification", "claims/0/verification/version"],
 	["triage", "failure"],
 	["dismissal", "at"],
 	["dismissal", "trigger/hash"],

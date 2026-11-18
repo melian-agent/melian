@@ -47,7 +47,7 @@ const verdict = {
 	reason: "It runs",
 	executor: "llm",
 	model: "anthropic/claude",
-	version: "1",
+	version: "0123456789abcdef",
 } as const;
 
 const checks: CheckRunRecord[] = [

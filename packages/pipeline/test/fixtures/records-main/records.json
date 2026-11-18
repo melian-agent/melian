@@ -3066,35 +3066,6 @@
 			"key": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
 			"kind": "verification",
 			"payload": {
-				"check": null,
-				"claims": [
-					{
-						"id": "b2b214163e70a35d",
-						"source": {
-							"check": "static.biome",
-							"version": "Melian shares none of this text, which the reviewing host's store and terminal hold"
-						},
-						"verification": {
-							"executor": "llm",
-							"model": "anthropic/claude",
-							"reason": "It runs",
-							"verdict": "confirmed",
-							"version": "1"
-						}
-					}
-				],
-				"dismissals": [],
-				"outcomes": [],
-				"v": 1
-			},
-			"revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-			"v": 1
-		},
-		{
-			"changeset": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-			"key": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-			"kind": "verification",
-			"payload": {
 				"check": {
 					"budgetEnded": null,
 					"caveats": null,

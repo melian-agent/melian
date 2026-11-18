@@ -474,6 +474,10 @@ export const reviewPayloads: PayloadChecks = {
 		if (refused !== undefined) return refused;
 		const { claims, dismissals, check } = payload as VerificationPayload;
 		if (check !== null && check.name !== "verifier") return "holds the check of another check than the verifier";
+		// A claim's verification ran under the verifier, so its version is the verifier's.
+		const stamped = claims.findIndex((claim) => !verifierVersion.test(claim.verification.version));
+		if (stamped !== -1)
+			return `names a version at /claims/${stamped}/verification/version that is not the verifier's`;
 		const unwritten =
 			decidedVersion(check, "/check/version") ??
 			claims.map((claim, index) => namedSource(claim.source, `/claims/${index}/source/version`)).find(Boolean);

@@ -48,7 +48,7 @@ const verification = {
 	matches: { [dismissed]: "same" },
 	executor: "llm",
 	model: "anthropic/opus",
-	version: "v1",
+	version: verifierVersion,
 };
 const lineage = {
 	model: "openai/terra",
