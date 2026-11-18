@@ -30,7 +30,7 @@ With a store named, `melian dismiss` is all or nothing, by the maintainer's ruli
 
 So `dismiss` lists the store first, and refuses if it cannot. It then builds the record inside the commit that records the dismissal, from the state that commit writes, with `supersedes` from that listing, and writes it to the store before the commit ends. A store that fails the write fails the commit, so the host records nothing either. The error is `DismissError` `storeFailed`, and the CLI names the store.
 
-The one gap is the other way round: the record reaches the store and then the host's commit fails, as a full disk would make it. The shared record then says dismissed while the host does not, which is the stricter side for the host, and running `dismiss` again writes the same record, by its bytes and its ID. Without a store, `dismiss` records the dismissal on the host alone and says it is unshared, as before.
+The one gap is the other way round: the record reaches the store and then the host's commit fails, as a full disk would make it. The shared record then says dismissed while the host still blocks, so a host that reads the record passes a finding the writing host blocks. The window closes when `dismiss` runs again: it commits the dismissal and writes the same record, by its bytes and its ID. Without a store, `dismiss` records the dismissal on the host alone and says it is unshared, as before.
 
 ## What changes elsewhere
 

@@ -141,7 +141,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const again = "run melian review again";
 	// With a store, all or nothing: the record reaches the store inside the dismissal's commit, so a store that fails
 	// leaves no dismissal on the host. A commit that fails after the write leaves the record saying dismissed while the
-	// host does not, the stricter side for the host, and the same dismissal again writes the same record.
+	// host still blocks, so a reader of the record passes what the host blocks until the same dismissal again commits
+	// it; that run writes the same record.
 	const refusing = <T>(step: () => Promise<T>) =>
 		step().catch((error: unknown) => {
 			const why = error instanceof Error ? error.message : String(error);
