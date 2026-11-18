@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -6,21 +7,21 @@ import { sampleMutants } from "./mutant-sample.mjs";
 const directory = "docs/progress-log";
 const listFile = ".unreadable-inventories.json";
 const sections = ["version2", "legacy"];
-// Log entries' names begin with their date, and the list took every unreadable inventory merged by 2026-11-18.
-const listedBefore = "2026-11-19";
 
 // Shape alone picks an inventory out of the log, by the keys its writers emit; the sampler's reader judges it.
 const isInventory = (value) =>
 	typeof value === "object" &&
 	value !== null &&
 	!Array.isArray(value) &&
-	("melianMutants" in value || Array.isArray(value.mutants));
+	("melianMutants" in value || "mutants" in value);
 
-export function readUnreadable(list) {
+// main is main's copy of the list, or undefined before main has one; an entry it lacks is a new one.
+export function readUnreadable(list, main) {
 	if (typeof list !== "object" || list === null || Array.isArray(list))
 		throw new Error(`${listFile} must hold an object with ${sections.join(" and ")}`);
 	const unknown = Object.keys(list).find((key) => !sections.includes(key));
 	if (unknown !== undefined) throw new Error(`${listFile} has an unknown section ${JSON.stringify(unknown)}`);
+	const onMain = main === undefined ? undefined : new Set(entriesOf(main));
 	const entries = new Map();
 	for (const section of sections) {
 		if (!Array.isArray(list[section])) throw new Error(`${listFile}: ${section} must be an array`);
@@ -29,13 +30,30 @@ export function readUnreadable(list) {
 				throw new Error(`${listFile}: ${JSON.stringify(entry)} names no file in ${directory}`);
 			if (!Number.isSafeInteger(entry.pullRequest) || entry.pullRequest < 1)
 				throw new Error(`${listFile}: ${entry.file} names no pull request`);
-			if (!(entry.file < listedBefore))
-				throw new Error(`${listFile}: ${entry.file} is newer than the list, which only shrinks; fix the inventory`);
+			if (onMain !== undefined && !onMain.has(`${section} ${entry.file} ${entry.pullRequest}`))
+				throw new Error(`${listFile}: ${entry.file} is not on main's list, which only shrinks; fix the inventory`);
 			if (entries.has(entry.file)) throw new Error(`${listFile} names ${entry.file} twice`);
 			entries.set(entry.file, section);
 		}
 	}
 	return entries;
+}
+
+const entriesOf = (list) =>
+	sections.flatMap((section) =>
+		(list?.[section] ?? []).map((entry) => `${section} ${entry?.file} ${entry?.pullRequest}`),
+	);
+
+// The gate compares with origin/main, which CI fetches; without it the list cannot be judged, so the check fails.
+function mainList() {
+	const git = (...args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+	try {
+		git("rev-parse", "--verify", "--quiet", "origin/main^{commit}");
+	} catch {
+		throw new Error("cannot read origin/main to compare the list with; run `git fetch origin main`");
+	}
+	if (!git("ls-tree", "--name-only", "origin/main", "--", listFile).trim()) return undefined;
+	return JSON.parse(git("show", `origin/main:${listFile}`));
 }
 
 // files maps each JSON file's name in the log to its text. Returns one line per problem.
@@ -83,7 +101,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 		);
 		const problems = checkInventories({
 			files,
-			unreadable: readUnreadable(JSON.parse(readFileSync(listFile, "utf8"))),
+			unreadable: readUnreadable(JSON.parse(readFileSync(listFile, "utf8")), mainList()),
 		});
 		for (const problem of problems) console.error(problem);
 		if (problems.length > 0) {

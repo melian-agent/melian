@@ -50,9 +50,11 @@ describe("checkInventories", () => {
 				"array.json": JSON.stringify([{ mutants: [] }]),
 				"empty-mutants.json": JSON.stringify({ mutants: [] }),
 				"version.json": JSON.stringify({ melianMutants: 2 }),
+				"not-array.json": JSON.stringify({ mutants: "oops" }),
 			}),
 		).toEqual([
 			`docs/progress-log/empty-mutants.json: the sampler refuses it: ${refusalOf(JSON.stringify({ mutants: [] }))}`,
+			`docs/progress-log/not-array.json: the sampler refuses it: ${refusalOf(JSON.stringify({ mutants: "oops" }))}`,
 			`docs/progress-log/version.json: the sampler refuses it: ${refusalOf(JSON.stringify({ melianMutants: 2 }))}`,
 		]);
 	});
@@ -102,9 +104,35 @@ describe("readUnreadable", () => {
 		);
 	});
 
-	it("refuses an entry dated after the list was made", () => {
-		expect(() => readUnreadable({ version2: [entry("2026-11-19-a-mutants.json")], legacy: [] })).toThrow(
-			".unreadable-inventories.json: 2026-11-19-a-mutants.json is newer than the list, which only shrinks; fix the inventory",
+	it("refuses an entry main's list lacks, whatever its date, so the list only shrinks", () => {
+		const main = { version2: [entry("2026-11-17-a-mutants.json")], legacy: [] };
+		expect(() =>
+			readUnreadable(
+				{ version2: [entry("2026-11-17-a-mutants.json"), entry("2026-11-01-b-mutants.json")], legacy: [] },
+				main,
+			),
+		).toThrow(
+			".unreadable-inventories.json: 2026-11-01-b-mutants.json is not on main's list, which only shrinks; fix the inventory",
+		);
+	});
+
+	it("refuses an entry whose section or pull request differs from main's list", () => {
+		const main = { version2: [entry("2026-11-17-a-mutants.json")], legacy: [] };
+		expect(() => readUnreadable({ version2: [], legacy: [entry("2026-11-17-a-mutants.json")] }, main)).toThrow(
+			"2026-11-17-a-mutants.json is not on main's list",
+		);
+		expect(() => readUnreadable({ version2: [entry("2026-11-17-a-mutants.json", 553)], legacy: [] }, main)).toThrow(
+			"2026-11-17-a-mutants.json is not on main's list",
+		);
+	});
+
+	it("accepts a list that drops main's entries, and any list when main has none", () => {
+		const main = { version2: [entry("2026-11-17-a-mutants.json")], legacy: [entry("2026-11-07-b-mutants.json")] };
+		expect(readUnreadable({ version2: [], legacy: [entry("2026-11-07-b-mutants.json")] }, main)).toEqual(
+			new Map([["2026-11-07-b-mutants.json", "legacy"]]),
+		);
+		expect(readUnreadable({ version2: [entry("2026-11-30-c-mutants.json")], legacy: [] }, undefined)).toEqual(
+			new Map([["2026-11-30-c-mutants.json", "version2"]]),
 		);
 	});
 
@@ -137,12 +165,25 @@ describe("the gate's command", () => {
 		mkdirSync(join(scratch, "docs/progress-log"), { recursive: true });
 		writeFileSync(join(scratch, ".unreadable-inventories.json"), JSON.stringify({ version2: [], legacy: [] }));
 	});
+	const git = (...args) =>
+		spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.invalid", ...args], {
+			cwd: scratch,
+			encoding: "utf8",
+			env: { ...process.env, GIT_CONFIG_COUNT: "0", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
+		});
+	const commitMain = () => {
+		git("init", "-q");
+		git("add", "-A");
+		git("commit", "-q", "-m", "main");
+		git("update-ref", "refs/remotes/origin/main", "HEAD");
+	};
 	afterEach(() => rmSync(scratch, { recursive: true, force: true }));
 
 	const run = () =>
 		spawnSync(process.execPath, [join(root, "scripts/check-inventories.mjs")], { cwd: scratch, encoding: "utf8" });
 
 	it("exits 1 with the sampler's message for a malformed inventory", () => {
+		commitMain();
 		const text = malformed();
 		writeFileSync(join(scratch, "docs/progress-log/2026-11-19-new-mutants.json"), text);
 		const result = run();
@@ -153,9 +194,29 @@ describe("the gate's command", () => {
 	});
 
 	it("exits 0 for a well-formed inventory", () => {
+		commitMain();
 		writeFileSync(join(scratch, "docs/progress-log", readableName), readable);
 		const result = run();
 		expect(result.stderr).toBe("");
 		expect(result.status).toBe(0);
+	});
+
+	it("exits 1 for an entry added to main's list", () => {
+		writeFileSync(join(scratch, "docs/progress-log/2026-11-01-old-mutants.json"), malformed());
+		commitMain();
+		writeFileSync(
+			join(scratch, ".unreadable-inventories.json"),
+			JSON.stringify({ version2: [{ file: "2026-11-01-old-mutants.json", pullRequest: 1 }], legacy: [] }),
+		);
+		const result = run();
+		expect(result.stderr).toContain("2026-11-01-old-mutants.json is not on main's list");
+		expect(result.status).toBe(1);
+	});
+
+	it("exits 1 when it cannot read origin/main", () => {
+		git("init", "-q");
+		const result = run();
+		expect(result.stderr).toContain("cannot read origin/main");
+		expect(result.status).toBe(1);
 	});
 });
