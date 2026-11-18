@@ -18,6 +18,10 @@ import {
 } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
+	CompactionEntry,
+	type ContextView,
+	type ConversationId,
+	type EntryId,
 	type Harness,
 	type HarnessOptions,
 	MemoryStorage,
@@ -118,6 +122,29 @@ const providerLimit =
 export function isFailoverError(message: string): boolean {
 	const failed = { role: "assistant", stopReason: "error", errorMessage: message } as AssistantMessage;
 	return authenticationFailure.test(message) || providerLimit.test(message) || isRetryableAssistantError(failed);
+}
+
+/**
+ * Whether a conversation holds work a model did: a reply Pi Durable keeps in the context the next model is shown. A
+ * compaction leaves only a summary there, so this walks back through each compaction to the context it summarised. A
+ * reset links to nothing before it, so work before one counts as none.
+ */
+export async function holdsWork(
+	reader: {
+		context(id: ConversationId, context: Context, options?: { readonly at?: EntryId }): Promise<ContextView>;
+	},
+	id: ConversationId,
+	context: Context,
+): Promise<boolean> {
+	const seen = new Set<EntryId>();
+	for (let at: EntryId | undefined; ; ) {
+		const view = await reader.context(id, context, { at });
+		if (view.messages.some((message) => message.role === "assistant")) return true;
+		const { head } = view;
+		if (!CompactionEntry.is(head) || seen.has(head.id)) return false;
+		seen.add(head.id);
+		at = head.head;
+	}
 }
 
 /**

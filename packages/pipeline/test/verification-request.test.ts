@@ -160,15 +160,15 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe is asked under the key, and the verifier's version, it had then. A candidate with a dismissed
-// root now keys that root's dismissal record, so only a candidate with none keeps its key, which the code of
-// [pull request #525](https://github.com/melian-agent/melian/pull/525) at d07e8834 gave it.
+// that rests on a probe is asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
+// by adding the fresh failover wording. A candidate with a dismissed root now keys that root's dismissal record, so only
+// a candidate with none keeps the key main's code gives it.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
 		const { dismissed: _dismissed, dismissals: _dismissals, ...undismissed } = candidate;
 		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
 		expect(verificationRequest({ ...sample, candidates: [undismissed] }).key).toBe(
-			"5116db37b8921b2919c04394994e6d433dc116b0619631a9500d4fc9f21721e7",
+			"ace12258fc705b6da1ffbf45308c20eb468e1ad8ef7dab2bacaf1f4681caef75",
 		);
 	});
 });
