@@ -71,6 +71,30 @@ guardrails:
   # A merge_group run uses the group commit's workflow files, so an edit to one changes the gate judging its own group.
   policy-change-review:
     files: [".github/**"]
+    # Files that hold the text Melian's models, or the agents that relay Melian, read as instructions. A change to one
+    # draws a notice a maintainer reads, which reports a lens's injection finding there in its place
+    # (decisions/2026-11-18-instruction-files-draw-a-notice.md). Only this base copy decides the list.
+    instructions:
+      - packages/core/src/lens.ts # lens instructions, the standards lead-in and triage's question
+      - packages/core/src/probing-wording.ts # the planner's, prober's and probe verifier's wording
+      - packages/core/src/adjudication.ts # Verdict.agentPrompt, read by coding agents
+      - packages/pipeline/src/untrusted.ts # the boundary fences, the injection policy and the triage boundary
+      - packages/pipeline/src/lens-tools.ts # the injection_policy section and the tool descriptions
+      - packages/pipeline/src/lens-request.ts # lens continuation prompts
+      - packages/pipeline/src/review.ts # the change prompt, the decisions lead-in and carried findings
+      - packages/pipeline/src/callers.ts # the callers lead-in
+      - packages/pipeline/src/enclosing-functions.ts # the read_file note
+      - packages/pipeline/src/verification-instructions.ts # the verifier's instructions
+      - packages/pipeline/src/verification.ts # verifier continuations and claim framing
+      - packages/pipeline/src/probing.ts # the prober's instructions
+      - packages/pipeline/src/summarize.ts # the summariser's instructions
+      - packages/decisions/src/fallback.ts # the decision model's instructions
+      - docs/review-of-record.md # the review-of-record agent's brief
+      - AGENTS.md # builder and reviewer agents' instructions
+      - skills/claude-code/SKILL.md # the skill Claude Code relays Melian through
+      - skills/codex/SKILL.md # the skill Codex relays Melian through
+      - skills/pi/SKILL.md # the skill Pi relays Melian through
+      - .claude/skills/melian/SKILL.md # this repository's copy of the Claude Code skill
 
   forbidden-paths:
     rules:
