@@ -1236,7 +1236,9 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await probe.close();
 		const watchdog = pathToFileURL(join(root, "probe", "watchdog.mjs")).href;
 		expect(asked[0]!.command).toMatch(
-			new RegExp(` && exec '[^']+' --import '${watchdog.replaceAll(".", "\\.")}' '${join(root, "probe", "probe.mjs").replaceAll(".", "\\.")}'$`),
+			new RegExp(
+				` && exec '[^']+' --import '${watchdog.replaceAll(".", "\\.")}' '${join(root, "probe", "probe.mjs").replaceAll(".", "\\.")}'$`,
+			),
 		);
 	});
 
