@@ -927,7 +927,7 @@ export async function dismiss(
 	argument: string,
 	id: string,
 	reason: string,
-	options: { readonly only: boolean; readonly records?: string } = { only: false },
+	options: { readonly only: boolean; readonly records?: string },
 ): Promise<number> {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
