@@ -992,7 +992,10 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		for (const [named, refusal] of [
 			["tests", /^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/],
 			["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
-			["trust-boundary-probes", /^MELIAN_EVAL_PROBE_LENSES names trust-boundary-probes, which the review's full tier does not run$/],
+			[
+				"trust-boundary-probes",
+				/^MELIAN_EVAL_PROBE_LENSES names trust-boundary-probes, which the review's full tier does not run$/,
+			],
 		] as const) {
 			const using = runners({ goldens: () => [lost], golden: vi.fn(runGolden) });
 			const { status, lines, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_LENSES: named }, using);

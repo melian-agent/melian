@@ -117,7 +117,9 @@ export class ProbingCombination implements ProbingRoute {
 			if (refused !== undefined)
 				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
 			if (!runs.includes(`lens.${name}`))
-				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`);
+				throw new ProbeLensRefusal(
+					`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`,
+				);
 		}
 		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
 		const governed = lenses
