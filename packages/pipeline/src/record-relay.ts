@@ -232,10 +232,15 @@ export class RelayBatch {
 			for (const kind of await entries(root, path)) {
 				const kindPath = `${path}/${kind.name}`;
 				if (!kind.isDirectory() || kind.name.startsWith(".")) throw new RelayRefusal("strayEntry", kindPath);
-				for (const slot of await entries(root, kindPath)) {
+				// The store makes a folder only for a record it adds, and an empty one counts against no bound.
+				const slots = await entries(root, kindPath);
+				if (slots.length === 0) throw new RelayRefusal("strayEntry", kindPath);
+				for (const slot of slots) {
 					const slotPath = `${kindPath}/${slot.name}`;
 					if (!slot.isDirectory() || !hex64.test(slot.name)) throw new RelayRefusal("strayEntry", slotPath);
-					for (const file of await entries(root, slotPath)) {
+					const held = await entries(root, slotPath);
+					if (held.length === 0) throw new RelayRefusal("strayEntry", slotPath);
+					for (const file of held) {
 						const filePath = `${slotPath}/${file.name}`;
 						if (!file.isFile() || !recordFile.test(file.name)) throw new RelayRefusal("strayEntry", filePath);
 						files.push(filePath);

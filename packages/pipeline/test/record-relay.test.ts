@@ -190,6 +190,16 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(loose, writer))).code).toBe("strayEntry");
 	});
 
+	it.each([
+		["kind", () => `changesets/${changeset}/zzkind`],
+		["slot", (record: SharedRecord) => `changesets/${changeset}/${record.kind}/${"f".repeat(64)}`],
+	])("refuses an empty %s directory, which holds no record to count against the bound", async (_, path) => {
+		const written = accounted([check()]);
+		const directory = await artefact(...written);
+		await mkdir(join(directory, path(written[0]!)), { recursive: true });
+		expect((await refusal(RelayBatch.read(directory, writer))).code).toBe("strayEntry");
+	});
+
 	it("refuses a round that reads a record the batch does not hold, even one the store holds", async () => {
 		const biome = check();
 		const round = records().round([biome], undefined, [], []);
