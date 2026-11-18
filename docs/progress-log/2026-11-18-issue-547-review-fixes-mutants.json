@@ -1,0 +1,630 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "28419a36a8c69e631da35741242b77383ebf2c2e",
+  "head": "97e5ad98c6c0f2f1f907747e49c14d0a93269e9f"
+ },
+ "claimsIn": [
+  "packages/core/src/tier-account.ts",
+  "packages/pipeline/src/review.ts",
+  "packages/pipeline/src/triage-request.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+ "mutants": [
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 116,
+   "column": 8,
+   "endLine": 116,
+   "endColumn": 29,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "this.#disabled(name)",
+   "status": "generated",
+   "id": "2d202bd331bd94b5f0f41ea065bc2ac91f920ac67b94a42670ccd5e7ad59fa0e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2596,
+   "column": 19,
+   "endLine": 2604,
+   "endColumn": 5,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "6fe09599878608e67d397e0758d109eb291354c49c7d66c7170757ec1eebc733",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2600,
+   "column": 19,
+   "endLine": 2600,
+   "endColumn": 91,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "fa5c772de92ed03117938bf1fc625738a7e82daf95cd8308005cf8bc0c9b922a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2602,
+   "column": 13,
+   "endLine": 2602,
+   "endColumn": 99,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "66a44c7100d84d281956aa2e1ba631ccbe6a978129dcda88766ebcea674c9a80",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2602,
+   "column": 82,
+   "endLine": 2602,
+   "endColumn": 98,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "8a1e12ce93f826e2ddf810522d27a394836b3c65a7c93a8ca1bd8c442998f1dd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at its runnable floor when triage chooses skip from a cut change prompt"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2602,
+   "column": 91,
+   "endLine": 2602,
+   "endColumn": 96,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "status": "generated",
+   "id": "6e81b5f393640aa9a731744c89181118d717289b7dae82220dc15a324e71b4eb",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at its runnable floor when triage chooses skip from a cut change prompt"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2606,
+   "column": 18,
+   "endLine": 2606,
+   "endColumn": 50,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "43af68e796666b4866c2d0752bed531db56591372eb052131484c1f244c0d6ac",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2606,
+   "column": 18,
+   "endLine": 2606,
+   "endColumn": 50,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "81412fbb52158f98ea202c03dda25ec34153a1bee543ac72f190da57de4175d0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > runs the lens and allows no skip when its input was cut"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2606,
+   "column": 18,
+   "endLine": 2606,
+   "endColumn": 50,
+   "mutatorName": "EqualityOperator",
+   "replacement": "asked?.request.inputCut !== true",
+   "status": "generated",
+   "id": "3d7c672cde12fe03dcd4591da75fac2c30b4ff046458db6acc2aea07dc7140c4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2606,
+   "column": 18,
+   "endLine": 2606,
+   "endColumn": 32,
+   "mutatorName": "OptionalChaining",
+   "replacement": "asked.request",
+   "status": "generated",
+   "id": "254ea3046d90657017d6f7ce62885160f1f3391bf6d4c54f4b2548f6b5020682",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2606,
+   "column": 46,
+   "endLine": 2606,
+   "endColumn": 50,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b626118b353858e58ebb72b8a6a2a31ebbfe580d8090bba6910b6c08ac1119ff",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 2,
+   "endLine": 2608,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "166663c1f4a3ad2c2f0ad1481d3e1d0303b5ae4939adab45fae46bbca8fb2ff4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 2,
+   "endLine": 2608,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "283ab2606985b3971037cdf12e73c2d0d6ea0f2db8b7fae3b2a99e59c817812e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 2,
+   "endLine": 2608,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "asked === undefined && options.decider === undefined",
+   "status": "generated",
+   "id": "831d4824a472a47dae79a5750e8c35e6714b25ba21a83c18bd4cace6b1be1299",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > a lens of the tier that covers no changed path > asks triage nothing when a decider is given and no lens covers the change"
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 2,
+   "endLine": 2608,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "3fb9285500ac5c21a8f2e908600fd5ae7ccb7a4254d7dbbffb1dedba2cf5d57b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > a lens of the tier that covers no changed path > asks triage nothing when a decider is given and no lens covers the change"
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 2,
+   "endLine": 2608,
+   "endColumn": 21,
+   "mutatorName": "EqualityOperator",
+   "replacement": "asked !== undefined",
+   "status": "generated",
+   "id": "3864f362e24477528f9fe377fdaee7cdaf4666855ac79e9f9cf22b9a679029c7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 25,
+   "endLine": 2608,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "da2cd57545ce8b98712aceef836ec426083d362b72304a59be0f6159bdf6c7ef",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "asked is set only when a decider is, so this operand never decides the result"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2608,
+   "column": 25,
+   "endLine": 2608,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.decider !== undefined",
+   "status": "generated",
+   "id": "802c62ecbb4c6db09864e238ebf4c4b5d091e4ce4d7ddbb63e4edab9103ffbb0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 6,
+   "endLine": 2705,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "6c12e8bc88d31e09152524d6c7d1cd27a0c545c51c6433478f205094e1f07015",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 6,
+   "endLine": 2705,
+   "endColumn": 47,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "3aadeb5ecd470374f45c3c6ba801c96a559ec70a285ec8f043c7e3de93f5f39c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at its runnable floor when triage chooses skip from a cut change prompt"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 6,
+   "endLine": 2705,
+   "endColumn": 47,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.decider !== undefined || inputCut",
+   "status": "generated",
+   "id": "f2af1e4123b10eebb7c95a28307f1ccd620482a213adb46318edabba8bbc8b6b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at quick when the decider chooses it, and stores the whole distribution"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 6,
+   "endLine": 2705,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "397c1cec56609d17b61b1af1190da04f1f26235d57618664eb94447ade001b53",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "asked is set only when a decider is, so this operand never decides the result"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 6,
+   "endLine": 2705,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.decider === undefined",
+   "status": "generated",
+   "id": "e85d3882e317cb0dfe530a0d7fddec1d71aad3a09ffcbe90ed9b557158a4659b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at its runnable floor when triage chooses skip from a cut change prompt"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 49,
+   "endLine": 2705,
+   "endColumn": 107,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "3e81a915fe36952f835ead1d2a06350fe40cd0d4391ea6ad55da43e5f4805465",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "name": "triage > runs a lens at its runnable floor when triage chooses skip from a cut change prompt"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2705,
+   "column": 60,
+   "endLine": 2705,
+   "endColumn": 105,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "419facdec86aeedfa73393933478f5bc0b500146332126ebf96bf3366542a37a"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3401,
+   "column": 2,
+   "endLine": 3401,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "9615dac2ff55c9ee6d2743e4a7abe679ae3916a9a6d4584c5d4fc6ebed9d4312",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3401,
+   "column": 2,
+   "endLine": 3401,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "73df7a9e782871f10749c91ff13a2fa65c544ae1de461153b9ad4f7c74ba8d1c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3401,
+   "column": 2,
+   "endLine": 3401,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triaged.decision !== undefined",
+   "status": "generated",
+   "id": "16ec1cc99ec52a187f0e2c6f37607169edb9ebdbcbc4096d37fdeb3b2c86d067",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3401,
+   "column": 47,
+   "endLine": 3401,
+   "endColumn": 94,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "29aaa30f20c149bd0f925fd1ec64453dbdbb12f41861aedad6ece715fbd74216",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/triage-request.ts",
+   "line": 48,
+   "column": 13,
+   "endLine": 48,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "cb022f140c1559ceef5a94114fbd3f79ebe4214eb5cd29216e46f43d28448cbd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-request.test.ts",
+     "name": "triageRequest > keys every input but the nonce"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/triage-request.ts",
+   "line": 48,
+   "column": 13,
+   "endLine": 48,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "a261ec85cf4f7c807032b266bef5116095cfad39bc56b1006e117284cdb44a69",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-request.test.ts",
+     "name": "triageRequest > keys every input but the nonce"
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/triage-request.ts",
+   "line": 48,
+   "column": 13,
+   "endLine": 48,
+   "endColumn": 35,
+   "mutatorName": "LogicalOperator",
+   "replacement": "keyed.cut && shown.cut",
+   "status": "generated",
+   "id": "93b300829cdb4034a39fa1fc1fd96227a0f62ebc6e8998bedfecf399117d4170",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-request.test.ts",
+     "name": "triageRequest > records the change as cut when only the review's nonce's copy is cut"
+    }
+   },
+   "survivorClasses": []
+  }
+ ],
+ "total": 32,
+ "omitted": 0,
+ "unmutated": []
+}

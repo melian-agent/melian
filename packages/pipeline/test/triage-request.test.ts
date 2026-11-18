@@ -65,4 +65,17 @@ describe("triageRequest", () => {
 	it("records that the change was cut", () => {
 		expect(build({ ...sample, cut: true }).request.inputCut).toBe(true);
 	});
+
+	// Quoting replaces each copy of the nonce in the change, so a change holding runs of the fixed nonce is shorter under
+	// it and can fit there while the decider's copy is cut.
+	it.each([
+		["the review's", sample.nonce],
+		["the fixed", "0".repeat(24)],
+	])("records the change as cut when only %s nonce's copy is cut", (_, cutUnder) => {
+		const asked = triageRequest({
+			...sample,
+			change: (nonce) => ({ text: sample.diff, cut: nonce === cutUnder }),
+		});
+		expect(asked.request.inputCut).toBe(true);
+	});
 });
