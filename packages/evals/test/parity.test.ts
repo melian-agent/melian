@@ -409,6 +409,35 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(elsewhere.models).not.toHaveBeenCalled();
 	});
 
+	it("refuses to resume when a miss it reviewed now names other lines, or the verifier changed", async () => {
+		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
+		const misses = JSON.parse(readFileSync(env.MELIAN_EVAL_MISSES!, "utf8"));
+		writeFileSync(env.MELIAN_EVAL_MISSES!, JSON.stringify([{ ...misses[0], lines: [17, 17] }, misses[1]]));
+		const moved = runners();
+		expect(await measure(env, moved)).toMatchObject({
+			status: 2,
+			errors: [
+				`${env.MELIAN_EVAL_PARITY_OUT} reviewed one as another miss, at another base, head, file, rules or lines; resume with the same misses or name a new file`,
+			],
+		});
+		expect(moved.range).not.toHaveBeenCalled();
+		writeFileSync(env.MELIAN_EVAL_MISSES!, JSON.stringify([misses[0], { ...misses[1], lines: [17, 17] }]));
+		const unreviewed = runners();
+		expect((await measure(env, unreviewed)).status).toBe(1);
+		expect(unreviewed.range).toHaveBeenCalledTimes(2);
+		// A resume narrowed to one miss keeps what the others named.
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, runners())).status).toBe(1);
+		expect((await measure(env, runners())).status).toBe(1);
+		const verified = runners();
+		expect(await measure({ ...env, MELIAN_EVAL_VERIFIER_MODEL: "v/judge" }, verified)).toMatchObject({
+			status: 2,
+			errors: [
+				`${env.MELIAN_EVAL_PARITY_OUT} was verified on the verifier's route, not v/judge; resume with the same verifier or name a new file`,
+			],
+		});
+		expect(verified.models).not.toHaveBeenCalled();
+	});
+
 	it("lists every miss today's policy cannot score in one exit, and only lists them in a dry run", async () => {
 		const [one] = JSON.parse(readFileSync(env.MELIAN_EVAL_MISSES!, "utf8"));
 		const mixed = join(scratch, "mixed.json");

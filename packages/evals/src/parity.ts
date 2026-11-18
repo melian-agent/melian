@@ -221,8 +221,22 @@ export interface ParityResults {
 	readonly commit: string;
 	/** The commit whose policy, standards and lenses reviewed every miss, in both arms. */
 	readonly policyCommit: string;
+	/** The verifier's model, when MELIAN_EVAL_VERIFIER_MODEL named one. */
+	readonly verifier?: string;
+	/** What each miss named when the run first reviewed it, so a resume refuses a miss that has since changed. */
+	readonly misses: Readonly<Record<string, ParityMiss>>;
 	readonly reviews: readonly ParityReview[];
 	readonly stopped?: string;
+}
+
+/** A miss as the run first reviewed it, at resolved commits. */
+export interface ParityMiss {
+	readonly repo: string;
+	readonly base: string;
+	readonly head: string;
+	readonly file: string;
+	readonly rules: readonly string[];
+	readonly lines: readonly [number, number];
 }
 
 /** The runners a parity measurement calls, so a test can stand in for providers and clones. */
@@ -407,6 +421,19 @@ export async function measureParity(
 		const availability = await runners.availability();
 		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
 		const commit = runners.commit();
+		const identities = Object.fromEntries(
+			misses.map(({ miss, target }) => [
+				miss.name,
+				{
+					repo: target.repo,
+					base: target.base,
+					head: target.head,
+					file: miss.file,
+					rules: miss.rules,
+					lines: miss.lines!,
+				},
+			]),
+		);
 		if (existsSync(out)) {
 			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
 			if (earlier.version !== 1 || earlier.arm !== parityArmName)
@@ -419,9 +446,30 @@ export async function measureParity(
 				throw new Error(
 					`${out} was measured under ${earlier.policyCommit ?? "each miss's base"}'s policy, not ${policyCommit}'s; resume under that policy or name a new file`,
 				);
+			if (earlier.verifier !== verifier)
+				throw new Error(
+					`${out} was verified on ${earlier.verifier ?? "the verifier's route"}, not ${verifier ?? "the verifier's route"}; resume with the same verifier or name a new file`,
+				);
+			for (const { miss } of misses)
+				if (
+					earlier.reviews.some((review) => review.miss === miss.name) &&
+					JSON.stringify(earlier.misses[miss.name]) !== JSON.stringify(identities[miss.name])
+				)
+					throw new Error(
+						`${out} reviewed ${miss.name} as another miss, at another base, head, file, rules or lines; resume with the same misses or name a new file`,
+					);
 			const { stopped: _, ...kept } = earlier;
-			results = kept;
-		} else results = { version: 1, arm: parityArmName, commit, policyCommit, reviews: [] };
+			results = { ...kept, misses: { ...earlier.misses, ...identities } };
+		} else
+			results = {
+				version: 1,
+				arm: parityArmName,
+				commit,
+				policyCommit,
+				...(verifier === undefined ? {} : { verifier }),
+				misses: identities,
+				reviews: [],
+			};
 	} catch (error) {
 		printError(visibleText(error instanceof Error ? error.message : String(error)));
 		return 2;
