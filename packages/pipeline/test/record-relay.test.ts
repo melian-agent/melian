@@ -44,6 +44,7 @@ type Claim = {
 	checks?: string[];
 	allowSkip?: string[];
 	filled?: { name: string; status: "skipped" | "failed"; reason: string }[];
+	producers?: { check: string; version?: string }[];
 };
 const account = (counted: SharedRecord[], claim: Claim = {}) =>
 	records().account({
@@ -51,7 +52,7 @@ const account = (counted: SharedRecord[], claim: Claim = {}) =>
 		records: counted,
 		filled: claim.filled ?? [],
 		allowSkip: claim.allowSkip ?? [],
-		producers: [],
+		producers: claim.producers ?? [],
 		resolutionPolicy: null,
 	});
 // A round as a review writes it: the records its account counts, the account, and the round that reads them.
@@ -518,6 +519,7 @@ describe("RelayBatch", () => {
 				"an account's filled record",
 				() => account([], { filled: [{ name: "static.planted", status: "skipped", reason: "planted" }] }),
 			],
+			["an account's producer", () => account([], { producers: [{ check: "static.planted", version: "2.0.0" }] })],
 		])("refuses %s name the tier does not give", async (_, made) => {
 			const found = await refusal(RelayBatch.read(await artefact(made()), { ...writer, tier: lensTier }));
 			expect([found.code, found.file]).toEqual(["otherCheck", `${made().id}.json`]);

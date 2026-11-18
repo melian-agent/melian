@@ -286,7 +286,8 @@ export class RelayBatch {
 	}
 
 	// Every check a record names beyond what its schema ties to its kind: a check record's own, a lens record's lens, whose
-	// check the schema names for it, each producer a verification holds claims of, and each check an account filled.
+	// check the schema names for it, each producer a verification holds claims of, and each check an account filled or
+	// counts findings from.
 	static #checkNames(record: SharedRecord): string[] {
 		switch (record.kind) {
 			case "check":
@@ -295,12 +296,15 @@ export class RelayBatch {
 				return [`lens.${(record.payload as LensPayload).name}`];
 			case "verification":
 				return (record.payload as VerificationPayload).claims.map((claim) => claim.source.check);
-			// The account's `checks` are the tier's by `TierAccount.refusal`, which reads them; its filled records are not, and
-			// one is the verifier's when it failed or was skipped before any verification record.
-			case "account":
-				return (record.payload as AccountPayload | LegacyAccountPayload).filled
-					.map((each) => each.name)
-					.filter((name) => name !== "verifier");
+			// The account's `checks` are the tier's by `TierAccount.refusal`, which reads them; its filled records and producers
+			// are not, and a filled record is the verifier's when it failed or was skipped before any verification record.
+			case "account": {
+				const { filled, producers } = record.payload as AccountPayload | LegacyAccountPayload;
+				return [
+					...filled.map((each) => each.name).filter((name) => name !== "verifier"),
+					...producers.map((each) => each.check),
+				];
+			}
 			default:
 				return [];
 		}
