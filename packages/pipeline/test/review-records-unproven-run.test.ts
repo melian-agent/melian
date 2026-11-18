@@ -24,6 +24,7 @@ import {
 	type Harness,
 	openHarness,
 	RecordedRound,
+	recordDismissal,
 	reviewChangeset,
 	runChecks,
 } from "@melian-agent/pipeline";
@@ -118,7 +119,7 @@ async function review(
 		(tx) => replaceCheckFindings(tx, root.id, "static.biome", Revision.key(changeset.revision), [sighting(text)]),
 		context,
 	);
-	const { verdict } = await reviewChangeset({
+	const { verdict, unshared } = await reviewChangeset({
 		harness,
 		changeset,
 		config,
@@ -144,7 +145,7 @@ async function review(
 		records: store,
 	});
 	const stored = await store.list(changeset.id);
-	return { changeset, config, verdict, stored };
+	return { changeset, config, verdict, stored, unshared };
 }
 
 const bytes = (stored: readonly RecordEnvelope[]) => JSON.stringify(stored);
@@ -246,5 +247,29 @@ describe("a check run handed to a review", () => {
 		await expect(
 			review(new MemoryRecordStore({ payloads: reviewPayloads }), { checkRun, asMade: true }),
 		).rejects.toMatchObject({ code: "foreignCheckRun", lenses: [] });
+	});
+});
+
+describe("a dismissed static finding, exported by a later round", () => {
+	it("is left out, named by its code, and read back as not dismissed", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" },
+		});
+
+		const second = await review(store, {}, undefined);
+
+		expect(second.verdict.status).toBe("passed");
+		expect(second.unshared).toEqual([{ finding: id, code: "unprovenRun" }]);
+		expect(second.stored.filter(({ kind }) => kind === "dismissal")).toEqual([]);
+		const read = await readBack(second);
+		expect(read.status).not.toBe("passed");
+		expect(read.dismissed).toEqual([]);
 	});
 });

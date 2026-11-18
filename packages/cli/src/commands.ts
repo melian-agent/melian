@@ -40,6 +40,7 @@ import {
 	PublishError,
 	publishReview,
 	RecordedRound,
+	type Review,
 	ReviewError,
 	type ReviewHarness,
 	type ReviewOrigin,
@@ -404,8 +405,9 @@ export async function review(
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;
+		let unshared: Review["unshared"] = [];
 		try {
-			({ verdict, decisionIndexWarning } = await reviewChangeset({
+			({ verdict, decisionIndexWarning, unshared } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -431,6 +433,7 @@ export async function review(
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 			decisionIndexWarning = error.decisionIndexWarning;
+			unshared = error.unshared;
 		}
 		summarize();
 		spans.end();
@@ -440,8 +443,12 @@ export async function review(
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
-		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
-		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
+		const texts = [
+			...(indexWarning === undefined ? [] : [indexWarning.text]),
+			...unshared.map(({ finding, code }) => `the dismissal of ${finding} is not shared with the records (${code})`),
+		];
+		for (const text of texts) io.stderr(`melian: ${text}\n`);
+		const warnings = texts.length === 0 ? {} : { warnings: texts };
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`

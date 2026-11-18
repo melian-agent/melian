@@ -97,6 +97,8 @@ export class ReviewError extends Error {
 	readonly verdict?: Verdict;
 	/** The review's long-log warning for the decision index, for a review that failed after giving a reviewer the index. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, for a review that failed after it exported its round. */
+	readonly unshared: readonly { readonly finding: string; readonly code: "unprovenRun" }[];
 
 	constructor(
 		code: ReviewErrorCode,
@@ -107,6 +109,7 @@ export class ReviewError extends Error {
 			findings?: readonly Finding[];
 			verdict?: Verdict;
 			decisionIndexWarning?: string;
+			unshared?: readonly { readonly finding: string; readonly code: "unprovenRun" }[];
 			cause?: unknown;
 		},
 	) {
@@ -118,6 +121,7 @@ export class ReviewError extends Error {
 		this.findings = options.findings ?? [];
 		if (options.verdict !== undefined) this.verdict = options.verdict;
 		if (options.decisionIndexWarning !== undefined) this.decisionIndexWarning = options.decisionIndexWarning;
+		this.unshared = options.unshared ?? [];
 	}
 }
 

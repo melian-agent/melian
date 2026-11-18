@@ -96,6 +96,7 @@ export {
 	type ReviewHarnessOptions,
 	type ReviewOptions,
 	reviewChangeset,
+	type UnsharedDismissal,
 } from "./review.ts";
 export { withheld } from "./review-records.ts";
 export {

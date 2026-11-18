@@ -87,7 +87,7 @@ import {
 	readRecordedDecision,
 } from "./decisions.ts";
 import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
-import { ReviewError } from "./errors.ts";
+import { DismissError, ReviewError } from "./errors.ts";
 import {
 	clearSightings,
 	clearVerifications,
@@ -1429,7 +1429,12 @@ export interface Review {
 	readonly verdict: Verdict;
 	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, and the code that says why; empty when it left none out. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
+
+/** A dismissal a review's record export left out: the finding's ID and the {@link DismissError} code that refused it. */
+export type UnsharedDismissal = { readonly finding: string; readonly code: "unprovenRun" };
 
 // Why a conversation's request ended without finishing: the model's own message where it gave one.
 function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
@@ -3226,8 +3231,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
-		const dismissals =
-			state === undefined ? [] : Object.keys(state.items).flatMap((id) => records.dismissalOf(state, id) ?? []);
+		const dismissals: SharedRecord[] = [];
+		const unshared: UnsharedDismissal[] = [];
+		for (const id of state === undefined ? [] : Object.keys(state.items)) {
+			try {
+				const record = records.dismissalOf(state!, id);
+				if (record !== undefined) dismissals.push(record);
+			} catch (error) {
+				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
+				unshared.push({ finding: id, code: error.code });
+			}
+		}
 		const read = [...counted.map(({ record }) => record), account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
@@ -3248,6 +3262,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				record.toJSON(),
 			),
 		);
+		return unshared;
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
 	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
@@ -3757,6 +3772,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
+	let unshared: readonly UnsharedDismissal[] = [];
 	if (request.records !== undefined && owned) {
 		const findings = findingsDecided;
 		const shown = new Set(verified?.dismissals.map(({ finding }) => finding));
@@ -3789,7 +3805,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						});
 					});
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
-		await exportRound(
+		unshared = await exportRound(
 			request.records,
 			run,
 			options.checks ?? [],
@@ -3822,6 +3838,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -3831,6 +3848,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -3839,6 +3857,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
-	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }), unshared };
 }
