@@ -6,6 +6,8 @@ export const enolaPolicyDirectories = ["enola/constraints", "enola/recipes"];
 const literal = (path: string) => path.replaceAll(".", "\\.");
 
 /** Enola's configuration paths, read from the base. A committed baseline is never policy. */
+// `s`, because git allows a newline in a file name and Enola loads such a file.
 export const enolaPolicyPattern = new RegExp(
 	`^(?:${[...enolaPolicyFiles.map(literal), ...enolaPolicyDirectories.map((directory) => `${literal(directory)}/.+`)].join("|")})$`,
+	"s",
 );

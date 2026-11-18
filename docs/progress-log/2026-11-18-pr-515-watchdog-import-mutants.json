@@ -1,0 +1,119 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ef1068bf0539f4921912084788d996663bf587c7",
+		"head": "496c4b88f0fa21152753473902f872ac3b4de4bf"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probe.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 475,
+			"column": 30,
+			"endLine": 475,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "27855f3bd813d4eb4bed6d5e5d91e8eb6511007e4a01f26190751e34479c3559",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.open > refuses the file path \"probe.mjs\"",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 8,
+			"endLine": 571,
+			"endColumn": 300,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9a60cdae23efb954717cc04f31d4d6d58ff46c6ec7450a2bcd834266e97dfcf2"
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 60,
+			"endLine": 571,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e5cc0241c5cf5984d7d6da9485b793a52a128c52409a128d0c1403b43bd6311c"
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 95,
+			"endLine": 571,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "06f0b47c06cfdbd14760b1b6ff73f49c1ff1f3b22fd1a9f76327607b5ce300e9"
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 129,
+			"endLine": 571,
+			"endColumn": 153,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "backstop(timeout) * 1000",
+			"status": "generated",
+			"id": "a3ee5dbc80367980fcd57faa5302b2f33085f22a2e6f081286360594a76703d5",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/probe.test.ts > Probe.run > bounds the probe's CPU time in whole seconds of its backstop",
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 224,
+			"endLine": 571,
+			"endColumn": 231,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a229dd5226a95d5c33cf065b7f4f4f25ec4eb7fac2318a935957ec8152e10485"
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 571,
+			"column": 277,
+			"endLine": 571,
+			"endColumn": 284,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "71db994393c71c15d6fa5afeab0a6cbfef83511dd1a11bdf65b6ded9a0b1b9e5"
+		}
+	],
+	"total": 7,
+	"omitted": 0,
+	"unmutated": []
+}

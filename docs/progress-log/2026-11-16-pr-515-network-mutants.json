@@ -1,0 +1,208 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "a7ef2e087431ae6d462b8a6f46b045efc1661848",
+		"head": "6225daa992af4456d8686e2631867ce608574ca0"
+	},
+	"claimsIn": [
+		"scripts/round-probe-containment.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 323,
+			"column": 44,
+			"endLine": 328,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4e3980ce418699bc1b8c7ce8a1d442ca05395a653ac312e877e8d1adc0342ca6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose tcp report has no attempt api.github.com:443"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 324,
+			"column": 17,
+			"endLine": 324,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "121b9faf359908413515f17fedb4e5c9320c80fd23b3cda4fdd9476a5ae3135d"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 325,
+			"column": 16,
+			"endLine": 325,
+			"endColumn": 110,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "34ca10603faab8df3ad8341718650095f0e0a49da576c8c990a0c0636ce2db39",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose tcp report has no attempt api.github.com:443"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 325,
+			"column": 54,
+			"endLine": 325,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fff814936b6129126a6dc2dbdfaac656a1dd2513fe8d56b76e58254a2cedc4f2"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 325,
+			"column": 93,
+			"endLine": 325,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "18b8c95d04d4612e7454906978c41612dae8cf053ed563d08f53ca9e81b19888"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 326,
+			"column": 6,
+			"endLine": 326,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e5156ea324cf32c617ba2b6b012014d3f4661bdaa2c0b4acf2907c62a0068ff0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 326,
+			"column": 6,
+			"endLine": 326,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e8deb23438b3c2229d6f8238cb9521f16a89f0883f9c42874a3a3f6ee78aa01d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose tcp report has no attempt api.github.com:443"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 326,
+			"column": 6,
+			"endLine": 326,
+			"endColumn": 43,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "343942ea4c6200aa43666cf3601f9eecd6a5459d6af44a976a68d9b15d25c5f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose tcp report has no attempt api.github.com:443"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 327,
+			"column": 3,
+			"endLine": 327,
+			"endColumn": 67,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "651504fcbc02e0a45712fe7cf61edd7632c3028a5fb838865a84332b8c3bdba2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose tcp report has no attempt api.github.com:443"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 327,
+			"column": 17,
+			"endLine": 327,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6ea7ea61ad36000e15ef8ca0a20ac4c498873c2a18deb3937a0e983e903da836"
+		}
+	],
+	"total": 10,
+	"omitted": 0,
+	"unmutated": []
+}
