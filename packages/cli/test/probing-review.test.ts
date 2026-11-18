@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { ReviewPlan } from "@melian-agent/core";
 import { planInputs, ReviewHarness } from "@melian-agent/pipeline";
@@ -172,6 +172,93 @@ describe("melian review of a level that probes", { timeout: 60_000 }, () => {
 		expect(result).toContain("probe p");
 		expect(result).not.toContain("SECRET");
 	});
+
+	it.each([
+		[[], 2, [{ check: "lens.trust-boundary", level: "deep", cause: "untrusted-writer" }], []],
+		[["--trust-head"], 0, [], [planner]],
+	])(
+		"fails a level that cannot probe under --require-probes, and writes its cause to --probe-gaps: %j",
+		async (flags, code, gaps, asked) => {
+			repo = createRepository();
+			commit(repo, {
+				"src/load.ts": "export const load = (path: string) => path;\n",
+				"melian.yaml":
+					"tiers:\n  full: [lens.trust-boundary]\nlenses:\n  trust-boundary:\n    level: { floor: deep }\n" +
+					["correctness", "contracts", "removed-behaviour", "tests", "conventions"]
+						.map((name) => `  ${name}: {enabled: false}\n`)
+						.join(""),
+				".melian/lenses/trust-boundary/LENS.md":
+					"---\nname: trust-boundary\nextends: trust-boundary\nlevels:\n  deep: { probe: {} }\n---\n",
+			});
+			gitIn(repo, "checkout", "-b", "feature");
+			commit(repo, { "src/load.ts": "export const load = (path: string) => path.trim();\n" });
+			const fake = createFakeModels();
+			const ref = fake.ref();
+			const requests = scriptConversations(fake, [
+				{
+					match: planner,
+					replies: [
+						fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [] })], { stopReason: "toolUse" }),
+						fauxAssistantMessage("Planned 0 attacks."),
+					],
+				},
+				{ match: reviewer, replies: [fauxAssistantMessage("Reported 0 findings.")] },
+			]);
+			vi.spyOn(modelSetup, "reviewModels").mockImplementation(async (_env, loaded, lenses, options) => ({
+				models: fake.review,
+				plan: ReviewPlan.resolve({
+					config: loaded.config,
+					routes: loaded.routes,
+					model: `${ref.provider}/${ref.modelId}`,
+					...(await planInputs(fake.review)),
+					lenses,
+					checks: options.checks,
+				}),
+				retry: false,
+			}));
+			const open = ReviewHarness.open.bind(ReviewHarness);
+			vi.spyOn(ReviewHarness, "open").mockImplementation((storage, models, options = {}, context) =>
+				open(storage, models, { ...options, probeSandbox: unconfinedSandbox() }, context),
+			);
+			const errors: string[] = [];
+			const io: Io = {
+				cwd: repo,
+				env: {
+					MELIAN_TEST_SCRIPT: "injected",
+					MELIAN_STATE_DIR: join(repo, "state"),
+					XDG_CONFIG_HOME: join(repo, "config"),
+					PI_CODING_AGENT_DIR: join(repo, "pi"),
+				},
+				stdout: () => undefined,
+				stderr: (text) => errors.push(text),
+				color: false,
+			};
+			const file = join(repo, "state-gaps.json");
+			const args = ["review", "main...feature", "--no-walkthrough", "--require-probes", "--probe-gaps", file];
+			expect(await main([...args, ...flags], io), errors.join("")).toBe(code);
+			expect(JSON.parse(readFileSync(file, "utf8"))).toEqual(gaps);
+			expect(Object.keys(requests).filter((match) => (requests[match] ?? []).length > 0)).toEqual(asked);
+		},
+	);
+
+	it("refuses --probe-gaps without --require-probes, and writes nothing", async () => {
+		repo = createRepository();
+		const errors: string[] = [];
+		const file = join(repo, "gaps.json");
+		const io: Io = {
+			cwd: repo,
+			env: { MELIAN_STATE_DIR: join(repo, "state") },
+			stdout: () => undefined,
+			stderr: (text) => errors.push(text),
+			color: false,
+		};
+		expect(await main(["review", "main...feature", "--probe-gaps", file], io)).toBe(64);
+		expect(errors.join("")).toContain(
+			"--probe-gaps writes what --require-probes finds, so it needs --require-probes",
+		);
+		expect(existsSync(file)).toBe(false);
+	});
+
 	it("prints no plan text, skip reason, probe script, file or output in review --json or telemetry --json", async () => {
 		repo = createRepository();
 		commit(repo, {

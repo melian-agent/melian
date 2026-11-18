@@ -114,6 +114,33 @@ describe("RoundComment", () => {
 		);
 	});
 
+	it("says a failed check the round's probe gaps name could not probe here, and points to the log", () => {
+		const gaps = (value) => {
+			const path = join(directory(), "probe-gaps.json");
+			writeFileSync(path, typeof value === "string" ? value : JSON.stringify(value));
+			return path;
+		};
+		const plain = read().body();
+		const unprobed = "  lens.security  failed, since it probes and could not probe here; the round's log names why";
+		const security = { check: "lens.security", level: "deep", cause: "untrusted-writer" };
+		expect(read({ probeGaps: gaps([security]) }).body()).toBe(
+			plain.replace("  lens.security  failed\n", `${unprobed}\n`),
+		);
+		expect(plain).toContain("  lens.security  failed\n");
+		for (const value of [
+			[{ ...security, check: "lens.tests" }],
+			[{ ...security, check: "static.tsc" }],
+			[{ ...security, check: "lens.other" }],
+			[{ ...security, check: "lens.security\n" }],
+			[{ ...security, check: 7 }],
+			[null],
+			{ check: "lens.security" },
+			"not json",
+		])
+			expect(read({ probeGaps: gaps(value) }).body()).toBe(plain);
+		expect(read({ probeGaps: join(directory(), "missing.json") }).body()).toBe(plain);
+	});
+
 	it("reports a not-reviewed verdict as not reviewed, whatever else the run printed", () => {
 		const value = verdict({ status: "not-reviewed", notRun: [{ name: "lens.tests", status: "failed" }] });
 		expect(comment(value, "2")).toBe(
@@ -582,6 +609,13 @@ describe("the command", () => {
 		const ran = spawnSync(process.execPath, [script, ...options, ...commits, ...current], { encoding: "utf8" });
 		expect([ran.status, ran.stderr]).toEqual([0, ""]);
 		expect(ran.stdout).toBe(read({ rounds }).body());
+		const gaps = join(directory(), "probe-gaps.json");
+		writeFileSync(gaps, JSON.stringify([{ check: "lens.security", level: "deep", cause: "no-writer" }]));
+		const probed = spawnSync(process.execPath, [script, ...options, ...commits, ...current, "--probe-gaps", gaps], {
+			encoding: "utf8",
+		});
+		expect([probed.status, probed.stdout]).toEqual([0, read({ rounds, probeGaps: gaps }).body()]);
+		expect(probed.stdout).not.toBe(ran.stdout);
 		const unread = spawnSync(process.execPath, [script, ...options, ...commits], { encoding: "utf8" });
 		expect(unread.stdout).toBe(read({ rounds, current: undefined }).body());
 		const usage =
