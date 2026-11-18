@@ -49,8 +49,24 @@
 			"pullRequest": 525
 		},
 		{
+			"file": "2026-11-17-pr-515-interfaces-mutants.json",
+			"pullRequest": 515
+		},
+		{
+			"file": "2026-11-17-pr-515-policy-commit-mutants.json",
+			"pullRequest": 515
+		},
+		{
+			"file": "2026-11-17-pr-515-proxy-mark-mutants.json",
+			"pullRequest": 515
+		},
+		{
 			"file": "2026-11-18-issue-547-review-fixes-mutants.json",
 			"pullRequest": 552
+		},
+		{
+			"file": "2026-11-18-pr-515-watchdog-import-mutants.json",
+			"pullRequest": 515
 		}
 	],
 	"legacy": [

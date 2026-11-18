@@ -4,7 +4,7 @@
 
 `scripts/check-inventories.mjs` now runs in `npm run check`. A JSON file in the log is an inventory when its top level holds `melianMutants` or a `mutants` array, the keys every inventory writer emits; run logs and other records go unchecked. The check hands each inventory to `sampleMutants`, the sampler's own reader, and fails with its message on one it refuses. It checks every inventory, not only those a change touches, so it needs no history in a shallow clone.
 
-`.unreadable-inventories.json` lists the 52 merged inventories the reader refuses today, 13 at version 2 and 39 legacy, each with its pull request. The list only shrinks: the check fails on an entry the sampler now reads, on one that names a missing file or no inventory, on one filed under the wrong version, and on one dated after 2026-11-18.
+`.unreadable-inventories.json` lists the 56 merged inventories the reader refuses today, 17 at version 2 and 39 legacy, each with its pull request. The list only shrinks: the check fails on an entry the sampler now reads, on one that names a missing file or no inventory, on one filed under the wrong version, and on one dated after 2026-11-18.
 
 The 39 legacy files fail for three reasons, none an older shape the reader was meant to keep reading:
 
@@ -12,4 +12,4 @@ The 39 legacy files fail for three reasons, none an older shape the reader was m
 - 16 leave a row that owes a claim without one.
 - 6 are hand-written, with no `total` or `omitted`, so the reader cannot tell they are complete.
 
-The coordinator chose the shape test and the whole-log scan on 2026-11-18. It guards no trust or durability, so it owes tests and no hand mutation proof. `scripts/check-inventories.test.mjs` covers a refused inventory, with the sampler's message, a readable one, a run log, each way the list can go stale, and the gate's command end to end. The test of the committed log fails until the list names every refused inventory: run first, it found #552's, which merged after the scan.
+The coordinator chose the shape test and the whole-log scan on 2026-11-18. It guards no trust or durability, so it owes tests and no hand mutation proof. `scripts/check-inventories.test.mjs` covers a refused inventory, with the sampler's message, a readable one, a run log, each way the list can go stale, and the gate's command end to end. The test of the committed log fails until the list names every refused inventory: run first, it found #552's, which merged after the scan, and after a merge of `main` four from [pull request #515](https://github.com/melian-agent/melian/pull/515).
