@@ -60,7 +60,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const code = vi.hoisted(() => ({ version: "recorded" }));
 vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version }));
 
-import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { strykerNotInstalled } from "../src/mutation-static.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -3734,6 +3734,36 @@ describe("on a repeat review after a task ended without deciding", () => {
 
 		expect((await entry())?.adjudication?.task).not.toBe(copy);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+
+	it("decides nothing on an adjudication task another build's code created, and says why", async () => {
+		await reviewed({ config: noLenses() });
+		const input = (await entry())!.adjudication!.input;
+		const decided = (await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task;
+		await open();
+		const root = await harness.root(context);
+		const copy = await root.commit(async (tx) => {
+			const created = await tx.createTask(AdjudicationTask, JSON.parse(input), {
+				ownership: { kind: "conversation" },
+			});
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision()]!.adjudication = { task: created, input };
+			return created;
+		}, context);
+		code.version = "other";
+		try {
+			expect((await harness.waitForTask(copy, context)).state.outcome).toEqual({
+				status: "failed",
+				error: {
+					message:
+						"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+				},
+			});
+		} finally {
+			code.version = "recorded";
+		}
+		expect((await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task).toBe(
+			decided,
+		);
 	});
 
 	it.each([

@@ -20,11 +20,17 @@ Record hashes, not numbers. The maintainer's principle, ruled with it: Melian re
 
 TypeScript decides what a producer reaches. The native compiler ships no program API, so the generator asks its command line, `tsc --listFilesOnly`, for the files the producer's entry module reaches under the gate's own configuration and the `@melian-agent/source` condition, which resolves workspace imports to source. Installed packages are left out, since the lockfile pins them; so is the recorded file itself, whose hash would depend on itself. Adjudication's entry is `packages/pipeline/src/adjudication.ts`, which reaches 114 modules in core, pipeline and decisions.
 
-The adjudication attach key, `adjudicationKey`, is the task's input in canonical JSON, core's `canonicalJson`, with `code` set to `codeVersion("adjudication")` beside the input's fields. The review and the dismissal both call it. The input stays readable from the key, as the dismissal, compare and publish read it.
+The adjudication task's input carries `code`, set to `codeVersion("adjudication")` by the build that creates the task. The attach key, `adjudicationKey`, is that input in canonical JSON, core's `canonicalJson`. The review and the dismissal both call it, and the dismissal sets its own build's `code` on the input it reuses. The input stays readable from the key, as the dismissal, compare and publish read it.
+
+## A build decides only its own tasks
+
+Builds share a store, so one can resume a task another created. Example: a review under build A creates an adjudication task, and the process dies before the task decides. Build B, with a changed decider, opens the store and resumes the task. Without a check, B writes its verdict into the round under A's key, and A's next review attaches to a verdict A's code never made.
+
+So the task records the code that may decide it, and its phase fails when `task.input.code` differs from the running build's `codeVersion("adjudication")`, with the reason "another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here". A failed adjudication is always decided again on the next review, which creates a task under the running build's code. The task is version 8, so a build before this change, which cannot check `code`, refuses to run a version 8 task at all. A version 7 task migrates with `code` unset, so it fails under every build and never attaches. `packages/pipeline/test/adjudication-key-reopen.test.ts` reopens a task main left pending, fails it, and decides the revision again on the next review; `review.test.ts` fails a task whose `code` names another build.
 
 ## What a stored head costs
 
-A key stored before this change is main's bare `JSON.stringify` of the input, with no `code`, so it never matches. Each stored head decides again once, on the first review after the upgrade. Adjudication calls no model, and the lens tasks attach as before, so this spends no tokens. `packages/pipeline/test/adjudication-key-reopen.test.ts` reopens a store main's own code wrote and shows it.
+A key stored before this change is main's bare `JSON.stringify` of the input, with no `code`, so it never matches. Each stored head decides again once, on the first review after the upgrade, and a task main left pending fails rather than decides. Adjudication calls no model, and the lens tasks attach as before, so this spends no tokens. `packages/pipeline/test/adjudication-key-reopen.test.ts` reopens a store main's own code wrote and shows it.
 
 ## The layout keeps parallel pull requests apart
 
@@ -38,4 +44,4 @@ A change to an installed package that decides a verdict, such as a Pi Durable re
 
 ## What follows
 
-[Issue #437](https://github.com/melian-agent/melian/issues/437) adds the checks, the verifier, the walkthrough and the decider as producers in the same file and gate test, and replaces the checks' hand-raised numbers. Adjudication's `version: 7` stays: it versions the task's stored shape, which a migration still needs.
+[Issue #437](https://github.com/melian-agent/melian/issues/437) adds the checks, the verifier, the walkthrough and the decider as producers in the same file and gate test, and replaces the checks' hand-raised numbers. Adjudication's task version stays: it versions the task's stored shape, which a migration still needs, and version 8 is the shape that carries `code`.

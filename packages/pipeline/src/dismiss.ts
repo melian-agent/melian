@@ -9,6 +9,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -137,7 +138,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (known === undefined) {
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
-		const { code: _, ...previous } = JSON.parse(known.input) as AdjudicationTaskInput & { code?: string };
+		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
 		const findings = await tx.doc(FindingsDocument, root.id);
 		const recorded = findings.items;
 		// A report's site at this revision, as the snippet pass groups by, among the producers the review selected. A
@@ -181,6 +182,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			checks: previous.checks.map(withLegacyCaveats),
 			repoRoot: checkout,
 			findingsVersion,
+			code: codeVersion("adjudication"),
 		};
 		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
