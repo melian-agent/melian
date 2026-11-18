@@ -1,0 +1,531 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "28320e98b96b8069cfe71849ff34502dab2bd9ff",
+		"head": "e944fefa613685eef6640d725aea8602afa34f01"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts",
+		"packages/pipeline/src/recorded-round.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 831,
+			"column": 22,
+			"endLine": 831,
+			"endColumn": 46,
+			"mutatorName": "LogicalOperator",
+			"replacement": "dismissals.get(id) && []",
+			"status": "generated",
+			"id": "2fba3a79943e3a121f131a738798c16df35f687b181d43e516b878cb735b9379",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 831,
+			"column": 44,
+			"endLine": 831,
+			"endColumn": 46,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "4ad9edc94795d035e56da499ba6fe3dd0705afea5562ce68ee59697bf3291b32",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 8,
+			"endLine": 832,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bc30e87024b781445aa82bbb8fa5d918dbd2f09a3c499dfb3ae8f5fd427035d9",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the latest of two dismissals of one finding, whichever sorts first by ID"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 8,
+			"endLine": 832,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5a0d380a8d6ccd5cc7a3f054a49043c10a4667fa86c2513875713be8076673ee",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 8,
+			"endLine": 832,
+			"endColumn": 69,
+			"mutatorName": "LogicalOperator",
+			"replacement": "holds(each) || shared === undefined || shared.at <= each.at",
+			"status": "generated",
+			"id": "5ebc8676e3e6b5322ac9691e1859bf26cda142e965bffc4d967c566189cb0a29",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the latest of two dismissals of one finding, whichever sorts first by ID"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 24,
+			"endLine": 832,
+			"endColumn": 68,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3e1e616d7f26fa894b592bfd344f28a185acc3c8a3a91820d1c5017ea6183711",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the latest of two dismissals of one finding, whichever sorts first by ID"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 24,
+			"endLine": 832,
+			"endColumn": 68,
+			"mutatorName": "LogicalOperator",
+			"replacement": "shared === undefined && shared.at <= each.at",
+			"status": "generated",
+			"id": "e2d1470dd5696794b150a2e4df13ed27de8ce30a5744f321a7769dc08f7a71d3",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 24,
+			"endLine": 832,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e96ac3e86a4e5e2872e1cdb05e6a3e327c82b9c6de0b48dc4a3ca3978caf26c3",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 24,
+			"endLine": 832,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "shared !== undefined",
+			"status": "generated",
+			"id": "56a375c10d990c55fceec4dbb7b0c1e7e326a7be346f12144ed85331c6312439",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 48,
+			"endLine": 832,
+			"endColumn": 68,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "000fb23b42b99173dc64d016ce7c43e6a8107ebb37c69661022afd375809622d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the latest of two dismissals of one finding, whichever sorts first by ID"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 48,
+			"endLine": 832,
+			"endColumn": 68,
+			"mutatorName": "EqualityOperator",
+			"replacement": "shared.at < each.at",
+			"status": "generated",
+			"id": "cc8736afa639b0e862f6d127929f8182f6749ac944dc9c20581219ecf5d9915c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the dismissal with the greater ID of two made at one time"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 832,
+			"column": 48,
+			"endLine": 832,
+			"endColumn": 68,
+			"mutatorName": "EqualityOperator",
+			"replacement": "shared.at > each.at",
+			"status": "generated",
+			"id": "d09905f423239ea91d549445972a5d681b262823aed635be9e93d4512f9e1135",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies the latest of two dismissals of one finding, whichever sorts first by ID"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 834,
+			"column": 4,
+			"endLine": 834,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c49e2f842a3a7c02d8c03cf181f527e08779f115af79b13fd72d763fddf60338",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 834,
+			"column": 4,
+			"endLine": 834,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "30eba97fe09e905d857b8685ea27d4c1e2c5bbbeb21dcfe39b2d74f4aaa9471a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies no dismissal another record of its finding supersedes, so superseding only ever blocks more"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 834,
+			"column": 4,
+			"endLine": 834,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "shared !== undefined",
+			"status": "generated",
+			"id": "647155464c429feeace6783763aa83e9c197959c47bbeca9ef788f5bf2bb820e",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 835,
+			"column": 7,
+			"endLine": 835,
+			"endColumn": 33,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a8ebb42b2a7b746f02ae396bb82028f3cc9b645caf574ec6422df8e778edb175",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies no dismissal another record of its finding supersedes, so superseding only ever blocks more"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 836,
+			"column": 7,
+			"endLine": 836,
+			"endColumn": 107,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "aa2ae9999b86f3a3d707a5d1806e11fe491b275a52637a54be1cc5115390082f",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 836,
+			"column": 50,
+			"endLine": 836,
+			"endColumn": 105,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "804bec7244fe9e9bf07f81ff841694b93792e0dde45a7169987cde288ea2f070",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 265,
+			"column": 10,
+			"endLine": 265,
+			"endColumn": 104,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2a23b222722648756d80b03720ffbacb1438d682bf8651470a41b921bd99a042",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 273,
+			"column": 24,
+			"endLine": 273,
+			"endColumn": 87,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "dc4a6b5dd6609bb0723e6a00dffcf62370f849cd2033e19a23ac5b8cadaa9e8e",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 273,
+			"column": 29,
+			"endLine": 273,
+			"endColumn": 56,
+			"mutatorName": "LogicalOperator",
+			"replacement": "standing.get(finding) && []",
+			"status": "generated",
+			"id": "2b2103f09eae9fe26579bf57e327f068076e3267bcc5390d7031b11c12726e69",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 273,
+			"column": 54,
+			"endLine": 273,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "41215ef284a99156d1a48c9bc8469b207c8414ece757e8d0cd33a02e3afd7787",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 273,
+			"column": 59,
+			"endLine": 273,
+			"endColumn": 86,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2cedb59d55188b0417fff2609bd198067cd1519544922b98f34ac185403804d7",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read with the dismissals shared beside it",
+						"dismisses a finding as the host does once a later round exports the dismissal"
+					]
+				}
+			}
+		}
+	],
+	"total": 23,
+	"omitted": 0,
+	"unmutated": []
+}
