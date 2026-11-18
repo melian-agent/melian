@@ -1,0 +1,48 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "3a35d3fb0758a4665041e313ffdf3c516e2eb34c",
+    "head": "fb19592bebba65dc607006bb1263c312c6086102"
+  },
+  "claimsIn": [
+    "packages/core/src/enola-paths.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6c0291a239ff88d42c138a7f50ef55d78edb9cea731d50ba2d91aae1dfc7a7c9",
+  "mutants": [
+    {
+      "file": "packages/core/src/enola-paths.ts",
+      "line": 12,
+      "column": 1,
+      "endLine": 12,
+      "endColumn": 4,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "782bd29759a6031e2d472d97137bebfeab1ada31215a61784f44cf1b5443d9bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/enola.test.ts",
+          "path": [
+            "Enola policy and reports",
+            "recognises every policy path and leaves a committed baseline out"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 1,
+  "omitted": 0,
+  "unmutated": []
+}
