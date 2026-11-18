@@ -1,0 +1,677 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "b4dd5bef6c7707701fb335f0071bd4e21050c239",
+		"head": "5d8e1ced114dd9a25c7ce0dc224e9026df276c78"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-reuse.ts",
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "63cf439b04a2a3b44214d85122edf29954c45ee1e783e69344e7d4cd739200ca",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 27,
+			"column": 94,
+			"endLine": 30,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d7c89a30a699bc1ead08931deb4e7058e272ea2123ab086d14c47faaee155dec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 16,
+			"endLine": 28,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b3eab2c0060cf83d4e42e8f89de3f8ef0407d27d87f503758e494e1e4ea032e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"judges a probing run's prober on a tier of its own, which its check is not judged by"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 16,
+			"endLine": 28,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a6bea0e2e8f91f67730347cbb9e20d95c93f7dbf4ed37dbc342f1828c094cd66",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"judges a probing run's prober on its level's own tier, by the level's policy"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 16,
+			"endLine": 28,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probe?.onLevelTier !== true",
+			"status": "generated",
+			"id": "481794d8dbcbf850717cdc78ac02bc6588fe0f4f54bbfe43efd6588de9ee4056",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"judges a probing run's prober on its level's own tier, by the level's policy"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 16,
+			"endLine": 28,
+			"endColumn": 34,
+			"mutatorName": "OptionalChaining",
+			"replacement": "probe.onLevelTier",
+			"status": "generated",
+			"id": "08cfba7c6b286d67ed48f775cc74f38487a857b79bdb575742f26d63d20b4678",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 39,
+			"endLine": 28,
+			"endColumn": 43,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7fa55ca3766029d02708261f89c6f97f0496d4fe6025494d911e204eab30a3af",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"judges a probing run's prober on its level's own tier, by the level's policy"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 28,
+			"column": 46,
+			"endLine": 28,
+			"endColumn": 68,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome.probing.model",
+			"status": "generated",
+			"id": "3cf872e7c0c8a7bdc2b1faa1e10f966a37d83bc4e6001ad3a0ccfa8e27432758",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Every reader passes only a done outcome, and a probing run reaches done only with the probing record the probe step returned, since the step otherwise returns the run's failure in its place, so outcome.probing is always present where onLevelTier is true."
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 8,
+			"endLine": 29,
+			"endColumn": 70,
+			"mutatorName": "MethodExpression",
+			"replacement": "[outcome.model, prober]",
+			"status": "generated",
+			"id": "56d9507e5c9701cad71a651f2d807fd5209f5c820c953fe0636d2ac4f4921636",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a run with no model recorded, since nothing names one to refuse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 8,
+			"endLine": 29,
+			"endColumn": 31,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "71bc0fd681461bfcac77716c66550eab75e89bbe79e79558cd0e8c7e87a1743a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 39,
+			"endLine": 29,
+			"endColumn": 69,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "bf5b805be14fbb253e8388ac30d2386ab0aed603650c0e04a36c1d16bc3d4fb4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 50,
+			"endLine": 29,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f379746880a2c89b36283fd1b631c629e67840dfe289794672ac2096b11fec58",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a run with no model recorded, since nothing names one to refuse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 50,
+			"endLine": 29,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "53f821e28eab2c0139079eb9bfa4943b20f21d2861292f2ee0a97e3ea42de5db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 29,
+			"column": 50,
+			"endLine": 29,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "model === undefined",
+			"status": "generated",
+			"id": "982935776ce60242f070c04b3e8e3651b284fe2a1ddc92ecce8b5b8e0abb6001",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 2,
+			"endLine": 54,
+			"endColumn": 76,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "judgedModels(outcome, run.probe).some(model => refused(run.key, model))",
+			"status": "generated",
+			"id": "a37e622944ad2dc98edbfb883cb4e56aad84c02715eafa6a0ac8f15425da3321",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 3,
+			"endLine": 54,
+			"endColumn": 76,
+			"mutatorName": "MethodExpression",
+			"replacement": "judgedModels(outcome, run.probe).every(model => refused(run.key, model))",
+			"status": "generated",
+			"id": "69f4c0705c8b4ae3f31717be90a2ceb75e863492c5fc73ded61a4b18b4efdb1e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"judges a probing run's prober on its level's own tier, by the level's policy"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 54,
+			"column": 41,
+			"endLine": 54,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "2b807ec634ced08777251f7bbdbb9e866b2ec5d4e4ffd69e04e1dd88d854ce9d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1829,
+			"column": 79,
+			"endLine": 1829,
+			"endColumn": 102,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a79a474c631c03f7e1c68225db207948e949bffd13e91e0f113706246b2eb968",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1829,
+			"column": 88,
+			"endLine": 1829,
+			"endColumn": 102,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "13d2742c87b2e7173bff42edd34c5c309872f6972f4b5b4b35afec01baaaad19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1831,
+			"column": 2,
+			"endLine": 1832,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "6f059e90ea964c57ac4d18319f625cc2364af873f42c08d423161a7f3f518d1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 3,
+			"endLine": 1832,
+			"endColumn": 106,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "23db053d94829f36f9b47595e80d66d1f395edc97f69a710c370ed6cc8c32e66",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 3,
+			"endLine": 1832,
+			"endColumn": 106,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8452b362a204ddd79e1ed452083731379ee77d5cf739bd0685ab1e0b2cc4ffef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 3,
+			"endLine": 1832,
+			"endColumn": 106,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.status !== \"done\" && judgedModels(lens, runs.get(key)?.probe).some(model => refused(key, model))",
+			"status": "generated",
+			"id": "c87cbff484c308e342341127506c72c242b81d012b37210e66add760984d365e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 3,
+			"endLine": 1832,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e968ebdf9cc02690c8ee7dbd6f0fd6256931e794b6bb1809816ac2c6a4a65e59",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 3,
+			"endLine": 1832,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lens.status === \"done\"",
+			"status": "generated",
+			"id": "405e9ed1f822a859b51649c815cdc9d47f2df117ce92890de3d8ad3536994de6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs for a rerun that retries a failed lens, and for none that has nothing to retry"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 19,
+			"endLine": 1832,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "df3a9471261cc9e32ca2b6e2bc8895e46e2bcb4ae4a3965b459802e49fa39514"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 29,
+			"endLine": 1832,
+			"endColumn": 106,
+			"mutatorName": "MethodExpression",
+			"replacement": "judgedModels(lens, runs.get(key)?.probe).every(model => refused(key, model))",
+			"status": "generated",
+			"id": "3bc84565a8be9a5b52973e7a1ca7d6a98d7ef9aa4d6d6744a22b8c2f6d551eb5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 48,
+			"endLine": 1832,
+			"endColumn": 68,
+			"mutatorName": "OptionalChaining",
+			"replacement": "runs.get(key).probe",
+			"status": "generated",
+			"id": "83e3cbfe606ee36690037e1634f1e34208731b0a4e04d530e47ab84f5c9eb679",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Every result key in a task this build writes names a run of that task's own input: the task builds its result from its input's runs and their escalations, and a copy's outcomes carry the keys of runs whose requests match, which hold the name, version and level the key is made of; the chain keeps a stored task whose result names a run its input no longer lists judged by its planner's model, as before."
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1832,
+			"column": 75,
+			"endLine": 1832,
+			"endColumn": 105,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a1a670426c836f4850ca7c0f7e1188c906c506ae30a342b69505267834d792a1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"runs a lens again on --rerun once its prober alone finished on a model the committed tier refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 28,
+	"omitted": 0,
+	"unmutated": []
+}

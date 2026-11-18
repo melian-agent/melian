@@ -1,0 +1,153 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "dd66481a1b15713294c5f7a2b0ad3d1d608680da",
+		"head": "694ce475aeb336111fdb4c2c2fe01cdb9a7950e5"
+	},
+	"claimsIn": [
+		"packages/state-git/src/repository.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 104,
+			"column": 41,
+			"endLine": 108,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b56fcfb2c9f37a6511d41b531cf452081fcd04ce48f84b0447390fe8a9b0bc1f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"removes what a process that has exited left, and keeps the hint ref"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 105,
+			"column": 46,
+			"endLine": 107,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d3c811d395062cab53bd8c64b759532204fa3a98f012e94cd723a2591c1c1783",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep's listing",
+						"removes nothing, and says it could not list every leftover, when a half-made repository cannot be stat'ed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "691d4618bf8b9a8e6540502bd52496ec98e34017346ecc08b1de6a5cb2898f23",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep when the store opens",
+						"passes over an entry that another call removed between the listing and its read"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9955f29fd431fd2a0876ccc6f1daf2b77a9bc865dc364466d91d4385c660e6f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep's listing",
+						"removes nothing, and says it could not list every leftover, when a half-made repository cannot be stat'ed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 106,
+			"column": 6,
+			"endLine": 106,
+			"endColumn": 56,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(cause as NodeJS.ErrnoException).code === \"ENOENT\"",
+			"status": "generated",
+			"id": "f6381f53f519137b5dcd8e17e080431c1c7cea27a011bd678d7101d072e3e057",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/state-git/test/sweep.test.ts",
+					"path": [
+						"the sweep's listing",
+						"removes nothing, and says it could not list every leftover, when a half-made repository cannot be stat'ed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/state-git/src/repository.ts",
+			"line": 106,
+			"column": 48,
+			"endLine": 106,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "36b7359e16a3c506fc395531a6c07af0624ad99d6f97a6e8b3030b5c88e6be6d"
+		}
+	],
+	"total": 6,
+	"omitted": 0,
+	"unmutated": []
+}

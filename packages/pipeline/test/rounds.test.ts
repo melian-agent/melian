@@ -39,6 +39,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
+import type { CheckRunRecord } from "../src/checks.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -402,6 +403,9 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
+// The check as main's rounds fixture recorded it, bare, so a run that carries it reviews the same input.
+const legacyChecks = [{ name: "static.mutation", status: "ran" }] as unknown as CheckRunRecord[];
+
 it.each([
 	undefined,
 	{ base: legacy.key.split("..")[0]!, head: legacy.key.split("..")[1]!, tier: "full", policy: "cli-policy", task: 1 },
@@ -428,8 +432,15 @@ it.each([
 			lenses: [],
 			standards: [],
 			models: fake.review,
-			checks: [{ name: "static.mutation", status: "ran" as const }],
-			checkRun,
+			...(checkRun === undefined
+				? { checks: [{ name: "static.mutation", status: "ran" as const }] }
+				: {
+						checkRun: {
+							identity: checkRun,
+							request: "a".repeat(64),
+							records: legacyChecks,
+						},
+					}),
 		};
 		await reviewChangeset(options);
 		await reviewChangeset(options);
@@ -468,8 +479,11 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 			lenses: [],
 			standards: [],
 			models: fake.review,
-			checks: [{ name: "static.mutation", status: "ran" as const }],
-			checkRun,
+			checkRun: {
+				identity: checkRun,
+				request: "a".repeat(64),
+				records: legacyChecks,
+			},
 		};
 		await reviewChangeset(options);
 		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
@@ -477,7 +491,7 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 		);
 		const attached = structuredClone((await reopened.snapshot(rounds, root.id, context))!);
 		expect(attached.sequence).toBe(0);
-		await reviewChangeset({ ...options, checkRun: { ...checkRun, task: 2 } });
+		await reviewChangeset({ ...options, checkRun: { ...options.checkRun, identity: { ...checkRun, task: 2 } } });
 		const minted = await reopened.snapshot(rounds, root.id, context);
 		expect(minted?.sequence).toBe(1);
 		expect(minted?.items.r1).toMatchObject({ verdict: { status: "passed" } });

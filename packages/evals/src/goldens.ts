@@ -23,6 +23,7 @@ import {
 	type RepositorySource,
 	Revision,
 	Standards,
+	type Verdict,
 	verificationSchema,
 } from "@melian-agent/core";
 import {
@@ -30,10 +31,13 @@ import {
 	configsFor,
 	createMemoryStorage,
 	openReviewHarness,
+	type ProberRecord,
 	type ReviewModels,
+	readFindings,
 	reviewChangeset,
 	type StageTelemetry,
 	TelemetryReader,
+	type WriterTrust,
 } from "@melian-agent/pipeline";
 import { createFakeModels, scriptLenses, unconfinedSandbox } from "@melian-agent/pipeline/testing";
 import Type, { type Static, type TSchema } from "typebox";
@@ -59,7 +63,8 @@ export const goldenEvidenceSchema = Type.Object(
 
 /**
  * The JSON Schema of one expected finding: Martian's golden comment (`comment`, `severity`, `category`), so Martian's
- * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`, and `source`, a check that must be among
+ * judge reads it unchanged, plus the fields Melian matches on (`file` or one of `alternativeFiles`, `rule` or one of
+ * `alternativeRules`, `lines`, the first and last line a finding must overlap, and `source`, a check that must be among
  * the finding's `reportedBy`, such as `lens.tests`) and those a scripted run checks (`cause`, `failureScenario`,
  * `evidence`).
  */
@@ -76,6 +81,8 @@ export const goldenCommentSchema = Type.Object(
 		file: text,
 		alternativeFiles: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
 		rule: text,
+		alternativeRules: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
+		lines: Type.Optional(Type.Tuple([Type.Integer({ minimum: 1 }), Type.Integer({ minimum: 1 })])),
 		source: Type.Optional(text),
 		cause: causeSchema,
 		failureScenario: text,
@@ -312,12 +319,38 @@ export type GoldenMode =
 			/** A separate verifier route for a live run. */
 			readonly verifierModel?: string;
 			readonly thinking?: EvalThinking;
+			/** One combination of a probing measurement, applied after `thinking`. */
+			readonly probing?: ProbingRoute;
 	  };
 
-/** A golden's review: the findings, and the terminal rendering an author would see. */
-export interface GoldenRun {
+/** A live golden mode, the only kind that can review a range outside the corpus. */
+export type LiveGoldenMode = Extract<GoldenMode, { kind: "live" }>;
+
+/** Re-routes a run's policy and lenses for one combination a probing measurement runs. */
+export interface ProbingRoute {
+	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] };
+}
+
+/** A range of a clone to review as a golden is reviewed: its base commit, the range, and whose code its head is. */
+export interface ReviewTarget {
+	readonly repo: string;
+	readonly base: string;
+	readonly range: string;
+	readonly writer: WriterTrust;
+	/** Narrows the base's policy and lenses before the mode routes them. */
+	readonly scope?: (
+		config: MelianConfig,
+		lenses: readonly Lens[],
+	) => { config: MelianConfig; lenses: readonly Lens[] };
+	/** A check whose own sightings at the head the run also returns, unmerged with any other check's. */
+	readonly sightingsOf?: string;
+}
+
+/** A range's review: the findings, the terminal rendering an author would see, and what each lens ran on. */
+export interface RangeRun {
 	readonly telemetry: StageTelemetry;
-	readonly golden: Golden;
+	/** Each prober stage's record, by stage ID: model and head text that telemetry leaves out, for a local results file. */
+	readonly probers: Readonly<Record<string, ProberRecord>>;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
@@ -327,6 +360,20 @@ export interface GoldenRun {
 	 * planned and probed.
 	 */
 	readonly notes: readonly { readonly reason: string; readonly checks: readonly string[] }[];
+	/** The tier each lens that ran was routed by, by check name. A lens on its own route has none. */
+	readonly tiers: Readonly<Record<string, LensTier>>;
+	/**
+	 * The target's `sightingsOf` check's findings at the head as it reported them: its own lines, message and failure
+	 * scenario, before the verdict merged them with another check's. Absent when the target names no check.
+	 */
+	readonly sightings?: readonly Finding[];
+	/** The review's verdict. Its {@link Verdict.all} holds every claim it adjudicated, refuted and dismissed ones too. */
+	readonly verdict: Verdict;
+}
+
+/** A golden's review. */
+export interface GoldenRun extends RangeRun {
+	readonly golden: Golden;
 }
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
@@ -364,6 +411,37 @@ async function guardrailFindings(
 	return findings.map((finding) => finding.resolved(policyFor(finding.properties.path, finding.ruleId)));
 }
 
+// One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
+async function detached(
+	storage: ReturnType<typeof createMemoryStorage>,
+	revision: string,
+): Promise<{ telemetry: StageTelemetry; probers: Record<string, ProberRecord> }> {
+	const reader = TelemetryReader.open(storage);
+	const telemetry = await reader.read(revision);
+	const probers: Record<string, ProberRecord> = {};
+	for (const stage of telemetry.stages) {
+		const record = await reader.proberRecord(stage);
+		if (record !== undefined) probers[stage.id] = record;
+	}
+	return { telemetry, probers };
+}
+
+export async function sightingsAt(
+	reader: Parameters<typeof readFindings>[0],
+	root: Parameters<typeof readFindings>[1],
+	revision: string,
+	check: string,
+): Promise<readonly Finding[]> {
+	const read = (version?: string) =>
+		readFindings(reader, root, revision, backgroundContext, { producers: [{ check, version }], asReported: true });
+	const versions = new Set(
+		(await read()).flatMap((merged) =>
+			(merged.properties.reportedBy ?? [merged.properties.source]).map((source) => source.version),
+		),
+	);
+	return (await Promise.all([...versions].map(read))).flat();
+}
+
 /**
  * Reviews a golden's change the way the CLI will: policy, standards, and lenses from the base commit, the range
  * `main...feature`, and every lens the change selects. Scripted runs answer each lens from `script.json` on the fake
@@ -372,90 +450,144 @@ async function guardrailFindings(
 export async function runGolden(golden: Golden, mode: GoldenMode): Promise<GoldenRun> {
 	const { repo, base } = buildGoldenRepository(golden);
 	try {
-		const source: RepositorySource = { kind: "revision", commit: base };
-		const changeset = await Changeset.resolve(repo, "main...feature");
-		const paths = changeset.revision.paths();
-		const lenses = await Lens.load(repo, source, paths);
-		const standards = await Standards.load(repo, source, paths);
-		const { config: loaded } = await loadConfig(repo, source, ".");
-		let models: ReviewModels;
-		let config: MelianConfig;
-		const toolMismatches: string[] = [];
-		if (mode.kind === "scripted") {
-			const fake = createFakeModels({ models: [{ id: "scripted" }] });
-			const ref = fake.ref("scripted");
-			config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
-			config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
-			models = fake.review;
-			scriptLenses(fake, lenses, { ...golden.script, verifier: golden.verifier ?? {} }, toolMismatches);
-		} else {
-			config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
-			const verifier = mode.verifierModel ?? mode.model;
-			if (verifier !== undefined)
-				config = {
-					...config,
-					models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
-				};
-			models = mode.models;
-		}
-		if (mode.kind === "live" && mode.thinking !== undefined) config = mode.thinking.apply(config);
-		// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
-		// golden's own allowSkip could excuse the lens it measures.
-		const tier = config.stages["pull-request"] ?? "full";
-		const hostChecks = checksOfTier(config, tier).filter((name) =>
-			(deterministicChecks as readonly string[]).includes(name),
-		);
-		config = { ...config, checks: { allowSkip: hostChecks } };
-		const checks = hostChecks.map(
-			(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
-		);
-		const storage = createMemoryStorage();
-		const reviewHarness = await openReviewHarness(storage, models, {
-			retry: mode.kind !== "scripted",
-			...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
-		});
-		try {
-			// The golden's repository is built here from the corpus, so its head is the reviewer's own.
-			const writer = { trusted: true, by: "reviewer" } as const;
-			const review = {
-				harness: reviewHarness,
-				changeset,
-				config,
-				lenses,
-				standards,
-				models,
-				policy: source,
-				writer,
-				tier,
-				checks,
-			};
-			const reviewed = await reviewChangeset(review);
-			const status = reviewed.verdict.reviewStatus();
-			if (status.state === "error") throw new Error(status.description);
-			// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
-			const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
-			if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
-			const findings = [
-				...Object.values(reviewed.verdict.findings).flat(),
-				...(await guardrailFindings(golden, repo, changeset, source)),
-			];
-			const rendered = FindingsLog.of(findings).render();
-			return {
-				golden,
-				findings,
-				rendered,
-				toolMismatches,
-				notes: reviewed.verdict.lensNotes(),
-				telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
-			};
-		} catch (error) {
-			throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
-		} finally {
-			await reviewHarness.close(backgroundContext);
-		}
+		// The golden's repository is built here from the corpus, so its head is the reviewer's own.
+		const target = { repo, base, range: "main...feature", writer: { trusted: true, by: "reviewer" } } as const;
+		return { golden, ...(await reviewTarget(target, mode, golden)) };
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
 	}
+}
+
+/**
+ * Reviews `target` live as {@link runGolden} reviews a golden: policy, standards, and lenses from its base, the checks a
+ * host runs without a model skipped, and no score for a review that is not reviewed or whose probes did not run.
+ */
+export function runRange(target: ReviewTarget, mode: LiveGoldenMode): Promise<RangeRun> {
+	return reviewTarget(target, mode, undefined);
+}
+
+async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Golden | undefined): Promise<RangeRun> {
+	const { repo, base } = target;
+	const source: RepositorySource = { kind: "revision", commit: base };
+	const changeset = await Changeset.resolve(repo, target.range);
+	const paths = changeset.revision.paths();
+	const standards = await Standards.load(repo, source, paths);
+	const scoped = {
+		config: (await loadConfig(repo, source, ".")).config,
+		lenses: await Lens.load(repo, source, paths),
+	};
+	const { config: loaded, lenses: loadedLenses } = target.scope?.(scoped.config, scoped.lenses) ?? scoped;
+	let lenses = [...loadedLenses];
+	let models: ReviewModels;
+	let config: MelianConfig;
+	const toolMismatches: string[] = [];
+	if (mode.kind === "scripted") {
+		const fake = createFakeModels({ models: [{ id: "scripted" }] });
+		const ref = fake.ref("scripted");
+		config = routeEveryTier(loaded, `${ref.provider}/${ref.modelId}`, true);
+		config = { ...config, models: { ...config.models, verifier: { model: `${ref.provider}/${ref.modelId}` } } };
+		models = fake.review;
+		scriptLenses(fake, lenses, { ...golden!.script, verifier: golden!.verifier ?? {} }, toolMismatches);
+	} else {
+		config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
+		const verifier = mode.verifierModel ?? mode.model;
+		if (verifier !== undefined)
+			config = {
+				...config,
+				models: { ...config.models, verifier: { model: verifier, thinking: config.models.verifier?.thinking } },
+			};
+		models = mode.models;
+		if (mode.thinking !== undefined) config = mode.thinking.apply(config);
+		if (mode.probing !== undefined) {
+			const routed = mode.probing.routed(config, lenses);
+			config = routed.config;
+			lenses = [...routed.lenses];
+		}
+	}
+	// A golden measures its lenses, so the checks a host runs without a model, and only those, skip with leave: a
+	// golden's own allowSkip could excuse the lens it measures.
+	const tier = config.stages["pull-request"] ?? "full";
+	const hostChecks = checksOfTier(config, tier).filter((name) =>
+		(deterministicChecks as readonly string[]).includes(name),
+	);
+	config = { ...config, checks: { allowSkip: hostChecks } };
+	const checks = hostChecks.map(
+		(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
+	);
+	const storage = createMemoryStorage();
+	const reviewHarness = await openReviewHarness(storage, models, {
+		retry: mode.kind !== "scripted",
+		...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
+	});
+	try {
+		const review = {
+			harness: reviewHarness,
+			changeset,
+			config,
+			lenses,
+			standards,
+			models,
+			policy: source,
+			writer: target.writer,
+			tier,
+			checks,
+		};
+		const reviewed = await reviewChangeset(review);
+		const status = reviewed.verdict.reviewStatus();
+		if (status.state === "error") throw new Error(status.description);
+		// The review records a level's fallback without probes only as this note, and a golden that probes measures probes.
+		const unprobed = (reviewed.verdict.ran ?? []).find(({ reason }) => reason?.includes(" ran without probes"));
+		if (unprobed !== undefined) throw new Error(`${unprobed.name}: ${unprobed.reason}`);
+		const findings = [
+			...Object.values(reviewed.verdict.findings).flat(),
+			...(golden === undefined ? [] : await guardrailFindings(golden, repo, changeset, source)),
+		];
+		const sightingsOf = target.sightingsOf;
+		const sightings =
+			sightingsOf === undefined
+				? {}
+				: {
+						sightings: await sightingsAt(
+							reviewHarness.harness,
+							(await reviewHarness.harness.root(backgroundContext)).id,
+							Revision.key(changeset.revision),
+							sightingsOf,
+						),
+					};
+		return {
+			findings,
+			...sightings,
+			rendered: FindingsLog.of(findings).render(),
+			toolMismatches,
+			notes: reviewed.verdict.lensNotes(),
+			tiers: tiersRun(reviewed.verdict.ran ?? [], lenses, config),
+			verdict: reviewed.verdict,
+			...(await detached(storage, Revision.key(changeset.revision))),
+		};
+	} catch (error) {
+		const { telemetry, probers } = await detached(storage, Revision.key(changeset.revision));
+		throw new GoldenRunError(error, telemetry, probers);
+	} finally {
+		await reviewHarness.close(backgroundContext);
+	}
+}
+
+// The tier routes a lens's level as the review routes it without a plan: none for a lens with its own route, else the
+// level's tier once configuration has tuned the lens.
+function tiersRun(
+	ran: readonly CheckRecord[],
+	lenses: readonly Lens[],
+	config: MelianConfig,
+): Record<string, LensTier> {
+	const tiers: Record<string, LensTier> = {};
+	for (const record of ran) {
+		const lens = lenses.find((each) => `lens.${each.name}` === record.name);
+		if (lens === undefined || record.level === undefined) continue;
+		const settings = Object.hasOwn(config.lenses, lens.name) ? config.lenses[lens.name] : undefined;
+		if (settings?.route !== undefined) continue;
+		tiers[record.name] = lens.configured(settings).level(record.level).tier;
+	}
+	return tiers;
 }
 
 /**
@@ -497,8 +629,8 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 }
 
 /**
- * How well one review matched its golden. A finding matches an expected one with the same file and rule, reported by
- * the expected one's `source` when it names one.
+ * How well one review matched its golden. A finding matches an expected one at its file or an alternative, under its
+ * rule or an alternative, overlapping its `lines` when it names them, and reported by its `source` when it names one.
  */
 export interface GoldenScore {
 	readonly golden: string;
@@ -514,25 +646,55 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-function matchesClaim(comment: GoldenComment, claim: MemberClaim): boolean {
+// What a match reads of an expected finding.
+type ExpectedClaim = Pick<
+	GoldenComment,
+	"file" | "alternativeFiles" | "rule" | "alternativeRules" | "lines" | "source"
+>;
+
+function namesRule(comment: ExpectedClaim, rule: string): boolean {
+	return rule === comment.rule || (comment.alternativeRules ?? []).includes(rule);
+}
+
+function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 	return (
 		claim.verification?.verdict !== "refuted" &&
-		claim.ruleId === comment.rule &&
+		namesRule(comment, claim.ruleId) &&
 		(comment.source === undefined || claim.source.check === comment.source)
 	);
 }
 
+function within(comment: ExpectedClaim, file: string, start: number, end: number): boolean {
+	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(file)) return false;
+	return comment.lines === undefined || (comment.lines[0] <= end && start <= comment.lines[1]);
+}
+
+// A merged claim keeps its own evidence but not the speaker's place, so lines are read from its cause on the head, in
+// the speaker's file alone, as before lines: a cause in another file would let one claim answer expectations in both.
+function claimWithin(comment: ExpectedClaim, claim: MemberClaim, path: string): boolean {
+	return (claim.evidence ?? []).some(
+		(each) =>
+			each.role === "cause" &&
+			each.revision === "head" &&
+			each.file === path &&
+			within(comment, each.file, each.startLine, each.endLine ?? each.startLine),
+	);
+}
+
 // Match a merged defect through the claim that supplied the expected rule and source.
-function answers(comment: GoldenComment, finding: Finding): boolean {
+export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
+	const here = comment.lines === undefined ? within(comment, path, 0, 0) : within(comment, path, ...finding.lines());
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (finding.ruleId !== comment.rule) return false;
 	const original = otherClaims.find(
 		(claim) =>
 			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
 	);
+	// The speaker's own claim is placed where the speaker is, whether or not a merge copied it among the claims.
+	const placed = (claim: MemberClaim) =>
+		comment.lines === undefined || claim === original ? here : claimWithin(comment, claim, path);
+	if (otherClaims.some((claim) => matchesClaim(comment, claim) && placed(claim))) return true;
+	if (!here || !namesRule(comment, finding.ruleId)) return false;
 	if ((original ?? finding.properties).verification?.verdict === "refuted") return false;
 	if (comment.source === undefined) return true;
 	return (reportedBy ?? (source === undefined ? [] : [source])).some(
@@ -543,15 +705,24 @@ function answers(comment: GoldenComment, finding: Finding): boolean {
 }
 
 /**
- * Scores adjudicated defects against their expected file alternatives, rule and source. An expected
+ * Scores adjudicated defects against their expected file and rule alternatives, lines and source. An expected
  * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
- * expectation is a false positive, since it is the same defect reported twice.
+ * expectation is a false positive, since it is the same defect reported twice. An expectation counts as found when any
+ * finding fits it, so no two expectations of a golden may share a file, a rule and a source, and one that names no
+ * source shares any: one broad finding would count as found for both, whatever their lines.
  */
 export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
 	const expected = [
 		...new Map(
 			golden.expected.comments.map((comment) => [
-				JSON.stringify([comment.file, comment.alternativeFiles, comment.rule, comment.source]),
+				JSON.stringify([
+					comment.file,
+					comment.alternativeFiles,
+					comment.rule,
+					comment.alternativeRules,
+					comment.lines,
+					comment.source,
+				]),
 				comment,
 			]),
 		).values(),

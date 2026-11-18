@@ -1,0 +1,458 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "1b7fa6234acbfc7e1736fb9102bf69500e35b7a2",
+    "head": "7da2934fc6377c20c2b8bace6791c84460b55faa"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/probing.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/core/src/verification.ts",
+      "line": 83,
+      "column": 61,
+      "endLine": 87,
+      "endColumn": 1,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "5d55e87de34ad662059bc7cad7c9caa6f4bc6cd016005cc335ea013f91376e1a"
+    },
+    {
+      "file": "packages/core/src/verification.ts",
+      "line": 84,
+      "column": 1,
+      "endLine": 84,
+      "endColumn": 22,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0e76fe671caaa73a7a5c504d5dd37ef0c5bc0d3a2025dd3f5bc8be94db27e966"
+    },
+    {
+      "file": "packages/core/src/verification.ts",
+      "line": 85,
+      "column": 1,
+      "endLine": 85,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "00ac4593d291a50e5ff8a7a6931ec552bb9d144a376bf765e605073e99bf15eb"
+    },
+    {
+      "file": "packages/core/src/verification.ts",
+      "line": 86,
+      "column": 1,
+      "endLine": 86,
+      "endColumn": 13,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "22708844030bc133be5f3fca8aef59b36a567ff61bcc917b2605bbb33de66bbf"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 8,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c3743e0410552a5a528063230de7b5c132e8c17e2d9d221f400bafe2f1b269a9"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 8,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f93c1e71b26fac18df03eb7db90b2cf6e5c12c6bec603a0c0fa61bcc1096e4b6"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 8,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "LogicalOperator",
+      "replacement": "trustFloorChecks.has(claim.source.check) && claim.ruleId === \"untested-behaviour\"",
+      "status": "generated",
+      "id": "1e92e2a2295edcb42a05af606420a4264650ce40698661892ac08d69f4480645"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 52,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a2000746f00cd1173ae4a52a1c2194b50e6155e48cc87faa458ee9761649e009"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 52,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "EqualityOperator",
+      "replacement": "claim.ruleId !== \"untested-behaviour\"",
+      "status": "generated",
+      "id": "948df3a19d098052eca1ad9d5ecd062073310d2d06e4c00e4377ef3c5ca9fa09"
+    },
+    {
+      "file": "packages/pipeline/src/findings.ts",
+      "line": 1022,
+      "column": 69,
+      "endLine": 1022,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "738a60fb22da668b1eb4014362345a19249b56b3ef90d20af51e82793d79f18e"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 117,
+      "column": 9,
+      "endLine": 117,
+      "endColumn": 52,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "04f483aede3bc055b3f7d57dca38c4eafd25c6e45f5c4579d34487643e50e80a"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 118,
+      "column": 8,
+      "endLine": 118,
+      "endColumn": 50,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "51bab8a6eef82a0a2f09bc625deccf607187b3830f2e7839a17c8b7e22e2e2d2"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 577,
+      "column": 14,
+      "endLine": 582,
+      "endColumn": 18,
+      "mutatorName": "MethodExpression",
+      "replacement": "[part(fill(probeEvidenceCutWording.before, {\n  number: claim.attack\n}))(rows.slice(0, claim.attack - 1).join(\"\\n\")), rows[claim.attack - 1], part(fill(probeEvidenceCutWording.after, {\n  number: claim.attack\n}))(rows.slice(claim.attack).join(\"\\n\"))]",
+      "status": "generated",
+      "id": "ba526412b9875c342d50050d0ff3943499009cc91eaaccccaf982055eb10e2cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 577,
+      "column": 14,
+      "endLine": 581,
+      "endColumn": 2,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "4f6ef773b949c37e47466350917a01439b27a0b7eb8c093cae9b5c5f9aefbedc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 578,
+      "column": 44,
+      "endLine": 578,
+      "endColumn": 68,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "52f00f4efe0834dc28a77b3e91b6b2e53f46cd5836a643eea071d3327ef090e1",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "keeps whole the plan's row for the attack each cut claim's probe answered"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 578,
+      "column": 71,
+      "endLine": 578,
+      "endColumn": 102,
+      "mutatorName": "MethodExpression",
+      "replacement": "rows",
+      "status": "generated",
+      "id": "88875f0f13470afda036c1e76e931ac18e6f24003ca48e023acbf190add32d09",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 578,
+      "column": 85,
+      "endLine": 578,
+      "endColumn": 101,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "claim.attack + 1",
+      "status": "generated",
+      "id": "b2f835710fbce6582c8350e44a7206ef26a770b3ac668b3e213ef4fb80047f8f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 578,
+      "column": 108,
+      "endLine": 578,
+      "endColumn": 112,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1c56c183fea7e006d477bb90b4de7e422b10c3c96500f0deff8e631e333e08f9"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 579,
+      "column": 7,
+      "endLine": 579,
+      "endColumn": 23,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "claim.attack + 1",
+      "status": "generated",
+      "id": "323a04c4bc3d956afc8b76a7e046ea70a851dc816809846f2fb603c0337fcc1a",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "keeps whole the plan's row for the attack each cut claim's probe answered"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 580,
+      "column": 43,
+      "endLine": 580,
+      "endColumn": 67,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "23e77237157f3151bca5c872d01e48cf9e3e26ffa70e91314ee112692f395039",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "keeps whole the plan's row for the attack each cut claim's probe answered"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 580,
+      "column": 70,
+      "endLine": 580,
+      "endColumn": 94,
+      "mutatorName": "MethodExpression",
+      "replacement": "rows",
+      "status": "generated",
+      "id": "5d9f463cb045d692d1e56c188c5b2a995c6fcc949eab4f4d29c58008515fe774",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+          "path": [
+            "renders every probe evidence on every branch as the golden holds it, the same on a second call"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 580,
+      "column": 100,
+      "endLine": 580,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "686426523e7e33e68c92de55535e0ce436f64cf4febbdb545d1356b70c35e38a"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 583,
+      "column": 8,
+      "endLine": 583,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4858d3ff568d5ce9fc664767c91197d6396f5666cc200d146e9e51144ad0c983"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 672,
+      "column": 28,
+      "endLine": 672,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c6b1dbacd1cab813c1d0bfa1c159779e2752dae8bd748d811a8c6fc63075ba0b"
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 676,
+      "column": 17,
+      "endLine": 683,
+      "endColumn": 4,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "51d656e92eadb939e975aa4db844c66fd1a6c1ead96341990090d5ab196c9f17",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 677,
+      "column": 31,
+      "endLine": 683,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "3795e05fc8fe568cf1ceddfa27268ec4b12366de6316b1ac3466addbabda98aa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "fits three merged claims at every limit within the budget, keeping each cut part's ends"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/probing.ts",
+      "line": 678,
+      "column": 11,
+      "endLine": 678,
+      "endColumn": 20,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "2c6ba4309835db3603a1c4d921b904f1dc4ed09bc2d725975228f2a25e4efdee",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probe-evidence-bound.test.ts",
+          "path": [
+            "boundProbeEvidence",
+            "keeps whole the plan's row for the attack each cut claim's probe answered"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 27,
+  "omitted": 0,
+  "unmutated": []
+}

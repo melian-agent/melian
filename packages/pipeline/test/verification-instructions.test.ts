@@ -2,7 +2,7 @@ import { verificationQuestions } from "@melian-agent/core";
 import Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import { reportVerdict } from "../src/lens-tools.ts";
-import { probeEvidenceRenderings, probeEvidenceWording, probingWording } from "../src/probing.ts";
+import { evidenceWordingOf, probeEvidenceRenderings, probingWording } from "../src/probing.ts";
 import {
 	computeVerifierVersion,
 	reportVerdictSchema,
@@ -24,7 +24,7 @@ describe("the production verifier version", () => {
 
 	it("changes when any fixed wording a verifier reads of a claim's probe changes", () => {
 		const wording = {
-			...probeEvidenceWording,
+			...evidenceWordingOf("trust-boundary"),
 			planRow: probingWording.planRow,
 			renderings: probeEvidenceRenderings(),
 		};

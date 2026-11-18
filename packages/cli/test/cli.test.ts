@@ -18,6 +18,7 @@ import {
 	type DecisionRequest,
 	DirectoryRecordStore,
 	findingId,
+	KeyedRequest,
 	Rendering,
 	reviewPayloads,
 	SharedRecord,
@@ -26,7 +27,14 @@ import {
 	Verdict,
 } from "@melian-agent/core";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
-import { type PrepareRecord, ReviewHarness, type Stage, TelemetryReader, type Untimed } from "@melian-agent/pipeline";
+import {
+	type PrepareRecord,
+	ReviewHarness,
+	type Stage,
+	TelemetryReader,
+	type Untimed,
+	withheld,
+} from "@melian-agent/pipeline";
 import * as pipelineTesting from "@melian-agent/pipeline/testing";
 import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
@@ -565,9 +573,17 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const changesets = readdirSync(join(store, "changesets"));
 		expect(changesets).toHaveLength(1);
 		const records = await DirectoryRecordStore.open(store, reviewPayloads);
-		const kinds = (await records.list(changesets[0]!)).map(({ kind }) => kind);
+		const listed = await records.list(changesets[0]!);
 		await records.close();
-		expect(new Set(kinds)).toEqual(new Set(["account", "check", "lens", "round"]));
+		expect(new Set(listed.map(({ kind }) => kind))).toEqual(new Set(["account", "check", "lens", "round"]));
+		// Each check record is keyed on the request the review's checks ran under, never on none.
+		const checks = listed.filter(({ kind }) => kind === "check");
+		expect(checks.length).toBeGreaterThan(0);
+		for (const { key, revision, payload } of checks) {
+			const [base, head] = revision!.split("..");
+			const name = (payload as { result: { name: string } }).result.name;
+			expect(key).not.toBe(KeyedRequest.of("check.record", { request: null, base, head, name }).key);
+		}
 	});
 
 	it("reviews under a base that trusts writers without --records, and exports nothing", () => {
@@ -674,7 +690,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect([plain.status, all.status, notes.status]).toEqual([0, 0, 0]);
 		expect(plain.stdout).toBe(shown({}));
 		expect(all.stdout).toBe(shown({ all: true }));
-		expect(notes.stdout).toBe(shown({ notes: true }));
+		// A record holds a fixed sentence in place of the note the host kept, and the reader shows it.
+		const note = "Callers unavailable: Enola executable not-fetched";
+		expect(shown({ notes: true })).toContain(note);
+		expect(notes.stdout).toBe(shown({ notes: true }).replace(note, withheld));
 		expect(all.stdout).not.toBe(plain.stdout);
 		expect(notes.stdout).not.toBe(plain.stdout);
 	});
@@ -1064,6 +1083,26 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(review.status).toBe(3);
 		expect(review.stdout).toMatch(/^Verdict: findings\n/);
 		expect(review.stdout).toContain("biome/suspicious/noDoubleEquals");
+	});
+
+	it("exports what Biome finds, from the run this review's checks made", { timeout: 120_000 }, async () => {
+		const { repo, env } = staticCheckout("export const b = (x: number) => x == 1;\n");
+		policyBase(repo, "trusting", "trust:\n  writers: true\n");
+		const store = join(scratch, "records");
+
+		const review = melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+
+		expect(review.status).toBe(3);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const listed = await records.list(changeset!);
+		await records.close();
+		const biome = listed.find(
+			({ kind, payload }) =>
+				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
+		)!.payload as { result: { status: string }; sightings: { ruleId: string }[] };
+		expect(biome.result.status).toBe("ran");
+		expect(biome.sightings.map(({ ruleId }) => ruleId)).toEqual(["biome/suspicious/noDoubleEquals"]);
 	});
 
 	// Issue #281: Biome and tsc quote files a head's configuration or sources lead them to, outside the checkout too.

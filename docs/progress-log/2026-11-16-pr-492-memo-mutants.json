@@ -1,0 +1,59 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "cd3f57d0084523fb282a26d9683d2ddb68a012cd",
+    "head": "041b785600e46ce81f76fb4a97e3cb4672ab2570"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/lens-tools.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 884,
+      "column": 16,
+      "endLine": 884,
+      "endColumn": 73,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "cc25cd375c34183b54428a8946490cc5285ac8da2a435c616f064ea0f77ff629",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/list-mutants.test.ts",
+          "path": [
+            "list_mutants",
+            "enumerates again for another review of the same head, which may resolve another instrumenter"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/lens-tools.ts",
+      "line": 884,
+      "column": 79,
+      "endLine": 884,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "31a4c7f3b128e9744a16d2668d946dd6b5cd2f1392d80e54399178b9e508dd5f"
+    }
+  ],
+  "total": 2,
+  "omitted": 0,
+  "unmutated": []
+}

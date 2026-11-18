@@ -1,0 +1,936 @@
+{
+ "total": 62,
+ "omitted": 0,
+ "unmutated": [],
+ "range": "origin/main...HEAD",
+ "mutants": [
+  {
+   "file": "packages/core/src/probing-wording.ts",
+   "line": 18,
+   "column": 1,
+   "endLine": 18,
+   "endColumn": 890,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "claimedAt": 18,
+   "run": "not run"
+  },
+  {
+   "file": "packages/core/src/probing-wording.ts",
+   "line": 29,
+   "column": 2,
+   "endLine": 29,
+   "endColumn": 557,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "claimedAt": 29,
+   "run": "not run"
+  },
+  {
+   "file": "packages/core/src/probing-wording.ts",
+   "line": 55,
+   "column": 2,
+   "endLine": 55,
+   "endColumn": 485,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "claimedAt": 55,
+   "run": "not run"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 83,
+   "column": 51,
+   "endLine": 83,
+   "endColumn": 85,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts::an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "claimedAt": 83,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 83,
+   "column": 79,
+   "endLine": 83,
+   "endColumn": 83,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts::an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [],
+   "claimedAt": 83,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 34,
+   "endLine": 84,
+   "endColumn": 94,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts::an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 84,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 48,
+   "endLine": 84,
+   "endColumn": 62,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts::an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 84,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 78,
+   "endLine": 84,
+   "endColumn": 92,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts::an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 84,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 637,
+   "column": 66,
+   "endLine": 639,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 637,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "LogicalOperator",
+   "replacement": "rule === comment.rule && (comment.alternativeRules ?? []).includes(rule)",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rule !== comment.rule",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 34,
+   "endLine": 638,
+   "endColumn": 64,
+   "mutatorName": "LogicalOperator",
+   "replacement": "comment.alternativeRules && []",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "claimedAt": 638,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 62,
+   "endLine": 638,
+   "endColumn": 64,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A seeded rule matches only a finding whose rule is the literal text Stryker writes, which no lens declares; with alternativeRules unset every test's finding names a real rule.",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "claimedAt": 638,
+   "run": "not run"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "claimedAt": 653,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "claimedAt": 653,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines === undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "claimedAt": 653,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 34,
+   "endLine": 656,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "claimedAt": 653,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "end < comment.lines[0] && comment.lines[1] < start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "end <= comment.lines[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "end >= comment.lines[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines[1] <= start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines[1] >= start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 65,
+   "endLine": 655,
+   "endColumn": 70,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "claimedAt": 655,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "namesRule(comment, finding.ruleId)",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 659,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 659,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 659,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 49,
+   "endLine": 659,
+   "endColumn": 54,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "claimedAt": 659,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 684,
+   "column": 19,
+   "endLine": 691,
+   "endColumn": 5,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > keeps two expectations apart that differ only in their lines or their alternative rules",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 682,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 44,
+   "column": 2,
+   "endLine": 44,
+   "endColumn": 567,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "claimedAt": 44,
+   "run": "not run"
+  },
+  {
+   "file": "packages/pipeline/src/probing.ts",
+   "line": 60,
+   "column": 2,
+   "endLine": 60,
+   "endColumn": 602,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal of the wording table, which the wording and golden tests hold whole.",
+   "claimedAt": 60,
+   "run": "not run"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 913,
+   "column": 9,
+   "endLine": 913,
+   "endColumn": 98,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 913,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 913,
+   "column": 48,
+   "endLine": 913,
+   "endColumn": 95,
+   "mutatorName": "LogicalOperator",
+   "replacement": "probing!.timeout && probeLimits.timeout.default",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > runs the prober on its own tier, model and time limit, and the planner on the level's",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "claimedAt": 913,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 953,
+   "column": 32,
+   "endLine": 980,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 953,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 955,
+   "column": 15,
+   "endLine": 957,
+   "endColumn": 77,
+   "mutatorName": "MethodExpression",
+   "replacement": "Object.entries(probed.skips ?? {}).map(([attack, reason]): [number, string] => [Number(attack), reason])",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 955,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 955,
+   "column": 30,
+   "endLine": 955,
+   "endColumn": 48,
+   "mutatorName": "LogicalOperator",
+   "replacement": "probed.skips && {}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "nullish-logical",
+    "seeded-default"
+   ],
+   "claimedAt": 955,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 956,
+   "column": 7,
+   "endLine": 956,
+   "endColumn": 71,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 956,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 956,
+   "column": 47,
+   "endLine": 956,
+   "endColumn": 71,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 956,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 10,
+   "endLine": 957,
+   "endColumn": 76,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 24,
+   "endLine": 957,
+   "endColumn": 76,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "probes.some(([, probe]) => probe.attack === attack)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 25,
+   "endLine": 957,
+   "endColumn": 76,
+   "mutatorName": "MethodExpression",
+   "replacement": "probes.every(([, probe]) => probe.attack === attack)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "some-every"
+   ],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 37,
+   "endLine": 957,
+   "endColumn": 75,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 52,
+   "endLine": 957,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 52,
+   "endLine": 957,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 957,
+   "column": 52,
+   "endLine": 957,
+   "endColumn": 75,
+   "mutatorName": "EqualityOperator",
+   "replacement": "probe.attack !== attack",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 957,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 958,
+   "column": 8,
+   "endLine": 979,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 958,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 960,
+   "column": 30,
+   "endLine": 960,
+   "endColumn": 74,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 960,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 960,
+   "column": 50,
+   "endLine": 960,
+   "endColumn": 74,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "sum - probe.milliseconds",
+   "claim": "new-test",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 960,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 964,
+   "column": 21,
+   "endLine": 964,
+   "endColumn": 41,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 964,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 965,
+   "column": 19,
+   "endLine": 965,
+   "endColumn": 61,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 965,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 965,
+   "column": 42,
+   "endLine": 965,
+   "endColumn": 60,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 965,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 966,
+   "column": 19,
+   "endLine": 978,
+   "endColumn": 4,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [],
+   "claimedAt": 966,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 966,
+   "column": 84,
+   "endLine": 978,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/probing-level.test.ts::a level that probes > shows the prober's plan, its skips with their reasons, and each probe's text and ending in the stage telemetry",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "claimedAt": 966,
+   "run": "killed at d3fd4d19"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 969,
+   "column": 32,
+   "endLine": 969,
+   "endColumn": 40,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
+   "claimedAt": 969,
+   "run": "not run"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 969,
+   "column": 69,
+   "endLine": 969,
+   "endColumn": 77,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
+   "claimedAt": 969,
+   "run": "not run"
+  },
+  {
+   "file": "packages/pipeline/src/telemetry.ts",
+   "line": 969,
+   "column": 80,
+   "endLine": 969,
+   "endColumn": 94,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "Ignored by configuration: a string literal, the probe's ending label, which the telemetry test asserts whole.",
+   "claimedAt": 969,
+   "run": "not run"
+  }
+ ],
+ "head": "d3fd4d19b74ecaac5c4912fc0fe0eae7ee9e4777"
+}

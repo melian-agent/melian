@@ -1,0 +1,822 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "d940280256401fe8d074eb27eb5bf9f2432ee0ac",
+    "head": "4ff5b12bece92637042697021ac9c23ada163d30"
+  },
+  "claimsIn": [
+    "packages/core/src/lens.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 6,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5d14c259b030a2ecbc25bf3676d0a19bbb67affa68a4b06aabd5fe81606ca055",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 6,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "efdcbdafe05b7d962872cd5a0bddea63087ac67bd2610511586aa7a78e40440d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in the tests lens, at any level, until issue #493"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 6,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "LogicalOperator",
+      "replacement": "probe !== undefined || name === \"tests\"",
+      "status": "generated",
+      "id": "8a8d3f10039ccb255df18c39d09e2f03477dc47140391c01965a712c0bc9e517",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 6,
+      "endLine": 424,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "897a125e127be235422919e1250c94df938c4c448ecfa4488f7339cd99ccb37a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 6,
+      "endLine": 424,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe === undefined",
+      "status": "generated",
+      "id": "1444ccc30e40f532b57ac75ee4ecc4772e333f1392923ccf0382ec701985b47f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 29,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c96ad047e4628f0a792511e945a64234e9f7f83a559f7b408f0192dc96854d2c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 29,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "EqualityOperator",
+      "replacement": "name !== \"tests\"",
+      "status": "generated",
+      "id": "c203f6f1784b3f1b6374454f58850015d3165aaaee41f448c5fda87191337514",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in the tests lens, at any level, until issue #493"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 38,
+      "endLine": 424,
+      "endColumn": 45,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "be122f9176f51169716f73be026eef6659f4132d228b5058db1d05f64890486a"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 424,
+      "column": 47,
+      "endLine": 431,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "db3dcdaad28659dfcc4974eb17083323b9485320abda98b4b611edb2920dbd90",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in the tests lens, at any level, until issue #493"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 426,
+      "column": 4,
+      "endLine": 426,
+      "endColumn": 18,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c7eff142e620ef81350cb9f6292805ac4986e5c3adf6f8c63b33ddfda4707c6c"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 428,
+      "column": 4,
+      "endLine": 428,
+      "endColumn": 199,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fb6c4ca4c1c00f3f480f6478cd1834f28ba37e2bf8a4038d8e6557b6353b6122"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 429,
+      "column": 4,
+      "endLine": 429,
+      "endColumn": 57,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4ae3379cddcfaadf88fa960ea2d5ebddcc1ce04c7c4e23da1dc835c068db861e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in the tests lens, at any level, until issue #493"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 429,
+      "column": 13,
+      "endLine": 429,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "885ffc461b915889b4fcb69c45e6fa29cc111d485eb6e6649c04caf8edf1dc9a"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 6,
+      "endLine": 432,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "a600839a716bb651ca182494251d4d779744b982f16099715325f30ef5e877ea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 6,
+      "endLine": 432,
+      "endColumn": 37,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5081b0c04b8de6c5d6e055cb11859fe543d43c90454060d167bb25cb04c2f870",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 6,
+      "endLine": 432,
+      "endColumn": 37,
+      "mutatorName": "LogicalOperator",
+      "replacement": "probe !== undefined || !builtin",
+      "status": "generated",
+      "id": "1cee974d7889e80095374ab32b6fa4e2da87125875d3234c3abae1c23a4b4c59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "discovers .melian/lenses and .agents/lenses beside the built-ins"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 6,
+      "endLine": 432,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "560b59b66d9f3d7982e6c185946fdebdb26ac043c1d372d49cdf5b5feba58e4c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "discovers .melian/lenses and .agents/lenses beside the built-ins"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 6,
+      "endLine": 432,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "probe === undefined",
+      "status": "generated",
+      "id": "6973dcf57b4d29f5987f3bc70264263d4effc92424784dc3a00bda99b293c76e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "discovers .melian/lenses and .agents/lenses beside the built-ins"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 29,
+      "endLine": 432,
+      "endColumn": 37,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "builtin",
+      "status": "generated",
+      "id": "de2f37d6323fad14585232d7c3b7a1437f8327f4b2f08fbcbb1f34418f000083",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 432,
+      "column": 39,
+      "endLine": 439,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "68d8768c691f842efcc2fe3621d7768371a3a871a51aa4073c278dd9cd4c648d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 434,
+      "column": 4,
+      "endLine": 434,
+      "endColumn": 18,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8b4a1bf6e694f7bd84dcfb266ace447714d342f2f1411513bd5599f01500ac65"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 436,
+      "column": 4,
+      "endLine": 436,
+      "endColumn": 205,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c1fbb3753826eb24d91eca26a233ea791ce28f22215d08f08891d050b0c4a807"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 437,
+      "column": 4,
+      "endLine": 437,
+      "endColumn": 57,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f6636f6b387e0bb49965d78f1a22432d6c51fe4008b5baedc15708186d863c9f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 437,
+      "column": 13,
+      "endLine": 437,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8b3aca889cbd86fa09e5d4ed75b16b6f4114248c33ccfb132f5f539a28fee645"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 17,
+      "endLine": 482,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c7f40e47fdcf2d318fecdc98e892e47530a99e2dc176402c08583b3adcbf0299",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 17,
+      "endLine": 482,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "da7e2716fdfc14642b5cbb6ab44d38a8ad75aa2c3f05a0f1fb96ddc208378784",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 17,
+      "endLine": 482,
+      "endColumn": 100,
+      "mutatorName": "LogicalOperator",
+      "replacement": "file.startsWith(\"builtin:\") && own.extends === own.name && base?.builtin === true",
+      "status": "generated",
+      "id": "6ae1e884e8b0782f7776a9567e9fcec883b728f3fe0a752f780c955a5a5c233f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 17,
+      "endLine": 482,
+      "endColumn": 44,
+      "mutatorName": "MethodExpression",
+      "replacement": "file.endsWith(\"builtin:\")",
+      "status": "generated",
+      "id": "f7a376e06c2068216f4e0b569957d12cc59c614e7820ddc158b63a84e5ea8ce3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 33,
+      "endLine": 482,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a4a46ad9d7d54b272ef4e309cb3a1520d21d262371fd07b419705727597921ab"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 49,
+      "endLine": 482,
+      "endColumn": 99,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3cc284417e68d6cde1539b7b1d7a810cfecdcfe8b01cd0a8cd54ddd92da9013b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 49,
+      "endLine": 482,
+      "endColumn": 99,
+      "mutatorName": "LogicalOperator",
+      "replacement": "own.extends === own.name || base?.builtin === true",
+      "status": "generated",
+      "id": "2f8d1652e21bfa7a02b7da3193b1fffa9dcf46836900b6591879f992e9441d8d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 49,
+      "endLine": 482,
+      "endColumn": 73,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "575b6374b9b28d2f69faf24b4452c8d2a86310fe2fbada82ef4723184f6e7fd5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 49,
+      "endLine": 482,
+      "endColumn": 73,
+      "mutatorName": "EqualityOperator",
+      "replacement": "own.extends !== own.name",
+      "status": "generated",
+      "id": "dcfbc91361a729074833ff11033a0a0cb25b5abcc60209cc336560cb8c894f66",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 77,
+      "endLine": 482,
+      "endColumn": 99,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3bbddb51ee67d2a18e3ef1c350a354e86291d6a4e5e784d385126fe8b85df2af",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "refuses a level that probes in a lens that takes a built-in's name without extending the built-in"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 77,
+      "endLine": 482,
+      "endColumn": 99,
+      "mutatorName": "EqualityOperator",
+      "replacement": "base?.builtin !== true",
+      "status": "generated",
+      "id": "a7cc3e02e8d2b0cf337f98e7c45ca50a86bddaf5dffa4e1d8a6eb0e3c846d2c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 77,
+      "endLine": 482,
+      "endColumn": 90,
+      "mutatorName": "OptionalChaining",
+      "replacement": "base.builtin",
+      "status": "generated",
+      "id": "ac5b916fc1998f04d4e79672fd8cadf7e0c56b4f1c2d110b48f39f5749246c21",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "layer() throws unknownLens before resolve() when extends names no farther lens, so base is defined wherever own.extends === own.name lets base?.builtin be read"
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 482,
+      "column": 95,
+      "endLine": 482,
+      "endColumn": 99,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "87d0b28b3bcdf44b41fa368a20b61b59efbe5dd38865d20c97392ca1ebc70a07",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "repository lenses from the worktree",
+            "loads a level that probes in each lens that extends a built-in with probing wording, at any level"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 502,
+      "column": 8,
+      "endLine": 502,
+      "endColumn": 35,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d92a6f4c56c0408aa42f1a090eb1ce5f2987e2775c7db978fc348b65f046a490",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/lens.test.ts",
+          "path": [
+            "built-in lenses",
+            "loads the shipped catalogue without repository definitions"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    }
+  ],
+  "total": 38,
+  "omitted": 0,
+  "unmutated": []
+}

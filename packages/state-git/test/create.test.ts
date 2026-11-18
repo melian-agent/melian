@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
 import type * as Fs from "node:fs/promises";
 import { readdir, rename } from "node:fs/promises";
+import { hostname } from "node:os";
 import { join } from "node:path";
 import type * as Core from "@melian-agent/core";
 import { git, RecordError } from "@melian-agent/core";
@@ -69,4 +72,30 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 			expect((await RecordRepository.open(path, Deadline.after(systemClock, 30_000))).path).toBe(path);
 			expect(await readdir(host)).toEqual(["records.git"]);
 		});
+
+	it("names the repository it builds after this host and process, so a sweep can tell when its maker has gone", async () => {
+		const path = join(remote.host(), "records.git");
+		await RecordRepository.open(path, Deadline.after(systemClock, 30_000));
+		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
+		const space =
+			process.platform === "linux"
+				? `\0${statSync("/proc/self/ns/pid").dev}:${statSync("/proc/self/ns/pid").ino}`
+				: "";
+		const host = createHash("sha256").update(`${hostname()}${space}`).digest("hex").slice(0, 16);
+		const owner = `${host}-${process.pid}`;
+		expect(init?.[1][3]).toMatch(
+			new RegExp(`^${path}\\.${owner}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		);
+	});
+
+	it("names the repository it builds by a UUID alone, which no sweep removes, when the table does not list this process", async () => {
+		const path = join(remote.host(), "records.git");
+		expect((await RecordRepository.open(path, Deadline.after(systemClock, 30_000), { list: () => [] })).path).toBe(
+			path,
+		);
+		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
+		expect(init?.[1][3]).toMatch(
+			new RegExp(`^${path}\\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		);
+	});
 });
