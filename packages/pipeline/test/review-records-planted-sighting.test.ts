@@ -31,9 +31,9 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { DismissError } from "../src/errors.ts";
-import { FindingsDocument } from "../src/findings.ts";
+import { FindingsDocument, replaceCheckFindings, stampOf } from "../src/findings.ts";
 import { type DismissalFacts, ReviewRecords } from "../src/review-records.ts";
 import { StaticProof } from "../src/static-proof.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
@@ -123,7 +123,7 @@ async function round(
 		checkRun: handed,
 		records: store,
 	});
-	return { changeset, verdict, root, store, stored: await store.list(changeset.id) };
+	return { changeset, verdict, root, store, handed, stored: await store.list(changeset.id) };
 }
 
 const biome = (stored: readonly RecordEnvelope[]) =>
@@ -174,6 +174,98 @@ describe("a static check's sightings, beside the run a host made of the same rev
 		});
 
 		expect((await StaticProof.read(harness, reviewed.root.id, context)).asks("static.biome", other)).toBe(true);
+		expect(biome(reviewed.stored)).toEqual({
+			v: 1,
+			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },
+			sightings: [],
+		});
+	});
+});
+
+// Another key's run takes the revision, so asking for the first request again starts a new task under its full key.
+async function restart(root: Awaited<ReturnType<Harness["root"]>>, changeset: Changeset) {
+	const ask = (asked: MelianConfig) =>
+		runChecks(
+			harness,
+			{
+				rootConversationId: root.id,
+				changeset,
+				config: asked,
+				source: { kind: "revision", commit: changeset.revision.base },
+				tier: "full",
+			},
+			context,
+		);
+	await ask({ ...config, tiers: { ...config.tiers, other: ["static.biome"] } });
+	return ask(config);
+}
+
+describe("a static check's sightings, after its request ran again under the same key", { timeout: 120_000 }, () => {
+	// A mutation run can disagree with itself: the first execution found a blocker, the second found nothing.
+	it("are withheld from the first execution, whose record no longer describes them", async () => {
+		let again: CheckRun | undefined;
+		const reviewed = await round(async (root, revision, run) => {
+			again = await restart(root, await Changeset.resolve(repo, "HEAD~1..HEAD"));
+			await root.commit(async (tx) => {
+				const stamp = stampOf(await tx.doc(FindingsDocument, root.id), revision, "static.biome");
+				await replaceCheckFindings(tx, root.id, "static.biome", revision, [], stamp);
+			}, context);
+			return run;
+		});
+
+		expect(again!.request).toBe(reviewed.handed.request);
+		expect(again!.identity.task).not.toBe(reviewed.handed.identity.task);
+		expect(biome(reviewed.stored)).toEqual({
+			v: 1,
+			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },
+			sightings: [],
+		});
+	});
+});
+
+// A rerun of failed checks is a new task that keeps the other checks' records from the task it replaces, and records,
+// for each kept check, the check task that wrote its sightings, which their stamp still names.
+describe("a static check's sightings, kept by a rerun of the run's failed checks", { timeout: 120_000 }, () => {
+	const rerun = async (root: Awaited<ReturnType<Harness["root"]>>) =>
+		runChecks(
+			harness,
+			{
+				rootConversationId: root.id,
+				changeset: await Changeset.resolve(repo, "HEAD~1..HEAD"),
+				config,
+				source: { kind: "revision", commit: (await Changeset.resolve(repo, "HEAD~1..HEAD")).revision.base },
+				tier: "full",
+				rerunFailed: true,
+			},
+			context,
+		);
+	beforeEach(() => {
+		config = { ...config, tiers: { ...config.tiers, full: ["static.biome", "static.unknown", "lens.correctness"] } };
+	});
+
+	it("are shared from the rerun, whose task recorded the check task that wrote them", async () => {
+		const reviewed = await round(async (root, _, run) => {
+			const again = await rerun(root);
+			const sources = async (task: number) =>
+				(await harness.snapshot(CheckSources, root.id, String(task), context))?.tasks["static.biome"];
+			expect(again.identity.task).not.toBe(run.identity.task);
+			expect(await sources(again.identity.task)).toBe(await sources(run.identity.task));
+			expect(await sources(run.identity.task)).toEqual(expect.any(Number));
+			return again;
+		});
+
+		expect(biome(reviewed.stored).result).toMatchObject({ status: "ran" });
+		expect(biome(reviewed.stored).sightings).toHaveLength(1);
+	});
+
+	it("are withheld from the rerun once a third task under the same request replaced them", async () => {
+		const reviewed = await round(async (root) => {
+			const again = await rerun(root);
+			const third = await restart(root, await Changeset.resolve(repo, "HEAD~1..HEAD"));
+			expect(third.request).toBe(again.request);
+			return again;
+		});
+
 		expect(biome(reviewed.stored)).toEqual({
 			v: 1,
 			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },

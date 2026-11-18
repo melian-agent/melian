@@ -14,8 +14,8 @@ import type { ConversationId, Tx } from "../src/harness.ts";
 
 const revision = "a".repeat(40);
 const other = "b".repeat(40);
-const run = "1".repeat(64);
-const later = "2".repeat(64);
+const run = { request: "1".repeat(64), task: 7 };
+const later = { request: "2".repeat(64), task: 9 };
 
 const biome = (line: number) =>
 	Finding.create({
@@ -75,6 +75,15 @@ describe("a check's stamp on its sightings at a revision", () => {
 		);
 
 		expect(await stamps()).toEqual({ biome: later, tsc: run, elsewhere: run });
+	});
+
+	// Two executions of one request stamp the same key, so only the task tells them apart.
+	it("names the latest task that replaced the check's sightings under the same request, and nothing more", async () => {
+		const { root, stamps } = await stamped();
+		const again = { ...run, task: 8, extra: true };
+		await root.commit((tx) => replaceCheckFindings(tx, root.id, "static.biome", revision, [], again), context);
+
+		expect(await stamps()).toEqual({ biome: { request: run.request, task: 8 }, tsc: run, elsewhere: run });
 	});
 
 	it.each<[string, (tx: Tx, id: ConversationId) => Promise<void>]>([
@@ -147,8 +156,8 @@ describe("a check's stamp on its sightings at a revision", () => {
 		);
 		const state = await harness!.snapshot(FindingsDocument, root.id, context);
 
-		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run);
-		expect((await stamps()).biome).toBe(later);
+		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run.request);
+		expect((await stamps()).biome).toEqual(later);
 	});
 
 	it("is absent from a dismissal made while no run stands", async () => {
@@ -189,7 +198,7 @@ describe("a check's stamp on its sightings at a revision", () => {
 		);
 		const state = await harness!.snapshot(FindingsDocument, root.id, context);
 
-		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(later);
+		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(later.request);
 	});
 
 	// A repeat that names no severity records no sighting, so it has no run to take and changes nothing.
@@ -210,6 +219,6 @@ describe("a check's stamp on its sightings at a revision", () => {
 
 		expect(replaced).toBeUndefined();
 		expect(state?.items[id]?.lifecycle).toMatchObject({ dismissedAt: "2026-11-16", history: [] });
-		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run);
+		expect(state?.items[id]?.lifecycle.dismissedSighting?.run).toBe(run.request);
 	});
 });

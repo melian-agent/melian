@@ -1,5 +1,6 @@
 import { Changeset, KeyedRequest, loadConfig, type RepositorySource, Revision } from "@melian-agent/core";
 import {
+	type ConversationId,
 	checksExtension,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -11,7 +12,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { FindingsDocument, stampOf } from "../src/findings.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
 
@@ -66,7 +67,11 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 		expect(Object.keys(stored)).toEqual([made.request]);
 		expect(KeyedRequest.of("check", stored[made.request]).key).toBe(made.request);
 		const findings = await harness.snapshot(FindingsDocument, root.id, context);
-		expect(stampOf(findings, Revision.key(changeset.revision), "guardrails")).toBe(made.request);
+		expect(stampOf(findings, Revision.key(changeset.revision), "guardrails")).toEqual({
+			request: made.request,
+			task: await taskOf(root, made.identity.task, "guardrails"),
+		});
+		expect(await taskOf(root, made.identity.task, "guardrails")).toEqual(expect.any(Number));
 	});
 
 	// An entry is written once, so a repeat run under its key leaves it, and every other key, as they stand.
@@ -85,6 +90,10 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 			[other]: { other: true },
 		});
 	});
+
+	// The check task its run's own task recorded for `check`, which is what stamps that check's sightings.
+	const taskOf = async (root: { readonly id: ConversationId }, run: number, check: string) =>
+		(await harness.snapshot(CheckSources, root.id, String(run), context))?.tasks[check];
 
 	// A build before the stamp asked for these versions of each check, and its run's terminal commit wrote no stamp.
 	it("never reuse a run an earlier build completed without a stamp, so asking again stamps the sightings", async () => {
@@ -114,6 +123,9 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 
 		expect(again.made.request).not.toBe(old);
 		const findings = await harness.snapshot(FindingsDocument, root.id, context);
-		expect(stampOf(findings, revision, "guardrails")).toBe(again.made.request);
+		expect(stampOf(findings, revision, "guardrails")).toEqual({
+			request: again.made.request,
+			task: await taskOf(root, again.made.identity.task, "guardrails"),
+		});
 	});
 });

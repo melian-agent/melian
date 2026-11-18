@@ -91,7 +91,9 @@ it("reads what version-4 checks and version-11 findings wrote after an SQLite re
 
 	await second.root.commit(async (tx) => {
 		(await tx.doc(ChecksDocument, second.root.id)).requests = { [recorded.request]: {} };
-		(await tx.doc(FindingsDocument, second.root.id)).checkRuns = { [recorded.key]: { "static.biome": "x" } };
+		(await tx.doc(FindingsDocument, second.root.id)).checkRuns = {
+			[recorded.key]: { "static.biome": { request: "x", task: 1 } },
+		};
 	}, context);
 	await expect(second.harness.snapshot(legacy("melian.checks", 4), second.root.id, context)).rejects.toThrow(
 		/newer version 5 than 4/,

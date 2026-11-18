@@ -3163,8 +3163,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const request = run?.request ?? null;
 		// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
 		// under a stored request that asks for check code that stores no tool text. A run handed in proves nothing alone.
-		// A request that did not key everything its run read is run again under the same key, so its stamp names no one run.
-		const proof = await StaticProof.read(harness, root, context);
+		// The stamp names the check task that wrote them, which must be the one the run's own task recorded. A request that did
+		// not key everything its run read vouches for no result to another host, whatever its task.
+		const proof = await StaticProof.read(harness, root, context, run?.identity.task);
 		const unshared = (check: string): "withheld" | "unkeyed" | undefined =>
 			run === undefined || !proof.proves(state, reviewed, check, run.request)
 				? "withheld"

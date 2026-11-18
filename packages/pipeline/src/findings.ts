@@ -82,18 +82,21 @@ type FindingRecord = {
 type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
-// `checkRuns` holds, per revision and check, the request key of the check run whose terminal commit wrote every sighting
-// the check has there. Any write that changes those sightings deletes it in the same commit, and only that commit writes
-// it, so a stamp never outlives the sightings it vouches for.
+// `checkRuns` holds, per revision and check, the stamp of the check task whose terminal commit wrote every sighting the
+// check has there. Any write that changes those sightings deletes it in the same commit, and only that commit writes it,
+// so a stamp never outlives the sightings it vouches for.
+/** The check task whose terminal commit wrote a check's sightings, and the full key of the request its run answered. */
+export type CheckStamp = { request: string; task: number };
+
 export type FindingsState = {
 	revisions: string[];
 	items: Record<string, FindingRecord>;
 	versions: Record<string, number>;
 	inherited?: Record<string, Record<string, StoredInheritance>>;
-	checkRuns?: Record<string, Record<string, string>>;
+	checkRuns?: Record<string, Record<string, CheckStamp>>;
 };
 
-// Version 12 lets a revision hold, per check, the request key of the check run that wrote its sightings, and a dismissal
+// Version 12 lets a revision hold, per check, the check task that wrote its sightings and its request key, and a dismissal
 // hold the key that stood for its sighting. A version 11 document holds neither and reads unchanged; an older Melian
 // refuses version 12, so it never writes a sighting under a stamp it would leave standing.
 // Version 11 lets a dismissal record the severity and sighting it was made at. It lets a revision hold its
@@ -147,8 +150,8 @@ function unstamp(state: FindingsState, revision: string, check: string): void {
 	if (Object.keys(stamps).length === 0) delete state.checkRuns![revision];
 }
 
-/** The request key of the check run whose terminal commit wrote every sighting `check` has at `revision`, if one stands. */
-export function stampOf(state: FindingsState | undefined, revision: string, check: string): string | undefined {
+/** The stamp of the check task whose terminal commit wrote every sighting `check` has at `revision`, if one stands. */
+export function stampOf(state: FindingsState | undefined, revision: string, check: string): CheckStamp | undefined {
 	return state?.checkRuns?.[revision]?.[check];
 }
 
@@ -498,8 +501,8 @@ export async function upsertFinding(
  * Makes `findings` the whole of what `check` sights at `revision`, a {@link Revision.key}: removes the check's earlier sightings there, of any
  * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
  * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
- * a check that failed, so a failed rerun leaves nothing of an earlier run behind. `request`, the run's request key,
- * stamps the check at `revision` last; without it the check's stamp there is deleted.
+ * a check that failed, so a failed rerun leaves nothing of an earlier run behind. `stamp`, the check task and its run's
+ * request key, stamps the check at `revision` last; without it the check's stamp there is deleted.
  */
 export async function replaceCheckFindings(
 	tx: Tx,
@@ -507,7 +510,7 @@ export async function replaceCheckFindings(
 	check: string,
 	revision: string,
 	findings: readonly Finding[],
-	request?: string,
+	stamp?: CheckStamp,
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	unstamp(state, revision, check);
@@ -531,9 +534,12 @@ export async function replaceCheckFindings(
 		else items[id] = { ...record, sightings };
 	}
 	if (removed) bump(state, [revision]);
-	if (request !== undefined) {
+	if (stamp !== undefined) {
 		state.checkRuns ??= {};
-		state.checkRuns[revision] = { ...state.checkRuns[revision], [check]: request };
+		state.checkRuns[revision] = {
+			...state.checkRuns[revision],
+			[check]: { request: stamp.request, task: stamp.task },
+		};
 	}
 }
 
@@ -579,7 +585,7 @@ export async function dismissFinding(
 	const atRevision = judgedAt(record, accepting, selected(producers));
 	const { winner } = adjudicate(atRevision, true);
 	const trigger = winner.properties.trigger;
-	const run = stampOf(state, accepting, winner.properties.source.check);
+	const run = stampOf(state, accepting, winner.properties.source.check)?.request;
 	const shown =
 		severity === undefined
 			? {}

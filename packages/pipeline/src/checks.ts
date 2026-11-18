@@ -469,7 +469,9 @@ function checkTask(environment: NodeJS.ProcessEnv) {
 					await timing.end(tx);
 					if (!ownsMutation(task.input, owners)) return { status: "terminal", outcome: { status: "aborted" } };
 					const findings = outcome?.report?.findings ?? [];
-					await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings, task.input.request);
+					const { request } = task.input;
+					const stamp = request === undefined ? undefined : { request, task: runtime.taskId };
+					await replaceCheckFindings(tx, runtime.conversationId, check, revision, findings, stamp);
 					runs[run] = { ...runs[run], [check]: record };
 					return { status: "terminal", outcome: { status: "completed", result: record } };
 				}, context);

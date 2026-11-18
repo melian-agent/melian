@@ -30,7 +30,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { replaceCheckFindings } from "../src/findings.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -94,7 +94,7 @@ const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
 const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 3, "static.mutation": 3 };
 const asked = askFor(current);
 
-// What the host's store holds beside the sightings: the request key each check's terminal commit stamped, and the
+// What the host's store holds beside the sightings: the request key each check task's terminal commit stamped, and the
 // requests the checks document keeps by key.
 type Store = {
 	readonly stamps?: { readonly biome?: string; readonly tsc?: string };
@@ -133,8 +133,12 @@ async function review(
 	await root.commit(async (tx) => {
 		const runs = await tx.doc(ChecksDocument, root.id);
 		runs.requests = structuredClone({ ...held.requests });
-		await replaceCheckFindings(tx, root.id, "static.biome", at, [sighting(text)], held.stamps?.biome);
-		await replaceCheckFindings(tx, root.id, "static.tsc", at, [], held.stamps?.tsc);
+		// The run's own task, 7, records the check task it started for each check, which stamps what that task wrote.
+		(await tx.doc(CheckSources, root.id, "7", null)).tasks = { "static.biome": 11, "static.tsc": 12 };
+		const stamp = (request: string | undefined, task: number) =>
+			request === undefined ? undefined : { request, task };
+		await replaceCheckFindings(tx, root.id, "static.biome", at, [sighting(text)], stamp(held.stamps?.biome, 11));
+		await replaceCheckFindings(tx, root.id, "static.tsc", at, [], stamp(held.stamps?.tsc, 12));
 	}, context);
 	const { verdict } = await reviewChangeset({
 		harness,
