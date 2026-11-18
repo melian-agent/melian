@@ -14,12 +14,15 @@ import {
 	type CredentialStore,
 	defaultProviderAuthContext,
 	isRetryableAssistantError,
-	type Message,
 	type MutableModels,
+	type StopReason,
 } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
+	CompactionEntry,
+	type ContextView,
 	type ConversationId,
+	type EntryId,
 	type Harness,
 	type HarnessOptions,
 	MemoryStorage,
@@ -121,19 +124,44 @@ export function isFailoverError(message: string): boolean {
 	return authenticationFailure.test(message) || providerLimit.test(message) || isRetryableAssistantError(failed);
 }
 
+// Pi Durable leaves a reply out of a conversation's context when its stop reason is in EXCLUDED_STOP_REASONS, in
+// @earendil-works/pi-durable's dist/harness/context.js, and does not export the set. This mirrors it from the other
+// side and fails safe: a reason it does not name, "pending" included, counts as no work, since telling a model to start
+// afresh repeats a review, while telling it to continue after nothing skips one.
+const workStopReasons = {
+	stop: true,
+	length: true,
+	toolUse: true,
+	error: false,
+	aborted: false,
+	deferred: false,
+	pending: false,
+} as const satisfies Record<StopReason, boolean>;
+
 /**
- * Whether a conversation holds work a model did, read from its model context: a reply, which a tool result always
- * follows. Pi Durable leaves a reply that failed or was aborted out of that context, and drops a tool result no reply
- * called for, so a model that failed before it started leaves only inputs there.
+ * Whether a conversation holds work a model did: a reply that ended by stopping, at its length limit, or calling a
+ * tool. A compaction leaves only a summary in the model context, so this reads raw entries, and walks back through
+ * each compaction to the context it summarised. A reset links to nothing before it, so work before one counts as none.
  */
 export async function holdsWork(
 	reader: {
-		context(id: ConversationId, context: Context): Promise<{ readonly messages: readonly Message[] }>;
+		context(id: ConversationId, context: Context, options?: { readonly at?: EntryId }): Promise<ContextView>;
 	},
 	id: ConversationId,
 	context: Context,
 ): Promise<boolean> {
-	return (await reader.context(id, context)).messages.some((message) => message.role === "assistant");
+	const seen = new Set<EntryId>();
+	for (let at: EntryId | undefined; ; ) {
+		const view = await reader.context(id, context, { at });
+		const worked = view.entries.some((entry) =>
+			entry.model?.some((message) => message.role === "assistant" && workStopReasons[message.stopReason] === true),
+		);
+		if (worked) return true;
+		const { head } = view;
+		if (!CompactionEntry.is(head) || seen.has(head.id)) return false;
+		seen.add(head.id);
+		at = head.head;
+	}
 }
 
 /**
