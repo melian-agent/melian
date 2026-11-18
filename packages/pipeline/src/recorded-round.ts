@@ -49,6 +49,8 @@ export type SharedDismissalRecord = SharedDismissal & {
 	readonly finding: string;
 	/** The revision the dismissed sighting was seen at. */
 	readonly revision: string;
+	/** The IDs of the dismissal records this one names as superseded. */
+	readonly supersedes: readonly string[];
 };
 
 /** What a round's records hold, for a caller that decides each sighting itself. */
@@ -59,7 +61,7 @@ export type RecordedRoundContents = {
 	readonly sightings: readonly StoredFinding[];
 	/** The proving hunks of the revision, which a dismissal's trigger is met against. */
 	readonly hunks: readonly ProvingHunk[];
-	/** Every dismissal record of the round's changeset that counts, in record ID order. */
+	/** Every dismissal record of the round's changeset that counts and that no other supersedes, in record ID order. */
 	readonly dismissals: readonly SharedDismissalRecord[];
 };
 
@@ -81,8 +83,8 @@ type Decided = Exclude<Pieces, { readonly refused: string }>;
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
  * verdict is decided from the records the round names by ID and nothing else, so it never passes a round the review
  * that wrote it would not. A round whose records are missing, refused, or do not account for every check reads as
- * not reviewed. A finding reads as dismissed when a dismissal record of the changeset that counts, the latest for its
- * ID, still meets every sighting by the host's reopen rule, and as new otherwise. A finding the host holds dismissed by
+ * not reviewed. A finding reads as dismissed when a dismissal record of the changeset that counts, and that no other
+ * record of its finding supersedes, still meets every sighting by the host's reopen rule, and as new otherwise. A finding the host holds dismissed by
  * inheritance from another finding's dismissal reads as new here, so it blocks where the host's verdict would not.
  */
 export class RecordedRound {
@@ -146,7 +148,7 @@ export class RecordedRound {
 			contents.sightings,
 			pieces.claims,
 			producers,
-			latestOf(contents.dismissals),
+			byFinding(contents.dismissals),
 			contents.hunks,
 		);
 		const { repoRoot, policy } = context;
@@ -251,26 +253,25 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	};
 }
 
-// The set's dismissal records of `changeset`, in ID order. A dismissal record names no round, so every round of the
-// changeset reads it.
+// The set's dismissal records of `changeset` that no other supersedes, in ID order. A dismissal record names no round,
+// so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round stricter.
 function dismissalsOf(set: RecordSet, changeset: string): SharedDismissalRecord[] {
 	return set
-		.records()
+		.unsuperseded()
 		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
 		.map((record) => {
 			const { by, reason, at, trigger, sighting } = record.payload as DismissalPayload;
-			return { record: record.id, finding: record.key, revision: sighting.revision, by, reason, at, trigger };
+			const { id, key, supersedes } = record;
+			return { record: id, finding: key, revision: sighting.revision, supersedes, by, reason, at, trigger };
 		});
 }
 
-// The latest dismissal of each finding. Dismissals come in ID order, so of two made at one time the greater ID stands.
-function latestOf(dismissals: readonly SharedDismissalRecord[]): Map<string, SharedDismissal> {
-	const latest = new Map<string, SharedDismissal>();
-	for (const { finding, by, reason, at, trigger } of dismissals) {
-		const held = latest.get(finding);
-		if (held === undefined || held.at <= at) latest.set(finding, { by, reason, at, trigger });
-	}
-	return latest;
+// The standing dismissals of each finding, in ID order, so of two made at one time the greater ID stands.
+function byFinding(dismissals: readonly SharedDismissalRecord[]): Map<string, SharedDismissal[]> {
+	const standing = new Map<string, SharedDismissal[]>();
+	for (const { finding, by, reason, at, trigger } of dismissals)
+		standing.set(finding, [...(standing.get(finding) ?? []), { by, reason, at, trigger }]);
+	return standing;
 }
 
 function once(values: readonly { readonly id: string; readonly source: FindingSource }[]): boolean {

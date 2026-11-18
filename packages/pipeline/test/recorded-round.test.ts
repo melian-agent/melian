@@ -501,7 +501,9 @@ describe("what a round's records hold", () => {
 			revision: Revision.key(reviewed.changeset.revision),
 			sightings: (sighting(records, round).payload as LensPayload).sightings,
 			hunks: reviewFiles(reviewed.changeset.revision.files).flatMap((file) => file.hunks.map(provingHunk)),
-			dismissals: [{ record: dismissal.id, finding: id, revision: seen.revision, by, reason, at, trigger }],
+			dismissals: [
+				{ record: dismissal.id, finding: id, revision: seen.revision, supersedes: [], by, reason, at, trigger },
+			],
 		});
 		expect((contents as RecordedRoundContents).hunks).toHaveLength(1);
 		expect(seen.revision).toBe(Revision.key(reviewed.changeset.revision));
@@ -577,6 +579,62 @@ describe("the dismissal records a reader applies", () => {
 			]);
 	});
 
+	it("applies no dismissal another record of its finding supersedes, so superseding only ever blocks more", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const holding = redismissed(reviewed, { reason: "holds" });
+		const stale = (supersedes?: string[]) =>
+			redismissed(
+				reviewed,
+				{
+					reason: "stale",
+					at: "2026-11-17T00:00:00.000Z",
+					trigger: { ...(holding.payload as DismissalJson).trigger, hash: "f".repeat(64) },
+				},
+				supersedes === undefined ? {} : { supersedes },
+			);
+		expect(await reasonOf(reviewed, withDismissals(reviewed, [holding, stale()]))).toEqual(["holds"]);
+		const replaced = await read(
+			reviewed,
+			withDismissals(reviewed, [holding, stale([SharedRecord.parseEnvelope(holding).id])]),
+		);
+		expect([replaced.status, replaced.blocking]).toEqual(["findings", true]);
+		expect(standingOf(replaced)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("hands over only standing dismissals, each with what it supersedes", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const earlier = redismissed(reviewed, { reason: "earlier" });
+		const earlierId = SharedRecord.parseEnvelope(earlier).id;
+		const later = redismissed(
+			reviewed,
+			{ reason: "later", at: "2026-11-17T00:00:00.000Z" },
+			{ supersedes: [earlierId] },
+		);
+		const contents = RecordedRound.of(
+			withDismissals(reviewed, [earlier, later]),
+			roundOf(reviewed.stored),
+			everyRecordCounts,
+		).contents(reviewed.changeset.revision) as RecordedRoundContents;
+		expect(
+			contents.dismissals.map(({ record, finding, reason, supersedes }) => [record, finding, reason, supersedes]),
+		).toEqual([[SharedRecord.parseEnvelope(later).id, id, "later", [earlierId]]]);
+	});
+
+	it("keeps a finding dismissed while either of two standing dismissals holds, and shows the one that holds", async () => {
+		const { reviewed } = await dismissedAndReviewedAgain(blocks);
+		const holding = redismissed(reviewed, { reason: "holds" });
+		const stale = redismissed(reviewed, {
+			reason: "stale",
+			at: "2026-11-17T00:00:00.000Z",
+			trigger: { ...(holding.payload as DismissalJson).trigger, hash: "f".repeat(64) },
+		});
+		for (const order of [
+			[holding, stale],
+			[stale, holding],
+		])
+			expect(await reasonOf(reviewed, withDismissals(reviewed, order))).toEqual(["holds"]);
+	});
+
 	it("keeps an affected finding dismissed while the revision holds every hunk its proof names, and no longer", async () => {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
 		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
@@ -614,7 +672,7 @@ describe("the dismissal records a reader applies", () => {
 			properties: { ...seen!.properties, source, trigger: { ...seen!.properties.trigger!, hash } },
 		});
 		const { by, reason, at, trigger } = redismissed(reviewed).payload as DismissalJson & { by: string };
-		const dismissals = new Map([[id, { by, reason, at, trigger }]]);
+		const dismissals = new Map([[id, [{ by, reason, at, trigger }]]]);
 		const producers = [seen!.properties.source, source];
 		const statusUnder = (hash: string) =>
 			mergeSightings([seen!, other(hash)], [], producers, dismissals, []).map(({ properties }) => properties.status);

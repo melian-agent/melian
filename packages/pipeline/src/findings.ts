@@ -784,13 +784,14 @@ export type SharedDismissal = Readonly<Pick<FindingDismissal, "by" | "reason" | 
  * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
  * the sightings `producers` select. A finding reads `dismissed` when `dismissals` holds one for its ID that every one
  * of its sightings still meets at a revision of `hunks`, by the rule that reopens a dismissal on the host, and `new`
- * otherwise: the sightings carry no lifecycle of their own.
+ * otherwise: the sightings carry no lifecycle of their own. Of several that hold, the finding carries the latest, and
+ * of two made at one time the one listed last.
  */
 export function mergeSightings(
 	sightings: readonly StoredFinding[],
 	claims: readonly VerificationClaim[],
 	producers: readonly Producer[],
-	dismissals: ReadonlyMap<string, SharedDismissal>,
+	dismissals: ReadonlyMap<string, readonly SharedDismissal[]>,
 	hunks: readonly ProvingHunk[],
 ): Finding[] {
 	const at = "revision";
@@ -815,9 +816,7 @@ export function mergeSightings(
 			const atHead = judgedAt(items[id]!, at, counts);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead, true);
-			const shared = dismissals.get(id);
-			const stands =
-				shared !== undefined &&
+			const holds = (shared: SharedDismissal) =>
 				Object.values(items[id]!.sightings[at]!).every(
 					({ properties: { cause, trigger } }) =>
 						!reopens(
@@ -828,9 +827,13 @@ export function mergeSightings(
 							hunks,
 						),
 				);
-			const status = stands
-				? { status: "dismissed" as const, dismissal: { by: shared.by, reason: shared.reason, at: shared.at } }
-				: { status: "new" as const };
+			let shared: SharedDismissal | undefined;
+			for (const each of dismissals.get(id) ?? [])
+				if (holds(each) && (shared === undefined || shared.at <= each.at)) shared = each;
+			const status =
+				shared === undefined
+					? { status: "new" as const }
+					: { status: "dismissed" as const, dismissal: { by: shared.by, reason: shared.reason, at: shared.at } };
 			return [Finding.from({ ...winner, properties: { ...winner.properties, ...status, reportedBy } })];
 		});
 }
