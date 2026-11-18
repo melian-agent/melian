@@ -25,6 +25,23 @@ describe("git", () => {
 			await rm(repo, { recursive: true, force: true });
 		}
 	});
+	it("reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings", async () => {
+		for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
+		vi.stubEnv("GIT_CONFIG_COUNT", "1");
+		vi.stubEnv("GIT_CONFIG_KEY_0", "melian.caller");
+		vi.stubEnv("GIT_CONFIG_VALUE_0", "kept");
+		const repo = await realpath(await mkdtemp(join(tmpdir(), "melian-replace-refs-")));
+		try {
+			gitIn(repo, "init", "--quiet", "--initial-branch=main");
+			gitIn(repo, "config", "core.useReplaceRefs", "true");
+
+			expect(await git(repo, ["config", "--get", "core.useReplaceRefs"])).toBe("false");
+			expect(await git(repo, ["config", "--get", "melian.caller"])).toBe("kept");
+		} finally {
+			vi.unstubAllEnvs();
+			await rm(repo, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("stateDirectory", () => {

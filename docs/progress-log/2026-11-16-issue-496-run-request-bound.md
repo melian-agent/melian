@@ -1,4 +1,4 @@
-# Issue #496: a check record's request comes from the run it exports
+# [Issue #496](https://github.com/melian-agent/melian/issues/496): a check record's request comes from the run it exports
 
 Melian's design lens, in a round on [pull request #524](https://github.com/melian-agent/melian/pull/524), found that `reviewChangeset` took the request that keys each check's shared record as `checkRequest`, an option beside `checkRun`, and nothing bound the two. A caller could pass one run's identity and records with another run's request, and the records were then keyed by a request that did not produce them. Of the identity guideline's four failures, this was "a label stands in for identity": the key came from a field beside the value, not from the value.
 

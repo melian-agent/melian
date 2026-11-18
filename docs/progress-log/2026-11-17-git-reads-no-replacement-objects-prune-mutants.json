@@ -28,7 +28,14 @@
 			"status": "generated",
 			"id": "b1df3461dc2d1e3d2a88fd018de108ee0c7bcff62745cdf75990a9fbd473c701",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it"
+					]
+				}
+			},
 			"survivorClasses": [
 				"dropped-value"
 			]
@@ -44,7 +51,14 @@
 			"status": "generated",
 			"id": "e7b9b84375e9f1e645d738b05f1178e6fee291e37d997006daf6f9b8f782e3e7",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"ignores git's repository variables from the caller's environment"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -58,7 +72,14 @@
 			"status": "generated",
 			"id": "3c9d41f12903c4510deaf8f4ffe74d0695c1095e85747239e7e213ad9a8a0065",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > refuses with the reason git could not start when no git is on the path it was given",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"refuses with the reason git could not start when no git is on the path it was given"
+					]
+				}
+			},
 			"survivorClasses": [
 				"nullish-logical"
 			]
@@ -74,7 +95,14 @@
 			"status": "generated",
 			"id": "8662cf28ca211a36ea4f270a283afda5a07415b8c0537b13271a8f65e0805fb2",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > refuses with the reason git could not start when no git is on the path it was given",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"refuses with the reason git could not start when no git is on the path it was given"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -88,7 +116,14 @@
 			"status": "generated",
 			"id": "ae7249aafd8a50c9a070e4c3ee08e3b3717211764e8b10c613e28501aadb4c5d",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"ignores git's repository variables from the caller's environment"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -102,7 +137,14 @@
 			"status": "generated",
 			"id": "8e0200c4dec117aba8a8dc2bf9a29e96fd37630507effcdb0a1fdbb685df69ca",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/store-prune.test.ts > ignores git's repository variables from the caller's environment",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"ignores git's repository variables from the caller's environment"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{

@@ -1,22 +1,45 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { once } from "node:events";
-import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import type * as FsSync from "node:fs";
+import {
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import type * as Fs from "node:fs/promises";
-import { readdir } from "node:fs/promises";
+import { lstat, opendir, readdir } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ProcessEntry, ProcessTable } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Clock } from "../src/deadline.ts";
 import { Owner } from "../src/owner.ts";
-import { RecordRepository } from "../src/repository.ts";
+import { RecordRepository, sweepBound } from "../src/repository.ts";
 import { Remote } from "./fixtures/remote.ts";
 
-// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing.
+// A directory lists its entries in whatever order its filesystem keeps, so one test reverses the listing, and others
+// make a listing or a stat fail.
 vi.mock("node:fs/promises", async (importOriginal) => {
 	const actual = await importOriginal<typeof Fs>();
-	return { ...actual, readdir: vi.fn(actual.readdir) };
+	return { ...actual, opendir: vi.fn(actual.opendir), lstat: vi.fn(actual.lstat) };
+});
+
+// The owner key reads this process's pid namespace, so a test can stand another namespace in for it.
+const namespace = vi.hoisted(() => ({ read: undefined as (() => { dev: number; ino: number }) | undefined }));
+vi.mock("node:fs", async (importOriginal) => {
+	const actual = await importOriginal<typeof FsSync>();
+	const statSync = ((path: FsSync.PathLike, options?: FsSync.StatSyncOptions) =>
+		path === "/proc/self/ns/pid" && namespace.read !== undefined
+			? namespace.read()
+			: actual.statSync(path, options)) as typeof actual.statSync;
+	return { ...actual, statSync, default: { ...actual, statSync } };
 });
 
 let remote: Remote;
@@ -26,7 +49,10 @@ let outside: string;
 let commit: string;
 const children: ChildProcess[] = [];
 
-const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
+// A host's hash as the store makes it: the host's name, with the pid namespace on Linux.
+const hash = (space: string) => createHash("sha256").update(`${hostname()}${space}`).digest("hex").slice(0, 16);
+const spaceOf = ({ dev, ino }: { dev: number; ino: number }) => `\0${dev}:${ino}`;
+const host = hash(process.platform === "linux" ? spaceOf(statSync("/proc/self/ns/pid")) : "");
 // A leftover's suffix as the store names it: this host's hash, the owner's pid, and a UUID.
 const owned = (pid: number, on = host) => `${on}-${pid}-${randomUUID()}`;
 
@@ -53,6 +79,20 @@ async function exited(): Promise<{ pid: number }> {
 	await stop(child);
 	if (new ProcessTable().list().some((entry) => entry.pid === pid)) throw new Error(`ps still lists pid ${pid}`);
 	return { pid };
+}
+
+// Stands in for the listing the sweep reads: `given` answers a directory's entries from those it really holds.
+function listing(given: (path: string, held: string[]) => string[]): () => void {
+	const real = vi.mocked(opendir).getMockImplementation() as typeof opendir;
+	vi.mocked(opendir).mockImplementation((async (path: string) => {
+		const names = given(path, await readdir(path));
+		return {
+			async *[Symbol.asyncIterator]() {
+				for (const name of names) yield { name };
+			},
+		};
+	}) as unknown as typeof opendir);
+	return () => vi.mocked(opendir).mockImplementation(real);
 }
 
 const git = (args: readonly string[], input?: string) =>
@@ -110,6 +150,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	namespace.read = undefined;
 	vi.restoreAllMocks();
 	vi.unstubAllEnvs();
 	for (const child of children.splice(0)) await stop(child);
@@ -181,9 +222,7 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 		const table = new ProcessTable().list();
 		const suffixes = [owned(4_000_000), owned(4_000_000)].sort();
 		for (const suffix of suffixes) plant(suffix);
-		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-		vi.mocked(readdir).mockImplementation((async (path: string) =>
-			((await listed(path)) as string[]).sort().reverse()) as unknown as typeof readdir);
+		const restore = listing((_path, held) => held.sort().reverse());
 		try {
 			const store = await remote.open({ directory, processes: { list: () => table } });
 			const [first, second] = suffixes.map(names);
@@ -193,23 +232,22 @@ describe("the sweep when the store opens", { timeout: 60_000 }, () => {
 				failed: [],
 			});
 		} finally {
-			vi.mocked(readdir).mockImplementation(listed);
+			restore();
 		}
 	});
 
 	it("passes over an entry that another call removed between the listing and its read", async () => {
 		const table = new ProcessTable().list();
 		const suffix = owned(4_000_000);
-		const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-		vi.mocked(readdir).mockImplementation((async (path: string) => [
-			...((await listed(path)) as string[]),
+		const restore = listing((path, held) => [
+			...held,
 			path === directory ? `records.git.${suffix}` : `melian-index-${suffix}`,
-		]) as unknown as typeof readdir);
+		]);
 		try {
 			const store = await remote.open({ directory, processes: { list: () => table } });
 			expect(store.sweep).toEqual({ removed: [], kept: [], failed: [] });
 		} finally {
-			vi.mocked(readdir).mockImplementation(listed);
+			restore();
 		}
 	});
 
@@ -555,19 +593,263 @@ describe("the sweep's listing", { timeout: 60_000 }, () => {
 			const owner = await exited();
 			const suffix = owned(owner.pid);
 			plant(suffix);
-			const listed = vi.mocked(readdir).getMockImplementation() as typeof readdir;
-			vi.mocked(readdir).mockImplementation((async (path: string) => {
+			const restore = listing((path, held) => {
 				if (path === at()) throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
-				return listed(path);
-			}) as unknown as typeof readdir);
+				return held;
+			});
 			try {
 				const store = await remote.open({ directory });
 				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
 				expect(planted(suffix)).toEqual(there);
 			} finally {
-				vi.mocked(readdir).mockImplementation(listed);
+				restore();
 			}
 		});
+
+	for (const [what, at] of [
+		["half-made repository", (suffix: string) => join(directory, `records.git.${suffix}`)],
+		["temporary index", (suffix: string) => join(records, `melian-index-${suffix}`)],
+	] as const)
+		it(`removes nothing, and says it could not list every leftover, when a ${what} cannot be stat'ed`, async () => {
+			const owner = await exited();
+			const suffix = owned(owner.pid);
+			plant(suffix);
+			const stat = vi.mocked(lstat).getMockImplementation() as typeof lstat;
+			vi.mocked(lstat).mockImplementation((async (path: string) => {
+				if (path === at(suffix)) throw Object.assign(new Error("EIO: i/o error"), { code: "EIO" });
+				return stat(path);
+			}) as unknown as typeof lstat);
+			try {
+				const store = await remote.open({ directory });
+				expect(store.sweep).toEqual({ removed: [], kept: [], failed: [], unlisted: true });
+				expect(planted(suffix)).toEqual(there);
+			} finally {
+				vi.mocked(lstat).mockImplementation(stat);
+			}
+		});
+});
+
+describe("the sweep's bound", { timeout: 60_000 }, () => {
+	const gonePid = 4_000_000;
+	const indexes = () => readdirSync(records).filter((entry) => entry.startsWith("melian-index-"));
+	const folders = () => readdirSync(directory).filter((entry) => entry.startsWith("records.git."));
+	const plantIndexes = (count: number) => {
+		for (let i = 0; i < count; i++) writeFileSync(join(records, `melian-index-${owned(gonePid)}`), "index");
+	};
+	const fetched = () => fetchRefs().filter((ref) => ref.startsWith("refs/melian/fetch/"));
+	const plantRefs = (suffixes: readonly string[]) =>
+		git(
+			["update-ref", "--stdin"],
+			suffixes.map((suffix) => `create refs/melian/fetch/${suffix} ${commit}\n`).join(""),
+		);
+	const open = async () => {
+		const table = new ProcessTable().list();
+		return (await remote.open({ directory, deadlineMs: 120_000, processes: { list: () => table } })).sweep;
+	};
+
+	it(`lists and removes ${sweepBound} leftovers in one directory, and is not bounded`, async () => {
+		plantIndexes(sweepBound);
+		const all = indexes().map((entry) => `records.git/${entry}`);
+		const sweep = await open();
+		expect(indexes()).toEqual([]);
+		expect({ ...sweep, removed: [...sweep.removed].sort() }).toEqual({ removed: all.sort(), kept: [], failed: [] });
+	});
+
+	it("sweeps in name order what it listed before the bound, whatever order the directory lists its entries", async () => {
+		plantIndexes(sweepBound + 1);
+		const all = indexes().sort();
+		const restore = listing((_path, held) => held.sort().reverse());
+		try {
+			const sweep = await open();
+			expect(indexes()).toEqual([all[0]]);
+			expect(sweep).toEqual({
+				removed: all.slice(1).map((entry) => `records.git/${entry}`),
+				kept: [],
+				failed: [],
+				bounded: true,
+			});
+		} finally {
+			restore();
+		}
+	});
+
+	it(`lists ${sweepBound} of ${sweepBound + 1} leftovers in one directory, and says it stopped at the bound`, async () => {
+		plantIndexes(sweepBound + 1);
+		const all = indexes();
+		const sweep = await open();
+		const left = indexes();
+		expect(left).toHaveLength(1);
+		expect({ ...sweep, removed: [...sweep.removed].sort() }).toEqual({
+			removed: all
+				.filter((entry) => !left.includes(entry))
+				.map((entry) => `records.git/${entry}`)
+				.sort(),
+			kept: [],
+			failed: [],
+			bounded: true,
+		});
+	});
+
+	for (const extra of [0, 1])
+		it(`counts the bound across both directories and the fetch refs, at ${sweepBound + extra} leftovers`, async () => {
+			const folder = owned(gonePid);
+			mkdirSync(join(directory, `records.git.${folder}`));
+			plantIndexes(sweepBound - 2);
+			const refs = [owned(gonePid), owned(gonePid)].sort().slice(0, 1 + extra);
+			plantRefs(refs);
+			const listed = indexes().map((entry) => `records.git/${entry}`);
+			const sweep = await open();
+			expect(folders()).toEqual([]);
+			expect(indexes()).toEqual([]);
+			// The refs are listed in name order, so the one past the bound is the last.
+			expect(fetched()).toEqual(extra === 0 ? [] : [`refs/melian/fetch/${refs[1]}`]);
+			expect(sweep).toEqual({
+				removed: [`records.git.${folder}`, ...listed.sort(), `refs/melian/fetch/${refs[0]}`],
+				kept: [],
+				failed: [],
+				...(extra === 0 ? {} : { bounded: true }),
+			});
+		});
+
+	it(`stops at the bound in the state directory, and lists nothing in records.git or the fetch refs`, async () => {
+		for (let i = 0; i <= sweepBound; i++) mkdirSync(join(directory, `records.git.${owned(gonePid)}`));
+		plantIndexes(1);
+		const index = indexes();
+		const ref = owned(gonePid);
+		plantRefs([ref]);
+		const sweep = await open();
+		expect(folders()).toHaveLength(1);
+		expect(indexes()).toEqual(index);
+		expect(fetched()).toEqual([`refs/melian/fetch/${ref}`]);
+		expect(sweep.removed).toHaveLength(sweepBound);
+		expect(sweep.bounded).toBe(true);
+	});
+});
+
+describe("another user's leftovers", () => {
+	const at = {
+		folder: (suffix: string) => join(directory, `records.git.${suffix}`),
+		index: (suffix: string) => join(records, `melian-index-${suffix}`),
+		lock: (suffix: string) => join(records, `melian-index-${suffix}.lock`),
+		ref: (suffix: string) => join(records, `refs/melian/fetch/${suffix}`),
+	};
+	const name = {
+		folder: (suffix: string) => `records.git.${suffix}`,
+		index: (suffix: string) => `records.git/melian-index-${suffix}`,
+		lock: (suffix: string) => `records.git/melian-index-${suffix}.lock`,
+		ref: (suffix: string) => `refs/melian/fetch/${suffix}`,
+	};
+
+	// Another user owns `paths`, as `lstat` reports them, the way a table that hides that user's processes would see it.
+	function ownedByAnother(paths: readonly string[]): () => void {
+		const stat = vi.mocked(lstat).getMockImplementation() as typeof lstat;
+		vi.mocked(lstat).mockImplementation((async (path: string) => {
+			const found = await stat(path);
+			if (!paths.includes(path)) return found;
+			return Object.assign(Object.create(Object.getPrototypeOf(found)), found, { uid: found.uid + 1 });
+		}) as unknown as typeof lstat);
+		return () => vi.mocked(lstat).mockImplementation(stat);
+	}
+
+	for (const what of ["folder", "index", "lock", "ref"] as const)
+		it(`keeps a ${what} another user owns, though its owner's pid is gone, and removes this user's`, async () => {
+			const suffix = owned((await exited()).pid);
+			plant(suffix);
+			const restore = ownedByAnother([at[what](suffix)]);
+			try {
+				const store = await remote.open({ directory });
+				expect(planted(suffix)).toEqual({ ...gone, [what]: there[what] });
+				expect(store.sweep).toEqual({
+					removed: names(suffix).filter((entry) => entry !== name[what](suffix)),
+					kept: [name[what](suffix)],
+					failed: [],
+				});
+			} finally {
+				restore();
+			}
+		});
+
+	it("keeps a fetch ref git has packed, since no file says who owns it", async () => {
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		git(["pack-refs", "--all"]);
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual({ ...gone, ref: true });
+		expect(store.sweep).toEqual({
+			removed: names(suffix).filter((entry) => entry !== name.ref(suffix)),
+			kept: [name.ref(suffix)],
+			failed: [],
+		});
+	});
+
+	it("keeps every leftover where the process has no user ID to compare, as on Windows", async () => {
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		const getuid = process.getuid;
+		process.getuid = undefined;
+		try {
+			const store = await remote.open({ directory });
+			expect(planted(suffix)).toEqual(there);
+			expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+		} finally {
+			process.getuid = getuid;
+		}
+	});
+});
+
+describe("the owner's process namespace", () => {
+	const other = { dev: 4, ino: 4026532000 };
+	const ours = { dev: 4, ino: 4026531836 };
+	const platform = (name: NodeJS.Platform) => vi.spyOn(process, "platform", "get").mockReturnValue(name);
+
+	it("keeps what a process in another pid namespace under this host's name left, and removes what this one's left", async () => {
+		platform("linux");
+		// Each prefix is the one the store gives this host under that namespace, and each pid names no live process. This
+		// one's namespace is fixed too, since macOS, which runs this file, has no `/proc` to read it from.
+		const prefix = () => Owner.current(new ProcessTable().list())?.name().split("-")[0] as string;
+		namespace.read = () => other;
+		const theirs = owned((await exited()).pid, prefix());
+		namespace.read = () => ours;
+		const mine = owned((await exited()).pid, prefix());
+		plant(theirs);
+		plant(mine);
+		const store = await remote.open({ directory });
+		expect(planted(theirs)).toEqual(there);
+		expect(planted(mine)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(mine).sort(), kept: names(theirs).sort(), failed: [] });
+	});
+
+	it("names what it makes after the pid namespace it reads", async () => {
+		platform("linux");
+		namespace.read = () => other;
+		const owner = Owner.current(new ProcessTable().list());
+		expect(owner?.name()).toMatch(new RegExp(`^${hash(spaceOf(other))}-${process.pid}-[0-9a-f-]{36}$`));
+	});
+
+	it("names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace", async () => {
+		platform("linux");
+		namespace.read = () => {
+			throw Object.assign(new Error("EACCES"), { code: "EACCES" });
+		};
+		const suffix = owned((await exited()).pid);
+		plant(suffix);
+		expect(Owner.current(new ProcessTable().list())).toBeUndefined();
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual(there);
+		expect(store.sweep).toEqual({ removed: [], kept: names(suffix), failed: [] });
+	});
+
+	it("keys by the host's name alone off Linux, reads no namespace, and still sweeps", async () => {
+		platform("darwin");
+		namespace.read = () => {
+			throw new Error("a namespace was read off Linux");
+		};
+		const suffix = owned((await exited()).pid, hash(""));
+		plant(suffix);
+		const store = await remote.open({ directory });
+		expect(planted(suffix)).toEqual(gone);
+		expect(store.sweep).toEqual({ removed: names(suffix), kept: [], failed: [] });
+	});
 });
 
 describe("the names a call gives what it makes", { timeout: 60_000 }, () => {
