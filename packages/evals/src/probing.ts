@@ -105,6 +105,8 @@ export class ProbingCombination implements ProbingRoute {
 	}
 
 	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
+		const tier = config.stages["pull-request"] ?? "full";
+		const runs = checksOfTier(config, tier);
 		for (const name of this.lenses) {
 			const lens = lenses.find((each) => each.name === name);
 			if (lens === undefined)
@@ -114,6 +116,8 @@ export class ProbingCombination implements ProbingRoute {
 			const refused = lens.probeRefusal();
 			if (refused !== undefined)
 				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
+			if (!runs.includes(`lens.${name}`))
+				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`);
 		}
 		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
 		const governed = lenses

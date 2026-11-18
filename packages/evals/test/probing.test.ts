@@ -322,6 +322,20 @@ describe("ProbingCombination", () => {
 		);
 	});
 
+	it("refuses a lens the tier of the review's pull-request stage does not run, which is full when no stage names one", async () => {
+		const loaded = await lenses();
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
+		const tiers = { full: ["lens.trust-boundary"], careful: ["lens.correctness"] };
+		expect(() => pair.routed({ ...config, tiers, stages: {} }, loaded)).toThrow(
+			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
+		);
+		expect(() => pair.routed({ ...config, tiers, stages: { "pull-request": "full" } }, loaded)).toThrow(
+			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
+		);
+		const careful = pair.routed({ ...config, tiers, stages: { "pull-request": "careful" } }, loaded);
+		expect(careful.config.lenses.correctness).toStrictEqual({ route: { model: "a/plan", thinking: "high" } });
+	});
+
 	it("drops every probe for the level without probes, and leaves the tiers as they were", async () => {
 		const routed = ProbingCombination.parse("off=a/plan", "medium").routed(
 			{ ...config, lenses: {}, models: { medium: { model: "m/medium" } } },
@@ -974,10 +988,11 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		defect = (await runGolden(lost, { kind: "scripted", probes: "unconfined" })).findings;
 	});
 
-	it("exits 2 at the first review for a probe lens core refuses, or one the golden's policy does not load", async () => {
+	it("exits 2 at the first review for a probe lens core refuses, or one the golden's policy does not load or run", async () => {
 		for (const [named, refusal] of [
 			["tests", /^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/],
 			["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
+			["trust-boundary-probes", /^MELIAN_EVAL_PROBE_LENSES names trust-boundary-probes, which the review's full tier does not run$/],
 		] as const) {
 			const using = runners({ goldens: () => [lost], golden: vi.fn(runGolden) });
 			const { status, lines, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_LENSES: named }, using);
