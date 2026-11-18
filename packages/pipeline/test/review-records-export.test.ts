@@ -503,6 +503,27 @@ describe("a review that names a record store after a dismissal", () => {
 		);
 		expect(dismissalsOf(stored)).toEqual([]);
 	});
+
+	it("writes no record when a dismissal stored with no sighting is made again with the store", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const root = await harness!.root(context);
+		const { base, head } = first.changeset.revision;
+		await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, `${base}..${head}`), context);
+
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+
+		expect(made.unshared).toEqual([]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+	});
 });
 
 describe("a check record's key", () => {
