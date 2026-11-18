@@ -308,6 +308,29 @@ describe("a shared record's classed fields", () => {
 		expect(check(sample, at(samples[sample].payload, path, value))).toBeUndefined();
 	});
 
+	// A refusal names where the record went wrong in the schema's words, never in words the record supplied.
+	it.each([
+		["a field no schema has", "ran", (payload: RecordJson) => ({ ...(payload as object), [token]: 1 })],
+		[
+			"a map's key whose value is wrong",
+			"triage",
+			(payload: RecordJson) =>
+				at(payload, "decision", {
+					questionSet: { name: "triage", version: "1" },
+					decider: "llm",
+					calibrated: false,
+					model: null,
+					answers: [{ question: "security", distribution: { [token]: -1 }, chosen: "careful" }],
+				}),
+		],
+		["the verifier check's name", "verification", (payload: RecordJson) => at(payload, "check/name", token)],
+		["a sighting that is not a finding", "lens", (payload: RecordJson) => at(payload, "sightings/0", { [token]: 1 })],
+	] as const)("refuses %s without repeating it", (_, sample, change) => {
+		const refused = check(sample, change(samples[sample].payload));
+		expect(refused).toBeTypeOf("string");
+		expect(refused).not.toContain(token);
+	});
+
 	// The pattern takes its length from the one `versioned` cuts a lens's hash to, so every lens Melian ships fits it.
 	it("accepts every built-in lens's version", async () => {
 		const lenses = await Lens.builtins();

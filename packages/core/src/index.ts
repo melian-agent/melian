@@ -518,6 +518,8 @@ export {
 export {
 	canonicalJson,
 	everyRecordCounts,
+	findingIdPattern,
+	hashPattern,
 	type NamedRecord,
 	type PayloadCheck,
 	type PayloadChecks,
@@ -536,7 +538,6 @@ export {
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
-	hashPattern,
 	isToolVersion,
 	type LensPayload,
 	lensOutcomeSchema,

@@ -418,7 +418,7 @@ describe("SharedRecord", () => {
 
 		it.each([
 			["a record is a JSON object", "x"],
-			["a record holds no field extra", { ...envelope(), extra: 1 }],
+			["a record holds a field no record has", { ...envelope(), extra: 1 }],
 			["a record's v is 1", { ...envelope(), v: 2 }],
 			["a record's changeset is dot-joined segments of [a-z0-9-]", envelope({ changeset: "A" })],
 			["a record's kind is dot-joined segments of [a-z0-9-]", envelope({ kind: "Check" })],

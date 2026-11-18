@@ -72,7 +72,11 @@ const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
 const dotted = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 const revisionPattern = /^(?:[0-9a-f]{40}\.\.[0-9a-f]{40}|[0-9a-f]{64}\.\.[0-9a-f]{64})$/;
-const recordId = /^[0-9a-f]{64}$/;
+/** A SHA-256 hash in lowercase hex, as Melian computes a request's key, a record's ID, a cache key or a coverage ID. */
+export const hashPattern = "^[0-9a-f]{64}$";
+/** A finding's ID, 16 lowercase hex digits, which keys the dismissal of that finding. */
+export const findingIdPattern = "^[0-9a-f]{16}$";
+const recordId = new RegExp(hashPattern);
 const signatureBytes = 64;
 
 function invalid(message: string): RecordError {
@@ -235,7 +239,7 @@ export class SharedRecord {
 		const bytes = canonicalJson(value);
 		const envelope = frozen(JSON.parse(bytes) as { [field: string]: unknown });
 		for (const field of Object.keys(envelope))
-			if (!fields.has(field)) throw invalid(`a record holds no field ${field}`);
+			if (!fields.has(field)) throw invalid("a record holds a field no record has");
 		if (envelope.v !== 1) throw invalid("a record's v is 1");
 		if (typeof envelope.changeset !== "string" || !dotted.test(envelope.changeset))
 			throw invalid("a record's changeset is dot-joined segments of [a-z0-9-]");

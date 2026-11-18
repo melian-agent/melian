@@ -489,7 +489,7 @@ describe("review payload checks", () => {
 	it("refuses a verification that holds a check other than the verifier's", () => {
 		const payload = samples.find(([kind]) => kind === "verification")?.[1] as Record<string, RecordJson>;
 		expect(check("verification", { ...payload, check: decided("lens.security", lensVersion, null) })).toBe(
-			"holds the check of lens.security, not the verifier's",
+			"holds the check of another check than the verifier",
 		);
 		expect(check("verification", { ...payload, check: null })).toBeUndefined();
 	});

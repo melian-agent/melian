@@ -6,7 +6,7 @@ import { severitySchema, thinkingLevelSchema } from "./config.ts";
 import { type CheckErrorCode, FindingError } from "./errors.ts";
 import { Finding, type StoredFinding } from "./findings.ts";
 import { lensVersionDigits, scrutinyLevels } from "./lens.ts";
-import { canonicalJson, type PayloadChecks, type RecordJson } from "./record.ts";
+import { canonicalJson, findingIdPattern, hashPattern, type PayloadChecks, type RecordJson } from "./record.ts";
 import { verificationSchema } from "./verification.ts";
 
 /** What an exported record says in place of text a tool, a provider or the head's code may have written. */
@@ -51,9 +51,6 @@ export const recordCodes = [
 	"withheld",
 ] as const;
 
-/** A SHA-256 hash in lowercase hex, as Melian computes a cache key, a coverage ID or a snippet's hash. */
-export const hashPattern = "^[0-9a-f]{64}$";
-
 /** An Enola snapshot's ID, which Melian computes as a SHA-256 hash. */
 export const snapshotIdPattern = "^sha256:[0-9a-f]{64}$";
 
@@ -97,7 +94,7 @@ function sourceVersion(check: string, version: string): boolean {
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
 const count = Type.Integer({ minimum: 0 });
-const findingId = Type.String({ pattern: "^[0-9a-f]{16}$" });
+const findingId = Type.String({ pattern: findingIdPattern });
 const hash = Type.String({ pattern: hashPattern });
 const recordId = hash;
 const objectId = "(?:[0-9a-f]{40}|[0-9a-f]{64})";
@@ -400,14 +397,22 @@ export type AccountPayload = Static<typeof accountPayloadSchema>;
 function shape(schema: TSchema, payload: RecordJson): string | undefined {
 	const [error] = Value.Errors(schema, payload);
 	if (error === undefined) return undefined;
-	return `does not match its schema at ${error.instancePath || "(top level)"}: ${error.message}`;
+	// A key the schema does not name, an unknown field's or a map's, is the record's own text, so the path masks it.
+	const named = (segment: string) =>
+		/^\d+$/.test(segment) || `${error.schemaPath}/`.includes(`/properties/${segment}/`);
+	const where = error.instancePath
+		.split("/")
+		.slice(1)
+		.map((segment) => (named(segment) ? segment : "*"))
+		.join("/");
+	return `does not match its schema at ${error.instancePath === "" ? "(top level)" : `/${where}`}: ${error.message}`;
 }
 
 function finding(value: unknown, where: string): StoredFinding | string {
 	try {
 		return Finding.parse(value).toJSON();
 	} catch (error) {
-		if (error instanceof FindingError) return `holds a sighting at ${where} that is not a finding: ${error.message}`;
+		if (error instanceof FindingError) return `holds a sighting at ${where} that is not a finding: ${error.code}`;
 		throw error;
 	}
 }
@@ -468,7 +473,7 @@ export const reviewPayloads: PayloadChecks = {
 		const refused = shape(verificationPayloadSchema, payload);
 		if (refused !== undefined) return refused;
 		const { claims, dismissals, check } = payload as VerificationPayload;
-		if (check !== null && check.name !== "verifier") return `holds the check of ${check.name}, not the verifier's`;
+		if (check !== null && check.name !== "verifier") return "holds the check of another check than the verifier";
 		const unwritten =
 			decidedVersion(check, "/check/version") ??
 			claims.map((claim, index) => namedSource(claim.source, `/claims/${index}/source/version`)).find(Boolean);
