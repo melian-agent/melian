@@ -101,6 +101,27 @@ describe("the check over a scratch repository", () => {
 		);
 	});
 
+	it("records the same hashes from a checkout that converts line endings", { timeout: 60_000 }, () => {
+		copyFileSync(join(root, ".gitattributes"), join(repo, ".gitattributes"));
+		const env = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_COUNT: "0" };
+		const git = (...args) => {
+			const run = spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
+				cwd: repo,
+				env,
+				encoding: "utf8",
+			});
+			expect(run.status, run.stderr).toBe(0);
+		};
+		git("init", "-q");
+		git("add", ".gitattributes", "src");
+		git("commit", "-q", "-m", "lf");
+		const recorded = computeRecord(repo, producers);
+		git("config", "core.autocrlf", "true");
+		rmSync(join(repo, "src"), { recursive: true });
+		git("checkout", "--", "src");
+		expect(computeRecord(repo, producers)).toEqual(recorded);
+	});
+
 	it("leaves no scratch directory behind", { timeout: 60_000 }, () => {
 		const temporary = mkdtempSync(join(tmpdir(), "melian-code-hashes-tmpdir-"));
 		try {
