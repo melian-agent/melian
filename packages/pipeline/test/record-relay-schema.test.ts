@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { pullRequestChangesetId, SharedRecord } from "@melian-agent/core";
+import { defaultConfig, pullRequestChangesetId, SharedRecord, TierAccount } from "@melian-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { RelayBatch, RelayRefusal } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
@@ -9,7 +9,8 @@ import { ReviewRecords } from "../src/review-records.ts";
 const base = "a".repeat(40);
 const head = "b".repeat(40);
 const changeset = pullRequestChangesetId("github", { owner: "octo", name: "repo" }, 7);
-const fork = { changeset, revision: `${base}..${head}`, fork: true };
+const tier = TierAccount.of(defaultConfig, "full", { loaded: [], selected: [] });
+const fork = { changeset, revision: `${base}..${head}`, fork: true, tier };
 
 const directories: string[] = [];
 afterEach(async () => {

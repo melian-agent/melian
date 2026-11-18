@@ -1,7 +1,21 @@
 import type { Dirent } from "node:fs";
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { RecordError, type RecordStore, type RoundManifest, reviewPayloads, SharedRecord } from "@melian-agent/core";
+import {
+	type AccountPayload,
+	type CheckPayload,
+	type CheckRecord,
+	type LegacyAccountPayload,
+	type LensPayload,
+	RecordError,
+	type RecordStore,
+	type RoundFacts,
+	type RoundManifest,
+	reviewPayloads,
+	SharedRecord,
+	type TierAccount,
+	type TriagePayload,
+} from "@melian-agent/core";
 
 /**
  * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
@@ -26,7 +40,9 @@ export type RelayRefusalCode =
 	| "roundCount"
 	| "roundShape"
 	| "unnamedRecord"
-	| "tooManyExtras";
+	| "tooManyExtras"
+	| "accountCount"
+	| "tierAccount";
 
 const says: Record<RelayRefusalCode, string> = {
 	strayEntry: "is no record file a review's directory store writes",
@@ -45,6 +61,8 @@ const says: Record<RelayRefusalCode, string> = {
 	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
 	unnamedRecord: "is a record the batch's round does not name, and no triage or telemetry of it",
 	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage and telemetry records`,
+	accountCount: "is a round that reads no account, or more than one",
+	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
 };
 
 const hex64 = /^[0-9a-f]{64}$/;
@@ -75,8 +93,22 @@ export class RelayRefusal extends Error {
 	}
 }
 
-/** The run a batch came from, as Melian's own code worked it out from the pull request, never from the batch. */
-export type RelayRun = { readonly changeset: string; readonly revision: string; readonly fork: boolean };
+/**
+ * The run a batch came from, as Melian's own code worked it out from the pull request, never from the batch: its
+ * changeset, its revision, whether its head is a fork's, and the account of the tier the base's policy names.
+ */
+export type RelayRun = {
+	readonly changeset: string;
+	readonly revision: string;
+	readonly fork: boolean;
+	readonly tier: TierAccount;
+};
+
+// A stored check as `TierAccount` reads it: a record leaves out with `null` what a check record leaves out.
+function fact(check: { name: string; status: CheckRecord["status"]; cause?: string | null }) {
+	const { name, status, cause } = check;
+	return cause == null ? { name, status } : { name, status, cause: cause as CheckRecord["cause"] };
+}
 
 // Lists a directory without following a link. A link, even to a directory, is no entry a directory store writes.
 async function entries(root: string, path: string): Promise<Dirent[]> {
@@ -120,13 +152,14 @@ export class RelayBatch {
 		}
 		const records: SharedRecord[] = [];
 		for (const file of files) records.push(await RelayBatch.#record(root, file, run));
-		if (!run.fork) RelayBatch.#rests(records);
+		if (!run.fork) RelayBatch.#rests(records, run.tier);
 		return new RelayBatch(run, records);
 	}
 
 	// A writer's batch is one round and what it rests on: every record the round reads, held here at the run's revision,
-	// and a bounded number of triage records and the round's telemetry. The round sets no other round aside.
-	static #rests(records: readonly SharedRecord[]): void {
+	// and a bounded number of triage records and the round's telemetry. The round sets no other round aside, and its
+	// account is the one the base's tier gives for the records it counts.
+	static #rests(records: readonly SharedRecord[], tier: TierAccount): void {
 		const rounds = records.filter((record) => record.kind === "round");
 		const round = rounds[0];
 		if (round === undefined || rounds.length > 1)
@@ -148,6 +181,34 @@ export class RelayBatch {
 				throw new RelayRefusal("unnamedRecord", record.path);
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
 		}
+		const accounts = manifest.read.filter((named) => named.kind === "account");
+		const account = accounts.length === 1 ? held.get(accounts[0]!.id) : undefined;
+		if (account === undefined) throw new RelayRefusal("accountCount", round.path);
+		const claim = account.payload as AccountPayload | LegacyAccountPayload;
+		const counted = claim.records.map((id) => held.get(id));
+		if (counted.some((record) => record === undefined)) throw new RelayRefusal("unresolvedRead", account.path);
+		const refusal = tier.refusal(claim, RelayBatch.#facts(counted as SharedRecord[], claim));
+		if (refusal !== undefined) throw new RelayRefusal("tierAccount", round.path, refusal);
+	}
+
+	// What the records an account counts say decides a skip, read as the review wrote them: each check record's result,
+	// each lens record's check, the account's own filled records, and triage's answers when it decided.
+	static #facts(counted: readonly SharedRecord[], claim: AccountPayload | LegacyAccountPayload): RoundFacts {
+		const records: Pick<CheckRecord, "name" | "status" | "cause">[] = claim.filled.map(fact);
+		let triage: RoundFacts["triage"];
+		for (const record of counted) {
+			if (record.kind === "check") records.push(fact((record.payload as CheckPayload).result));
+			if (record.kind === "lens") {
+				const { check } = record.payload as LensPayload;
+				if (check !== null) records.push(fact(check));
+			}
+			const decision = record.kind === "triage" ? (record.payload as TriagePayload).decision : null;
+			if (decision !== null) {
+				const answers = decision.answers.map(({ question, chosen }) => ({ question, chosen }));
+				triage = { answers, inputCut: (record.payload as TriagePayload).inputCut };
+			}
+		}
+		return triage === undefined ? { records } : { records, triage };
 	}
 
 	// Every record file under the run's changeset, by path relative to `root`, refusing anything else the tree holds.

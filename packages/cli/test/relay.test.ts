@@ -18,7 +18,8 @@ import { baseAndHead, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures
 import { main } from "../src/main.ts";
 import * as targets from "../src/target.ts";
 
-const trusting = "trust:\n  writers: true\n";
+// A base that trusts writers, with a tier of one check, so a round accounts for little.
+const trusting = "trust:\n  writers: true\ntiers:\n  full: [static.biome]\n";
 const request = "d".repeat(64);
 const cleanup: string[] = [];
 
@@ -76,7 +77,15 @@ async function pullRequest(options: { policy?: string; permission?: string; fork
 		{ name: "static.biome", status: "ran", version: "2.0.0", findings: 0, notes: [] },
 		[],
 	);
-	const round = records.round([check], undefined, [], []);
+	const account = records.account({
+		checks: ["static.biome"],
+		records: [check],
+		filled: [],
+		allowSkip: [],
+		producers: [],
+		resolutionPolicy: null,
+	});
+	const round = records.round([check, account], undefined, [], []);
 	let stdout = "";
 	let stderr = "";
 	const io = {
@@ -119,7 +128,7 @@ async function pullRequest(options: { policy?: string; permission?: string; fork
 			return undefined;
 		}
 	};
-	return { changeset, check, round, relay, onState, out: () => stdout, err: () => stderr };
+	return { changeset, check, account, round, relay, onState, out: () => stdout, err: () => stderr };
 }
 
 async function artefact(...written: SharedRecord[]): Promise<string> {
@@ -131,18 +140,28 @@ async function artefact(...written: SharedRecord[]): Promise<string> {
 }
 
 describe("melian records relay", { timeout: 60_000 }, () => {
-	it("adds a writer's round and the check it reads to melian/state", async () => {
-		const { check, round, relay, onState, out } = await pullRequest();
-		expect(await relay(await artefact(check, round))).toBe(0);
-		expect(onState()?.sort()).toEqual([check.path, round.path].sort());
-		expect(out()).toBe("melian: relayed 2 records of pull request #7 to melian/state\n");
+	it("adds a writer's round and the records it reads to melian/state", async () => {
+		const { check, account, round, relay, onState, out } = await pullRequest();
+		expect(await relay(await artefact(check, account, round))).toBe(0);
+		expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+		expect(out()).toBe("melian: relayed 3 records of pull request #7 to melian/state\n");
 	});
 
 	it("checks a writer's batch with --check and writes nothing", async () => {
-		const { check, round, relay, onState, out } = await pullRequest();
-		expect(await relay(await artefact(check, round), undefined, "--check")).toBe(0);
+		const { check, account, round, relay, onState, out } = await pullRequest();
+		expect(await relay(await artefact(check, account, round), undefined, "--check")).toBe(0);
 		expect(onState()).toBeUndefined();
-		expect(out()).toBe("melian: the relay would add 2 records of pull request #7 to melian/state\n");
+		expect(out()).toBe("melian: the relay would add 3 records of pull request #7 to melian/state\n");
+	});
+
+	it("refuses a round whose account the base's tier does not give", async () => {
+		const policy = "trust:\n  writers: true\ntiers:\n  full: [static.biome, static.tsc]\n";
+		const { check, account, round, relay, onState, err } = await pullRequest({ policy });
+		expect(await relay(await artefact(check, account, round))).toBe(1);
+		expect(onState()).toBeUndefined();
+		expect(err()).toBe(
+			`melian: melian records relay refused the batch: ${round.id}.json is a round whose account differs from what the base's tier and the round's own records give (otherChecks)\n`,
+		);
 	});
 
 	it("refuses with --check what the relay refuses", async () => {
@@ -186,8 +205,8 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 
 	it("names only the store's code when the push fails, never git's words", async () => {
 		const missing = join(scratch(), "missing.git");
-		const { check, round, relay, err } = await pullRequest({ origin: missing });
-		expect(await relay(await artefact(check, round))).toBe(1);
+		const { check, account, round, relay, err } = await pullRequest({ origin: missing });
+		expect(await relay(await artefact(check, account, round))).toBe(1);
 		expect(err()).toBe(
 			"melian: melian/state refused or failed the relay (unreachable); repeat the relay, which completes a batch that landed in part\n",
 		);

@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { RecordError, Revision, reviewPayloads } from "@melian-agent/core";
-import { RelayBatch } from "@melian-agent/pipeline";
+import { Lens, loadConfig, RecordError, Revision, reviewPayloads, TierAccount } from "@melian-agent/core";
+import { ChangeLenses, RelayBatch } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
 import { type Io, ReviewSource, writerTrust } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
@@ -9,7 +9,8 @@ import { checkExpected, fetchedPullRequest, gitHubFor, parseTarget } from "./tar
 /**
  * Adds the records a pull request's round left in a directory store to the clone's `melian/state`, checked whole by
  * `RelayBatch`. The changeset, revision and whether the head is a fork come from GitHub's answer for the pull request,
- * never from the batch. With `check`, it checks the batch the same way and writes nothing.
+ * never from the batch, and the tier its round must account for from the base's policy, as the round's review read it.
+ * With `check`, it checks the batch the same way and writes nothing.
  */
 export async function relayRecords(
 	io: Io,
@@ -26,14 +27,21 @@ export async function relayRecords(
 	const { pullRequest, changeset } = await fetchedPullRequest(io.cwd, provider, target.number);
 	await checkExpected(pullRequest, changeset, options.expect, "nothing was relayed");
 	const { repoRoot } = changeset;
-	if (!(await ReviewSource.of(changeset, { kind: "revision", commit: pullRequest.base.sha }).trustsWriters()))
+	const source = { kind: "revision", commit: pullRequest.base.sha } as const;
+	if (!(await ReviewSource.of(changeset, source).trustsWriters()))
 		throw new CliError("the base's melian.yaml does not set trust.writers: true, so nothing was relayed");
 	// A head whose writer Melian cannot establish hands over what a fork's may, which is less.
 	const fork = !(await writerTrust(provider, pullRequest)).trusted;
+	const { config } = await loadConfig(repoRoot, source, ".");
+	const tier = config.stages["pull-request"] ?? "full";
+	const lenses = await Lens.load(repoRoot, source, changeset.revision.paths());
+	// The floor decides no skip, since neither floor is skip, so the head's trust need not choose it here.
+	const selection = await ChangeLenses.read({ changeset, lenses, config, tier, policy: source, floor: "quick" });
 	const batch = await RelayBatch.read(resolve(io.cwd, options.from.slice("dir:".length)), {
 		changeset: changeset.id,
 		revision: Revision.key(changeset.revision),
 		fork,
+		tier: TierAccount.of(config, tier, selection.tierLenses()),
 	});
 	if (options.check === true) {
 		io.stdout(

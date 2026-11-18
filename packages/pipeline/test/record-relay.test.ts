@@ -3,10 +3,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
 	DirectoryRecordStore,
+	defaultConfig,
+	LevelBand,
 	MemoryRecordStore,
 	pullRequestChangesetId,
 	reviewPayloads,
 	SharedRecord,
+	TierAccount,
 } from "@melian-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { RelayBatch, RelayRefusal, relayLimits } from "../src/record-relay.ts";
@@ -18,12 +21,36 @@ const head = "b".repeat(40);
 const changeset = pullRequestChangesetId("github", { owner: "octo", name: "repo" }, 7);
 const request = "d".repeat(64);
 const revision = `${base}..${head}`;
-const writer = { changeset, revision, fork: false };
-const fork = { changeset, revision, fork: true };
+// A tier of one check, as the base's policy gives it.
+const tier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome"] } }, "relay", {
+	loaded: [],
+	selected: [],
+});
+const writer = { changeset, revision, fork: false, tier };
+const fork = { changeset, revision, fork: true, tier };
 
 const records = () => ReviewRecords.of(changeset, { base, head });
 const check = (name = "static.biome") =>
 	records().check(request, { name, status: "ran", version: "2.0.0", findings: 0, notes: [] }, []);
+type Claim = {
+	checks?: string[];
+	allowSkip?: string[];
+	filled?: { name: string; status: "skipped" | "failed"; reason: string }[];
+};
+const account = (counted: SharedRecord[], claim: Claim = {}) =>
+	records().account({
+		checks: claim.checks ?? ["static.biome"],
+		records: counted,
+		filled: claim.filled ?? [],
+		allowSkip: claim.allowSkip ?? [],
+		producers: [],
+		resolutionPolicy: null,
+	});
+// A round as a review writes it: the records its account counts, the account, and the round that reads them.
+const accounted = (counted: SharedRecord[], claim: Parameters<typeof account>[1] = {}) => {
+	const made = account(counted, claim);
+	return [...counted, made, records().round([...counted, made], undefined, [], [])];
+};
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -61,12 +88,10 @@ async function refusal(read: Promise<unknown>): Promise<RelayRefusal> {
 
 describe("RelayBatch", () => {
 	it("adds a writer's check, lens and round records to the store whole", async () => {
-		const biome = check();
-		const round = records().round([biome], undefined, [], []);
-		const batch = await RelayBatch.read(await artefact(biome, round), writer);
+		const batch = await RelayBatch.read(await artefact(...accounted([check()])), writer);
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		await batch.into(store);
-		expect((await store.list(changeset)).map((each) => each.kind).sort()).toEqual(["check", "round"]);
+		expect((await store.list(changeset)).map((each) => each.kind).sort()).toEqual(["account", "check", "round"]);
 	});
 
 	it("takes a fork's check record", async () => {
@@ -203,29 +228,125 @@ describe("RelayBatch", () => {
 
 	it("refuses a record the round does not name, and takes its triage and telemetry", async () => {
 		const biome = check();
-		const round = records().round([biome], undefined, [], []);
+		const written = accounted([biome]);
+		const round = written[2]!;
 		const telemetry = records().telemetry(round, { durationMs: 5, stages: [] });
 		const triage = records().triage(request, { inputCut: false });
-		const batch = await RelayBatch.read(await artefact(biome, round, telemetry, triage), writer);
-		expect(batch.records).toHaveLength(4);
-		expect((await refusal(RelayBatch.read(await artefact(biome, round, check("static.tsc")), writer))).code).toBe(
+		const batch = await RelayBatch.read(await artefact(...written, telemetry, triage), writer);
+		expect(batch.records).toHaveLength(5);
+		expect((await refusal(RelayBatch.read(await artefact(...written, check("static.tsc")), writer))).code).toBe(
 			"unnamedRecord",
 		);
 		const otherRound = records().round([biome, check("static.tsc")], undefined, [], []);
 		const stray = records().telemetry(otherRound, { durationMs: 5, stages: [] });
-		expect((await refusal(RelayBatch.read(await artefact(biome, round, stray), writer))).code).toBe("unnamedRecord");
+		expect((await refusal(RelayBatch.read(await artefact(...written, stray), writer))).code).toBe("unnamedRecord");
 	});
 
 	it("takes the most triage and telemetry records it allows, and refuses one more", async () => {
-		const biome = check();
-		const round = records().round([biome], undefined, [], []);
+		const written = accounted([check()]);
 		const triage = (index: number) => records().triage(index.toString(16).padStart(64, "0"), { inputCut: false });
 		const at = Array.from({ length: relayLimits.extras }, (_, index) => triage(index));
-		expect((await RelayBatch.read(await artefact(biome, round, ...at), writer)).records).toHaveLength(at.length + 2);
+		expect((await RelayBatch.read(await artefact(...written, ...at), writer)).records).toHaveLength(at.length + 3);
 		const past = [...at, triage(relayLimits.extras)];
-		expect((await refusal(RelayBatch.read(await artefact(biome, round, ...past), writer))).code).toBe(
-			"tooManyExtras",
+		expect((await refusal(RelayBatch.read(await artefact(...written, ...past), writer))).code).toBe("tooManyExtras");
+	});
+
+	it("refuses a writer's round that names no account, or two", async () => {
+		const biome = check();
+		const bare = records().round([biome], undefined, [], []);
+		expect((await refusal(RelayBatch.read(await artefact(biome, bare), writer))).code).toBe("accountCount");
+		const first = account([biome]);
+		const second = account([biome], { allowSkip: ["static.tsc"] });
+		const both = records().round([biome, first, second], undefined, [], []);
+		const found = await refusal(RelayBatch.read(await artefact(biome, first, second, both), writer));
+		expect(found.code).toBe("accountCount");
+	});
+
+	it.each([
+		["names checks its tier does not", { checks: ["static.biome", "static.tsc"] }, [check()], "otherChecks"],
+		["names a check it holds no record for", {}, [], "missingRecord"],
+		["allows a skip its tier does not", { allowSkip: ["static.biome"] }, [check()], "otherSkips"],
+	])("refuses a round whose account %s, by the tier's own refusal", async (_, claim, counted, code) => {
+		const found = await refusal(RelayBatch.read(await artefact(...accounted(counted, claim)), writer));
+		expect([found.code, found.recordCode]).toEqual(["tierAccount", code]);
+	});
+
+	describe("with a tier of lenses", () => {
+		// Both lenses cover the change, and contracts may skip, as triage chose.
+		const lensTier = TierAccount.of(
+			{ ...defaultConfig, tiers: { relay: ["static.biome", "lens.correctness", "lens.contracts"] } },
+			"relay",
+			{
+				loaded: ["correctness", "contracts"],
+				selected: [
+					{ name: "correctness", covers: ["a.ts"], band: LevelBand.of(undefined) },
+					{ name: "contracts", covers: ["a.ts"], band: LevelBand.of({ floor: "skip" }) },
+				],
+			},
 		);
+		const run = { ...writer, tier: lensTier };
+		const lens = () =>
+			records().lens(
+				{ name: "correctness", version: "abc", level: "careful", request: "e".repeat(64), probe: false },
+				{ status: "unanswered", reason: "no reply" },
+				[],
+				{ name: "lens.correctness", status: "ran", version: "abc", level: "careful" },
+			);
+		const triaged = (inputCut: boolean) =>
+			records().triage(request, {
+				decision: {
+					questionSet: { name: "lenses", version: "1" },
+					decider: "recorded",
+					calibrated: false,
+					answers: [{ question: "contracts", distribution: { skip: 1 }, chosen: "skip" }],
+				},
+				inputCut,
+			});
+		const claim: Claim = {
+			checks: ["static.biome", "lens.correctness", "lens.contracts"],
+			allowSkip: ["lens.contracts"],
+			filled: [{ name: "lens.contracts", status: "skipped", reason: "triage chose skip" }],
+		};
+
+		it("takes a round whose lens, triage and filled records give its account", async () => {
+			const batch = await RelayBatch.read(
+				await artefact(...accounted([check(), lens(), triaged(false)], claim)),
+				run,
+			);
+			expect(batch.records).toHaveLength(5);
+		});
+
+		it("refuses triage's skip when triage's input was cut", async () => {
+			const found = await refusal(
+				RelayBatch.read(await artefact(...accounted([check(), lens(), triaged(true)], claim)), run),
+			);
+			expect([found.code, found.recordCode]).toEqual(["tierAccount", "otherSkips"]);
+		});
+	});
+
+	it("takes a mutation skip with leave, which its record's cause gives", async () => {
+		const mutationTier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.mutation"] } }, "relay", {
+			loaded: [],
+			selected: [],
+		});
+		const skipped = records().check(
+			request,
+			{ name: "static.mutation", status: "skipped", reason: "no production lines", cause: "noProductionLines" },
+			[],
+		);
+		const claim = { checks: ["static.mutation"], allowSkip: ["static.mutation"] };
+		const batch = await RelayBatch.read(await artefact(...accounted([skipped], claim)), {
+			...writer,
+			tier: mutationTier,
+		});
+		expect(batch.records).toHaveLength(3);
+	});
+
+	it("refuses an account that counts a record the batch does not hold", async () => {
+		const biome = check();
+		const made = account([biome]);
+		const round = records().round([made], undefined, [], []);
+		expect((await refusal(RelayBatch.read(await artefact(made, round), writer))).code).toBe("unresolvedRead");
 	});
 
 	it("names a stray entry without its name, which the head's code chose", async () => {
