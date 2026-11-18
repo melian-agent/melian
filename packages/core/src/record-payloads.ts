@@ -4,9 +4,9 @@ import Value from "typebox/value";
 import { noRecord } from "./adjudication.ts";
 import { severitySchema, thinkingLevelSchema } from "./config.ts";
 import { type CheckErrorCode, FindingError } from "./errors.ts";
-import { Finding, type StoredFinding } from "./findings.ts";
+import { Finding, findingIdPattern, type StoredFinding } from "./findings.ts";
 import { lensVersionDigits, scrutinyLevels } from "./lens.ts";
-import { canonicalJson, findingIdPattern, hashPattern, type PayloadChecks, type RecordJson } from "./record.ts";
+import { canonicalJson, hashPattern, type PayloadChecks, type RecordJson } from "./record.ts";
 import { verificationSchema } from "./verification.ts";
 
 /** What an exported record says in place of text a tool, a provider or the head's code may have written. */

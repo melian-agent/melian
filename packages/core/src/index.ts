@@ -204,6 +204,8 @@ export {
 	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
+	findingIdDigits,
+	findingIdPattern,
 	findingLocationSchema,
 	findingPropertiesSchema,
 	findingSchema,
@@ -518,7 +520,6 @@ export {
 export {
 	canonicalJson,
 	everyRecordCounts,
-	findingIdPattern,
 	hashPattern,
 	type NamedRecord,
 	type PayloadCheck,

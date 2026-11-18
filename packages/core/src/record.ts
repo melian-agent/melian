@@ -74,8 +74,6 @@ const dotted = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 const revisionPattern = /^(?:[0-9a-f]{40}\.\.[0-9a-f]{40}|[0-9a-f]{64}\.\.[0-9a-f]{64})$/;
 /** A SHA-256 hash in lowercase hex, as Melian computes a request's key, a record's ID, a cache key or a coverage ID. */
 export const hashPattern = "^[0-9a-f]{64}$";
-/** A finding's ID, 16 lowercase hex digits, which keys the dismissal of that finding. */
-export const findingIdPattern = "^[0-9a-f]{16}$";
 const recordId = new RegExp(hashPattern);
 const signatureBytes = 64;
 
