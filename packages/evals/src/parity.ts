@@ -112,12 +112,15 @@ export class ParityArm implements ProbingRoute {
 		const selections = Lens.select(
 			lenses.filter((lens) => runs.has(`lens.${lens.name}`)),
 			config,
-			files.map((file) => file.path),
+			files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path])),
 		);
 		const weights = new Map<string, number>();
 		for (const { lens, files: selected } of selections) {
 			const lines = files
-				.filter((file) => selected.includes(file.path))
+				.filter(
+					(file) =>
+						selected.includes(file.path) || (file.oldPath !== undefined && selected.includes(file.oldPath)),
+				)
 				.reduce((sum, file) => sum + changedLines(file), 0);
 			weights.set(lens.name, (weights.get(lens.name) ?? 0) + lines);
 		}

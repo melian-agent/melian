@@ -105,6 +105,31 @@ describe("ParityArm", () => {
 		expect(new ParityArm(1000).shares(config, lenses, [file("src/x.ts", 1, 1)])).toEqual(new Map([["a", 1000]]));
 	});
 
+	it("shares a renamed file with the lenses its old path selects, as the review does, counting it once", async () => {
+		const lenses = [await named("a", ["src/**"]), await named("b", ["docs/**"])];
+		const moved = (from: string, to: string): ChangedFile => ({
+			...file(to, 10, 20),
+			status: "renamed",
+			oldPath: from,
+		});
+		expect(
+			new ParityArm(1000).shares(config, lenses, [moved("src/x.ts", "docs/x.ts"), file("docs/y.md", 4, 6)]),
+		).toEqual(
+			new Map([
+				["a", 464],
+				["b", 535],
+			]),
+		);
+		expect(
+			new ParityArm(1000).shares(config, lenses, [moved("src/x.ts", "src/z.ts"), file("docs/y.md", 4, 6)]),
+		).toEqual(
+			new Map([
+				["a", 625],
+				["b", 375],
+			]),
+		);
+	});
+
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
 		const builtins = await Lens.builtins();
 		const graphed = Lens.from({
