@@ -257,43 +257,65 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 		checks: ordered,
 		sightings,
 		claims,
-		dismissals: dismissalsOf(set, round.changeset),
+		dismissals: dismissalsOf(set, round),
 	};
 }
 
-// The set's dismissal records of `changeset` that no other supersedes, in ID order. A dismissal record names no round,
-// so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round stricter.
-// Each carries every proving hunk a sighting of its finding in the set cites, at any revision, so a hunk a shared
-// round cited and the revision has since changed reopens it, as the host's memory of that round would. A dismissal's
-// own sighting adds none: its trigger's proof already holds every hunk that sighting cites.
-function dismissalsOf(set: RecordSet, changeset: string): SharedDismissalRecord[] {
-	const cited = citedProof(
-		set.records().flatMap((record) => {
-			if (record.changeset !== changeset) return [];
-			if (record.kind === "lens" || record.kind === "check")
-				return (record.payload as { sightings: unknown[] }).sightings as StoredFinding[];
-			return [];
-		}),
-	);
+// The set's dismissal records of `round`'s changeset that no other supersedes, in ID order. A dismissal record names
+// no round, so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round
+// stricter. Each carries every proving hunk a sighting of its finding cites in the records of the rounds since it was
+// made, so a hunk one of them cited and the revision has since changed reopens it, as the host's memory does. A
+// dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live.
+function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecord[] {
 	return set
 		.unsuperseded()
-		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
-		.map((record) => {
+		.filter((record) => record.kind === "dismissal" && record.changeset === round.changeset)
+		.flatMap((record) => {
 			const { by, reason, at, trigger, sighting } = record.payload as DismissalPayload;
+			const since = roundsSince(set, round, sighting.revision);
+			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
-			const remembered = cited.get(key) ?? [];
-			return {
-				record: id,
-				finding: key,
-				revision: sighting.revision,
-				supersedes,
-				by,
-				reason,
-				at,
-				trigger,
-				cited: remembered,
-			};
+			const cited = citedProof(since.flatMap((each) => sightingsOf(set, each))).get(key) ?? [];
+			return [{ record: id, finding: key, revision: sighting.revision, supersedes, by, reason, at, trigger, cited }];
 		});
+}
+
+// The rounds from `round` back along each round's `before`, stopping at those of `revision`, which it leaves out:
+// the rounds a dismissal made at `revision` has seen since. A chain that begins after `revision` is taken whole.
+// `undefined` when the chain names a round of the changeset the set does not hold, or a round that names a record the
+// set does not hold, since what that round cited is unknown.
+function roundsSince(set: RecordSet, round: SharedRecord, revision: string): SharedRecord[] | undefined {
+	const rounds = new Map(
+		set
+			.records()
+			.filter((record) => record.kind === "round" && record.changeset === round.changeset)
+			.map((record) => [record.id, record]),
+	);
+	const since: SharedRecord[] = [];
+	const seen = new Set<string>();
+	const next = [round];
+	for (let each = next.pop(); each !== undefined; each = next.pop()) {
+		if (seen.has(each.id) || each.revision === revision) continue;
+		seen.add(each.id);
+		if (set.missing(each).length > 0) return undefined;
+		since.push(each);
+		for (const id of each.manifest()!.before) {
+			const earlier = rounds.get(id);
+			if (earlier === undefined) return undefined;
+			next.push(earlier);
+		}
+	}
+	return since;
+}
+
+// The sightings of the lens and check records `round` names. A dismissal record's own sighting adds none: its trigger's
+// proof already holds every hunk that sighting cites.
+function sightingsOf(set: RecordSet, round: SharedRecord): StoredFinding[] {
+	const named = new Set(round.manifest()!.read.map(({ id }) => id));
+	return set
+		.records()
+		.filter((record) => named.has(record.id) && (record.kind === "lens" || record.kind === "check"))
+		.flatMap((record) => (record.payload as { sightings: unknown[] }).sightings as StoredFinding[]);
 }
 
 // The standing dismissals of each finding, in ID order, so of two made at one time the greater ID stands.

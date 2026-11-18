@@ -704,9 +704,13 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(gone)).toEqual([[id, "new", undefined]]);
 	});
 
-	// The round with its finding sighted as affected at the revision's one proving hunk and dismissed accepting it,
-	// and `elsewhere`, a copy of the round's record of `kind` changed by `change` that cites a hunk the revision lacks.
-	async function rememberedAcross(kind: "lens" | "check", change: Partial<RecordEnvelope>) {
+	const side = (digit: string) => digit.repeat(40);
+	const revisionOf = (from: string, to: string) => `${side(from)}..${side(to)}`;
+
+	// The round with its finding sighted as affected at the revision's one proving hunk, and dismissed at `dismissedAt`
+	// accepting it. `elsewhere` is a copy of the round's record of `kind` at revision 1..2 that cites a hunk the revision
+	// lacks, and `second` the round of that revision that read it, after `first`, of revision 0..1.
+	async function citedAcross(kind: "lens" | "check", dismissedAt?: string) {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
 		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
 		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
@@ -727,14 +731,16 @@ describe("the dismissal records a reader applies", () => {
 			...payload,
 			sightings: citing(proof),
 		} as unknown as RecordJson);
+		const { sighting: seen, trigger } = redismissed(reviewed).payload as DismissalPayload;
 		const dismissal = redismissed(reviewed, {
-			trigger: { ...(redismissed(reviewed).payload as DismissalJson).trigger, proof },
-		});
-		const shared = [...changed.records.filter((each) => !isDismissal(each)), dismissal];
+			trigger: { ...trigger, proof },
+			sighting: { ...seen, revision: dismissedAt ?? seen.revision },
+			head: (dismissedAt ?? seen.revision).split("..")[1],
+		} as Partial<DismissalJson>);
 		const copied = kind === "lens" ? lens : namedOf(records, round, "check");
 		const elsewhere = SharedRecord.parseEnvelope({
 			...copied.toJSON(),
-			...change,
+			revision: revisionOf("1", "2"),
 			payload: {
 				...(copied.payload as object),
 				sightings: citing(
@@ -742,33 +748,82 @@ describe("the dismissal records a reader applies", () => {
 					kind === "lens" ? undefined : { check: (copied.payload as CheckPayload).result.name },
 				),
 			} as unknown as RecordJson,
-		}).toJSON();
-		return {
-			id,
-			remembered: await read(reviewed, [...shared, elsewhere], changed.round),
-			forgotten: await read(reviewed, shared, changed.round),
+		});
+		const roundAt = (from: string, to: string, read: SharedRecord[], before: SharedRecord[], changeset?: string) =>
+			ReviewRecords.of(changeset ?? reviewed.changeset.id, { base: side(from), head: side(to) }).round(
+				read,
+				undefined,
+				[],
+				before.map((each) => each.id),
+			);
+		const first = roundAt("0", "1", [], []);
+		const second = roundAt("1", "2", [elsewhere], [first]);
+		// The read round written again to follow `before`, read with the dismissal and `shared` beside it.
+		const readAfter = (before: SharedRecord[], shared: SharedRecord[]) => {
+			const parsed = changed.records.map((each) => SharedRecord.parseEnvelope(each));
+			const current = parsed.find((each) => each.id === changed.round)!;
+			const manifest = current.manifest()!;
+			const byId = new Map(parsed.map((each) => [each.id, each]));
+			const { base, head } = reviewed.changeset.revision;
+			const followed = ReviewRecords.of(reviewed.changeset.id, { base, head }).round(
+				manifest.read.map((each) => byId.get(each.id)!),
+				undefined,
+				manifest.replaces,
+				before.map((each) => each.id),
+			);
+			const kept = parsed.filter((each) => each !== current && each.kind !== "dismissal");
+			return read(
+				reviewed,
+				[...kept, followed, ...shared].map((each) => each.toJSON()).concat([dismissal]),
+				followed.id,
+			);
 		};
+		return { id, elsewhere, first, second, roundAt, readAfter };
 	}
 
-	const earlier = { revision: `${"1".repeat(40)}..${"2".repeat(40)}` };
+	type Chain = Awaited<ReturnType<typeof citedAcross>>;
+	const dismissedOf = (id: string) => [[id, "dismissed", expect.objectContaining({ by: "maintainer" })]];
 
-	it.each([
-		["lens", "another revision", earlier],
-		["check", "another revision", earlier],
-	] as const)(
-		"reopens a dismissal once a shared %s record of %s cited a hunk the revision no longer holds",
-		async (kind, _, change) => {
-			const { id, remembered, forgotten } = await rememberedAcross(kind, change);
+	it.each(["lens", "check"] as const)(
+		"reopens a dismissal once a round after it shared a %s record citing a hunk the revision no longer holds",
+		async (kind) => {
+			const { id, elsewhere, first, second, readAfter } = await citedAcross(kind, revisionOf("0", "1"));
+			const remembered = await readAfter([second], [first, second, elsewhere]);
 			expect([remembered.status, remembered.blocking]).toEqual(["findings", true]);
 			expect(standingOf(remembered)).toEqual([[id, "new", undefined]]);
-			// A round that was never shared cannot be remembered, so without it the dismissal holds.
-			expect(standingOf(forgotten)).toEqual([[id, "dismissed", expect.objectContaining({ by: "maintainer" })]]);
 		},
 	);
 
-	it("remembers no hunk a record of another changeset cited", async () => {
-		const { id, remembered } = await rememberedAcross("lens", { ...earlier, changeset: "another-changeset" });
-		expect(standingOf(remembered)).toEqual([[id, "dismissed", expect.objectContaining({ by: "maintainer" })]]);
+	it("remembers no hunk a record no round names cited", async () => {
+		const { id, elsewhere, first, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		expect(standingOf(await readAfter([first], [first, elsewhere]))).toEqual(dismissedOf(id));
+	});
+
+	it("remembers no hunk a round before the dismissal cited, so a dismissal made again after it holds", async () => {
+		const { id, elsewhere, first, second, roundAt, readAfter } = await citedAcross("lens", revisionOf("2", "3"));
+		const third = roundAt("2", "3", [], [second]);
+		expect(standingOf(await readAfter([third], [first, second, third, elsewhere]))).toEqual(dismissedOf(id));
+	});
+
+	it("remembers nothing for a dismissal made at the revision the round read", async () => {
+		const { id, elsewhere, first, second, readAfter } = await citedAcross("lens");
+		expect(standingOf(await readAfter([second], [first, second, elsewhere]))).toEqual(dismissedOf(id));
+	});
+
+	it.each([
+		["a round the set does not hold", ({ first, elsewhere }: Chain) => [first, elsewhere]],
+		["a round that reads a record the set does not hold", ({ first, second }: Chain) => [first, second]],
+	])("applies no dismissal past a chain that names %s", async (_, shared) => {
+		const chain = await citedAcross("lens", revisionOf("0", "1"));
+		const broken = await chain.readAfter([chain.second], shared(chain));
+		expect([broken.status, broken.blocking]).toEqual(["findings", true]);
+		expect(standingOf(broken)).toEqual([[chain.id, "new", undefined]]);
+	});
+
+	it("applies no dismissal past a chain that names a round of another changeset", async () => {
+		const { id, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		const elsewhere = roundAt("1", "2", [], [], "f".repeat(64));
+		expect(standingOf(await readAfter([elsewhere], [elsewhere]))).toEqual([[id, "new", undefined]]);
 	});
 
 	it("hands over a dismissal of a finding no shared round sights with no cited hunk", async () => {
