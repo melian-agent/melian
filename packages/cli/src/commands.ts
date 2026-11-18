@@ -966,6 +966,12 @@ export async function dismiss(
 		}).catch((error: unknown) => {
 			if (!(error instanceof DismissError)) throw error;
 			if (error.code === "notReviewed") throw stored.missing();
+			if (error.code === "storeFailed") {
+				const why = error.cause instanceof Error ? error.cause.message : String(error.cause);
+				throw new CliError(
+					`the dismissal is not recorded, because the record store ${visibleText(options.records!)} failed: ${visibleText(why)}`,
+				);
+			}
 			if (error.code === "unknownFinding") {
 				throw new CliError(
 					`the review of ${short(changeset.revision.head)} has no finding ${id}; melian findings ${shellQuote(argument)} --all lists them`,

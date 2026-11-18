@@ -8,7 +8,7 @@ import { main } from "../src/main.ts";
 
 const unshared = [{ finding: "f-static-1", code: "unprovenRun" as const }];
 const failWith = vi.hoisted(() => ({ fail: false }));
-const dismissed = vi.hoisted(() => ({ records: false }));
+const dismissed = vi.hoisted(() => ({ records: false, storeFails: false }));
 
 vi.mock("@melian-agent/pipeline", async (importOriginal) => {
 	const actual = await importOriginal<typeof Pipeline>();
@@ -25,6 +25,17 @@ vi.mock("@melian-agent/pipeline", async (importOriginal) => {
 		},
 		recordDismissal: async (options: Parameters<typeof actual.recordDismissal>[0]) => {
 			dismissed.records = options.records !== undefined;
+			if (dismissed.storeFails) {
+				throw new actual.DismissError(
+					"storeFailed",
+					"the dismissal is not recorded, because the record store failed",
+					{
+						revision: "r",
+						finding: "f-static-1",
+						cause: new Error("the disk is full"),
+					},
+				);
+			}
 			return {
 				finding: {
 					ruleId: "biome/no-debugger",
@@ -47,6 +58,7 @@ let io: Io & {
 };
 beforeEach(() => {
 	failWith.fail = false;
+	dismissed.storeFails = false;
 	repo = createRepository();
 	commit(repo, {
 		"a.ts": "export const a = 1;\n",
@@ -102,4 +114,21 @@ it("names each dismissal melian dismiss --records left unshared", async () => {
 
 	expect(dismissed.records).toBe(true);
 	expect(io.stderr.mock.calls).toEqual([[`melian: ${warning}\n`]]);
+});
+
+it("names the record store melian dismiss --records refused on, and records nothing", async () => {
+	expect(await main(["review", "main...HEAD"], io)).toBe(0);
+	io.stdout.mockClear();
+	io.stderr.mockClear();
+	dismissed.storeFails = true;
+	const store = `dir:${join(repo, "records")}`;
+
+	expect(
+		await main(["dismiss", "main...HEAD", "0123456789abcdef", "--reason", "meant to stay", "--records", store], io),
+	).toBe(1);
+
+	expect(io.stderr.mock.calls).toEqual([
+		[`melian: the dismissal is not recorded, because the record store ${store} failed: the disk is full\n`],
+	]);
+	expect(io.stdout).not.toHaveBeenCalled();
 });
