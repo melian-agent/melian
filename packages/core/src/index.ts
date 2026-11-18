@@ -442,7 +442,7 @@ export {
 	type EnolaReach,
 	type EnolaReference,
 } from "./enola-graph.ts";
-export { enolaPolicyPattern } from "./enola-paths.ts";
+export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
 export {
 	type GitOptions,
 	type GitResult,
@@ -541,7 +541,9 @@ export {
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
+	type LegacyAccountPayload,
 	type LensPayload,
+	legacyAccountPayloadSchema,
 	lensOutcomeSchema,
 	lensPayloadSchema,
 	reviewPayloads,

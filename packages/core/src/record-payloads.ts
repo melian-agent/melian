@@ -274,23 +274,32 @@ export const dismissalPayloadSchema = Type.Object(
 	strict,
 );
 
+const accountFields = {
+	checks: Type.Array(text),
+	records: Type.Array(recordId),
+	filled: Type.Array(Type.Object({ ...decidedFields, status: literals(["skipped", "failed"]) }, strict)),
+	allowSkip: Type.Array(text),
+	producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
+};
+
 /**
  * An account record's payload: how a round accounts for every check its tier names. It holds the tier's checks in tier
  * order, the IDs of the check, lens, verification and triage records it counts, the record it made for each check no record holds, the checks
  * whose skip lets the review pass, and the sources whose findings the review counts, each with the finding IDs it keeps
- * where it keeps only some.
+ * where it keeps only some. Version 2 names the resolution policy the review decided under by its fingerprint, or
+ * `null` when the review read no policy source, so a reader decides the round only under that policy.
  */
 export const accountPayloadSchema = Type.Object(
 	{
-		v,
-		checks: Type.Array(text),
-		records: Type.Array(recordId),
-		filled: Type.Array(Type.Object({ ...decidedFields, status: literals(["skipped", "failed"]) }, strict)),
-		allowSkip: Type.Array(text),
-		producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
+		v: Type.Literal(2),
+		...accountFields,
+		resolutionPolicy: nullable(Type.String({ pattern: "^[0-9]+:[0-9a-f]{16}$" })),
 	},
 	strict,
 );
+
+/** An account record's payload at version 1, which main wrote before accounts named their resolution policy. */
+export const legacyAccountPayloadSchema = Type.Object({ v, ...accountFields }, strict);
 
 export type CheckPayload = Static<typeof checkPayloadSchema>;
 export type LensPayload = Static<typeof lensPayloadSchema>;
@@ -300,6 +309,7 @@ export type TriagePayload = Static<typeof triagePayloadSchema>;
 export type TelemetryPayload = Static<typeof telemetryPayloadSchema>;
 export type DismissalPayload = Static<typeof dismissalPayloadSchema>;
 export type AccountPayload = Static<typeof accountPayloadSchema>;
+export type LegacyAccountPayload = Static<typeof legacyAccountPayloadSchema>;
 
 function shape(schema: TSchema, payload: RecordJson): string | undefined {
 	const [error] = Value.Errors(schema, payload);
@@ -337,7 +347,8 @@ const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
  * The payload check of each kind a review writes, and of a dismissal, for {@link SharedRecord.parse} and
- * {@link RecordSet.of}. Each refuses a payload missing any field, holding one more, or of another version than 1.
+ * {@link RecordSet.of}. Each refuses a payload missing any field, holding one more, or of another version than 1,
+ * except the account's, which takes version 2 and version 1.
  */
 export const reviewPayloads: PayloadChecks = {
 	check: (payload) => {
@@ -372,15 +383,16 @@ export const reviewPayloads: PayloadChecks = {
 	triage: (payload) => shape(triagePayloadSchema, payload),
 	telemetry: (payload) => shape(telemetryPayloadSchema, payload),
 	account: (payload) => {
-		const refused = shape(accountPayloadSchema, payload);
+		const legacy = typeof payload === "object" && payload !== null && "v" in payload && payload.v === 1;
+		const refused = shape(legacy ? legacyAccountPayloadSchema : accountPayloadSchema, payload);
 		if (refused !== undefined) return refused;
-		const { checks, records, filled, allowSkip, producers } = payload as AccountPayload;
+		const { checks, records, filled, allowSkip, producers } = payload as AccountPayload | LegacyAccountPayload;
 		if (new Set(checks).size !== checks.length) return "names one check twice";
 		if (!ordered(records, byText)) return "lists its records out of ID order, or one twice";
 		if (!ordered(filled, (a, b) => byText(a.name, b.name) || byText(canonicalJson(a), canonicalJson(b))))
 			return "fills its checks out of order, or one twice";
 		if (!ordered(allowSkip, byText)) return "lists the skips it allows out of order, or one twice";
-		const source = (each: AccountPayload["producers"][number]) => `${each.check}@${each.version ?? ""}`;
+		const source = (each: (typeof producers)[number]) => `${each.check}@${each.version ?? ""}`;
 		if (!ordered(producers, (a, b) => byText(a.check, b.check) || byText(source(a), source(b))))
 			return "lists its producers out of order, or one twice";
 		for (const { check, ids } of producers)
