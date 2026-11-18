@@ -238,12 +238,14 @@ describe("Probe.open", () => {
 		// the probe at its own limit even if nothing outside the sandbox stops it, and is unref'd, so a probe that finishes
 		// keeps its own exit code. It reports the exit code on fd 4 and leaves the start marker.
 		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
-		expect(runner).toContain('["--import", new URL("./watchdog.mjs", import.meta.url).href, fileURLToPath(new URL("./probe.mjs", import.meta.url))]');
+		expect(runner).toContain(
+			'["--import", new URL("./watchdog.mjs", import.meta.url).href, fileURLToPath(new URL("./probe.mjs", import.meta.url))]',
+		);
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
 		const lines = watchdog.split("\n");
 		expect(lines).toHaveLength(5);
 		expect(lines[0]).toBe('import { writeFileSync, writeSync } from "node:fs";');
-		expect(lines[1]).toBe('process.on("exit", (code) => { try { writeSync(4, `${code}\\n`); } catch {} });');
+		expect(lines[1]).toBe(`process.on("exit", (code) => { try { writeSync(4, \`\${code}\\n\`); } catch {} });`);
 		expect(lines[2]).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);$/);
 		expect(lines[3]).toBe('writeFileSync(new URL("../run/started", import.meta.url), "");');
 		expect(lines[4]).toBe("");

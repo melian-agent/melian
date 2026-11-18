@@ -4521,7 +4521,12 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
 	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
 		const gaps: unknown[] = [];
-		const { run } = await ending(passing, [fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")], gaps, rewrite);
+		const { run } = await ending(
+			passing,
+			[fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")],
+			gaps,
+			rewrite,
+		);
 		const failed = await settled(run);
 		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
 			"failed",
