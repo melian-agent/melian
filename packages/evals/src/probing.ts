@@ -127,13 +127,7 @@ export class ProbingCombination implements ProbingRoute {
 				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`,
 				);
-			if (
-				Lens.select(
-					lenses.filter((each) => each.name === name),
-					config,
-					paths,
-				).length === 0
-			)
+			if (Lens.select(variants, config, paths).length === 0)
 				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${name}, which reviews none of the changed files`,
 				);
@@ -267,6 +261,12 @@ export interface MissUnseen {
 	readonly why: "not run" | "never shown";
 }
 
+/** Why a miss cannot be scored, and which of the checks {@link Miss.reviewers} makes refused it. */
+export interface MissRefusal {
+	readonly check: "file unchanged" | "file uncovered" | "rule undeclared" | "head unreadable" | "lines unreadable";
+	readonly refusal: string;
+}
+
 /** A `needs-execution` miss: a finding a review missed in a range of a clone, which only running code would catch. */
 export class Miss {
 	readonly name: string;
@@ -343,14 +343,19 @@ export class Miss {
 	 * lenses are those the review runs that cover the file and declare one of its rules, or all of them when it names none.
 	 */
 	async reviewers(
-		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
+		target: Pick<ReviewTarget, "range" | "base" | "policy"> & { readonly head: string },
 		review: MissReview,
-	): Promise<{ readonly lenses: readonly string[] } | { readonly refusal: string }> {
-		const refused = (refusal: string) => ({ refusal: `${this.name}: ${refusal}` });
+	): Promise<{ readonly lenses: readonly string[] } | MissRefusal> {
+		const refused = (check: MissRefusal["check"], refusal: string) => ({
+			check,
+			refusal: `${this.name}: ${refusal}`,
+		});
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		const changed = revision.files.find((file) => file.path === this.file);
-		if (changed === undefined) return refused(`${this.file} is not among the files ${target.range} changes`);
-		const policy = { kind: "revision", commit: target.base } as const;
+		if (changed === undefined)
+			return refused("file unchanged", `${this.file} is not among the files ${target.range} changes`);
+		const policy = { kind: "revision", commit: target.policy ?? target.base } as const;
+		const whose = target.policy === undefined ? "the base's" : `${target.policy}'s`;
 		const paths = revision.paths();
 		const config = (await loadConfig(this.repo, policy, ".")).config;
 		const tier = checksOfTier(config, "full");
@@ -363,28 +368,33 @@ export class Miss {
 			)
 			.map(({ lens }) => lens);
 		const covering = reviewable.filter(({ name }) => review === "whole" || name === probingLens);
-		const reviewing = review === "lens" ? `the ${probingLens} lens` : "a lens in the base's full tier";
-		if (covering.length === 0) return refused(`the base's policy does not let ${reviewing} review ${this.file}`);
+		const reviewing = review === "lens" ? `the ${probingLens} lens` : `a lens in ${whose} full tier`;
+		if (covering.length === 0)
+			return refused("file uncovered", `${whose} policy does not let ${reviewing} review ${this.file}`);
 		const declares = (lens: Lens, rule: string) => lens.rules.some(({ id }) => id === rule);
 		// Each mode checks the spelling against the whole tier, so one misses file serves both.
 		const undeclared = this.rules.find((rule) => !reviewable.some((lens) => declares(lens, rule)));
 		if (undeclared !== undefined)
 			return refused(
-				`${undeclared} is not a rule any lens in the base's full tier that reviews ${this.file} declares`,
+				"rule undeclared",
+				`${undeclared} is not a rule any lens in ${whose} full tier that reviews ${this.file} declares`,
 			);
 		const responsible = covering.filter(
 			(lens) => this.rules.length === 0 || this.rules.some((rule) => declares(lens, rule)),
 		);
 		if (responsible.length === 0)
-			return refused(`${this.rules.join(" or ")} is not a rule the base's ${probingLens} lens declares`);
+			return refused(
+				"rule undeclared",
+				`${this.rules.join(" or ")} is not a rule ${whose} ${probingLens} lens declares`,
+			);
 		const read = await readRevisionFile(this.repo, target.head, this.file).catch((error: unknown) => {
 			if (error instanceof RevisionError && unreadable.includes(error.code)) return error;
 			throw error;
 		});
 		if (read instanceof RevisionError)
-			return refused(`${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`);
+			return refused("head unreadable", `${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`);
 		const { content, truncated } = read;
-		if (content === "") return refused(`${this.file} is empty at ${target.head}`);
+		if (content === "") return refused("head unreadable", `${this.file} is empty at ${target.head}`);
 		const lines = content.split("\n");
 		if (truncated || lines.at(-1) === "") lines.pop();
 		if (this.lines === undefined ? !truncated || lines.length > 0 : this.lines[1] <= lines.length)
@@ -393,9 +403,11 @@ export class Miss {
 			};
 		if (truncated)
 			return refused(
+				"lines unreadable",
 				`a lens reads only the first ${lines.length} lines of ${this.file} at ${target.head}, which it cuts at ${revisionLimits.fileBytes} bytes`,
 			);
 		return refused(
+			"lines unreadable",
 			`lines ${this.lines![0]}-${this.lines![1]} run past ${this.file}, which has ${lines.length} lines at ${target.head}`,
 		);
 	}
@@ -514,20 +526,23 @@ export class Miss {
 
 	/**
 	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code,
-	 * under the base's policy: in `lens` mode `trust-boundary` alone, and in `whole` mode the base's `full` tier. Every
-	 * level of a lens that probes is its `deep`, `trust-boundary` alone in `lens` mode and each of `probeLenses` in
-	 * `whole`. Its head is the reviewer's own only when `trust` vouches for both commits, since the base's policy decides
-	 * what a probe may read.
+	 * under the base's policy, or that of the commit `policyName` resolves to in the clone: in `lens` mode
+	 * `trust-boundary` alone, and in `whole` mode the policy's `full` tier. Every level of a lens that probes is its
+	 * `deep`, `trust-boundary` alone in `lens` mode and each of `probeLenses` in `whole`. Its head is the reviewer's own
+	 * only when `trust` vouches for the base, the head and the policy commit, since the policy decides what a probe may
+	 * read. Throws when `policyName` names no commit in the clone.
 	 */
 	target(
 		trust: ProbeTrust,
 		review: MissReview = "lens",
 		probeLenses: readonly string[] = [probingLens],
+		policyName?: string,
 	): ReviewTarget & { readonly head: string } {
 		const probes = review === "lens" ? [probingLens] : probeLenses;
 		const base = this.commit(this.base);
 		const head = this.headCommit();
-		const unvouched = [base, head].filter((commit) => !trust.vouches(commit));
+		const policy = policyName === undefined ? undefined : this.commit(policyName);
+		const unvouched = [...new Set([base, head, policy ?? base])].filter((commit) => !trust.vouches(commit));
 		const writer: WriterTrust =
 			unvouched.length === 0
 				? { trusted: true, by: "reviewer" }
@@ -538,6 +553,7 @@ export class Miss {
 			head,
 			range: `${base}...${head}`,
 			writer,
+			...(policy === undefined ? {} : { policy }),
 			scope: (config, lenses) => ({
 				config: {
 					...config,
@@ -671,6 +687,8 @@ export class ProbingSettings {
 	readonly missReview: MissReview;
 	readonly trust: ProbeTrust;
 	readonly out: string | undefined;
+	/** The commit whose policy reviews every miss, as `MELIAN_EVAL_POLICY_COMMIT` names it, or each miss's base. */
+	readonly policy: string | undefined;
 
 	private constructor(fields: {
 		combinations: readonly ProbingCombination[];
@@ -685,6 +703,7 @@ export class ProbingSettings {
 		missReview: MissReview;
 		trust: ProbeTrust;
 		out: string | undefined;
+		policy: string | undefined;
 	}) {
 		this.combinations = fields.combinations;
 		this.probeLenses = fields.probeLenses;
@@ -698,6 +717,7 @@ export class ProbingSettings {
 		this.missReview = fields.missReview;
 		this.trust = fields.trust;
 		this.out = fields.out;
+		this.policy = fields.policy;
 	}
 
 	/** Parses the settings, throwing on any malformed one, before anything reaches a provider. */
@@ -755,6 +775,7 @@ export class ProbingSettings {
 			missReview,
 			trust: ProbeTrust.parse(env.MELIAN_EVAL_PROBE_TRUST),
 			out: env.MELIAN_EVAL_PROBE_OUT || undefined,
+			policy: env.MELIAN_EVAL_POLICY_COMMIT || undefined,
 		});
 	}
 
@@ -914,11 +935,13 @@ async function measured(
 			);
 		const assessed = await Promise.all(
 			loaded.map(async (miss) => {
-				const target = miss.target(settings.trust, review, settings.probeLenses);
+				const target = miss.target(settings.trust, review, settings.probeLenses, settings.policy);
 				return { miss, target, reviewers: await miss.reviewers(target, review) };
 			}),
 		);
-		const refused = assessed.flatMap(({ reviewers }) => ("refusal" in reviewers ? [reviewers.refusal] : []));
+		const refused = assessed.flatMap(({ reviewers }) =>
+			"refusal" in reviewers ? [reviewers.refusal] : [],
+		);
 		if (refused.length > 0) throw new Error(`The misses file cannot be scored: ${refused.join("; ")}`);
 		misses = await Promise.all(
 			assessed.flatMap(({ miss, target, reviewers }) =>
@@ -930,7 +953,7 @@ async function measured(
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
 			throw new Error(
-				`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of ${unvouched.join(", ")}, so their probes cannot run`,
+				`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head${settings.policy === undefined ? "" : " and policy commit"} of ${unvouched.join(", ")}, so their probes cannot run`,
 			);
 		if (settings.probes) {
 			const availability = await runners.availability();
@@ -957,6 +980,7 @@ async function measured(
 				fix: miss.fix,
 				lines: miss.lines,
 				baseCommit: target.base,
+				...(target.policy === undefined ? {} : { policyCommit: target.policy }),
 				headCommit: target.head,
 				location,
 			})),

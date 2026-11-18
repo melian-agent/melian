@@ -38,6 +38,7 @@ import {
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	buildGoldenRepository,
+	commitGoldenTree,
 	type Golden,
 	type GoldenRun,
 	loadGoldens,
@@ -345,7 +346,11 @@ describe("ProbingCombination", () => {
 			shadowsBuiltin: true,
 		});
 		expect(() =>
-			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(config, [...loaded, shadow], changed),
+			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(
+				config,
+				[...loaded, shadow],
+				changed,
+			),
 		).toThrow(
 			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, which cannot probe: "probe" takes its wording from the built-in lens a lens extends/,
 		);
@@ -2712,6 +2717,71 @@ describe("runRange", { timeout: 60_000 }, () => {
 					.map(({ subject }) => subject.split("@")[0]),
 			).toEqual(["trust-boundary"]);
 			expect(miss.match(alone, location, "lens")).toEqual({ matched: "lines", hits: [], near: [] });
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reviews a range under the policy of the commit it names, which the invocation must vouch for", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const policyOf = (branch: string, lens: string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, base);
+				writeFileSync(join(repo, "melian.yaml"), `lenses:\n  ${lens}:\n    paths: ["nowhere/**"]\n`);
+				const commit = commitGoldenTree(repo, join(failOpen.directory, "base"), branch);
+				git(repo, "checkout", "--quiet", "feature");
+				return commit;
+			};
+			const quiet = policyOf("quiet", "correctness");
+			const blind = policyOf("blind", "trust-boundary");
+			const at = { repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] };
+			const [miss, either] = Miss.load(
+				missesFile([
+					{ name: "m", ...at },
+					{ name: "e", ...at, alternativeRules: ["wrong-result"] },
+				]),
+			);
+			const vouched = ProbeTrust.parse(`${base},${head},${quiet}`);
+			const target = miss!.target(vouched, "whole", ["trust-boundary"], "quiet");
+			expect(target).toMatchObject({ base, head, policy: quiet, writer: { trusted: true, by: "reviewer" } });
+			expect(miss!.target(ProbeTrust.parse(`${base},${head}`), "whole", [], "quiet").writer).toEqual({
+				trusted: false,
+				detail: `this invocation does not vouch for ${quiet}`,
+			});
+			expect(miss!.target(vouched, "whole", []).policy).toBeUndefined();
+			expect(() => miss!.target(vouched, "whole", [], "nowhere")).toThrow();
+			expect(await miss!.reviewers(target, "whole")).toEqual({ lenses: ["trust-boundary"] });
+			expect(await either!.reviewers(either!.target(vouched, "whole", [], "quiet"), "whole")).toEqual({
+				check: "rule undeclared",
+				refusal: `e: wrong-result is not a rule any lens in ${quiet}'s full tier that reviews src/scan.ts declares`,
+			});
+			expect(await either!.reviewers(either!.target(vouched, "whole", []), "whole")).toEqual({
+				lenses: ["correctness", "trust-boundary"],
+			});
+			expect(await miss!.reviewers(miss!.target(vouched, "lens", undefined, "blind"), "lens")).toEqual({
+				check: "file uncovered",
+				refusal: `m: ${blind}'s policy does not let the trust-boundary lens review src/scan.ts`,
+			});
+			const paths = ["src/scan.ts", "src/rules.ts"];
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, paths);
+			scriptLenses(fake, lenses, {
+				...Object.fromEntries(lenses.map(({ name }) => [name, [{ text: "Reported 0 findings." }]])),
+				verifier: {},
+			});
+			const run = await runRange(target, {
+				kind: "live",
+				models: fake.review,
+				model: `${provider}/plan`,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+			});
+			const ran = run.telemetry.stages
+				.filter(({ name }) => name === "melian.lens")
+				.map(({ subject }) => subject.split("@")[0]);
+			expect(ran).toContain("trust-boundary");
+			expect(ran).not.toContain("correctness");
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

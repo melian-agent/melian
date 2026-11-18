@@ -353,6 +353,8 @@ export interface ReviewTarget {
 	readonly base: string;
 	readonly range: string;
 	readonly writer: WriterTrust;
+	/** The commit whose policy, standards and lenses review the range, when not its base. */
+	readonly policy?: string;
 	/** Narrows the base's policy and lenses before the mode routes them. */
 	readonly scope?: (
 		config: MelianConfig,
@@ -499,7 +501,7 @@ async function graphOf(
 			repoRoot: target.repo,
 			environment: process.env,
 			base: changeset.revision.base,
-			policyCommit: target.base,
+			policyCommit: target.policy ?? target.base,
 			commit: changeset.revision.head,
 			tool: "enola",
 			settings: { ...config.static.enola, enabled: true },
@@ -526,8 +528,8 @@ export function runRange(target: ReviewTarget, mode: LiveGoldenMode): Promise<Ra
 }
 
 async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Golden | undefined): Promise<RangeRun> {
-	const { repo, base } = target;
-	const source: RepositorySource = { kind: "revision", commit: base };
+	const { repo } = target;
+	const source: RepositorySource = { kind: "revision", commit: target.policy ?? target.base };
 	const changeset = await Changeset.resolve(repo, target.range);
 	const paths = changeset.revision.paths();
 	const standards = await Standards.load(repo, source, paths);

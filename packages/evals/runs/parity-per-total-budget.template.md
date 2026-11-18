@@ -17,6 +17,7 @@ Melian's yardstick is [the review of record on pull request #552](https://github
 ## Setup
 
 - **Commit.** `<the results file's commit>`. Node `<version>`. The checkout held no uncommitted change.
+- **Policy commit.** `<the results file's policyCommit>`, whose policy, standards and lenses reviewed every miss in both arms. `<n> of <m>` misses could be scored under it, by the dry run; the refused ones and the check each failed: `<list>`.
 - **Misses.** `<names>`, from `<misses file>`, each with hand-entered `lines`.
 - **Models.** `<each tier's first model>`, verifier `<model>`, on `<subscription logins>`. Every route was held to its first model.
 - **Stops.** Review stop `<tokens>`, run stop `<tokens>`, both with cache reads.
@@ -44,5 +45,6 @@ Run totals: `<tokens>` with cache reads, `<tokens>` without.
 
 ## Limits
 
+- Today's standards judged old code, so a finding outside a miss's lines says little about how that code was reviewed.
 - The stores, which hold the head's code and the models' words, stay on the host and are not committed.
 - `<anything else: a stop, a model answering at a level other than requested, a miss unscored>`

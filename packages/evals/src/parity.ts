@@ -212,6 +212,8 @@ export interface ParityResults {
 	readonly version: 1;
 	readonly arm: typeof parityArmName;
 	readonly commit: string;
+	/** The commit whose policy, standards and lenses reviewed every miss, in both arms. */
+	readonly policyCommit: string;
 	readonly reviews: readonly ParityReview[];
 	readonly stopped?: string;
 }
@@ -310,6 +312,7 @@ export async function measureParity(
 		lenses: readonly string[];
 	}[];
 	let results: ParityResults;
+	let policyCommit: string;
 	try {
 		out = env.MELIAN_EVAL_PARITY_OUT ?? "";
 		if (out === "") throw new Error("MELIAN_EVAL_PARITY_OUT must name the results file a stopped run resumes from");
@@ -342,16 +345,53 @@ export async function measureParity(
 			throw new Error(
 				`A whole review scores a miss only on its hand-entered lines, which ${unlined.join(", ")} lack`,
 			);
+		const policyName = env.MELIAN_EVAL_POLICY_COMMIT ?? "";
+		if (policyName === "")
+			throw new Error(
+				"MELIAN_EVAL_POLICY_COMMIT must name the commit whose policy reviews every miss, such as main, so both arms measure one policy",
+			);
 		misses = [];
+		const refusals: string[] = [];
+		const policies = new Set<string>();
 		for (const miss of chosen) {
-			const target = miss.target(trust, "whole", []);
-			if (!target.writer.trusted)
-				throw new Error(
-					`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of ${miss.name}, so its probes cannot run`,
+			let target: ReviewTarget & { readonly head: string };
+			try {
+				target = miss.target(trust, "whole", [], policyName);
+			} catch (thrown) {
+				refusals.push(
+					`refused ${visibleText(miss.name)}, commit unresolved: ${(thrown instanceof Error ? thrown.message : String(thrown)).split("\n")[0]}`,
 				);
+				continue;
+			}
+			policies.add(target.policy!);
+			if (!target.writer.trusted) {
+				refusals.push(
+					`refused ${visibleText(miss.name)}, unvouched: MELIAN_EVAL_PROBE_TRUST does not vouch for its base, head and policy commit, so its probes cannot run`,
+				);
+				continue;
+			}
 			const reviewers = await miss.reviewers(target, "whole");
-			if ("refusal" in reviewers) throw new Error(`The misses file cannot be scored: ${reviewers.refusal}`);
+			if ("refusal" in reviewers) {
+				refusals.push(`refused ${visibleText(miss.name)}, ${reviewers.check}: ${reviewers.refusal}`);
+				continue;
+			}
 			misses.push({ miss, target, location: await miss.locate(target.head), lenses: reviewers.lenses });
+		}
+		if (policies.size > 1)
+			throw new Error(
+				`MELIAN_EVAL_POLICY_COMMIT ${visibleText(policyName)} names ${[...policies].join(" and ")} in the misses' clones, so the run would measure more than one policy`,
+			);
+		policyCommit = [...policies][0] ?? "";
+		const counted = `${misses.length} of ${chosen.length} misses can be scored under ${policyCommit || visibleText(policyName)}`;
+		if (env.MELIAN_EVAL_PARITY_DRY === "1") {
+			for (const { miss, lenses } of misses) print(visibleText(`scorable ${miss.name}: ${lenses.join(", ")}`));
+			for (const refusal of refusals) print(visibleText(refusal));
+			print(visibleText(counted));
+			return 0;
+		}
+		if (refusals.length > 0) {
+			for (const line of [...refusals, counted]) printError(visibleText(line));
+			return 2;
 		}
 		const availability = await runners.availability();
 		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
@@ -364,9 +404,13 @@ export async function measureParity(
 				throw new Error(
 					`${out} was measured at ${earlier.commit}, not this checkout's ${commit}; resume from that commit or name a new file`,
 				);
+			if (earlier.policyCommit !== policyCommit)
+				throw new Error(
+					`${out} was measured under ${earlier.policyCommit ?? "each miss's base"}'s policy, not ${policyCommit}'s; resume under that policy or name a new file`,
+				);
 			const { stopped: _, ...kept } = earlier;
 			results = kept;
-		} else results = { version: 1, arm: parityArmName, commit, reviews: [] };
+		} else results = { version: 1, arm: parityArmName, commit, policyCommit, reviews: [] };
 	} catch (error) {
 		printError(visibleText(error instanceof Error ? error.message : String(error)));
 		return 2;

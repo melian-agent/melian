@@ -14,7 +14,7 @@ import {
 import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildGoldenRepository, loadGoldens, type RangeRun } from "../src/goldens.ts";
+import { buildGoldenRepository, commitGoldenTree, loadGoldens, type RangeRun } from "../src/goldens.ts";
 import {
 	CommittedArm,
 	checkoutCommit,
@@ -209,6 +209,8 @@ function ran(stages: readonly StageFields[]): RangeRun {
 describe("measureParity", { timeout: 60_000 }, () => {
 	let repo: string;
 	let env: NodeJS.ProcessEnv;
+	let policy: string;
+	let head: string;
 	beforeEach(() => {
 		const built = buildGoldenRepository(failOpen);
 		repo = built.repo;
@@ -227,7 +229,10 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			MELIAN_EVAL_PARITY_STOP_REVIEW: "1000000",
 			MELIAN_EVAL_PARITY_STOP_RUN: "1000000",
 			MELIAN_EVAL_PROBE_TRUST: `${built.base},${built.head}`,
+			MELIAN_EVAL_POLICY_COMMIT: "main",
 		};
+		policy = built.base;
+		head = built.head;
 	});
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
@@ -273,7 +278,14 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			[{ MELIAN_EVAL_PARITY_STOP_RUN: "0" }, /MELIAN_EVAL_PARITY_STOP_RUN must be/],
 			[{ MELIAN_EVAL_PARITY_STOP_RUN: "1.5" }, /MELIAN_EVAL_PARITY_STOP_RUN must be/],
 			[{ MELIAN_EVAL_PARITY_MISSES: "one,three" }, /names no miss called three/],
-			[{ MELIAN_EVAL_PROBE_TRUST: "d".repeat(40) }, /does not vouch for the base and head of one/],
+			[
+				{ MELIAN_EVAL_POLICY_COMMIT: "" },
+				/^MELIAN_EVAL_POLICY_COMMIT must name the commit whose policy reviews every miss/,
+			],
+			[
+				{ MELIAN_EVAL_PROBE_TRUST: "d".repeat(40) },
+				/^refused one, unvouched: MELIAN_EVAL_PROBE_TRUST does not vouch for its base, head and policy commit, so its probes cannot run$/,
+			],
 			[
 				{},
 				/Probes cannot run on this host: no sandbox/,
@@ -284,7 +296,8 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			const using = runners(undefined, fields);
 			const { status, errors } = await measure({ ...env, ...settings }, using);
 			expect(status, String(error)).toBe(2);
-			expect(errors).toEqual([expect.stringMatching(error)]);
+			expect(errors[0], String(error)).toMatch(error);
+			expect(errors.length, String(error)).toBe(error.source.startsWith("^refused") ? 3 : 1);
 			expect(using.models).not.toHaveBeenCalled();
 			expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
 		}
@@ -308,7 +321,8 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		);
 		expect(lines[1]).toMatch(/^Parity per total budget two: .*; run so far 360 tokens, 220 without cache reads$/);
 		const written = results();
-		expect(written).toMatchObject({ version: 1, arm: parityArmName, commit: "c".repeat(40) });
+		expect(written).toMatchObject({ version: 1, arm: parityArmName, commit: "c".repeat(40), policyCommit: policy });
+		expect(vi.mocked(using.range).mock.calls.map(([target]) => target.policy)).toEqual([policy, policy]);
 		expect(written.stopped).toBeUndefined();
 		expect(written.reviews.map(({ miss, arm, total, store }) => [miss, arm, total, store])).toEqual([
 			["two", "committed", undefined, `${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.sqlite`],
@@ -384,6 +398,70 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			errors: [expect.stringMatching(/was measured at c{40}, not this checkout's d{40}/)],
 		});
 		expect(moved.models).not.toHaveBeenCalled();
+		const elsewhere = runners();
+		expect(await measure({ ...env, MELIAN_EVAL_POLICY_COMMIT: head }, elsewhere)).toMatchObject({
+			status: 2,
+			errors: [
+				`${env.MELIAN_EVAL_PARITY_OUT} was measured under ${policy}'s policy, not ${head}'s; resume under that policy or name a new file`,
+			],
+		});
+		expect(elsewhere.models).not.toHaveBeenCalled();
+	});
+
+	it("lists every miss today's policy cannot score in one exit, and only lists them in a dry run", async () => {
+		const [one] = JSON.parse(readFileSync(env.MELIAN_EVAL_MISSES!, "utf8"));
+		const mixed = join(scratch, "mixed.json");
+		writeFileSync(
+			mixed,
+			JSON.stringify([
+				one,
+				{ ...one, name: "unruled", rule: "no-such-rule" },
+				{ ...one, name: "untouched", file: "src/none.ts" },
+				{ ...one, name: "unknown", head: "nowhere" },
+			]),
+		);
+		const refused = [
+			`refused unruled, rule undeclared: unruled: no-such-rule is not a rule any lens in ${policy}'s full tier that reviews src/scan.ts declares`,
+			expect.stringMatching(
+				/^refused untouched, file unchanged: untouched: src\/none\.ts is not among the files [0-9a-f]{40}\.\.\.[0-9a-f]{40} changes$/,
+			),
+			expect.stringMatching(/^refused unknown, commit unresolved: /),
+		];
+		const using = runners();
+		const { status, errors } = await measure({ ...env, MELIAN_EVAL_MISSES: mixed }, using);
+		expect(status).toBe(2);
+		expect(errors).toEqual([...refused, `1 of 4 misses can be scored under ${policy}`]);
+		const dry = runners();
+		const listed = await measure({ ...env, MELIAN_EVAL_MISSES: mixed, MELIAN_EVAL_PARITY_DRY: "1" }, dry);
+		expect(listed).toEqual({
+			status: 0,
+			lines: [expect.stringMatching(/^scorable one: \S/), ...refused, `1 of 4 misses can be scored under ${policy}`],
+			errors: [],
+		});
+		for (const each of [using, dry]) {
+			expect(each.availability).not.toHaveBeenCalled();
+			expect(each.models).not.toHaveBeenCalled();
+		}
+		expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
+		const other = buildGoldenRepository(failOpen);
+		try {
+			execFileSync("git", ["-C", other.repo, "checkout", "--quiet", "main"]);
+			commitGoldenTree(other.repo, join(failOpen.directory, "head"), "moved");
+			const split = join(scratch, "split.json");
+			writeFileSync(
+				split,
+				JSON.stringify([one, { ...one, name: "far", repo: other.repo, base: other.base, head: other.head }]),
+			);
+			expect(
+				(await measure({ ...env, MELIAN_EVAL_MISSES: split, MELIAN_EVAL_PARITY_DRY: "1" }, runners())).errors,
+			).toEqual([
+				expect.stringMatching(
+					/^MELIAN_EVAL_POLICY_COMMIT main names [0-9a-f]{40} and [0-9a-f]{40} in the misses' clones, so the run would measure more than one policy$/,
+				),
+			]);
+		} finally {
+			rmSync(other.repo, { recursive: true, force: true });
+		}
 	});
 
 	it("stops after a review that passed its stop, and at the run's stop before the next review", async () => {
