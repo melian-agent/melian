@@ -437,7 +437,6 @@ export class Miss {
 		return unseen;
 	}
 
-	/** Why the miss has no score, from what {@link unscoped} found of each lens. */
 	/**
 	 * Whether a review found the miss, by `match`: found or missed, or no verdict when no responsible lens saw the miss or
 	 * only a sighting outside hand-entered lines answered it, with the line a measurement prints.
@@ -467,6 +466,7 @@ export class Miss {
 		};
 	}
 
+	/** Why the miss has no score, from what {@link unscoped} found of each lens. */
 	unseenReason(unseen: readonly MissUnseen[], location: MissLocation): string {
 		const what =
 			location.by === "file and rule"
