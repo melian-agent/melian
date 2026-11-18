@@ -1,4 +1,4 @@
-import { type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
+import { findingId, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
 import { testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
@@ -52,6 +52,11 @@ describe("a shared record's key", () => {
 			expect(refusal(envelope({ kind: "dismissal", key }))).toBe(
 				"a record's key is not a key Melian writes for a dismissal record",
 			);
+	});
+
+	it("takes the ID a finding is given as a dismissal's key", () => {
+		const id = findingId({ file: "src/a.ts", rule: "no-eval", snippet: "eval(input)", occurrence: 0 });
+		expect(SharedRecord.parse(envelope({ kind: "dismissal", key: id }), testPayloads).key).toBe(id);
 	});
 
 	it.each(["marker", "post", "status", "ledger-comment", "comparison"])(
