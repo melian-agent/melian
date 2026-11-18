@@ -8,7 +8,7 @@ Status: the coordinator's answer of 2026-11-18, on approach, for [issue #488](ht
 
 ## Problem
 
-When the verifier's model fails, the next model on its route was always told "Continue judging the labelled claims. Already recorded verdicts remain". When the failed model had done nothing, that told the next one that verdicts existed which no one had given. Issue #488 adds a second wording for that case, which says no claim has a verdict yet and asks for every claim from the beginning. Either wording can reach the verifier, so both belong in the key: [the identity guideline](../guidelines/identity.md) keys what the model is shown.
+When the verifier's model fails, the next model on its route was always told "Continue judging the labelled claims. Already recorded verdicts remain". When the failed model had done nothing, that told the next one that verdicts existed which no one had given. [Issue #488](https://github.com/melian-agent/melian/issues/488) adds a second wording for that case, which says no claim has a verdict yet and asks for every claim from the beginning. Either wording can reach the verifier, so both belong in the key: [the identity guideline](../guidelines/identity.md) keys what the model is shown.
 
 Two earlier decisions promised that a verification resting on no probe keeps the key it had, so a verdict stored before them attaches and is not asked again. Two tests pinned those keys: `packages/pipeline/test/verification-request.test.ts` and `packages/pipeline/test/verification-request-cut.test.ts`. Adding the fresh wording moves every verification's key, those tests' included.
 
