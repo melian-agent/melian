@@ -1,0 +1,7 @@
+[
+	{
+		"id": "GHSA-fc5q-39xc-vjpf",
+		"reason": "A ReDoS in picomatch that covers every released version, so no upgrade fixes it. Only dev tools reach it: vite, vitest, tinyglobby, fdir and Stryker. npm audit --omit=dev finds nothing, so the packages Melian ships are clean.",
+		"added": "2026-11-18"
+	}
+]
