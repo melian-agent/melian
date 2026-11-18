@@ -1,0 +1,247 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "38f8be01d1cc9223e10e84971dee3ad084a2b8b2",
+    "head": "b8fad1a32465f41b26bfbb9f7e4129b948276de0"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "14bc612e47ed10694a5df2ca058d780f4c5b6500245f8f96f7b4c27d7c948617",
+  "mutants": [
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 183,
+      "column": 30,
+      "endLine": 189,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "aac2ce292f4d2a02340b830b6b4c081551347615a92af8edced75ff2d8728136",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 7,
+      "endLine": 184,
+      "endColumn": 65,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "cause instanceof RecordError && overflowed(cause.cause)",
+      "status": "generated",
+      "id": "69fe14b2bee6f0d456ada6897b0ac279d4c414efcd42dd313ab854512d372d23",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 7,
+      "endLine": 184,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0d301b8c45f15e994fe0b335e65138d3434153fb7f87f2cffa0482f48f84d71a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 7,
+      "endLine": 184,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2f643d438eb3e4751102aeb1642dae3728c69aa7173abe89db32914522bebcb5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "leaves core's other git errors as they are, such as a git that cannot start"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 9,
+      "endLine": 184,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1397163a857d3e5d3c2dd64d9e2e45c4513b1812ee3cab31f6d9506fba0a63ae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "leaves core's other git errors as they are, such as a git that cannot start"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 9,
+      "endLine": 184,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "362a414c745552966bad31061d775b65ece9450820aeb005e00ef391e00b4d92",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 184,
+      "column": 9,
+      "endLine": 184,
+      "endColumn": 64,
+      "mutatorName": "LogicalOperator",
+      "replacement": "cause instanceof RecordError || overflowed(cause.cause)",
+      "status": "generated",
+      "id": "d449ecec55f9bb6de31097e22ba6d5a69a319b8c4afde78e5e39c7850b6467e6",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "leaves the repository's own errors as they are, such as a configuration that is gone"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 185,
+      "column": 3,
+      "endLine": 188,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "aeaf887ad5e38cce3ea8400aae119c8ca735ccd396ee5952f95875cb934355f9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 186,
+      "column": 4,
+      "endLine": 186,
+      "endColumn": 17,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f32ddbb735b828d4efded6b9fd096b14d36f067e9873476f9c1f8d8d21fc0385",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/repository.ts",
+      "line": 187,
+      "column": 4,
+      "endLine": 187,
+      "endColumn": 122,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c59c10da084b908aaac79073a3a94f7b270c44f55de73106a1702192b15d812f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/repository.test.ts",
+          "path": [
+            "fetching the tip",
+            "fails as unreachable, and never reads the branch as absent, when the remote says the ref is missing and then floods"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 10,
+  "omitted": 0,
+  "unmutated": []
+}

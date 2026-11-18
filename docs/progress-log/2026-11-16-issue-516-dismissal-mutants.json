@@ -1,0 +1,120 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "34c644f577d8322080c714afd80cfe0f1d4cb278",
+		"head": "72353e27b4d21d8112636642d8df9f166b732908"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 332,
+			"column": 6,
+			"endLine": 332,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3e6d6e44fc35dbb34c64af8bc589296f42eac35b2f4831311c77eddc637623b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"writes a dismissal with no revision, its rounds sorted once each"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 332,
+			"column": 6,
+			"endLine": 332,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7ee735e22c6b33f29524a77ff9a6c6d3d9771b693a09eb16d507b95be1d8245c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused, with the token in Enola's rule ID"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 332,
+			"column": 6,
+			"endLine": 332,
+			"endColumn": 33,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "6f15e98f341c22038b9ab0da5a26f32fe102b4caebd33c135b0e40c2ad3cce07",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-static-text.test.ts",
+					"path": [
+						"an exported record holds no text Enola or the mutation check wrote",
+						"as the dismissed sighting of a static finding, refused, with the token in Enola's rule ID"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 332,
+			"column": 23,
+			"endLine": 332,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e186e0327bf0583e774e1e4e5c0ca3e940e1e631148011ce26989390595b709d"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 335,
+			"column": 4,
+			"endLine": 335,
+			"endColumn": 147,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bf467b3cda83e27bc02e327040abacf7cc885eb8dc3b9e063810e3f6f32dd40a"
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

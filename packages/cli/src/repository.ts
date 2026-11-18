@@ -1,11 +1,13 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { isChangesetId, withoutReplacements } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
-		execFile("git", args, { cwd, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+		const env = withoutReplacements(process.env);
+		execFile("git", args, { cwd, env, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
 			if (error === null) done(stdout.trim());
 			else fail(new CliError(`git ${args[0]} failed: ${stderr.trim() || error.message}`));
 		});
@@ -60,6 +62,11 @@ export async function openStorage(path: string): ReturnType<typeof openSqliteSto
 	} catch (error) {
 		throw unwritable(path, error as Error);
 	}
+}
+
+export function roundChangeset(round: string): string | undefined {
+	const match = /^([^.]+)\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(round);
+	return match !== null && isChangesetId(match[1]!) ? match[1] : undefined;
 }
 
 // Fixed ref names, so a pull request's changeset ID, which hashes them, survives every push.

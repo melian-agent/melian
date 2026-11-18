@@ -14,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GraphSnapshot, TestCoverage } from "@melian-agent/core";
+import { GraphSnapshot, pullRequestChangesetId, TestCoverage } from "@melian-agent/core";
 import { StorePrune, StorePruneError } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CacheScratch } from "../src/cache-scratch.ts";
@@ -29,6 +29,7 @@ import {
 	openSqliteStorage,
 } from "../src/harness.ts";
 import { createFakeModels } from "../src/testing.ts";
+import { replaceRefsProbe } from "./fixtures/replace-refs.ts";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 const day = 86_400_000;
@@ -162,6 +163,30 @@ it("keeps an old graph whose tree is a branch tip, a remote-tracking ref, or a d
 	const worktreeGraph = await graph(tree(detached), 30 * day);
 	expect((await plan()).entries).toEqual([]);
 	for (const key of [branch, remoteGraph, worktreeGraph]) expect(await exists(`graphs/${key}`)).toBe(true);
+});
+
+it("reads live trees with core.useReplaceRefs as false though the repository's configuration turns it on", async () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	const probe = replaceRefsProbe();
+	try {
+		await plan({ env: { ...process.env, PATH: `${probe.bin}:${process.env.PATH}` } });
+		const answers = probe.answers();
+
+		expect(answers.length).toBeGreaterThan(0);
+		expect(new Set(answers)).toEqual(new Set(["false"]));
+	} finally {
+		await rm(probe.bin, { recursive: true, force: true });
+	}
+});
+
+it("keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it", async () => {
+	const live = gitIn(repo, "rev-parse", "HEAD");
+	const key = await graph(tree(live), 30 * day);
+	const replacement = commit(repo, { "r.ts": "export const r = 1;\n" });
+	gitIn(repo, "reset", "--quiet", "--hard", live);
+	gitIn(repo, "replace", live, replacement);
+	expect((await plan()).entries).toEqual([]);
+	expect(await exists(`graphs/${key}`)).toBe(true);
 });
 
 it("does not count a commit held only under refs/melian/pull/ as live", async () => {
@@ -889,4 +914,22 @@ it("takes a graph's coverage with it when another cache folder is a link", async
 	outside.push(elsewhere);
 	await symlink(elsewhere, join(state, "mutation"));
 	expect(kinds(await plan())).toEqual([["graph", `graphs/${dead}`, `coverage/${dead}`]]);
+});
+
+it("counts a store named by core's builders, and keeps a name one hex digit short of one", async () => {
+	const pull = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
+	await writeFile(join(state, `${pull}.sqlite`), "12345");
+	await writeFile(join(state, `${pull.slice(0, -1)}.sqlite`), "1");
+	const prune = await plan();
+	expect(prune.kept).toEqual([`${pull.slice(0, -1)}.sqlite`]);
+	expect(prune.changesets).toEqual({ files: 1, bytes: 5 });
+});
+
+it("keeps a name that holds a changeset store's name only after a line break or before more text", async () => {
+	const pull = pullRequestChangesetId("github", { owner: "owner", name: "repo" }, 7);
+	const strangers = [`notes\n${pull}.sqlite`, `${pull}.sqlite-journal`];
+	for (const name of strangers) await writeFile(join(state, name), "1");
+	const prune = await plan();
+	expect([...prune.kept].sort()).toEqual([...strangers].sort());
+	expect(prune.changesets).toEqual({ files: 0, bytes: 0 });
 });

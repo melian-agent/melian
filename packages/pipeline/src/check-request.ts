@@ -45,13 +45,14 @@ export const maxKeyedPolicyBytes = 1024 * 1024;
 
 // Melian's own code of each check. Raise a check's number when its logic changes what it finds or how it reports, so
 // no run of an earlier build is reused; nothing checks that you did until issue #437. Biome 2 and tsc 2 keep no tool
-// text, and tsc 3 asks tsc --showConfig for its projects.
+// text, and tsc 3 asks tsc --showConfig for its projects. Enola 2 and mutation 2 keep no tool text in a discriminator,
+// and Enola 2 hashes a rule no policy declares. Enola 3 replaces a head's recipes with the base's.
 const checkVersions: Readonly<Record<DeterministicCheck, number>> = {
 	guardrails: 1,
 	"static.biome": 2,
 	"static.tsc": 3,
-	"static.enola": 1,
-	"static.mutation": 1,
+	"static.enola": 3,
+	"static.mutation": 2,
 };
 
 // The configuration without its display-only keys, which change how a review reads and never what a check finds, so a
@@ -73,6 +74,27 @@ function strykerFrom({
 	...mutation
 }: NonNullable<CheckRequestInput["mutation"]>): Record<string, unknown> {
 	return { ...mutation, stryker: { ...stryker, source: { from: source.from } } };
+}
+
+// The first version of each static check's own code that stores none of its tool's text in a finding. A build before it
+// stored Biome's and tsc's messages, or Enola's and the mutation check's in a discriminator.
+const fixedTextSince: ReadonlyMap<string, number> = new Map([
+	["static.biome", 2],
+	["static.tsc", 2],
+	["static.enola", 2],
+	["static.mutation", 2],
+]);
+
+/**
+ * Whether a check run's request asks for a version of `check` whose findings hold none of its tool's text, so another
+ * host may be shown them. A request that is not a check run's, or names no version of `check`, proves nothing.
+ */
+export function writesFixedText(asked: KeyedRequest<RecordJson>, check: string): boolean {
+	const since = fixedTextSince.get(check);
+	const checks = asked.producer === "check" ? (asked.request as { checks?: unknown }).checks : undefined;
+	const version =
+		typeof checks === "object" && checks !== null ? (checks as Record<string, unknown>)[check] : undefined;
+	return since !== undefined && typeof version === "number" && version >= since;
 }
 
 /**

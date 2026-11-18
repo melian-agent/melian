@@ -2,14 +2,17 @@ import { isDeepStrictEqual } from "node:util";
 import {
 	type CheckRecord,
 	deterministicChecks,
+	type LensCoverage,
 	type ReasoningValue,
 	type RequestReasoning,
 	Revision,
 	RunDetails,
 	type RunStage,
 	type StoredRunDetails,
+	thinkingLevelSchema,
 	visibleText,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -19,6 +22,7 @@ import {
 	type DocumentRecord,
 	defineDocFamily,
 	type EntryId,
+	type EntryRecord,
 	type Harness,
 	type JsonObject,
 	ROOT_CONVERSATION_ID,
@@ -26,9 +30,10 @@ import {
 	type TaskId,
 	UsageDoc,
 } from "./harness.ts";
-import { LensDocument } from "./lens-tools.ts";
+import { LensDocument, type LensPolicy } from "./lens-tools.ts";
 import { probeLimits } from "./probe.ts";
-import { ProbingDocument } from "./probing.ts";
+import { type Attack, type ProbeRecord, ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
+import { ReviewTranscript } from "./review-coverage.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
@@ -128,8 +133,49 @@ export type Stage = {
 	ended?: "tokens" | "tools";
 	/** For a lens at a level that probes, which of its two conversations this is. */
 	role?: "planner" | "prober";
-	/** For a prober, the probes it ran, their summed time, and each probe's time limit. */
-	probes?: { count: number; milliseconds: number; limit: number };
+	/** For a lens, where its stored policy let it look. */
+	coverage?: LensCoverage;
+	/** For a lens, the head path of each file whose diff its prompt carried whole; absent from a lens an older Melian created. */
+	shown?: string[];
+	/** For a lens, the head lines of each changed file that `read_file` delivered to it, as first and last line of each run. */
+	read?: { path: string; ranges: [number, number][] }[];
+	/**
+	 * For a prober, the probes it ran, their summed time, and each probe's time limit; the attacks in the plan it was
+	 * given and the ones it skipped; and how each probe ended.
+	 */
+	probes?: {
+		count: number;
+		milliseconds: number;
+		limit: number;
+		attacks: number;
+		skipped: number[];
+		runs: ProbeStage[];
+	};
+};
+
+/**
+ * How one probe ended: `failed` when it ran to its end and exited non-zero, so it shows its attack's defect; `passed`
+ * when it exited 0; `inconclusive` when it timed out, was signalled, or printed past its output limit.
+ */
+export type ProbeStage = {
+	id: string;
+	attack: number;
+	ended: "failed" | "passed" | "inconclusive";
+	exitCode: number | null;
+	signal: string | null;
+	timedOut: boolean;
+	truncated: boolean;
+	milliseconds: number;
+};
+
+/**
+ * A prober's own record: the plan it was given, each attack it skipped with the model's reason, and each probe's
+ * script, files and output. Model and head text, so it is never telemetry; a caller that keeps it keeps it local.
+ */
+export type ProberRecord = {
+	plan: Attack[];
+	skips: { attack: number; reason: string }[];
+	probes: { id: string; attack: number; script: string; files: { path: string; text: string }[]; output: string }[];
 };
 
 // The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
@@ -152,7 +198,7 @@ function runModels(stage: Stage): string[] {
 				const reported =
 					providerReported === undefined || providerReported === requested
 						? ""
-						: ` (reported ${providerReported})`;
+						: ` (reported ${Value.Check(thinkingLevelSchema, providerReported) ? providerReported : "unrecognised"})`;
 				return `${model}${level}${reported}`;
 			}),
 		),
@@ -458,6 +504,25 @@ export class StageTelemetry {
 	}
 }
 
+// The head lines `read_file` delivered whole for each changed file, as runs of consecutive lines; a search confers none.
+function delivered(records: readonly EntryRecord[], lens: LensPolicy): NonNullable<Stage["read"]> {
+	const { revision } = lens;
+	const paths = revision.files.map((file) => file.path);
+	const lines = new Map<string, Set<number>>();
+	for (const read of ReviewTranscript.from(records, lens.name, paths, revision.nonce).reads())
+		if (read.kind === "read" && read.revision === "head" && read.cut === undefined)
+			for (const line of read.lines) lines.set(read.path, (lines.get(read.path) ?? new Set()).add(line));
+	return [...lines].map(([path, numbers]) => {
+		const ranges: [number, number][] = [];
+		for (const line of [...numbers].sort((a, b) => a - b)) {
+			const last = ranges.at(-1);
+			if (last !== undefined && last[1] + 1 === line) last[1] = line;
+			else ranges.push([line, line]);
+		}
+		return { path, ranges };
+	});
+}
+
 /** Reads durable records without opening a harness or scheduler. */
 export class TelemetryReader {
 	private readonly storage: Storage;
@@ -469,6 +534,30 @@ export class TelemetryReader {
 	/** The caller owns and closes storage. */
 	static open(storage: Storage): TelemetryReader {
 		return new TelemetryReader(storage);
+	}
+
+	/**
+	 * The {@link ProberRecord} behind a prober's stage, or nothing for any other stage. Telemetry leaves this text out,
+	 * as the telemetry decision requires.
+	 */
+	async proberRecord(stage: Stage, context: Context = backgroundContext): Promise<ProberRecord | undefined> {
+		if (stage.role !== "prober" || stage.conversation === undefined) return undefined;
+		// A stage stores its conversation as the plain number JSON can hold.
+		const scope = { kind: "conversation", conversationId: stage.conversation as ConversationId } as const;
+		const probed = await this.document(ProbingDocument, scope, context);
+		if (probed?.plan === undefined) return undefined;
+		const probes = Object.entries(probed.probes ?? {});
+		return {
+			plan: structuredClone(probed.plan),
+			skips: unprobedSkips(probed.skips, probes).map(([attack, reason]) => ({ attack, reason })),
+			probes: probes.map(([id, { attack, script, files, result }]) => ({
+				id,
+				attack,
+				script,
+				files: structuredClone(files),
+				output: result.output,
+			})),
+		};
 	}
 
 	/** The frozen run for exactly this storage-local round, absent from older rounds. */
@@ -788,13 +877,11 @@ export class TelemetryReader {
 		const policy = await this.document(LensDocument, { kind: "conversation", conversationId: id }, context);
 		const role = policy?.lens?.role === "verifier" ? undefined : policy?.lens?.role;
 		const probing = policy?.lens?.probing;
-		const probes =
+		const probed =
 			probing === undefined
 				? undefined
-				: Object.values(
-						(await this.document(ProbingDocument, { kind: "conversation", conversationId: id }, context))
-							?.probes ?? {},
-					);
+				: ((await this.document(ProbingDocument, { kind: "conversation", conversationId: id }, context)) ?? {});
+		const probes = probed === undefined ? undefined : Object.entries(probed.probes ?? {});
 		if (policy?.spend?.ended !== undefined || policy?.spend?.capped !== undefined) result = { outcome: "ended" };
 		if (ending.endedAt === undefined && task.state.status === "terminal" && task.state.outcome.status === "faulted") {
 			ending = { endedAt: task.endedAt };
@@ -813,8 +900,10 @@ export class TelemetryReader {
 		const usage = await this.document(UsageDoc, { kind: "conversation", conversationId: id }, context);
 		// An answer without a duration leaves the wait unknown, so the stage reports none rather than a short one.
 		let modelMs: number | undefined = 0;
+		const records: EntryRecord[] = [];
 		let entries = await this.storage.scanEntries({ conversationId: id }, 200, undefined, context);
 		for (;;) {
+			records.push(...entries.items);
 			for (const entry of entries.items)
 				for (const message of entry.model ?? [])
 					if (message.role === "assistant")
@@ -825,6 +914,9 @@ export class TelemetryReader {
 			if (entries.next === undefined) break;
 			entries = await this.storage.scanEntries({ conversationId: id }, 200, entries.next, context);
 		}
+		// A stored policy that names no revision gives no paths or nonce to read against.
+		const read =
+			name !== "melian.lens" || policy?.lens?.revision === undefined ? [] : delivered(records, policy.lens);
 		return {
 			id: `conversation:${id}`,
 			name,
@@ -843,15 +935,12 @@ export class TelemetryReader {
 						...(policy.lens?.limits === undefined ? {} : { limits: { ...policy.lens.limits } }),
 						...(policy.spend?.ended === undefined ? {} : { ended: policy.spend.ended }),
 						...(role === undefined ? {} : { role }),
+						...(policy.lens?.coverage === undefined ? {} : { coverage: structuredClone(policy.lens.coverage) }),
+						...(policy.lens?.shown === undefined ? {} : { shown: [...policy.lens.shown] }),
+						...(read.length === 0 ? {} : { read }),
 						...(probes === undefined
 							? {}
-							: {
-									probes: {
-										count: probes.length,
-										milliseconds: probes.reduce((sum, probe) => sum + probe.milliseconds, 0),
-										limit: probing!.timeout ?? probeLimits.timeout.default,
-									},
-								}),
+							: { probes: proberStage(probed!, probes, probing!.timeout ?? probeLimits.timeout.default) }),
 					}),
 			...(usage === undefined
 				? {}
@@ -884,4 +973,36 @@ export class TelemetryReader {
 /** A stored timing shape this build cannot read. */
 export class TelemetryError extends Error {
 	readonly code = "unreadable";
+}
+
+// Integer keys list in ascending order. An attack skipped and then probed was probed.
+function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): [number, string][] {
+	return Object.entries(skips ?? {})
+		.map(([attack, reason]): [number, string] => [Number(attack), reason])
+		.filter(([attack]) => !probes.some(([, probe]) => probe.attack === attack));
+}
+
+// A prober's stage: its probes and how each ended, the size of the plan it was given, and the attacks it skipped.
+function proberStage(
+	probed: { plan?: Attack[]; skips?: Record<string, string> },
+	probes: [string, ProbeRecord][],
+	limit: number,
+): NonNullable<Stage["probes"]> {
+	return {
+		count: probes.length,
+		milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
+		limit,
+		attacks: probed.plan!.length,
+		skipped: unprobedSkips(probed.skips, probes).map(([attack]) => attack),
+		runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
+			id: probeId,
+			attack,
+			ended: probeFailed(result) ? "failed" : probeConclusive(result) ? "passed" : "inconclusive",
+			exitCode: result.exitCode,
+			signal: result.signal,
+			timedOut: result.timedOut,
+			truncated: result.truncated,
+			milliseconds,
+		})),
+	};
 }

@@ -1,7 +1,10 @@
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import {
 	Changeset,
 	checksOfTier,
+	DirectoryRecordStore,
 	describeInheritance,
 	FindingsLog,
 	Lens,
@@ -9,17 +12,21 @@ import {
 	loadSecrets,
 	type MelianConfig,
 	type PullRequest,
+	type RecordEnvelope,
 	Rendering,
 	type RepositoryPermission,
 	type RepositorySource,
 	ReviewPlan,
 	type ReviewProvider,
 	Revision,
+	reviewPayloads,
+	SharedRecord,
 	Standards,
 	type StoredRunDetails,
 	userFiles,
 	type Verdict,
 	visibleText,
+	writesWriterTrust,
 } from "@melian-agent/core";
 import {
 	CallerContext,
@@ -30,9 +37,11 @@ import {
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
+	type ProbeGap,
 	type Publication,
 	PublishError,
 	publishReview,
+	RecordedRound,
 	ReviewError,
 	type ReviewHarness,
 	type ReviewOrigin,
@@ -57,7 +66,7 @@ import {
 	scriptVariable,
 	Triage,
 } from "./models.ts";
-import { CliError, git, openStorage, storagePath } from "./repository.ts";
+import { CliError, git, openStorage, pullRequestRefs, roundChangeset, storagePath } from "./repository.ts";
 import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
@@ -186,9 +195,15 @@ export async function review(
 		readonly cold?: boolean;
 		readonly json?: boolean;
 		readonly notes?: boolean;
+		// Where the review exports its records, as `dir:<path>`, resolved against the working directory.
+		readonly records?: string;
 		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
 		// since is refused before any model credential is read.
 		readonly expect?: { readonly base: string; readonly head: string };
+		// Fail each level that probes and cannot, rather than run it without probes, and write each such level's check,
+		// level and cause to `probeGaps` as JSON, where the reason's text, which can name a path in the head, never goes.
+		readonly requireProbes?: boolean;
+		readonly probeGaps?: string;
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -232,10 +247,7 @@ export async function review(
 		writer = await writerTrust(provider, pullRequest);
 	} else {
 		changeset = await Changeset.resolve(io.cwd, target.spec);
-		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
-		const own = checkedOut === changeset.revision.head;
-		const preferences = userFiles(io.env).config;
-		source = own ? { kind: "worktree", preferences } : { kind: "revision", commit: changeset.revision.base };
+		source = (await ReviewSource.ofRange(changeset, io.env)).source;
 	}
 	// The reviewer vouches for the head on the command line, never in a file the repository holds.
 	if (options.trustHead === true) writer = { trusted: true, by: "reviewer" };
@@ -265,6 +277,13 @@ export async function review(
 				}
 			: loaded;
 	const tier = loaded.stages["pull-request"] ?? "full";
+	// A record counts only from a writer the base trusts, so a store is opened only under that base's policy.
+	const trustsWriters =
+		options.records === undefined ? false : await ReviewSource.of(changeset, source).trustsWriters();
+	if (options.records !== undefined && !trustsWriters)
+		io.stderr(
+			"melian: records not exported: the base's melian.yaml does not set trust.writers: true, so no reader would count them\n",
+		);
 	spans.step("secrets");
 	const secrets = await loadSecrets(repoRoot, userFiles(io.env).secrets);
 	for (const warning of secrets.warnings) io.stderr(`melian: ${warning}\n`);
@@ -304,7 +323,13 @@ export async function review(
 	});
 	const { harness } = reviewHarness;
 	let walkthrough: Promise<void> | undefined;
+	let records: DirectoryRecordStore | undefined;
 	try {
+		if (options.records !== undefined && trustsWriters)
+			records = await DirectoryRecordStore.open(
+				resolve(io.cwd, options.records.slice("dir:".length)),
+				reviewPayloads,
+			);
 		spans.step("resume");
 		// A task a crash left unfinished resumes at the first wait below, so its commands run before it.
 		const resumed = await reviewHarness.resumedProviders(context);
@@ -381,9 +406,11 @@ export async function review(
 					}
 				},
 			});
+			return walkthrough;
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;
+		const gaps: ProbeGap[] = [];
 		try {
 			({ verdict, decisionIndexWarning } = await reviewChangeset({
 				harness: reviewHarness,
@@ -398,13 +425,14 @@ export async function review(
 				spans,
 				policy: source,
 				tier,
-				checks: checks.records,
-				checkRun: checks.identity,
+				checkRun: checks,
 				...(callers === undefined ? {} : { callers }),
 				rerun: options.rerun,
 				origin,
 				writer,
 				lensesStarted: summarize,
+				...(options.requireProbes === true ? { requireProbes: true, probeGap: (gap) => gaps.push(gap) } : {}),
+				...(records === undefined ? {} : { records }),
 			}));
 		} catch (error) {
 			if (!(error instanceof ReviewError) || error.verdict === undefined) throw error;
@@ -412,6 +440,7 @@ export async function review(
 			verdict = error.verdict;
 			decisionIndexWarning = error.decisionIndexWarning;
 		}
+		if (options.probeGaps !== undefined) await writeFile(options.probeGaps, `${JSON.stringify(gaps)}\n`, "utf8");
 		summarize();
 		spans.end();
 		await walkthrough;
@@ -460,6 +489,7 @@ export async function review(
 			);
 		throw error;
 	} finally {
+		await records?.close();
 		await reviewHarness.close(context);
 	}
 }
@@ -639,6 +669,40 @@ export class StoredReview {
 	}
 }
 
+// A changeset and the source a review of it reads its policy from.
+class ReviewSource {
+	readonly changeset: Changeset;
+	readonly source: RepositorySource;
+
+	private constructor(changeset: Changeset, source: RepositorySource) {
+		this.changeset = changeset;
+		this.source = source;
+	}
+
+	static of(changeset: Changeset, source: RepositorySource): ReviewSource {
+		return new ReviewSource(changeset, source);
+	}
+
+	// A range reads the working tree when its head is checked out, so the reviewer's own edits count, and otherwise the
+	// base.
+	static async ofRange(changeset: Changeset, env: Io["env"]): Promise<ReviewSource> {
+		const checkedOut = await git(changeset.repoRoot, ["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => "");
+		return new ReviewSource(
+			changeset,
+			checkedOut === changeset.revision.head
+				? { kind: "worktree", preferences: userFiles(env).config }
+				: { kind: "revision", commit: changeset.revision.base },
+		);
+	}
+
+	// Whether the base's policy writes out trust in a record store's writers. A working tree's melian.yaml is the
+	// reviewer's, never the base's.
+	trustsWriters(): Promise<boolean> {
+		const { repoRoot, revision } = this.changeset;
+		return writesWriterTrust(repoRoot, this.source.kind === "revision" ? this.source.commit : revision.base);
+	}
+}
+
 export async function findings(
 	io: Io,
 	argument: string,
@@ -649,9 +713,11 @@ export async function findings(
 		readonly notes?: boolean;
 		readonly round?: string;
 		readonly rounds?: boolean;
+		readonly records?: string;
 	},
 ): Promise<number> {
 	if (options.round !== undefined) return roundFindings(io, options.round, options);
+	if (options.records !== undefined) return recordedFindings(io, argument, options.records, options);
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
@@ -725,19 +791,89 @@ export async function findings(
 	}
 }
 
+// Decides each round a record store holds at the target's revision from its records alone, under the policy source the
+// review read. Every round is shown, by ID, since no round names another it replaces until issue #395 decides who may.
+async function recordedFindings(
+	io: Io,
+	argument: string,
+	store: string,
+	options: { readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
+): Promise<number> {
+	const target = parseTarget(argument);
+	const { changeset } = await StoredReview.open(io, argument);
+	const { repoRoot } = changeset;
+	const reviewed =
+		target.kind === "pullRequest"
+			? ReviewSource.of(changeset, {
+					kind: "revision",
+					commit: await git(repoRoot, ["rev-parse", pullRequestRefs(target.number).base]),
+				})
+			: await ReviewSource.ofRange(changeset, io.env);
+	const { source } = reviewed;
+	const { config } = await loadConfig(repoRoot, source, ".");
+	if (!(await reviewed.trustsWriters()))
+		throw new CliError("the base's melian.yaml does not set trust.writers: true, so no record in the store counts");
+	const path = resolve(io.cwd, store.slice("dir:".length));
+	if (!existsSync(path)) throw new CliError(`no record store at ${path}`);
+	const records = await DirectoryRecordStore.open(path, reviewPayloads);
+	let stored: RecordEnvelope[];
+	try {
+		stored = await records.list(changeset.id);
+	} finally {
+		await records.close();
+	}
+	const revision = Revision.key(changeset.revision);
+	const rounds = stored
+		.map((each) => SharedRecord.parseEnvelope(each))
+		.filter((record) => record.kind === "round" && record.revision === revision)
+		.sort((left, right) => (left.id < right.id ? -1 : 1));
+	if (rounds.length === 0) throw new CliError(`the record store holds no round of ${short(changeset.revision.head)}`);
+	const emoji = await terminalEmoji(io, repoRoot);
+	const render = new Rendering({
+		color: io.color,
+		emoji,
+		ids: true,
+		all: options.all,
+		decided: true,
+		notes: options.notes,
+		target: argument,
+	});
+	const decided: { round: string; verdict: Verdict }[] = [];
+	for (const { id } of rounds)
+		decided.push({
+			round: id,
+			verdict: await RecordedRound.of(stored, id, () => true).verdict({
+				revision: changeset.revision,
+				config,
+				repoRoot,
+				policy: source,
+			}),
+		});
+	io.stdout(
+		options.json
+			? `${JSON.stringify(
+					decided.map(({ round, verdict }) => ({ round, verdict: JSON.parse(verdict.renderJson()) as unknown })),
+					null,
+					2,
+				)}\n`
+			: decided.map(({ round, verdict }) => `Round ${round}\n${verdict.render(render)}`).join("\n"),
+	);
+	return 0;
+}
+
 async function roundFindings(
 	io: Io,
 	id: string,
 	options: { readonly open: boolean; readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
-	const match = /^(range-[0-9a-f]{16}|pull-[0-9a-f]{16})\.(?:r[1-9][0-9]*|k[0-9a-f]{16})$/.exec(id);
-	if (match === null) throw new CliError(`invalid round ID ${id}`);
+	const changesetId = roundChangeset(id);
+	if (changesetId === undefined) throw new CliError(`invalid round ID ${id}`);
 	const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-	const path = await storagePath(repoRoot, match[1]!, io.env, isScripted(io.env));
+	const path = await storagePath(repoRoot, changesetId, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw new CliError(`Melian has no round ${id}`);
 	const storage = await openStorage(path);
 	try {
-		const round = (await new RoundReader(storage).read(match[1]!)).find((round) => round.id === id);
+		const round = (await new RoundReader(storage).read(changesetId)).find((round) => round.id === id);
 		if (round === undefined) throw new CliError(`Melian has no round ${id}`);
 		const verdict = round.verdict();
 		if (verdict === undefined) throw new CliError(`Melian has no decided round ${id}`);

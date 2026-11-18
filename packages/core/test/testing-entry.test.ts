@@ -6,6 +6,7 @@ describe("core's testing entry", () => {
 		const { testPayloads } = await import("../src/testing.ts");
 		expect(Object.keys(testPayloads).sort()).toEqual(
 			[
+				"account",
 				"check",
 				"comparison",
 				"dismissal",
@@ -15,6 +16,7 @@ describe("core's testing entry", () => {
 				"post",
 				"status",
 				"telemetry",
+				"triage",
 				"verification",
 				"walkthrough",
 			].sort(),

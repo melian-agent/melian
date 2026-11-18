@@ -41,6 +41,9 @@ Commands:
   findings <range|#pr>   Print the stored review. --open prints only findings that need attention, --all silent and
                          dismissed findings too; --json prints JSON. --rounds lists the target's stored rounds.
   findings --round <id>  Print a round's frozen verdict without resolving its former range.
+  findings <range|#pr> --records dir:<path>
+                         Decide each round a record store holds at the target's revision from its records alone,
+                         under the base's policy, when that policy sets trust.writers: true.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -92,12 +95,17 @@ Options:
                          Review the pull request only at this base and head, as the pull request reports them;
                          refuse before reading a model credential if it moved (review).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
+  --records dir:<path>   Export the review's records to a directory store as its tasks finish, when the base's
+                         melian.yaml sets trust.writers: true; otherwise say so and export nothing (review). Read
+                         the rounds a directory store holds (findings).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
                          and ask triage again if its decision did not complete, rather than print what it
                          stored; a completed triage decision is never asked again (review).
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
                          For probe, run the probe in your checkout; pass it only for code you have read.
+  --require-probes       Fail each level that probes and cannot probe here, rather than run it without probes (review).
+  --probe-gaps <file>    Write each level --require-probes failed, by check, level and cause, to <file> as JSON (review).
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review, telemetry and probe.
@@ -172,6 +180,9 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				"require-probes": { type: "boolean", default: false },
+				"probe-gaps": { type: "string" },
+				records: { type: "string" },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -222,6 +233,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
+		if (name !== "review" && name !== "findings" && values.records !== undefined)
+			throw new UsageError("--records is only available for review and findings");
+		if (values.records !== undefined && !/^dir:./.test(values.records))
+			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
 		if (name !== "review" && (expectBase !== undefined || expectHead !== undefined))
@@ -259,6 +274,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			}
 			case "review": {
 				const target = one(rest, name, "range or pull request");
+				if (values["probe-gaps"] !== undefined && !values["require-probes"])
+					throw new UsageError("--probe-gaps writes what --require-probes finds, so it needs --require-probes");
 				if (expected !== undefined && parseTarget(target).kind !== "pullRequest")
 					throw new UsageError('--expect-base and --expect-head take a pull request such as "#12", not a range');
 				return await review(
@@ -280,7 +297,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						walkthrough: values.walkthrough,
 						trustHead: values["trust-head"],
 						cold: values.cold,
+						...(values.records === undefined ? {} : { records: values.records }),
 						...(values.json ? { json: true } : {}),
+						...(values["require-probes"] ? { requireProbes: true } : {}),
+						...(values["probe-gaps"] === undefined ? {} : { probeGaps: values["probe-gaps"] }),
 					},
 				);
 			}
@@ -300,6 +320,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					throw new UsageError("findings --round takes a round ID alone");
 				if (values.rounds && (values.open || values.all))
 					throw new UsageError("findings --rounds lists rounds alone");
+				if (values.records !== undefined && (values.open || values.round !== undefined || values.rounds))
+					throw new UsageError("findings --records takes no --open, --round or --rounds");
 				return await findings(scoped, values.round === undefined ? one(rest, name, "range or pull request") : "", {
 					open: values.open,
 					all: values.all,
@@ -307,6 +329,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					json: values.json,
 					round: values.round,
 					rounds: values.rounds,
+					...(values.records === undefined ? {} : { records: values.records }),
 				});
 			case "telemetry":
 				return await telemetry(scoped, one(rest, name, "range or pull request"), { json: values.json });

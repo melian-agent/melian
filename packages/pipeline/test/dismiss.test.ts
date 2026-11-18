@@ -1285,7 +1285,7 @@ describe("recording a dismissal", () => {
 			const index = await tx.doc(ReviewIndex, root.id);
 			const known = index.reviews[key]!.adjudication!;
 			const { resolutionPolicy, ...older } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(older);
 		}, context);
 
@@ -1328,6 +1328,203 @@ describe("recording a dismissal", () => {
 		});
 	});
 
+	describe("a review stored with a fingerprint of an older computation", () => {
+		// Fingerprints main's build at c0b8b02e stored for this scenario, each from a review under the policy it names:
+		// the base's own, a commit beside the base whose src/melian.yaml makes P1 advisory, and the base's under a
+		// built-in correctness lens that declared P1 advisory. Version 2 hashes no commit, so they hold across runs.
+		const mainWrote = {
+			unchanged: "2:f4f8f5489b2e7060",
+			looser: "2:5686b07a135de9de",
+			builtinDefault: "2:e6fc3b05f285c97b",
+		};
+
+		// A commit beside the base whose policy makes P1 advisory, leaving the checkout where it was.
+		function looserCommit(): string {
+			const head = gitIn(repo, "rev-parse", "HEAD");
+			gitIn(repo, "checkout", "-q", "--detach", "main");
+			writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });
+			gitIn(repo, "add", ".");
+			gitIn(repo, "commit", "-q", "-m", "loose");
+			const commit = gitIn(repo, "rev-parse", "HEAD");
+			gitIn(repo, "checkout", "-q", head);
+			return commit;
+		}
+
+		async function dismissStoredWith(
+			fingerprint: string,
+			source: "revision" | "worktree" | ((base: string) => string),
+		) {
+			const harness = await reviewHarness(createMemoryStorage());
+			scriptFinding();
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const policy =
+				source === "worktree"
+					? { kind: "worktree" as const }
+					: {
+							kind: "revision" as const,
+							commit: source === "revision" ? changeset.revision.base : source(changeset.revision.base),
+						};
+			const { findings } = await reviewChangeset({
+				harness,
+				changeset,
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				policy,
+			});
+			const root = await harness.root(context);
+			await root.commit(async (tx) => {
+				const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
+				const input = JSON.parse(known.input) as AdjudicationTaskInput;
+				expect(input.resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
+				known.input = JSON.stringify({ ...input, resolutionPolicy: fingerprint });
+			}, context);
+			const id = findings[0]!.properties.id;
+			return { id, recorded: dismiss(harness, id) };
+		}
+
+		it("decides the dismissal under the version-2 fingerprint main's build wrote for the same policy", async () => {
+			const { id, recorded } = await dismissStoredWith(mainWrote.unchanged, "revision");
+
+			expect((await recorded).verdict.dismissed.map((each) => each.id)).toEqual([id]);
+		});
+
+		it("refuses a version-2 fingerprint that main's build would not have written for this policy", async () => {
+			const { recorded } = await dismissStoredWith("2:0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a version-2 fingerprint of the policy a branch named before it moved to this commit", async () => {
+			gitIn(repo, "branch", "policy", looserCommit());
+			gitIn(repo, "branch", "-f", "policy", "main");
+			const { recorded } = await dismissStoredWith(mainWrote.looser, () => gitIn(repo, "rev-parse", "policy"));
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a version-2 fingerprint read through a replacement object, and reads the commit itself", async () => {
+			const base = gitIn(repo, "rev-parse", "main");
+			gitIn(repo, "replace", base, looserCommit());
+			try {
+				const { recorded: replaced } = await dismissStoredWith(mainWrote.looser, "revision");
+				await expect(replaced).rejects.toMatchObject({
+					code: "adjudicationFailed",
+					message: expect.stringContaining("the resolution policy changed since the review read it"),
+				});
+
+				const { id, recorded } = await dismissStoredWith(mainWrote.unchanged, "revision");
+				expect((await recorded).verdict.dismissed.map((each) => each.id)).toEqual([id]);
+			} finally {
+				gitIn(repo, "replace", "-d", base);
+			}
+		});
+
+		it("refuses a version-2 fingerprint a build with another built-in lens default wrote", async () => {
+			const { recorded } = await dismissStoredWith(mainWrote.builtinDefault, "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy is the working tree, which may have changed since", async () => {
+			const { recorded } = await dismissStoredWith(mainWrote.unchanged, "worktree");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy names a branch, which can move to another commit since the review", async () => {
+			const { recorded } = await dismissStoredWith(mainWrote.unchanged, () => "main");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy names an abbreviated commit, which a later object can make ambiguous", async () => {
+			const { recorded } = await dismissStoredWith(mainWrote.unchanged, (base) => base.slice(0, 12));
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses when the policy names a branch that a full object ID's pattern would only part match", async () => {
+			const base = gitIn(repo, "rev-parse", "main");
+			const names = [`pin-${base}`, `${base}-pin`, "a", "z".repeat(64)];
+			for (const name of names) gitIn(repo, "branch", name, base);
+			try {
+				for (const name of names) {
+					const { recorded } = await dismissStoredWith(mainWrote.unchanged, () => name);
+
+					await expect(recorded, name).rejects.toMatchObject({
+						code: "adjudicationFailed",
+						message: expect.stringContaining("the resolution policy changed since the review read it"),
+					});
+				}
+			} finally {
+				gitIn(repo, "branch", "-D", ...names);
+			}
+		});
+
+		it("refuses when the policy names a branch spelt as a full object ID of another object format", async () => {
+			const name = "a".repeat(64);
+			gitIn(repo, "branch", name, "main");
+			try {
+				const { recorded } = await dismissStoredWith(mainWrote.unchanged, () => name);
+
+				await expect(recorded).rejects.toMatchObject({
+					code: "adjudicationFailed",
+					message: expect.stringContaining("the resolution policy changed since the review read it"),
+				});
+			} finally {
+				gitIn(repo, "branch", "-D", name);
+			}
+		});
+
+		it("refuses a fingerprint of the retired recipe, which names no version, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a fingerprint of a later computation than this build's, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("4:0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+
+		it("refuses a fingerprint of the current computation that differs, though the policy came from a commit", async () => {
+			const { recorded } = await dismissStoredWith("3:0000000000000000", "revision");
+
+			await expect(recorded).rejects.toMatchObject({
+				code: "adjudicationFailed",
+				message: expect.stringContaining("the resolution policy changed since the review read it"),
+			});
+		});
+	});
+
 	it("decides a dismissal when the input names a fingerprint but no policy source to compare it with", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
@@ -1346,7 +1543,7 @@ describe("recording a dismissal", () => {
 		await root.commit(async (tx) => {
 			const known = (await tx.doc(ReviewIndex, root.id)).reviews[Revision.key(changeset.revision)]!.adjudication!;
 			const { policy: _, ...input } = JSON.parse(known.input) as AdjudicationTaskInput;
-			expect(input.resolutionPolicy).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(input.resolutionPolicy).toMatch(/^3:[0-9a-f]{16}$/);
 			known.input = JSON.stringify(input);
 		}, context);
 		writeFiles(repo, { "src/melian.yaml": "resolution:\n  P1: advisory\n" });

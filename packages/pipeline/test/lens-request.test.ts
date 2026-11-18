@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
-import type { LensToolName, Severity } from "@melian-agent/core";
+import { type LensProbingWording, type LensToolName, lensProbingWording, type Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { piVersions } from "../src/harness.ts";
-import { handoverWording, lensRequest } from "../src/lens-request.ts";
+import { handoverWording, lensRequest, type MutantLister } from "../src/lens-request.ts";
 import {
 	injectionPolicySection,
 	lensListedTools,
@@ -12,7 +12,7 @@ import {
 	runProbe,
 	skipAttack,
 } from "../src/lens-tools.ts";
-import { probingWording } from "../src/probing.ts";
+import { probingWording, probingWordingOf } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
 
 const sample = {
@@ -44,7 +44,7 @@ const sample = {
 				trustWriters: true,
 				timeout: 30,
 				read: ["/usr/lib"],
-				host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.1.0" },
+				host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.1.0" },
 			},
 			onLevelTier: true,
 		},
@@ -66,9 +66,9 @@ type Sample = typeof sample;
 
 // The run as the review builds it: whatever is quoted, inside boundaries of the nonce it is rendered under, with the
 // caller section when asked for it.
-function build(input: Sample) {
+function build(input: Sample & { readonly mutants?: MutantLister }, request = lensRequest) {
 	const { escalation, callers, ...rest } = input;
-	return lensRequest({
+	return request({
 		...rest,
 		...(escalation === undefined ? {} : { escalation }),
 		run: (nonce, withCallers) => ({
@@ -102,8 +102,13 @@ const specOf = ({
 describe("lensRequest", () => {
 	it("keys every input but the nonce", () => {
 		const tools = ["read_file", "search", "list_files", "graph_definitions"];
+		// A run that probes names a lens with probing wording of its own.
 		const vary = (name: string, value: unknown) =>
-			name.startsWith("run.tools.") ? tools.find((tool) => tool !== value) : undefined;
+			name.startsWith("run.tools.")
+				? tools.find((tool) => tool !== value)
+				: name === "run.name"
+					? "tests"
+					: undefined;
 		expect(keyCoverage(build, sample, { excluded: ["nonce", "callers"], vary })).toEqual([]);
 	});
 
@@ -186,6 +191,71 @@ describe("lensRequest", () => {
 		expect(build(sample).key).toBe(before);
 	});
 
+	it("keys list_mutants by a description that carries its cap, so a new cap asks again", async () => {
+		const asking = {
+			...sample,
+			run: { ...sample.run, tools: ["list_mutants"] as LensToolName[] },
+			mutants: "unavailable" as MutantLister,
+		};
+		const before = build(asking);
+		expect(before.request.tools).toContainEqual(specOf(lensListedTools.list_mutants));
+		vi.resetModules();
+		vi.doMock("../src/mutant-listing.ts", async (original) => ({
+			...(await original<object>()),
+			maxListedMutants: 100,
+		}));
+		try {
+			const reloaded = await import("../src/lens-request.ts");
+			const tools = await import("../src/lens-tools.ts");
+			expect(tools.lensListedTools.list_mutants.description).toContain("At most 100 a call");
+			expect(build(asking, reloaded.lensRequest).key).not.toBe(before.key);
+		} finally {
+			vi.doUnmock("../src/mutant-listing.ts");
+			vi.resetModules();
+		}
+	});
+
+	describe("the instrumenter that answers list_mutants", () => {
+		const lister = { version: "10.0.0", source: "checkout" as const };
+		const asking = {
+			...sample,
+			run: { ...sample.run, tools: ["read_file", "list_mutants"] as LensToolName[] },
+			mutants: lister as MutantLister,
+		};
+		const tools = ["read_file", "search", "list_files", "list_mutants"];
+
+		it("keys its version and source, and every other input, for a run offered list_mutants", () => {
+			const vary = (name: string, value: unknown) =>
+				name.startsWith("run.tools.")
+					? tools.find((tool) => tool !== value && !asking.run.tools.includes(tool as LensToolName))
+					: name === "mutants.source"
+						? "melian"
+						: name === "run.name"
+							? "tests"
+							: undefined;
+			expect(keyCoverage(build, asking, { excluded: ["nonce", "callers"], vary })).toEqual([]);
+		});
+
+		it("keys an instrumenter that cannot be found apart from every one that can", () => {
+			const keys = (
+				["unavailable", lister, { ...lister, source: "melian" }, { ...lister, version: "unavailable" }] as const
+			).map((mutants) => build({ ...asking, mutants: mutants as MutantLister }).key);
+			expect(new Set(keys).size).toBe(4);
+		});
+
+		it("leaves a run not offered list_mutants keyed as before, byte for byte", () => {
+			const without = build(sample);
+			const given = build({ ...sample, mutants: lister });
+			expect(given.key).toBe(without.key);
+			expect(given.request).not.toHaveProperty("mutants");
+		});
+
+		it("refuses to key a run offered list_mutants without the instrumenter", () => {
+			const { mutants: _, ...missing } = asking;
+			expect(() => build(missing)).toThrow("list_mutants");
+		});
+	});
+
 	it("offers a run that does not probe no planner tool, and keys no probing text", () => {
 		const { probe: _, ...run } = sample.run;
 		const { callers: _c, ...rest } = sample;
@@ -201,17 +271,54 @@ describe("lensRequest", () => {
 		expect(new Set([moves, capped, none]).size).toBe(3);
 	});
 
-	it("keys the whole probing wording table for a run that probes or carries its findings on, and only then", () => {
+	it("keys its own lens's probing wording for a run that probes, the shared lines for one that carries its findings on, and none otherwise", () => {
 		const { probe: _, ...plain } = sample.run;
 		const capped = { cap: "at its ceiling" } as unknown as Sample["escalation"];
 		const none = undefined as unknown as Sample["escalation"];
-		expect(build(sample).request.wording).toEqual(probingWording);
-		expect(build({ ...sample, escalation: none }).request.wording).toEqual(probingWording);
+		expect(build(sample).request.wording).toEqual(probingWordingOf("correctness"));
+		expect(build({ ...sample, escalation: none }).request.wording).toEqual(probingWordingOf("correctness"));
 		expect(build({ ...sample, run: plain as Sample["run"] }).request.wording).toEqual(probingWording);
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: capped }).request).not.toHaveProperty(
 			"wording",
 		);
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: none }).request).not.toHaveProperty("wording");
+	});
+
+	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared, and rewritten from
+	// code for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file.
+	it("keys the trust-boundary lens's probing wording as the recorded table", () => {
+		const golden = JSON.parse(
+			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),
+		);
+		const run = { ...sample.run, name: "trust-boundary" };
+		expect(build({ ...sample, run }).request.wording).toEqual(golden);
+	});
+
+	it("changes a probing run's key when its own lens's wording changes, and no other lens's key", () => {
+		const words = lensProbingWording as Map<string, LensProbingWording>;
+		const { probe: _, ...plain } = sample.run;
+		const runs = {
+			probing: sample,
+			other: { ...sample, run: { ...sample.run, name: "trust-boundary" } },
+			escalating: { ...sample, run: plain as Sample["run"] },
+		};
+		const before = Object.fromEntries(Object.entries(runs).map(([name, each]) => [name, build(each).key]));
+		const own = words.get("correctness")!;
+		words.set("correctness", { ...own, plannerPlan: `${own.plannerPlan} Plan again.` });
+		try {
+			expect(build(runs.probing).key).not.toBe(before.probing);
+			expect(build(runs.other).key).toBe(before.other);
+			expect(build(runs.escalating).key).toBe(before.escalating);
+		} finally {
+			words.set("correctness", own);
+		}
+		expect(build(runs.probing).key).toBe(before.probing);
+	});
+
+	it("refuses to key a run that probes in a lens with no probing wording of its own", () => {
+		expect(() => build({ ...sample, run: { ...sample.run, name: "security" } })).toThrow(
+			"the security lens has no probing wording of its own, so it cannot probe",
+		);
 	});
 
 	it("writes neither escalation field for a run with no escalation severity and no next run", () => {

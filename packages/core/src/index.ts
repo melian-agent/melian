@@ -27,6 +27,7 @@ export type {
 export {
 	Changeset,
 	type ChangesetFields,
+	isChangesetId,
 	parseRangeSpec,
 	pullRequestChangesetId,
 	type RangeMode,
@@ -112,6 +113,7 @@ export {
 	stricter,
 	type TscSettings,
 	thinkingLevelSchema,
+	writesWriterTrust,
 } from "./config.ts";
 export {
 	type ChoiceAnswer,
@@ -266,6 +268,7 @@ export {
 	lensFrontMatterSchema,
 	lensGraphToolNames,
 	lensLimits,
+	lensMutationToolNames,
 	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,
@@ -296,6 +299,7 @@ export {
 	type TierStatus,
 	type UnknownModel,
 } from "./plan.ts";
+export { type LensProbingWording, lensProbingWording } from "./probing-wording.ts";
 export {
 	type ClosedFinding,
 	type DiffLines,
@@ -385,6 +389,13 @@ export {
 	toolResultSchema,
 } from "./static.ts";
 export {
+	type AccountClaim,
+	type RoundFacts,
+	TierAccount,
+	type TierAccountRefusal,
+	type TierLenses,
+} from "./tier-account.ts";
+export {
 	type EscalationEvidence,
 	EscalationRule,
 	type EscalationTrigger,
@@ -431,8 +442,17 @@ export {
 	type EnolaReach,
 	type EnolaReference,
 } from "./enola-graph.ts";
-export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes } from "./git.ts";
+export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
+export {
+	type GitOptions,
+	type GitResult,
+	git,
+	gitFailure,
+	gitOutput,
+	gitOutputBytes,
+	stderrLimit,
+	withoutReplacements,
+} from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -486,6 +506,15 @@ export {
 	survivorClasses,
 } from "./mutation-inventory.ts";
 export {
+	type ProcessControl,
+	type ProcessEntry,
+	ProcessTable,
+	parseProcesses,
+	type RecordedProcess,
+	stopTree,
+	terminateRecorded,
+} from "./process-tree.ts";
+export {
 	type MembershipCandidate,
 	MembershipError,
 	PullRequestMembership,
@@ -504,6 +533,29 @@ export {
 	type RoundManifest,
 	SharedRecord,
 } from "./record.ts";
+export {
+	type AccountPayload,
+	accountPayloadSchema,
+	type CheckPayload,
+	checkPayloadSchema,
+	checkResultSchema,
+	type DismissalPayload,
+	dismissalPayloadSchema,
+	type LegacyAccountPayload,
+	type LensPayload,
+	legacyAccountPayloadSchema,
+	lensOutcomeSchema,
+	lensPayloadSchema,
+	reviewPayloads,
+	type TelemetryPayload,
+	type TriagePayload,
+	telemetryPayloadSchema,
+	triagePayloadSchema,
+	type VerificationPayload,
+	verificationPayloadSchema,
+	type WalkthroughPayload,
+	walkthroughPayloadSchema,
+} from "./record-payloads.ts";
 export {
 	checkCellValue,
 	checkChangeset,
@@ -545,6 +597,7 @@ export {
 	loweringSchema,
 	type StoredLowering,
 	type StoredVerificationState,
+	trustFloorChecks,
 	type Verification,
 	VerificationRecord,
 	VerificationState,

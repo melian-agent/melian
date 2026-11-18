@@ -1,0 +1,489 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ea296bc3551f2e63a9c54c55bf948a384928e5b8",
+		"head": "0e62973e0b667c0e1f70e7c62cd30cf02c90405d"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 282,
+			"column": 42,
+			"endLine": 291,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f4c75acfb26646a11afa0b67e0e63b1d52a55a9633f345d6ddb8335867fe1825",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps a lens's own version where a finding's source names it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 284,
+			"column": 15,
+			"endLine": 284,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1952396652e0eee5ca2ef3d1c22c46fff93dfa12192ffaaab0e3576cf3857426"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 284,
+			"column": 36,
+			"endLine": 284,
+			"endColumn": 49,
+			"mutatorName": "LogicalOperator",
+			"replacement": "version && \"\"",
+			"status": "generated",
+			"id": "16406103a5e739b197d5970dfd35326eb13d907ae7cf1897013fd70fce34b66e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps apart two producers of one check whose versions it keeps"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 284,
+			"column": 47,
+			"endLine": 284,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85a76a258392d484fd71fbcc9d4512f355cccece85b1eea5e70b500f27a44300"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "48a30ccbafea53f73eda51ddd73c79438ffbb81173a8708256bf7648f803d0de",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6674c9ac9381d24f9a4e1ed00d32e95c2c0b8b82d8738cd9ad8d49fd653b7707",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 55,
+			"mutatorName": "LogicalOperator",
+			"replacement": "producer.ids === undefined && earlier?.ids === null",
+			"status": "generated",
+			"id": "d3f6f02ad6f2dece7d5f57f68dbd081f29e6d05bca07d9eb5b281a9ed7f87c19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5a78b56c7b1f276f8c34e9c6f48019dcc98f908e54514c600aea226a087018fd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 4,
+			"endLine": 287,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "producer.ids !== undefined",
+			"status": "generated",
+			"id": "326cd5e28f36aa9c7d3175a8edadd5bfc0f865bb800b13198f60a25fc1c695f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 34,
+			"endLine": 287,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "77b4eafd44dff054615e378ebaf511d4ddc646acdc35f9c8223c27181fa5a30f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids undefined and [\"bbbbbbbbbbbbbbbb\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 34,
+			"endLine": 287,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "earlier?.ids !== null",
+			"status": "generated",
+			"id": "8be729c63e9ba0930cab41d8bd3d7559bc77f5c886ca15a16d92609438fec0cf",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 287,
+			"column": 34,
+			"endLine": 287,
+			"endColumn": 46,
+			"mutatorName": "OptionalChaining",
+			"replacement": "earlier.ids",
+			"status": "generated",
+			"id": "f398d2bb7608a52756bf605728d0528f0c8f94d73d044dc89b61cba54e85b532",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 7,
+			"endLine": 289,
+			"endColumn": 77,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set([...(earlier?.ids ?? []), ...producer.ids])]",
+			"status": "generated",
+			"id": "12078bac89bb3b16d093e2dd5bc0ffeb08c8ef852983d369870f4486a7f6ad6a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 7,
+			"endLine": 289,
+			"endColumn": 63,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "302ffe9ef147710ce43fba24267826c2a280cc2adb7ab40dce093bd62939ddef",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 19,
+			"endLine": 289,
+			"endColumn": 61,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "936554d24adfac1f8f6f6966c9360c5149ae05a79d452850708e42c8020279db",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 24,
+			"endLine": 289,
+			"endColumn": 42,
+			"mutatorName": "LogicalOperator",
+			"replacement": "earlier?.ids && []",
+			"status": "generated",
+			"id": "e9a5e8f3f2c1eb9965db806aabfceafb82996b5a88a70495bf76641cb7c620c5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 24,
+			"endLine": 289,
+			"endColumn": 36,
+			"mutatorName": "OptionalChaining",
+			"replacement": "earlier.ids",
+			"status": "generated",
+			"id": "5657161fa9958bbdffea2868a98f4fad6984cb3897a6be78627c13e7709e5937",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 289,
+			"column": 40,
+			"endLine": 289,
+			"endColumn": 42,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "971885e21e439979e382ec1b29942f639e14ac16282151549e4a9f9c2bf30706",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"unites the ids [\"bbbbbbbbbbbbbbbb\"] and [\"aaaaaaaaaaaaaaaa\"] of two producers whose versions it withholds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 290,
+			"column": 19,
+			"endLine": 290,
+			"endColumn": 58,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1a0bafd6c4addd7b34b518ef023e051af9cca0021a2e7d6f12eacef691bdf9b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record holds no text a tool, a provider or the head wrote",
+						"as a tool version that names a finding's source, wherever the finding goes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 292,
+			"column": 20,
+			"endLine": 292,
+			"endColumn": 40,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4ba820537bf56745c07c8a14faea31362d55499ef88428a864dc1f99cb1ff1d4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-withheld.test.ts",
+					"path": [
+						"an exported record keeps what Melian defines",
+						"keeps a lens's own version where a finding's source names it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/telemetry.ts",
+			"line": 191,
+			"column": 8,
+			"endLine": 191,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "933c3fee01823a617d2b0034a444e9bd925da7a3e241cd5f5930ae5df4094901"
+		},
+		{
+			"file": "packages/pipeline/src/telemetry.ts",
+			"line": 191,
+			"column": 94,
+			"endLine": 191,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "836f558383da0bbbd21c6849edb2eabcc1e7df5e5efc2042257d35676e90d17b"
+		}
+	],
+	"total": 22,
+	"omitted": 0,
+	"unmutated": []
+}

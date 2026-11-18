@@ -6,7 +6,7 @@
 		"packages/*"
 	],
 	"scripts": {
-		"check": "biome check --write --error-on-warnings . && node scripts/check-pinned-deps.mjs && node scripts/check-release-age.mjs && node scripts/check-tools.mjs && tsc --noEmit && npm audit --audit-level=high && vitest --run",
+		"check": "biome check --write --error-on-warnings . && node scripts/check-pinned-deps.mjs && node scripts/check-release-age.mjs && node scripts/check-tools.mjs && tsc --noEmit && node scripts/check-audit.mjs && vitest --run",
 		"lint": "biome check --error-on-warnings .",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest --run",
@@ -23,6 +23,7 @@
 		"@stryker-mutator/core": "10.0.0",
 		"@stryker-mutator/vitest-runner": "10.0.0",
 		"@types/node": "22.20.4",
+		"@types/semver": "7.8.0",
 		"mdast-util-from-markdown": "2.1.0",
 		"mdast-util-to-markdown": "2.2.0",
 		"mdast-util-to-string": "4.0.0",

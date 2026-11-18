@@ -1,0 +1,516 @@
+{
+	"commit": "4d08b08c",
+	"changeset": "range-8fb67dfe2bac6ead",
+	"revision": {
+		"head": "11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+		"base": "56388cfdc9ee37f2f59472ddba89488327bdd290",
+		"files": [
+			{
+				"status": "modified",
+				"path": "src/a.ts",
+				"oldMode": "100644",
+				"oldKind": "file",
+				"newMode": "100644",
+				"newKind": "file",
+				"binary": false,
+				"hunks": [
+					{
+						"file": "src/a.ts",
+						"index": 0,
+						"oldStart": 1,
+						"oldLines": 1,
+						"newStart": 1,
+						"newLines": 1,
+						"header": "@@ -1 +1 @@",
+						"text": "-export const a = 1;\n+export const a = 2;"
+					}
+				]
+			}
+		],
+		"policyFiles": []
+	},
+	"status": "not-reviewed",
+	"records": [
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "d52b1f8ffd07df4770a0e685f1a91d6ccb6904159d1c846e5e8bf186b751d418",
+			"kind": "lens",
+			"payload": {
+				"check": null,
+				"delivery": null,
+				"level": "careful",
+				"name": "correctness",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 6989
+					}
+				},
+				"probe": false,
+				"sightings": [],
+				"v": 1,
+				"version": "18c49f913df8"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "c6a24f3da9974f5b30dfd76fb8e5268792fca6d1453d2bf54b7cab55f8a546ac",
+			"kind": "lens",
+			"payload": {
+				"check": null,
+				"delivery": null,
+				"level": "careful",
+				"name": "contracts",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 10303
+					}
+				},
+				"probe": false,
+				"sightings": [
+					{
+						"level": "warning",
+						"locations": [
+							{
+								"physicalLocation": {
+									"artifactLocation": {
+										"uri": "src/a.ts"
+									},
+									"region": {
+										"snippet": {
+											"text": "export const a = 2;"
+										},
+										"startLine": 1
+									}
+								}
+							}
+						],
+						"message": {
+							"text": "a is 2 now."
+						},
+						"partialFingerprints": {
+							"melian/v1": "8f3f919a7c886b44"
+						},
+						"properties": {
+							"cause": "introduced",
+							"evidence": [
+								{
+									"file": "src/a.ts",
+									"proves": true,
+									"revision": "head",
+									"role": "cause",
+									"snippet": "export const a = 2;",
+									"startLine": 1
+								}
+							],
+							"explanation": {
+								"what": "a is 2 now.",
+								"whatToDo": "Restore 1.",
+								"whyHere": "This change rewrote it."
+							},
+							"failureScenario": "A caller that reads a expects 1 and gets 2.",
+							"id": "8f3f919a7c886b44",
+							"occurrence": 0,
+							"path": "src/a.ts",
+							"severity": "P2",
+							"source": {
+								"check": "lens.contracts",
+								"version": "dd8fb36095b4@careful"
+							},
+							"status": "new",
+							"trigger": {
+								"file": "src/a.ts",
+								"hash": "e67f15d229a5a450feb90cda26e50873b3b0a72661d228677edf5eafd5654059",
+								"index": 0,
+								"snippet": "export const a = 2;"
+							}
+						},
+						"ruleId": "changed-return"
+					}
+				],
+				"v": 1,
+				"version": "dd8fb36095b4"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "dfcdba155508df6df3dc182fc7e02b443f356d6e8f89b6cca4422ea635f8e1c7",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"findings": 0,
+					"name": "guardrails",
+					"notes": [],
+					"snapshots": null,
+					"status": "ran",
+					"version": null
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "cf00769c7cc6a896f8f040061b43124b744bc802f4d0d06749df08a02f2a3114",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"findings": 0,
+					"name": "static.biome",
+					"notes": [],
+					"snapshots": null,
+					"status": "ran",
+					"version": "2.5.0"
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "bfe757bb8831bed8b247315ff3b374371149dba0827ee92c31b5a3d1cd550dbf",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"findings": 0,
+					"name": "static.tsc",
+					"notes": [],
+					"snapshots": null,
+					"status": "ran",
+					"version": "5.9.3"
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "c6a24f3da9974f5b30dfd76fb8e5268792fca6d1453d2bf54b7cab55f8a546ac",
+			"kind": "lens",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": "careful",
+					"lineage": null,
+					"name": "lens.contracts",
+					"reason": null,
+					"status": "ran",
+					"version": "dd8fb36095b4"
+				},
+				"delivery": null,
+				"level": "careful",
+				"name": "contracts",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 10303
+					}
+				},
+				"probe": false,
+				"sightings": [
+					{
+						"level": "warning",
+						"locations": [
+							{
+								"physicalLocation": {
+									"artifactLocation": {
+										"uri": "src/a.ts"
+									},
+									"region": {
+										"snippet": {
+											"text": "export const a = 2;"
+										},
+										"startLine": 1
+									}
+								}
+							}
+						],
+						"message": {
+							"text": "a is 2 now."
+						},
+						"partialFingerprints": {
+							"melian/v1": "8f3f919a7c886b44"
+						},
+						"properties": {
+							"cause": "introduced",
+							"evidence": [
+								{
+									"file": "src/a.ts",
+									"proves": true,
+									"revision": "head",
+									"role": "cause",
+									"snippet": "export const a = 2;",
+									"startLine": 1
+								}
+							],
+							"explanation": {
+								"what": "a is 2 now.",
+								"whatToDo": "Restore 1.",
+								"whyHere": "This change rewrote it."
+							},
+							"failureScenario": "A caller that reads a expects 1 and gets 2.",
+							"id": "8f3f919a7c886b44",
+							"occurrence": 0,
+							"path": "src/a.ts",
+							"severity": "P2",
+							"source": {
+								"check": "lens.contracts",
+								"version": "dd8fb36095b4@careful"
+							},
+							"status": "new",
+							"trigger": {
+								"file": "src/a.ts",
+								"hash": "e67f15d229a5a450feb90cda26e50873b3b0a72661d228677edf5eafd5654059",
+								"index": 0,
+								"snippet": "export const a = 2;"
+							}
+						},
+						"ruleId": "changed-return"
+					}
+				],
+				"v": 1,
+				"version": "dd8fb36095b4"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "d52b1f8ffd07df4770a0e685f1a91d6ccb6904159d1c846e5e8bf186b751d418",
+			"kind": "lens",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": "careful",
+					"lineage": null,
+					"name": "lens.correctness",
+					"reason": null,
+					"status": "ran",
+					"version": "18c49f913df8"
+				},
+				"delivery": null,
+				"level": "careful",
+				"name": "correctness",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 6989
+					}
+				},
+				"probe": false,
+				"sightings": [],
+				"v": 1,
+				"version": "18c49f913df8"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "18e6b23811cf9a47c8f16c8f55536971c701950bbfb8a7d17be556f36a3fdcc5",
+			"kind": "verification",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": null,
+					"lineage": null,
+					"name": "verifier",
+					"reason": "the verifier left a claim unjudged",
+					"status": "failed",
+					"version": "a19ab2f7fcb43ecc"
+				},
+				"claims": [],
+				"dismissals": [],
+				"outcomes": [
+					{
+						"candidate": "8f3f919a7c886b44",
+						"outcome": {
+							"reason": "the verifier left a claim unjudged",
+							"status": "unanswered"
+						}
+					}
+				],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "0857c85df2938e78a6057bf078bdc8643b6d012b6d3ab173febc0844d8463e85",
+			"kind": "account",
+			"payload": {
+				"allowSkip": [
+					"decisions.fast"
+				],
+				"checks": [
+					"guardrails",
+					"static.biome",
+					"static.tsc",
+					"decisions.fast",
+					"lens.correctness",
+					"lens.contracts",
+					"verifier"
+				],
+				"filled": [
+					{
+						"budgetEnded": null,
+						"caveats": null,
+						"coverage": null,
+						"error": null,
+						"level": null,
+						"lineage": null,
+						"name": "decisions.fast",
+						"reason": "no decision provider is configured",
+						"status": "skipped",
+						"version": null
+					}
+				],
+				"producers": [
+					{
+						"check": "decisions.fast",
+						"ids": null,
+						"version": null
+					},
+					{
+						"check": "guardrails",
+						"ids": null,
+						"version": null
+					},
+					{
+						"check": "lens.contracts",
+						"ids": null,
+						"version": "dd8fb36095b4@careful"
+					},
+					{
+						"check": "lens.correctness",
+						"ids": null,
+						"version": "18c49f913df8@careful"
+					},
+					{
+						"check": "static.biome",
+						"ids": null,
+						"version": "2.5.0"
+					},
+					{
+						"check": "static.tsc",
+						"ids": null,
+						"version": "5.9.3"
+					}
+				],
+				"records": [
+					"3c7bb1645d328d52fa7aa2ca0c2dcfb195bae4d9f7b43de2922a5ce9e4b05d1a",
+					"5db9370ec868c276f945c5bbc9d83b2e10ac4ead7d887737e5b6d89d90d85653",
+					"8283d836a6a863b184e6a0ff62154b44ffd1256c4af63f41ae750f4958d4eac4",
+					"dc60b5577fc1305f5dc359b77bcfbe591d09f7b707478c2e66416adf74ca55e9",
+					"e3870fd394876b0b256817c5eb2e02c92317ff5f92062ef686159b02f1bd9ed5",
+					"e5f4836b4a6c387c2c2bb06755923d4cdf692ef89034014942bc7126d252ce4b"
+				],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "5507b00808d8896432518901dd5802583468aa873e6a938de509a9fe8e21a3be",
+			"kind": "round",
+			"payload": {
+				"before": [],
+				"read": [
+					{
+						"id": "3c7bb1645d328d52fa7aa2ca0c2dcfb195bae4d9f7b43de2922a5ce9e4b05d1a",
+						"key": "d52b1f8ffd07df4770a0e685f1a91d6ccb6904159d1c846e5e8bf186b751d418",
+						"kind": "lens"
+					},
+					{
+						"id": "5db9370ec868c276f945c5bbc9d83b2e10ac4ead7d887737e5b6d89d90d85653",
+						"key": "c6a24f3da9974f5b30dfd76fb8e5268792fca6d1453d2bf54b7cab55f8a546ac",
+						"kind": "lens"
+					},
+					{
+						"id": "8283d836a6a863b184e6a0ff62154b44ffd1256c4af63f41ae750f4958d4eac4",
+						"key": "dfcdba155508df6df3dc182fc7e02b443f356d6e8f89b6cca4422ea635f8e1c7",
+						"kind": "check"
+					},
+					{
+						"id": "b427e868a9ca43cc884f0b1ee7ad2f62778c8fe1582a533ad59944506041d0b5",
+						"key": "0857c85df2938e78a6057bf078bdc8643b6d012b6d3ab173febc0844d8463e85",
+						"kind": "account"
+					},
+					{
+						"id": "dc60b5577fc1305f5dc359b77bcfbe591d09f7b707478c2e66416adf74ca55e9",
+						"key": "bfe757bb8831bed8b247315ff3b374371149dba0827ee92c31b5a3d1cd550dbf",
+						"kind": "check"
+					},
+					{
+						"id": "e3870fd394876b0b256817c5eb2e02c92317ff5f92062ef686159b02f1bd9ed5",
+						"key": "cf00769c7cc6a896f8f040061b43124b744bc802f4d0d06749df08a02f2a3114",
+						"kind": "check"
+					},
+					{
+						"id": "e5f4836b4a6c387c2c2bb06755923d4cdf692ef89034014942bc7126d252ce4b",
+						"key": "18e6b23811cf9a47c8f16c8f55536971c701950bbfb8a7d17be556f36a3fdcc5",
+						"kind": "verification"
+					}
+				],
+				"replaces": [],
+				"walkthrough": null
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		}
+	]
+}
