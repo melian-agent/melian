@@ -52,7 +52,7 @@ Each job is billed by the started minute, so a shard pays for its own setup and 
 | 4 shards, 4 vCPU | 16.5 | $0.50 |
 | 2 shards, 8 vCPU | 9 | $0.49 |
 
-On 16 vCPU, a check run costs about $0.10 more than today and ends its Linux jobs about 7.8 minutes sooner. A merge runs the check twice, so it costs about $0.20 more and waits about 15.6 minutes less.
+On 16 vCPU, a check run costs about $0.10 more than today and ends its Linux jobs about 7.8 minutes sooner. The workflow runs on `pull_request`, `merge_group` and pushes to `main`. From 2026-11-11 to this measurement it ran 78 times on pull requests, 11 in the merge group and 11 on `main`, for 11 merges: 100 runs, about $10 a week more, or $0.90 a merge. A merge waits for two runs, the pull request's last and the merge group's, so it waits about 15.6 minutes less.
 
 ## Shards and the required names
 

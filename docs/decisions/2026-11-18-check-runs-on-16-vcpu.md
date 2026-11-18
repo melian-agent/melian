@@ -18,6 +18,6 @@ Setting `--maxWorkers` to the core count gained nothing over Vitest's default. T
 
 ## What it costs
 
-At the record's estimated prices, the three Linux jobs cost about $0.46 a run against $0.36, so about $0.20 more a merge, for about 15.6 minutes less waiting. The estimate rests on Blacksmith's per-vCPU rule and GitHub's per-minute platform fee, and the maintainer is to check it against the organisation's billing.
+At the record's estimated prices, the three Linux jobs cost about $0.46 a run against $0.36, so about $0.10 more a run. The workflow runs on every push to a pull request, in the merge group, and on the push to `main` after a merge. In the week before this decision it ran 100 times for 11 merges, so the change costs about $10 a week, or $0.90 a merge. A merge waits for two of those runs, so it waits about 15.6 minutes less. The estimate rests on Blacksmith's per-vCPU rule and GitHub's per-minute platform fee, and the maintainer is to check it against the organisation's billing.
 
 Once the Linux jobs take four minutes, the macOS job's own four to five minutes is the longest part of a run. The record sets out starting it sooner as a follow-up.
