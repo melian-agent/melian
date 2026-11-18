@@ -160,7 +160,9 @@ class VerdictState {
 
 export const VerdictDocument = defineDoc<StoredVerdictState>({
 	kind: "melian.verdicts",
-	version: 15,
+	version: 16,
+	// Version 16 lets a policy notice mark an instruction file, and an injection finding name the notices that replaced
+	// it; a version 15 verdict has neither and reads unchanged.
 	// Version 15 keeps walkthroughs by the light route that wrote them, so an older build refuses a store this one wrote
 	// rather than write a route-less walkthrough beside them; a version 14 or 13 document reads unchanged.
 	// Version 14 lets a provenance's plan hold lens routes; a version 13 plan has none and reads unchanged.

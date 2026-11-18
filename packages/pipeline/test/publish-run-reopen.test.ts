@@ -117,7 +117,7 @@ it("reopens main's version-9 published document twice as the current version, un
 					"current",
 					context,
 				);
-				expect((await storage.document(document!.id, "current", context))!.version).toBe(11);
+				expect((await storage.document(document!.id, "current", context))!.version).toBe(12);
 			} finally {
 				await opened.close(context);
 			}

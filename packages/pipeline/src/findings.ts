@@ -100,7 +100,9 @@ export type FindingsState = {
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 11,
+	// Version 12 lets a policy notice mark a file the policy lists as instructions; a version 11 notice has no mark and
+	// reads unchanged, so it replaces no injection finding.
+	version: 12,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",

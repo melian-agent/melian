@@ -227,7 +227,7 @@ class PublishedState {
 // would post it twice.
 export const PublishedDocument = defineDoc<StoredPublishedState>({
 	kind: "melian.published",
-	version: 11,
+	version: 12,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
@@ -236,7 +236,8 @@ export const PublishedDocument = defineDoc<StoredPublishedState>({
 	// each reply by `replyKey`. Version 4 adds ledger snapshots; version 5 retains only one-line older rounds.
 	// Version 6 adds optional standards paths per lens; version 7 records the publisher. Version 8 permits trust-floor
 	// diagnostics; version 9 keys resolutions by thread. Version 10 lets a ledger round hold its run. Version 11 keeps
-	// an inherited dismissal's root, so a version-10 Melian, which would drop it, refuses the document.
+	// an inherited dismissal's root, so a version-10 Melian, which would drop it, refuses the document. Version 12 lets a
+	// planned finding mark an instruction file's notice, or name the notices that replaced it; a version 11 has neither.
 	migrate: (value, from) => PublishedState.upgrade(value, from),
 });
 

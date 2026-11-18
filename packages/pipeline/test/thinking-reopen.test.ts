@@ -169,7 +169,7 @@ it.each(["thinking-main", "thinking-policy-v11"])(
 						"current",
 						context,
 					);
-					expect((await storage.document(document!.id, "current", context))!.version).toBe(15);
+					expect((await storage.document(document!.id, "current", context))!.version).toBe(16);
 				} finally {
 					await opened.close(context);
 				}
