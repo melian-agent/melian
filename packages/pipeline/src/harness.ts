@@ -110,13 +110,18 @@ const authenticationFailure =
 const providerLimit =
 	/GoUsageLimitError|FreeUsageLimitError|usage[ _]limit|available balance|insufficient_quota|out of budget|quota exceeded|billing[ _](hard[ _])?(limit|quota)|billing[ _]not[ _]active|check your billing|subscription_sharing_usage_limit_exceeded/i;
 
+/** Whether a model failure, by its message, is a provider's usage limit, quota or billing limit. */
+export function isProviderLimit(message: string): boolean {
+	return providerLimit.test(message);
+}
+
 /**
  * Whether a model failure, by its message, should move a lens to its tier's next model: a transient provider failure,
  * which pi-ai's own retries have already given up on, a provider's usage limit, or a failed authentication.
  */
 export function isFailoverError(message: string): boolean {
 	const failed = { role: "assistant", stopReason: "error", errorMessage: message } as AssistantMessage;
-	return authenticationFailure.test(message) || providerLimit.test(message) || isRetryableAssistantError(failed);
+	return authenticationFailure.test(message) || isProviderLimit(message) || isRetryableAssistantError(failed);
 }
 
 /**
