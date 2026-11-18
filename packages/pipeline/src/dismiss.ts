@@ -157,7 +157,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const { records: target } = options;
 	const listing = target && (await refusing(() => target.store.list(target.changeset)));
 	const unshared: UnsharedDismissal[] = [];
-	const { replaced, also, live, task, dismissed } = await root.commit(async (tx) => {
+	const { replaced, also, live, task } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
 		if (stored === undefined) throw new DismissError("notReviewed", `Melian has no review of ${revision}`, where);
@@ -242,12 +242,12 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
 		// that ended without deciding, failed included, as a review would rerun it.
 		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {
-			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult>, dismissed };
+			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult> };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });
 		await new RoundWriter(tx, root.id).keep(revision, task);
 		index.reviews = { ...index.reviews, [revision]: { ...entry, adjudication: { task, input: key } } };
-		return { replaced, also, live, task, dismissed };
+		return { replaced, also, live, task };
 	}, context);
 	harness.resume();
 	const blocked = (await harness.inspect(context)).tasks.some(
