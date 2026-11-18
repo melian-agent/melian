@@ -12,7 +12,8 @@ permissions:
 jobs:
   check:
     name: check (${{ matrix.node }})
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Four minutes against twelve on 4 vCPU, for about $0.10 more a run; docs/decisions/2026-11-18-check-runs-on-16-vcpu.md says why.
+    runs-on: blacksmith-16vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
