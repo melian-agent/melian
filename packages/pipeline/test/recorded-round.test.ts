@@ -424,7 +424,7 @@ describe("a round read with the dismissals shared beside it", () => {
 		// The host's round ran no verifier, so its records hold no claim of the first round's verification.
 		const unverified = (each: Verdict) =>
 			JSON.parse(JSON.stringify(each.toJSON(), (key, value) => (key === "verification" ? undefined : value)));
-		expect(unverified(verdict)).toEqual(unverified(reviewed.verdict));
+		expectSharedVerdict(unverified(verdict), unverified(reviewed.verdict));
 		expect(standingOf(verdict)).toEqual([
 			[id, "dismissed", { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" }],
 		]);
@@ -436,7 +436,7 @@ describe("a round read with the dismissals shared beside it", () => {
 			reviewed.stored,
 			roundOf(reviewed.stored),
 			(record) => record.kind !== "dismissal",
-		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config });
+		).verdict({ revision: reviewed.changeset.revision, config: reviewed.config, repoRoot: repo, policy: worktree });
 		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
 		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
 	});
