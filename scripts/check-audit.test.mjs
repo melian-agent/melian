@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { judgeAudit, readAudit, readExceptions } from "./check-audit.mjs";
 
@@ -264,6 +264,7 @@ describe("judgeAudit", () => {
 });
 
 // The fake npm answers only the two audits the script asks for, each from a file the test names.
+// It sets exitCode rather than calling exit, which on macOS cuts a pipe write short.
 const fakeNpm = `#!/usr/bin/env node
 const { readFileSync } = require("node:fs");
 const args = process.argv.slice(2).join(" ");
@@ -274,7 +275,7 @@ if (!answer) {
 }
 const [status, file] = process.env[answer].split(":");
 process.stdout.write(readFileSync(file, "utf8"));
-process.exit(Number(status));
+process.exitCode = Number(status);
 `;
 
 describe("check-audit.mjs", { timeout: 60_000 }, () => {
@@ -291,9 +292,9 @@ describe("check-audit.mjs", { timeout: 60_000 }, () => {
 	});
 	afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-	const run = ({ exceptions, fullAudit = `1:${full}`, shippedAudit = `0:${shipped}` }) => {
+	const run = ({ exceptions, fullAudit = `1:${full}`, shippedAudit = `0:${shipped}`, entry = script }) => {
 		if (exceptions !== undefined) writeFileSync(join(root, ".audit-exceptions.json"), JSON.stringify(exceptions));
-		return spawnSync(process.execPath, [script], {
+		return spawnSync(process.execPath, [entry], {
 			cwd: root,
 			encoding: "utf8",
 			env: {
@@ -315,7 +316,7 @@ describe("check-audit.mjs", { timeout: 60_000 }, () => {
 	it("blocks the advisory with no exception", () => {
 		for (const exceptions of [[], undefined]) {
 			const result = run({ exceptions });
-			expect(result.stderr).toContain(
+			expect(result.stderr.split("\n")[0]).toBe(
 				"GHSA-fc5q-39xc-vjpf (high) in picomatch: picomatch vulnerable to ReDoS through single-branch repeated extglobs",
 			);
 			expect(result.status).toBe(1);
@@ -341,9 +342,26 @@ describe("check-audit.mjs", { timeout: 60_000 }, () => {
 		const garbage = join(root, "garbage.txt");
 		writeFileSync(garbage, "npm error network");
 		const result = run({ exceptions: committed, shippedAudit: `1:${garbage}` });
-		expect(result.stderr).toContain(
-			"The dependency audit did not finish, so the dependencies are unverified: npm audit printed no JSON report",
+		expect(result.stderr).toBe(
+			"The dependency audit did not finish, so the dependencies are unverified: npm audit printed no JSON report\n",
 		);
 		expect(result.status).toBe(1);
+	});
+
+	it("reads a report larger than spawnSync's default buffer of a mebibyte", () => {
+		const large = join(root, "large.json");
+		writeFileSync(large, readFileSync(full, "utf8").replace("{", `{${" ".repeat(2 * 1024 * 1024)}`));
+		const result = run({ exceptions: committed, fullAudit: `1:${large}` });
+		expect(result.stdout).toContain("audit exception used: GHSA-fc5q-39xc-vjpf in picomatch");
+		expect(result.status).toBe(0);
+	});
+
+	it("runs no audit when another module imports it", () => {
+		const importer = join(root, "importer.mjs");
+		writeFileSync(importer, `import ${JSON.stringify(pathToFileURL(script).href)};\n`);
+		const result = run({ exceptions: committed, fullAudit: "1:/nonexistent", entry: importer });
+		expect(result.stdout).toBe("");
+		expect(result.stderr).toBe("");
+		expect(result.status).toBe(0);
 	});
 });
