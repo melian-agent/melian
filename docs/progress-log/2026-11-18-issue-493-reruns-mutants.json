@@ -1,0 +1,659 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "dc4ecd9c3f36baee5743dbf293cac3123e131c5d",
+		"head": "c6fbf6b7b9571e1dc4d6f814c1e014632baeb180"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 94,
+			"column": 13,
+			"endLine": 94,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3b4fe3f9b272a705de7317a644d763ab445ec4904fec9b86a6c1070d9df8f733"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 241,
+			"column": 21,
+			"endLine": 248,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a510a37522d1d7aee3bffcbb102201c7cfd12fdbc99984447c469e2128022688",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 243,
+			"column": 6,
+			"endLine": 243,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b67ceef562597c76e0a4252a6f474759fb8ed04b698a1f39d81a26d69f446c45",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 243,
+			"column": 6,
+			"endLine": 243,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2918ce67a5c62cf7429df0f688679596c31a6eff8912d2fac89588cab5415bb2",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 243,
+			"column": 6,
+			"endLine": 243,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "state.probes !== undefined",
+			"status": "generated",
+			"id": "2635cdeb2e4ea8b06fe9826bbac0bafc8d41b0f2b895badf308c25989b70b24d",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 245,
+			"column": 36,
+			"endLine": 245,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ceccbcc680c1ba2c66c6e6f53e140ba10b142c7e70a986cfc3eac9e7c90e027d",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 245,
+			"column": 53,
+			"endLine": 245,
+			"endColumn": 106,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "7e3c1380c11d267cb42df5e203bf6a6a50b4ec2d42efd9d2fcea7c0ff58367da",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 245,
+			"column": 58,
+			"endLine": 245,
+			"endColumn": 105,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "be70866694d6777ba9d56bed494760e3c10b373adf2e8c9ed75c10d609ae7172",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 247,
+			"column": 9,
+			"endLine": 247,
+			"endColumn": 29,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "90fb07e37d95f14774f1a8c2ac69242c8a3400ea7871d281dd3262599438108f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 251,
+			"column": 67,
+			"endLine": 255,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7da1774fd8c4a6dc1f86e97262323fc9dfa6671e6575db3f1a9bf532ada3c64c",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "76ed3da1bc6eb76a20a6b55efafe87b7ab6e9d8e411392a490a059e1c182dc67",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7cc17fc08e2d4d9430ea1d7ba2365c6ab8f031714ca879afd0730a7c27d05b13",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 83,
+			"mutatorName": "LogicalOperator",
+			"replacement": "result.exitCode !== null && result.exitCode > 128 || result.signal === null",
+			"status": "generated",
+			"id": "afda8f9d4538d4b5b26636e0b1336ff24dd5a6d79bc94de404cc8f3cdba1775a",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 57,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6d680f714ccbeb89e1561b0f5d8ecfafab347642401409968aae4a1941a3ce58",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 57,
+			"mutatorName": "LogicalOperator",
+			"replacement": "result.exitCode !== null || result.exitCode > 128",
+			"status": "generated",
+			"id": "e3a1d37b4dd35c1caa075f87ebed80c903afc09fda6007d6ef977034e32a1f3f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fc63d39aaa02dbd2148de681b86b053d7f503092a4f0b971a56bea488ae90860",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 8,
+			"endLine": 252,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result.exitCode === null",
+			"status": "generated",
+			"id": "005e535d64092cef74a11919b983a31f844f127c921ec144edb2d9024990f956",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 36,
+			"endLine": 252,
+			"endColumn": 57,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2bc94a5dd3b2cf8149b1140d9d6616475fb2d1dededd6a69bac4f92fcce510e1",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 36,
+			"endLine": 252,
+			"endColumn": 57,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result.exitCode >= 128",
+			"status": "generated",
+			"id": "bccdc9e1fb544f4c4ec6277fc7f6794f4f3f98b1dd601ada4423ad7b9ee582a5",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 36,
+			"endLine": 252,
+			"endColumn": 57,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result.exitCode <= 128",
+			"status": "generated",
+			"id": "e82d5ad364a08afce88ca3a6423ae4563a5b0b954e916917939d4d979118300d",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 61,
+			"endLine": 252,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c74d755e0032c560ca811b6cdc440ce7900f051afa58d25b5b266b3cbbb5b290",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 252,
+			"column": 61,
+			"endLine": 252,
+			"endColumn": 83,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result.signal !== null",
+			"status": "generated",
+			"id": "c9bb0e625761a95ac5af81d69140855d235fa34c537d26940dce84113a3adfa4",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Not carried to the head: c6db71ed and 94ff82a1 rewrote this code, and the answered-mutants inventory, 2026-11-17-issue-493-answered-mutants.json over e8374588...b6fded4c, proves the mutants of its current text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 253,
+			"column": 4,
+			"endLine": 253,
+			"endColumn": 33,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "8cf1dc4b8bcdd9f13cf82694d8a27bda0ca3b4e6ee168617f4f92c36a22229b8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 569,
+			"column": 5,
+			"endLine": 569,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "022bfcfb8655b317c0d0422b8a68f14be69f0d5a61eebaa8286c1accccfa1df8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+					"path": [
+						"renders every probe evidence on every branch as the golden holds it, the same on a second call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 569,
+			"column": 5,
+			"endLine": 569,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ab8f80897b1b4948b3e43a89f30f5fee607e6dfe291d246d87e1061f70cc87f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+					"path": [
+						"renders every probe evidence on every branch as the golden holds it, the same on a second call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 569,
+			"column": 5,
+			"endLine": 569,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "result.exitCode !== 125",
+			"status": "generated",
+			"id": "352f1ecd29eb19006072845e29258ce320ea45d177925c268801c0dc4bdff898",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+					"path": [
+						"renders every probe evidence on every branch as the golden holds it, the same on a second call"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 768,
+			"column": 21,
+			"endLine": 785,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "004b8fc0d3900a71721769c29e8020f5c56dda50e3c21736fb40782db89b0521",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 774,
+			"column": 34,
+			"endLine": 782,
+			"endColumn": 4,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "99c4d21d493d72010a78f51b406d295d2121b3630a4b01b0ca15b60e5006b64a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 774,
+			"column": 57,
+			"endLine": 782,
+			"endColumn": 4,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "3c389bc7a548fba0fdaed07b893f4412f8a3ce3e399adecd752c20ae04023914",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 777,
+			"column": 31,
+			"endLine": 780,
+			"endColumn": 6,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "58c827bfb6a993553fa3538e09f36b056b47936446bef78b93098747f696424e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 777,
+			"column": 47,
+			"endLine": 780,
+			"endColumn": 6,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9ad0936f9823d54531bc5efe47b62b64ddef17f335ec69ec4614a4c28236f4a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 779,
+			"column": 6,
+			"endLine": 779,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "deee38b13d0898678c8ecff870830be384afede2215297909f14da5161c2a796"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 779,
+			"column": 24,
+			"endLine": 779,
+			"endColumn": 67,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0f2ddeeb0579d0e262a1aaee545c9caa5e8206dfba4d4a4812ee0d378e7b969d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 784,
+			"column": 9,
+			"endLine": 784,
+			"endColumn": 27,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "df2c56a572687c411f1fd9876a2e82d89ac14d10888339fbea056f6a81f5c183",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-exit-137-reopen.test.ts",
+					"path": [
+						"a probe main recorded as exit 137 with no signal",
+						"reads as a probe that ended with no record of how, in the prober's record and the review's rerun"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 842,
+			"column": 55,
+			"endLine": 842,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9738e7ee97f91eebdbdcd5339cf993ba2f0333f058a24a164241af6346140a55"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 842,
+			"column": 72,
+			"endLine": 842,
+			"endColumn": 89,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2af16a45bbb081989cf3ff68c7b9e0f45f07e9da30402a854a86e8ce72b25fe9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-evidence-renderings.test.ts",
+					"path": [
+						"renders every probe evidence on every branch as the golden holds it, the same on a second call"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 36,
+	"omitted": 0,
+	"unmutated": []
+}
