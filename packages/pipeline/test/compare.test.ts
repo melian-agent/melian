@@ -177,6 +177,7 @@ describe("CompareHarness", () => {
 					repoRoot: directory,
 					...revision,
 					policy: undefined,
+					run: null,
 					config: defaultConfig,
 					manifest: [],
 					checks: [],

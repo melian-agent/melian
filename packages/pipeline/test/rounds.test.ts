@@ -13,6 +13,7 @@ import {
 } from "@melian-agent/core";
 import {
 	CompareHarness,
+	type ConversationId,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
@@ -39,7 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
-import type { CheckRunRecord } from "../src/checks.ts";
+import type { CheckRunRecord, RunIdentity } from "../src/checks.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -403,6 +404,21 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
+// Main stored its adjudication key before the input named the review's check run, so a review now computes another key
+// and decides again once. These tests are about the round an attachment keeps, so they move the stored key to the
+// current form first; the reopen tests cover the key's upgrade.
+async function nameTheRun(
+	harness: Harness,
+	root: ConversationId,
+	key: string,
+	run: { identity: RunIdentity; request: string } | null,
+): Promise<void> {
+	await (await harness.root(context)).commit(async (tx) => {
+		const entry = (await tx.doc(ReviewIndex, root)).reviews[key]!.adjudication!;
+		entry.input = JSON.stringify({ ...JSON.parse(entry.input), run });
+	}, context);
+}
+
 // The check as main's rounds fixture recorded it, bare, so a run that carries it reviews the same input.
 const legacyChecks = [{ name: "static.mutation", status: "ran" }] as unknown as CheckRunRecord[];
 
@@ -442,6 +458,12 @@ it.each([
 						},
 					}),
 		};
+		await nameTheRun(
+			reopened,
+			root.id,
+			legacy.key,
+			checkRun === undefined ? null : { identity: checkRun, request: "a".repeat(64) },
+		);
 		await reviewChangeset(options);
 		await reviewChangeset(options);
 		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
@@ -485,6 +507,7 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 				records: legacyChecks,
 			},
 		};
+		await nameTheRun(reopened, root.id, legacy.key, { identity: checkRun, request: "a".repeat(64) });
 		await reviewChangeset(options);
 		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
 			before.task,
@@ -494,7 +517,8 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 		await reviewChangeset({ ...options, checkRun: { ...options.checkRun, identity: { ...checkRun, task: 2 } } });
 		const minted = await reopened.snapshot(rounds, root.id, context);
 		expect(minted?.sequence).toBe(1);
-		expect(minted?.items.r1).toMatchObject({ verdict: { status: "passed" } });
+		// A hand-built run stamped no sightings, so its mutation check proves nothing and the minted round is not reviewed.
+		expect(minted?.items.r1).toMatchObject({ verdict: { status: "not-reviewed" } });
 		expect(minted?.items[attached.current[legacy.key]!]).toEqual(attached.items[attached.current[legacy.key]!]);
 		expect(
 			(await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task,

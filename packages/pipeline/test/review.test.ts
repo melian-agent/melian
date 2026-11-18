@@ -3042,6 +3042,7 @@ describe("adjudication", () => {
 				base: gitIn(repo, "merge-base", "main", "feature"),
 				head: gitIn(repo, "rev-parse", "feature"),
 				policy: undefined,
+				run: null,
 				config,
 				manifest: [],
 				findingsVersion: 0,

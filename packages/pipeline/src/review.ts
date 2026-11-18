@@ -3752,6 +3752,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		plan: request.plan,
 		// Only the files the findings name: the review index stores this input for every revision.
 		files: changeset.revision.outline(storedFindings),
+		run: run === undefined ? null : { identity: run.identity, request: run.request },
 	});
 	// Recorded with the verdict by the adjudication task, so a run that a later review replaced leaves none behind.
 	input.details = {

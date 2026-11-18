@@ -109,7 +109,8 @@ it.each([
 				await second.waitForTask(id, context);
 				const migrated = await second.getTask(id, context);
 				expect(migrated).toMatchObject({
-					version,
+					// Version 8 named the review's check run; a version 7 input reads unchanged.
+					version: kind === "melian.adjudication" ? 8 : version,
 					input,
 					state: { status: "terminal", outcome: { status: "completed" } },
 				});

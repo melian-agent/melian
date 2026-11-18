@@ -117,9 +117,9 @@ it("resumes main's version-6 adjudication input unchanged under the current defi
 	try {
 		second.resume();
 		await second.waitForTask(id, context);
-		expect(AdjudicationTask.definition.version).toBe(7);
+		expect(AdjudicationTask.definition.version).toBe(8);
 		expect(await second.getTask(id, context)).toMatchObject({
-			version: 7,
+			version: 8,
 			input: recorded.task.input,
 			state: { status: "terminal", outcome: { status: "completed", result: "recorded" } },
 		});

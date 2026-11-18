@@ -251,7 +251,9 @@ describe("a static check's sightings, exported from a run that does not prove th
 	])("leave no tool text in the record, from %s", async (_, run, held, tsc) => {
 		const reviewed = await review(new MemoryRecordStore({ payloads: reviewPayloads }), run, token, held);
 
-		expect(reviewed.verdict.blocking).toBe(true);
+		// Records handed in with no run are the caller's word on this host. A run's Biome sightings it did not stamp read
+		// as not run here too, by the ruling of 2026-11-18 on issue #562.
+		expect(reviewed.verdict.status).toBe(run.checkRun === undefined ? "findings" : "not-reviewed");
 		expect(bytes(reviewed.stored)).not.toContain(token);
 		expect(biomeRecord(reviewed.stored)).toEqual(withheldRecord("static.biome"));
 		expect(checkRecord(reviewed.stored, "static.tsc")).toEqual(

@@ -146,7 +146,8 @@ describe("a static check's sightings, beside the run a host made of the same rev
 			await root.commit((tx) => upsertFinding(tx, root.id, planted, revision), context);
 		});
 
-		expect(reviewed.verdict.blocking).toBe(true);
+		// The host's own verdict reads the same proof as the export, so Biome's sightings read as not run here too.
+		expect(reviewed.verdict.status).toBe("not-reviewed");
 		expect(JSON.stringify(reviewed.stored)).not.toContain(token);
 		expect(biome(reviewed.stored)).toEqual({
 			v: 1,

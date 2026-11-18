@@ -1,0 +1,103 @@
+{
+	"recordedBy": "packages/pipeline/test/fixtures/adjudication-v7-static/capture.test.ts.txt at e421b5541",
+	"repoRoot": "/tmp/melian-pipeline-ZFDwUM",
+	"base": "87c152d49ff0080c49c148205a4ce0cae70d355f",
+	"head": "17e3bb890ab8c880e0972d856b4ca23e8cb07cff",
+	"verdict": "findings",
+	"task": {
+		"kind": "melian.adjudication",
+		"version": 7,
+		"input": {
+			"root": 1,
+			"repoRoot": "/tmp/melian-pipeline-ZFDwUM",
+			"base": "87c152d49ff0080c49c148205a4ce0cae70d355f",
+			"head": "17e3bb890ab8c880e0972d856b4ca23e8cb07cff",
+			"policy": {
+				"kind": "revision",
+				"commit": "87c152d49ff0080c49c148205a4ce0cae70d355f"
+			},
+			"resolutionPolicy": "3:141d9e5e0bba4b82",
+			"config": {
+				"resolution": {
+					"P0": "block",
+					"P1": "block",
+					"P2": "acknowledge",
+					"P3": "advisory",
+					"nit": "silent",
+					"preExisting": {
+						"P0": "advisory",
+						"P1": "advisory",
+						"P2": "advisory",
+						"P3": "advisory",
+						"nit": "advisory"
+					}
+				},
+				"ruleAliases": {}
+			},
+			"manifest": [
+				"static.tsc"
+			],
+			"checks": [
+				{
+					"name": "static.tsc",
+					"status": "ran",
+					"version": "7.0.2",
+					"findings": 1,
+					"notes": []
+				}
+			],
+			"findingsVersion": 1,
+			"allowSkip": [],
+			"producers": [
+				{
+					"check": "static.tsc",
+					"version": "7.0.2"
+				}
+			],
+			"provenance": {
+				"verifierVersion": "a19ab2f7fcb43ecc",
+				"kind": "range",
+				"policy": "revision:87c152d49ff0080c49c148205a4ce0cae70d355f",
+				"manifest": [
+					"static.tsc"
+				],
+				"lenses": []
+			},
+			"verificationRan": true,
+			"files": [
+				{
+					"status": "modified",
+					"path": "src/a.ts",
+					"oldMode": "100644",
+					"oldKind": "file",
+					"newMode": "100644",
+					"newKind": "file",
+					"binary": false,
+					"hunks": [
+						{
+							"file": "src/a.ts",
+							"index": 0,
+							"oldStart": 1,
+							"oldLines": 1,
+							"newStart": 1,
+							"newLines": 1,
+							"header": "",
+							"text": ""
+						}
+					]
+				}
+			],
+			"details": {
+				"policy": "revision:87c152d49ff0080c49c148205a4ce0cae70d355f",
+				"manifest": [
+					"static.tsc"
+				],
+				"lenses": [],
+				"standards": []
+			}
+		},
+		"initial": {
+			"phase": "adjudicate"
+		}
+	}
+}

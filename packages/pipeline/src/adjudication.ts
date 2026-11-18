@@ -23,12 +23,21 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
+import type { RunIdentity } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
-import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
+import {
+	FindingsDocument,
+	type FindingsState,
+	findingsVersion,
+	type Producer,
+	readFindings,
+	seenBefore,
+} from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundWriter } from "./rounds.ts";
+import { StaticProof } from "./static-proof.ts";
 import { TaskTiming } from "./task-timing.ts";
 
 // Type aliases with mutable arrays, not core's interfaces: a document's value must satisfy Pi's JsonObject.
@@ -218,7 +227,14 @@ export type AdjudicationTaskInput = {
 	// The changed files the findings name, with each hunk's ranges, so lens reports one hunk caused merge. Absent from a
 	// version 1 input, which merges by snippet alone.
 	files?: ChangedFile[];
+	// The review's own check run, whose stamp a static check's sightings must carry to count, or `null` when the caller
+	// handed in check records with no run. Absent from a version 7 input, whose static checks therefore prove nothing.
+	run?: { identity: RunIdentity; request: string } | null;
 };
+
+/** The reason a verdict gives a static check whose findings on record another run wrote after this review's run. */
+export const replacedReason =
+	"another run replaced this check's findings after this review's run wrote them, so a repeat review runs it again";
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
@@ -235,8 +251,9 @@ export const AdjudicationTask = defineTask<
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
 	// so its task decides by snippet, as it did. Version 6 lets a check record carry caveats; an older one has none.
-	// Version 7 lets the provenance's plan hold lens routes; a version 6 input has none and reads unchanged.
-	version: 7,
+	// Version 7 lets the provenance's plan hold lens routes; a version 6 input has none and reads unchanged. Version 8
+	// names the review's check run; a version 7 input names none, so its counted static checks read as replaced.
+	version: 8,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
 		input:
@@ -258,6 +275,15 @@ export const AdjudicationTask = defineTask<
 			const seen = await findingsVersion(runtime, root, revision, context);
 			const findings = await readFindings(runtime, root, revision, context, { producers });
 			const carried = await seenBefore(runtime, root, revision, context);
+			// A static check counts only when the stamp on its sightings is this review's own run, by the maintainer's ruling
+			// of 2026-11-18 on issue #562; one another run has since written reads as not run. Records handed in with no run
+			// are the caller's word. The deciding commit proves it again, since a run can write after this read.
+			const { run } = task.input;
+			const replacedIn = (proof: StaticProof, state: FindingsState | undefined) =>
+				run === null ? [] : proof.replaced(state, revision, checks, run?.request ?? "");
+			const proof = await StaticProof.read(runtime, root, context, run?.identity);
+			const replaced = replacedIn(proof, await runtime.snapshot(FindingsDocument, root, context));
+			let decide: (replaced: readonly string[]) => Verdict;
 			let verdict: Verdict;
 			try {
 				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
@@ -283,17 +309,23 @@ export const AdjudicationTask = defineTask<
 						);
 					}
 				}
-				verdict = new Adjudication({
-					findings,
-					manifest,
-					checks,
-					config: policies ?? (() => config),
-					allowSkip,
-					verificationRan: task.input.verificationRan,
-					seenBefore: carried,
-					// A version 1 input holds no files, so no hunk merges it and the snippet rule decides alone.
-					revision: Revision.from({ base, head, files: task.input.files ?? [] }),
-				}).adjudicate();
+				decide = (gone) =>
+					new Adjudication({
+						findings: findings.filter((finding) => !gone.includes(finding.properties.source.check)),
+						manifest,
+						checks: checks.map((check) =>
+							gone.includes(check.name)
+								? { name: check.name, status: "failed" as const, reason: replacedReason }
+								: check,
+						),
+						config: policies ?? (() => config),
+						allowSkip,
+						verificationRan: task.input.verificationRan,
+						seenBefore: carried,
+						// A version 1 input holds no files, so no hunk merges it and the snippet rule decides alone.
+						revision: Revision.from({ base, head, files: task.input.files ?? [] }),
+					}).adjudicate();
+				verdict = decide(replaced);
 			} catch (error) {
 				// A policy that cannot be read is the task's outcome rather than a fault. It may not fail the same way next
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
@@ -313,6 +345,9 @@ export const AdjudicationTask = defineTask<
 				if (current !== runtime.taskId) {
 					return { status: "terminal", outcome: { status: "completed", result: "superseded" } };
 				}
+				const inCommit = await StaticProof.inCommit(tx, root, run?.identity);
+				const now = replacedIn(inCommit.proof, inCommit.state);
+				if (now.some((name) => !replaced.includes(name))) verdict = decide([...new Set([...replaced, ...now])]);
 				const document = await tx.doc(VerdictDocument, root);
 				await new RoundWriter(tx, root).record(revision, runtime.taskId, verdict.toJSON(), task.input.provenance);
 				document.verdicts[revision] = structuredClone(verdict.toJSON());
@@ -352,6 +387,7 @@ export function adjudicationInput(options: {
 	verifierVersion?: string;
 	verificationRan?: boolean;
 	files?: readonly ChangedFile[];
+	run: { readonly identity: RunIdentity; readonly request: string } | null;
 }): AdjudicationTaskInput {
 	const { root, repoRoot, base, head, policy, config, manifest, checks, findingsVersion, allowSkip, producers } =
 		options;
@@ -394,6 +430,7 @@ export function adjudicationInput(options: {
 		provenance,
 		...(options.verificationRan === undefined ? {} : { verificationRan: options.verificationRan }),
 		...(options.files === undefined ? {} : { files: structuredClone([...options.files]) }),
+		run: options.run === null ? null : { identity: { ...options.run.identity }, request: options.run.request },
 	};
 }
 

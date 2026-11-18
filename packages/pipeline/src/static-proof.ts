@@ -1,8 +1,15 @@
 import { KeyedRequest, type RecordJson } from "@melian-agent/core";
 import { type CheckRequestInput, checkReusable, writesFixedText } from "./check-request.ts";
-import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity, readCheckRecords } from "./checks.ts";
-import { type FindingsState, stampOf } from "./findings.ts";
-import type { Context, ConversationId, Harness } from "./harness.ts";
+import {
+	type CheckRunRecord,
+	CheckSources,
+	ChecksDocument,
+	identityKey,
+	type RunIdentity,
+	readCheckRecords,
+} from "./checks.ts";
+import { FindingsDocument, type FindingsState, stampOf } from "./findings.ts";
+import type { Context, ConversationId, Harness, Tx } from "./harness.ts";
 
 /**
  * What the local store proves about a static check's sightings: that the run whose terminal commit wrote them asked for
@@ -42,6 +49,43 @@ export class StaticProof {
 			structuredClone(sources?.tasks ?? {}),
 			await readCheckRecords(harness, root, run, context),
 		);
+	}
+
+	/**
+	 * What a commit's own view of `root` proves about the run `run`, or about no run when it is absent, and the findings state that view holds, so a proof
+	 * and the sightings it judges come from one read, inside the commit that decides on them.
+	 */
+	static async inCommit(
+		tx: Tx,
+		root: ConversationId,
+		run: RunIdentity | undefined,
+	): Promise<{ proof: StaticProof; state: FindingsState }> {
+		// A commit's document view refuses structuredClone, so the copies go through JSON.
+		const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+		const document = await tx.doc(ChecksDocument, root);
+		const sources = run === undefined ? undefined : await tx.doc(CheckSources, root, String(run.task), null);
+		const proof = new StaticProof(
+			copy(document.requests ?? {}),
+			copy(sources?.tasks ?? {}),
+			run === undefined ? {} : copy(document.runs[identityKey(run)] ?? {}),
+		);
+		return { proof, state: copy(await tx.doc(FindingsDocument, root)) as FindingsState };
+	}
+
+	/**
+	 * The static checks among `checks` that count as run, `ran` or `provisional`, whose sightings at `revision` this proof
+	 * does not show the run under `request` wrote. Another run has replaced them since, or the run never stamped them.
+	 */
+	replaced(
+		state: FindingsState | undefined,
+		revision: string,
+		checks: readonly { readonly name: string; readonly status: string }[],
+		request: string,
+	): string[] {
+		return checks
+			.filter(({ name, status }) => name.startsWith("static.") && (status === "ran" || status === "provisional"))
+			.filter(({ name }) => !this.proves(state, revision, name, request))
+			.map(({ name }) => name);
 	}
 
 	/** The record the run read at `read` stored for `check`, which a caller's record of it never stands in for. */

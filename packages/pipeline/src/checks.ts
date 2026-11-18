@@ -42,6 +42,7 @@ import type { HeadTrust } from "./mutation-cache.ts";
 import { type MutationProcessHooks, MutationTree, type MutationTreeRecord } from "./mutation-process.ts";
 import { installDigests, MutationRun, mutationInstallation, strykerVersion } from "./mutation-static.ts";
 import { runStaticTool, staticToolSource, staticToolVersion, toolLocale } from "./static.ts";
+import { StaticProof } from "./static-proof.ts";
 import { SupersessionReview } from "./supersession.ts";
 import { TaskTiming } from "./task-timing.ts";
 import { ToolProvisioning } from "./tool-provisioning.ts";
@@ -808,8 +809,15 @@ export async function runChecks(harness: Harness, input: RunChecksInput, context
 			runs.requests ??= {};
 			if (runs.requests[request] === undefined) runs.requests[request] = asked.request;
 			const existing = runs.tasks[key];
-			if (existing !== undefined && existing !== stale && !restart && reusable)
-				return existing as TaskId<CheckRunRecord[]>;
+			if (existing !== undefined && existing !== stale && !restart && reusable) {
+				// A finished run whose static sightings another run has since replaced is not reused, so a repeat review runs
+				// the check again rather than read as not reviewed each time. The verdict proves the stamp again as it decides.
+				const own = { ...identity, task: existing };
+				const { proof, state } = await StaticProof.inCommit(tx, root.id, own);
+				const records = Object.values(runs.runs[identityKey(own)] ?? {});
+				if (proof.replaced(state, revision, records, request).length === 0)
+					return existing as TaskId<CheckRunRecord[]>;
+			}
 			const created = await tx.createTask(ChecksTask, rerun === undefined ? task : { ...task, rerun }, {
 				ownership: { kind: "conversation" },
 			});
