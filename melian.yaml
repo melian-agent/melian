@@ -42,23 +42,25 @@ static:
   # aim with a fifth to spare, and 1,300 would not leave it. The decision records the arithmetic.
   mutation: { enabled: true, timeout: 7200, maxLines: 1250 }
 
-# The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code.
+# The golden corpus seeds defects on purpose, so no lens reviews a golden's trees as Melian's own code. A mutation
+# inventory is data a builder commits, and showing it to a lens spends the lens's budget before it reads the change
+# (decisions/2026-11-18-lenses-are-not-shown-mutation-inventories.md).
 lenses:
-  correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
-  contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
-  trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  correctness: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
+  contracts: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
+  trust-boundary: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
   # The probing half of trust-boundary, held at deep, its level that probes, while trust-boundary keeps reading
   # (decisions/2026-11-16-probing-on-for-melians-own-rounds.md).
   trust-boundary-probes:
-    paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"]
+    paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"]
     level: { floor: deep }
-  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
-  tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
-  conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"] }
+  removed-behaviour: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
+  tests: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
+  conventions: { paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"] }
   # The design lens runs on its own route: the model and effort Codex's adversarial review runs, so the two compare like
   # for like (decisions/2026-11-08-lens-routes.md).
   design:
-    paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**"]
+    paths: ["**", "!packages/evals/goldens/**", "!packages/evals/verifier/**", "!packages/evals/triage/**", "!docs/progress-log/*.json"]
     route:
       model: openai-codex/gpt-5.6-sol
       thinking: high
