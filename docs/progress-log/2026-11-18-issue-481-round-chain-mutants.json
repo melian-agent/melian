@@ -1,0 +1,676 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "97e087c2c3e16a47d7fc35d850904ba0908fdc1b",
+		"head": "06b189da3b696a1ca852845ded582feef89fb7b0"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/recorded-round.ts",
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 303,
+			"column": 6,
+			"endLine": 303,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8f88ebc5785599f2ab932338e5432ddb5eaad119e16284b71a1bf74f5043c9a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies no dismissal past a fork one of whose branches ends before the dismissal's revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 303,
+			"column": 6,
+			"endLine": 303,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f238772665121ea436df345a801d77cdaec7d862af7ffee1c5445408a53c1e7f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies no dismissal past a chain that ends before it reaches a round of the dismissal's revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 303,
+			"column": 6,
+			"endLine": 303,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "before.length !== 0",
+			"status": "generated",
+			"id": "d6d997f5cbbac8194e4374b0750836215b001cfcf584b87d14cacef4a33fdc97",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"applies no dismissal past a fork one of whose branches ends before the dismissal's revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2196,
+			"column": 113,
+			"endLine": 2203,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a08785233332953352579591c25189b3ff7e44e386b9f741839e41f0ec3fb3a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2197,
+			"column": 16,
+			"endLine": 2198,
+			"endColumn": 72,
+			"mutatorName": "MethodExpression",
+			"replacement": "held",
+			"status": "generated",
+			"id": "81ec548053e115f60fd311146d6a53834498f43c8cd19711c8b76e5927e00b1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 10,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c750a758e5c2ae0b2accf5269492057e01f2f74429090d83f6e468efdd6a32be",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 20,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e8250b9a41146154eddae8b5b6ed5028c65b8620c3408f8eed3eb629b4795083",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 20,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "dd62e1a234882bc415f3b6d59fb5141956c4e519db633abadce12042b2100be5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 20,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.kind === \"round\" || each.revision !== reviewed",
+			"status": "generated",
+			"id": "12a49a151c73e7c58590ef7970a869bec9a1f8cf51ee5752c2d1cbb39517701d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 20,
+			"endLine": 2198,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "357c76703adc035a5a1289796c19709e3949a811479fe394cafa42f8bf9b8a3f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 20,
+			"endLine": 2198,
+			"endColumn": 41,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.kind !== \"round\"",
+			"status": "generated",
+			"id": "3a86490e78ec738fe3081b2a0cf59daf5ebe1dde1657b780d7ea07f07da22de9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 34,
+			"endLine": 2198,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0719b584f8a9ee1b43a157d0a431c220fa7cd47cc6b24c4cb719c4e332dd551e"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 45,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4a9bc973b924b06233a75d0fb520f935b94cad746cec88022e417cad141e4306",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before no round of its own revision, on a host with no history of the changeset"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2198,
+			"column": 45,
+			"endLine": 2198,
+			"endColumn": 71,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.revision === reviewed",
+			"status": "generated",
+			"id": "4d9a0f8ef512ec7228777e3dce2e332cb3a97c2712f565f38572c2b192d75645",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2199,
+			"column": 7,
+			"endLine": 2199,
+			"endColumn": 49,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "13d276cb9a7d7a13ff5c8fffecd88ead1869d52a42dbf2506b2ab002288d4b58",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 5,
+			"endLine": 2200,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "957836ecda5186a9c5dd0247ee9ccd898b34f71bd3b2b3c5ab14b93d6d5d0fb0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 5,
+			"endLine": 2200,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "41d1134a95bdfc3cdab62c38f1b8f73e14d3d638537190fb504286323e2cb980",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before only the rounds of its previous revision, on a host with history, though the store holds another branch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 5,
+			"endLine": 2200,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "previous === undefined",
+			"status": "generated",
+			"id": "3f875819ffdd1432d77c078ec8c4097daa06ffd0387639e3a6075188cc22a1fd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 36,
+			"endLine": 2200,
+			"endColumn": 87,
+			"mutatorName": "MethodExpression",
+			"replacement": "rounds",
+			"status": "generated",
+			"id": "a3b875cb27117f0c8a5204cea195c3e62e2a2e1a60dd5f9c637041a9453ecfd1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before only the rounds of its previous revision, on a host with history, though the store holds another branch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 50,
+			"endLine": 2200,
+			"endColumn": 86,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "1982cdb1ad51d523e8bd0eb0ca7b5c844feebf7e3e68ad4790b11aea51a4837c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before the rounds of the revision before that its store held when the review began, and no later one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 60,
+			"endLine": 2200,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "00906304b667a3d65f9fc80e4289ed49e588a1d373137d9bb8b3cb535d54cf33",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before only the rounds of its previous revision, on a host with history, though the store holds another branch"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 60,
+			"endLine": 2200,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6a3e9919c731bdef10fcfba1ecc562d96928481993b126cccf6e114899e772f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before the rounds of the revision before that its store held when the review began, and no later one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 60,
+			"endLine": 2200,
+			"endColumn": 86,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.revision !== previous",
+			"status": "generated",
+			"id": "8ae81a158daa9aa04c20e2d447cce243eef9ee7c1a1c2327305159fcab58bc41",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before the rounds of the revision before that its store held when the review began, and no later one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2200,
+			"column": 92,
+			"endLine": 2200,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "cd1cd8d9b4deba6cc2156cf14d47fa1306daab2f009569ed7307f227f1c53088",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before the rounds of the revision before that its store held when the review began, and no later one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2201,
+			"column": 38,
+			"endLine": 2201,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "53a9d8ea1ebdcc0fd9384ee9cfe3e453682fad5794d02c7e9ff0c31cf6d3e4ef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2202,
+			"column": 8,
+			"endLine": 2202,
+			"endColumn": 49,
+			"mutatorName": "MethodExpression",
+			"replacement": "rounds",
+			"status": "generated",
+			"id": "812312b6e5249ccb30b412eeb8cc42ad57e92ec0e225fe7e62e20c74c2dd7303",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2202,
+			"column": 22,
+			"endLine": 2202,
+			"endColumn": 48,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "3a4cd72cacae1de69cb55254812d6a334850cff749784b266d5bae38c3c3bde0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2202,
+			"column": 34,
+			"endLine": 2202,
+			"endColumn": 48,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "named.has(id)",
+			"status": "generated",
+			"id": "0d9c3abe18b1083e505b2d0198c95652d7305d744bdc80a8f9602b73352c419b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2202,
+			"column": 54,
+			"endLine": 2202,
+			"endColumn": 68,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e4d8f2a8eac4e1d6f5d21f006207cd2f38491c856db10f73f429cc7cbdbe85f5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3311,
+			"column": 49,
+			"endLine": 3311,
+			"endColumn": 51,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "49f2ec3943821fdb82f842b2f63359940a514bed43e96a6c0dd9e7d2015f7034",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 30,
+	"omitted": 0,
+	"unmutated": []
+}
