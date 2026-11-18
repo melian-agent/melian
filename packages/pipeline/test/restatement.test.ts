@@ -36,7 +36,13 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { FindingsDocument, findingsVersion, replaceCheckFindings, verificationClaims } from "../src/findings.ts";
+import {
+	dismissedRoots,
+	FindingsDocument,
+	findingsVersion,
+	replaceCheckFindings,
+	verificationClaims,
+} from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import type * as Verification from "../src/verification.ts";
@@ -1200,6 +1206,7 @@ describe("a dismissal carrying to a restatement", () => {
 		script([]);
 		await review();
 		await recordDismissal({ harness, revision: await revision(), id: tool.id, dismissal, repoRoot: repo });
+		expect(dismissedRoots((await harness.snapshot(FindingsDocument, owner.id, context))!)).toEqual([]);
 		pushElsewhere("other");
 		const requests = script([restatement]);
 
