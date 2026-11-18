@@ -158,6 +158,12 @@ describe("readUnreadable", () => {
 		const file = "2026-11-17-a-mutants.json";
 		expect(() => readUnreadable({ version2: [entry(file)], legacy: [entry(file)] })).toThrow(`names ${file} twice`);
 		expect(() => readUnreadable({ version2: [entry(file, 0)], legacy: [] })).toThrow(`${file} names no pull request`);
+		expect(() => readUnreadable({ version2: [entry(file, 1.5)], legacy: [] })).toThrow(
+			`${file} names no pull request`,
+		);
+		expect(() => readUnreadable({ version2: [entry(file, "552")], legacy: [] })).toThrow(
+			`${file} names no pull request`,
+		);
 		expect(() => readUnreadable({ version2: [entry(`x/${file}`)], legacy: [] })).toThrow("names no file");
 		expect(() => readUnreadable({ version2: [], legacy: [], other: [] })).toThrow('unknown section "other"');
 		expect(() => readUnreadable({ version2: [] })).toThrow("legacy must be an array");
