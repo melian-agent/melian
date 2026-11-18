@@ -248,6 +248,20 @@ describe("the gate's command", () => {
 		expect(result.status).toBe(1);
 	});
 
+	it("exits 0 when main has the listed inventory but no list yet, as when the list first lands", () => {
+		const name = "2026-11-01-old-mutants.json";
+		rmSync(join(scratch, ".unreadable-inventories.json"));
+		writeFileSync(join(scratch, "docs/progress-log", name), malformed());
+		commitMain();
+		writeFileSync(
+			join(scratch, ".unreadable-inventories.json"),
+			JSON.stringify({ version2: [{ file: name, pullRequest: 1 }], legacy: [] }),
+		);
+		const result = run();
+		expect(result.stderr).toBe("");
+		expect(result.status).toBe(0);
+	});
+
 	it("exits 1 when it cannot read origin/main", () => {
 		git("init", "-q");
 		const result = run();
