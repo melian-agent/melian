@@ -89,7 +89,7 @@ const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
 		records: checks,
 	};
 };
-const current = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 2, "static.mutation": 2 };
+const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 3, "static.mutation": 3 };
 const asked = askFor(current);
 
 // What the host's store holds beside the sightings: the request key each check's terminal commit stamped, and the

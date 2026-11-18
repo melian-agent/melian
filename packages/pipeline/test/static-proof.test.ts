@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ChecksDocument } from "../src/checks.ts";
 import { StaticProof } from "../src/static-proof.ts";
 
-const current = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 2, "static.mutation": 2 };
+const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 3, "static.mutation": 3 };
 const asked = KeyedRequest.of("check", { checks: current });
 
 let harness: Harness | undefined;
