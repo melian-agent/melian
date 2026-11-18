@@ -213,9 +213,10 @@ describe("the gate's command", () => {
 		);
 	});
 
-	it("exits 0 for a well-formed inventory", () => {
+	it("exits 0 for a well-formed inventory beside a Markdown entry", () => {
 		commitMain();
 		writeFileSync(join(scratch, "docs/progress-log", readableName), readable);
+		writeFileSync(join(scratch, "docs/progress-log/2026-11-18-entry.md"), "# An entry\n");
 		const result = run();
 		expect(result.stderr).toBe("");
 		expect(result.status).toBe(0);
