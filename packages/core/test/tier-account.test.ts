@@ -187,6 +187,12 @@ describe("TierAccount", () => {
 			]);
 		});
 
+		// The review selects no lens configuration disables, but a reader builds its own selection.
+		it("allows no triage skip of a lens configuration disables", () => {
+			const disabled = TierAccount.of({ ...config, lenses: { correctness: { enabled: false } } }, "full", lenses);
+			expect(disabled.allowSkip({ records, triage: chose("skip") })).toEqual(["decisions.fast", "lens.contracts"]);
+		});
+
 		it("allows a skip for each variant of a lens triage skipped", () => {
 			const variants = TierAccount.of(config, "full", {
 				loaded: lenses.loaded,
