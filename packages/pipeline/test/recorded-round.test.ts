@@ -3,9 +3,11 @@ import { join } from "node:path";
 import {
 	type AccountPayload,
 	Changeset,
+	type DismissalPayload,
 	defaultConfig,
 	everyRecordCounts,
 	Lens,
+	type LensPayload,
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
@@ -29,6 +31,7 @@ import {
 	type Message,
 	openHarness,
 	RecordedRound,
+	type RecordedRoundContents,
 	ReviewError,
 	recordDismissal,
 	reviewChangeset,
@@ -481,6 +484,40 @@ describe("a round read with the dismissals shared beside it", () => {
 		const verdict = await read(reviewed, stale);
 		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
 		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+});
+
+describe("what a round's records hold", () => {
+	it("hands over the round's revision, its sightings, the revision's proving hunks and each dismissal record whole", async () => {
+		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
+		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ id: each }) => each === roundOf(reviewed.stored))!;
+		const dismissal = records.find(({ kind }) => kind === "dismissal")!;
+		const { by, reason, at, trigger, sighting: seen } = dismissal.payload as DismissalPayload;
+		const contents = RecordedRound.of(reviewed.stored, round.id, everyRecordCounts).contents(
+			reviewed.changeset.revision,
+		);
+		expect(contents).toEqual({
+			revision: Revision.key(reviewed.changeset.revision),
+			sightings: (sighting(records, round).payload as LensPayload).sightings,
+			hunks: reviewFiles(reviewed.changeset.revision.files).flatMap((file) => file.hunks.map(provingHunk)),
+			dismissals: [{ record: dismissal.id, finding: id, revision: seen.revision, by, reason, at, trigger }],
+		});
+		expect((contents as RecordedRoundContents).hunks).toHaveLength(1);
+		expect(seen.revision).toBe(Revision.key(reviewed.changeset.revision));
+	});
+
+	it("refuses a revision that is not the round's own, and a round its records cannot stand for", async () => {
+		const reviewed = await review(exported());
+		const { revision } = reviewed.changeset;
+		const other = Revision.from({ base: revision.base, head: "f".repeat(40), files: revision.files });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		expect(round.contents(other)).toEqual({
+			refused: `reviewed ${Revision.key(revision)}, not ${Revision.key(other)}`,
+		});
+		expect(RecordedRound.of(reviewed.stored, "0".repeat(64), everyRecordCounts).contents(revision)).toEqual({
+			refused: "is not among the records, or does not count",
+		});
 	});
 });
 

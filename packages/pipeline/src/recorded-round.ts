@@ -8,6 +8,7 @@ import {
 	type FindingSource,
 	type LensPayload,
 	type MelianConfig,
+	type ProvingHunk,
 	type RecordEnvelope,
 	RecordError,
 	RecordSet,
@@ -40,6 +41,28 @@ export type RecordedRoundContext = {
 	readonly seenBefore?: readonly string[];
 };
 
+/** A dismissal record of a round's changeset, as a reader hands it over. */
+export type SharedDismissalRecord = SharedDismissal & {
+	/** The dismissal record's ID. */
+	readonly record: string;
+	/** The ID of the finding it dismisses. */
+	readonly finding: string;
+	/** The revision the dismissed sighting was seen at. */
+	readonly revision: string;
+};
+
+/** What a round's records hold, for a caller that decides each sighting itself. */
+export type RecordedRoundContents = {
+	/** The revision the round reviewed, as its round record names it. */
+	readonly revision: string;
+	/** Every sighting the round's records hold, as each producer stored it. */
+	readonly sightings: readonly StoredFinding[];
+	/** The proving hunks of the revision, which a dismissal's trigger is met against. */
+	readonly hunks: readonly ProvingHunk[];
+	/** Every dismissal record of the round's changeset that counts, in record ID order. */
+	readonly dismissals: readonly SharedDismissalRecord[];
+};
+
 // The decided pieces a round's records hold, or why they cannot stand for the round.
 type Pieces =
 	| {
@@ -48,9 +71,11 @@ type Pieces =
 			readonly checks: CheckRecord[];
 			readonly sightings: StoredFinding[];
 			readonly claims: VerificationClaim[];
-			readonly dismissals: ReadonlyMap<string, SharedDismissal>;
+			readonly dismissals: readonly SharedDismissalRecord[];
 	  }
 	| { readonly refused: string };
+
+type Decided = Exclude<Pieces, { readonly refused: string }>;
 
 /**
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
@@ -89,19 +114,41 @@ export class RecordedRound {
 		return "refused" in this.#pieces ? this.#pieces.refused : undefined;
 	}
 
+	/**
+	 * What the round's records hold at `revision`, or why they cannot stand for the round there: a round is read only at
+	 * the revision it reviewed, since a dismissal's trigger is met against that revision's hunks.
+	 */
+	contents(revision: Revision): RecordedRoundContents | { readonly refused: string } {
+		const pieces = this.#pieces;
+		if ("refused" in pieces) return pieces;
+		const asked = Revision.key(revision);
+		if (asked !== pieces.revision) return { refused: `reviewed ${pieces.revision}, not ${asked}` };
+		return {
+			revision: asked,
+			sightings: pieces.sightings,
+			hunks: reviewFiles(revision.files).flatMap((file) => file.hunks.map(provingHunk)),
+			dismissals: pieces.dismissals,
+		};
+	}
+
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
-		const pieces = this.#pieces;
-		if ("refused" in pieces) return notReviewed(this.id, pieces.refused, context);
-		const asked = Revision.key(context.revision);
-		if (asked !== pieces.revision) return notReviewed(this.id, `reviewed ${pieces.revision}, not ${asked}`, context);
+		const contents = this.contents(context.revision);
+		if ("refused" in contents) return notReviewed(this.id, contents.refused, context);
+		// `contents` refuses whatever the pieces refuse.
+		const pieces = this.#pieces as Decided;
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
 			check,
 			...(version === null ? {} : { version }),
 			...(ids === null ? {} : { ids }),
 		}));
-		const hunks = reviewFiles(context.revision.files).flatMap((file) => file.hunks.map(provingHunk));
-		const findings = mergeSightings(pieces.sightings, pieces.claims, producers, pieces.dismissals, hunks);
+		const findings = mergeSightings(
+			contents.sightings,
+			pieces.claims,
+			producers,
+			latestOf(contents.dismissals),
+			contents.hunks,
+		);
 		const { repoRoot, policy } = context;
 		const policies =
 			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
@@ -204,16 +251,24 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	};
 }
 
-// The latest dismissal of each finding among the set's dismissal records of `changeset`. A dismissal record names no
-// round, so every round of the changeset reads it.
-function dismissalsOf(set: RecordSet, changeset: string): Map<string, SharedDismissal> {
+// The set's dismissal records of `changeset`, in ID order. A dismissal record names no round, so every round of the
+// changeset reads it.
+function dismissalsOf(set: RecordSet, changeset: string): SharedDismissalRecord[] {
+	return set
+		.records()
+		.filter((record) => record.kind === "dismissal" && record.changeset === changeset)
+		.map((record) => {
+			const { by, reason, at, trigger, sighting } = record.payload as DismissalPayload;
+			return { record: record.id, finding: record.key, revision: sighting.revision, by, reason, at, trigger };
+		});
+}
+
+// The latest dismissal of each finding. Dismissals come in ID order, so of two made at one time the greater ID stands.
+function latestOf(dismissals: readonly SharedDismissalRecord[]): Map<string, SharedDismissal> {
 	const latest = new Map<string, SharedDismissal>();
-	// Records come in ID order, so of two made at one time the greater ID stands.
-	for (const record of set.records()) {
-		if (record.kind !== "dismissal" || record.changeset !== changeset) continue;
-		const { by, reason, at, trigger } = record.payload as DismissalPayload;
-		const held = latest.get(record.key);
-		if (held === undefined || held.at <= at) latest.set(record.key, { by, reason, at, trigger });
+	for (const { finding, by, reason, at, trigger } of dismissals) {
+		const held = latest.get(finding);
+		if (held === undefined || held.at <= at) latest.set(finding, { by, reason, at, trigger });
 	}
 	return latest;
 }
