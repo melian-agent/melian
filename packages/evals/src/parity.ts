@@ -1,0 +1,517 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+	type ChangedFile,
+	Changeset,
+	checksOfTier,
+	Lens,
+	type LensLevel,
+	type LensLevels,
+	lensCovers,
+	lensGraphToolNames,
+	type MelianConfig,
+	type ModelRoute,
+	parseModelReference,
+	visibleText,
+} from "@melian-agent/core";
+import { isProviderLimit, type ProbeAvailability, type ReviewModels, type Stage } from "@melian-agent/pipeline";
+import type { LiveGoldenMode, ProbingRoute, RangeRun, ReviewTarget } from "./goldens.ts";
+import { Miss, type MissLocation, ProbeTrust } from "./probing.ts";
+
+type Print = (line: string) => void;
+
+/** The name of the arm that gives a review one total and every lens the design lens's capabilities. */
+export const parityArmName = "Parity per total budget";
+
+/**
+ * The design lens's paragraph on the graph tools, from `.melian/lenses/design/LENS.md`, which the parity arm gives every
+ * lens that does not already list them, so each lens is told how to use the tools it is given.
+ */
+export const graphGuidance =
+	"To test an assumption against the code that relies on it, ask Enola's graph of the head before you grep. `graph_definitions` finds where a name is declared and gives its full name. `graph_references` lists what calls, constructs, names, imports or implements that declaration, and `graph_impact` lists what reaches it through calls, up to three levels away. `graph_callees` lists what it calls. The graph holds only the edges Enola resolved: a method called through an instance is often missing, so an empty answer proves nothing, and `search` finds the rest. Confirm each caller with `read_file` before citing it.";
+
+/** The design lens's committed tool-call ceiling, which every lens of the parity arm gets so its token share binds. */
+export const parityToolCeiling = 400;
+/** The design lens's committed findings budget, below which no lens of the parity arm goes. */
+export const parityFindings = 16;
+
+const modelTiers = ["light", "medium", "heavy"] as const;
+
+// A route with no fallbacks, so a lens at its provider's limit fails rather than answering on another model.
+function pinned(route: ModelRoute | undefined, thinking?: "high"): ModelRoute | undefined {
+	if (route === undefined) return thinking === undefined ? undefined : { thinking };
+	const { fallbacks: _, ...rest } = route;
+	return thinking === undefined ? rest : { ...rest, thinking };
+}
+
+function pinnedConfig(config: MelianConfig, thinking?: "high"): MelianConfig {
+	const models = { ...config.models };
+	for (const tier of modelTiers) {
+		const route = pinned(models[tier], thinking);
+		if (route !== undefined) models[tier] = route;
+	}
+	for (const tier of ["decision", "verifier"] as const) {
+		const route = pinned(models[tier]);
+		if (route !== undefined) models[tier] = route;
+	}
+	const lenses = Object.fromEntries(
+		Object.entries(config.lenses).map(([name, settings]) => {
+			const route = pinned(settings.route, thinking);
+			return [name, route === undefined ? settings : { ...settings, route }];
+		}),
+	);
+	return { ...config, models, lenses };
+}
+
+function changedLines(file: ChangedFile): number {
+	return file.hunks.reduce((sum, hunk) => sum + hunk.oldLines + hunk.newLines, 0);
+}
+
+/**
+ * The review as its base's policy commits it, with Enola's graph opened as the CLI opens it and every route held to its
+ * first model, so its spend is the parity arm's total and both arms answer on the same models.
+ */
+export class CommittedArm implements ProbingRoute {
+	readonly graph = true as const;
+
+	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
+		return { config: pinnedConfig(config), lenses };
+	}
+}
+
+/**
+ * The parity arm: every lens the review's tier runs gets the graph tools and their guidance, `high` thinking on its
+ * route, its `deep` level, which probes wherever core allows, a findings budget of at least {@link parityFindings}, and
+ * {@link parityToolCeiling} tool calls. Tokens are what bind: `total` is shared between the lenses, half equally and
+ * half by the changed lines of the files each selects, and a lens that probes splits its share between its planner
+ * and its prober, since each conversation spends against its level's budget. A lens its share ends counts, with its
+ * findings so far. Every route is held to its first model, as the committed arm's is.
+ */
+export class ParityArm implements ProbingRoute {
+	readonly graph = true as const;
+	/** The tokens, cache reads left out, the lenses share. */
+	readonly total: number;
+
+	constructor(total: number) {
+		if (!Number.isInteger(total) || total < 1) throw new Error(`The parity arm needs a positive total, not ${total}`);
+		this.total = total;
+	}
+
+	/** Each lens the tier runs and the tokens its share gives it, before a probing lens splits it. */
+	shares(config: MelianConfig, lenses: readonly Lens[], files: readonly ChangedFile[]): Map<string, number> {
+		const tier = config.stages["pull-request"] ?? "full";
+		const runs = new Set(checksOfTier(config, tier));
+		const selections = Lens.select(
+			lenses.filter((lens) => runs.has(`lens.${lens.name}`)),
+			config,
+			files.map((file) => file.path),
+		);
+		const weights = new Map<string, number>();
+		for (const { lens, files: selected } of selections) {
+			const lines = files
+				.filter((file) => selected.includes(file.path))
+				.reduce((sum, file) => sum + changedLines(file), 0);
+			weights.set(lens.name, (weights.get(lens.name) ?? 0) + lines);
+		}
+		const all = [...weights.values()].reduce((sum, lines) => sum + lines, 0);
+		const count = weights.size;
+		return new Map(
+			[...weights].map(([name, lines]) => [
+				name,
+				Math.floor(this.total * (0.5 / count + (all === 0 ? 0.5 / count : (0.5 * lines) / all))),
+			]),
+		);
+	}
+
+	routed(
+		config: MelianConfig,
+		lenses: readonly Lens[],
+		files: readonly ChangedFile[],
+	): { config: MelianConfig; lenses: readonly Lens[] } {
+		const shares = this.shares(config, lenses, files);
+		const pinnedLenses = pinnedConfig(config, "high");
+		const routedConfig: MelianConfig = {
+			...pinnedLenses,
+			lenses: {
+				...pinnedLenses.lenses,
+				...Object.fromEntries(
+					[...shares.keys()].map((name) => {
+						const own = Object.hasOwn(pinnedLenses.lenses, name) ? pinnedLenses.lenses[name] : undefined;
+						return [name, { ...own, level: { floor: "deep", ceiling: "deep" } }];
+					}),
+				),
+			},
+		};
+		const routedLenses = lenses.map((lens) => {
+			const share = shares.get(lens.name);
+			if (share === undefined) return lens;
+			const base = lens.levels.deep ?? lens.levels.careful;
+			const probe = base.probe ?? (lens.probeRefusal() === undefined ? {} : undefined);
+			const deep: LensLevel = {
+				...base,
+				budget: {
+					findings: Math.max(base.budget.findings, parityFindings),
+					tokens: probe === undefined ? share : Math.floor(share / 2),
+					tools: parityToolCeiling,
+					ended: "count",
+				},
+				...(probe === undefined ? {} : { probe }),
+			};
+			const graphed = lensGraphToolNames.every((tool) => lens.tools.includes(tool));
+			const fields = lens.toJSON();
+			return Lens.from({
+				...fields,
+				tools: [...new Set([...lens.tools, ...lensGraphToolNames])],
+				instructions: graphed ? fields.instructions : `${fields.instructions}\n\n${graphGuidance}`,
+				levels: { ...lens.levels, deep } as LensLevels,
+			});
+		});
+		return { config: routedConfig, lenses: routedLenses };
+	}
+}
+
+/** One stage of a measured review, with its tokens counted both ways and what a cut lens had left. */
+export interface ParityStage {
+	readonly name: string;
+	readonly subject: string;
+	readonly role?: "planner" | "prober";
+	readonly outcome: string;
+	/** Every response's input, output, cache reads and cache writes, as Melian's spend counts. */
+	readonly tokens: number;
+	readonly cacheRead: number;
+	readonly tools?: number;
+	readonly minutes?: number;
+	readonly limit?: number;
+	readonly ended?: "tokens" | "tools";
+	/** For a lens its budget ended, the changed files it covered that it was neither shown nor read. */
+	readonly unread?: readonly string[];
+	/** For a prober its budget ended, the planned attacks it neither probed nor skipped. */
+	readonly openAttacks?: number;
+	readonly error?: string;
+}
+
+/** One arm's review of one miss. */
+export interface ParityReview {
+	readonly miss: string;
+	readonly arm: "committed" | "parity";
+	readonly said: string;
+	readonly found?: boolean;
+	readonly error?: string;
+	/** For the parity arm, the tokens, cache reads left out, its lenses shared. */
+	readonly total?: number;
+	readonly tokens: number;
+	readonly cacheRead: number;
+	readonly stages: readonly ParityStage[];
+	/** The SQLite file that keeps the review's store, conversations and all, beside the results file. */
+	readonly store?: string;
+}
+
+/** What a parity run has measured so far, as its results file holds it. */
+export interface ParityResults {
+	readonly version: 1;
+	readonly arm: typeof parityArmName;
+	readonly commit: string;
+	readonly reviews: readonly ParityReview[];
+	readonly stopped?: string;
+}
+
+/** The runners a parity measurement calls, so a test can stand in for providers and clones. */
+export interface ParityRunners {
+	readonly availability: () => Promise<ProbeAvailability>;
+	readonly models: () => Promise<ReviewModels>;
+	readonly range: (target: ReviewTarget, mode: LiveGoldenMode) => Promise<RangeRun>;
+	readonly commit: () => string;
+}
+
+function tokensInt(env: NodeJS.ProcessEnv, name: string): number {
+	const value = Number(env[name]);
+	if (env[name] === undefined || !Number.isInteger(value) || value < 1)
+		throw new Error(`${name} must be a positive whole number of tokens`);
+	return value;
+}
+
+function measuredStages(run: Pick<RangeRun, "telemetry">, paths: readonly string[]): ParityStage[] {
+	return run.telemetry.stages.map((stage: Stage) => {
+		const tokens = stage.usage?.total.totalTokens ?? 0;
+		const cacheRead = stage.usage?.total.cacheRead ?? 0;
+		const unread =
+			stage.ended === undefined || stage.coverage === undefined || stage.role === "prober"
+				? undefined
+				: paths.filter(
+						(path) =>
+							lensCovers(stage.coverage!, path) &&
+							!stage.shown?.includes(path) &&
+							!stage.read?.some((read) => read.path === path),
+					);
+		const probes = stage.probes;
+		const openAttacks =
+			stage.ended === undefined || probes === undefined
+				? undefined
+				: probes.attacks - new Set([...probes.runs.map((each) => each.attack), ...probes.skipped]).size;
+		return {
+			name: stage.name,
+			subject: stage.subject,
+			...(stage.role === undefined ? {} : { role: stage.role }),
+			outcome: stage.outcome,
+			tokens,
+			cacheRead,
+			...(stage.tools === undefined ? {} : { tools: stage.tools }),
+			...(stage.durationMs === undefined ? {} : { minutes: stage.durationMs / 60_000 }),
+			...(stage.limits?.tokens === undefined ? {} : { limit: stage.limits.tokens }),
+			...(stage.ended === undefined ? {} : { ended: stage.ended }),
+			...(unread === undefined ? {} : { unread }),
+			...(openAttacks === undefined ? {} : { openAttacks }),
+			...(stage.error === undefined ? {} : { error: stage.error }),
+		};
+	});
+}
+
+// Why the run must stop after this review: a provider said its usage limit was reached, or a lens answered on a model
+// other than its route's first, which with every route held to its first model only a failover does and which is the earliest sign of that limit. Fallbacks are
+// equivalent in a real round; here both arms must answer on the same models to be compared.
+function stopCause(run: RangeRun | undefined, error: string | undefined): string | undefined {
+	if (error !== undefined && isProviderLimit(error)) return `a provider's usage limit: ${error}`;
+	for (const stage of run?.telemetry.stages ?? []) {
+		if (stage.error !== undefined && isProviderLimit(stage.error))
+			return `a provider's usage limit in ${stage.subject}: ${stage.error}`;
+		const models = Object.keys(stage.usage?.models ?? {});
+		if (models.length > 1) return `${stage.subject} answered on ${models.join(" and ")}, so a model failed over`;
+	}
+	for (const { name, reason } of run?.verdict.notRun ?? [])
+		if (reason !== undefined && isProviderLimit(reason)) return `a provider's usage limit in ${name}: ${reason}`;
+	return undefined;
+}
+
+const offTop = (stage: ParityStage) => stage.name === "melian.verification" || stage.role === "prober";
+const uncached = (stages: readonly ParityStage[]) =>
+	stages.reduce((sum, stage) => sum + stage.tokens - stage.cacheRead, 0);
+
+/**
+ * Runs the committed arm and then the parity arm on each miss, the parity arm's lenses sharing what the committed arm's
+ * lenses spent, cache reads left out. Saves after every review, and resumes from the results file a stopped run left,
+ * skipping what it finished. Stops cleanly before a review once the run's tokens reach its stop, after a review whose
+ * tokens passed the review stop, and on the first sign of a provider's usage limit. Returns 0 when every review scored,
+ * 1 when one did not, 2 when the run never started, and 3 when it stopped with reviews left.
+ */
+export async function measureParity(
+	env: NodeJS.ProcessEnv,
+	runners: ParityRunners,
+	print: Print,
+	printError: Print,
+): Promise<0 | 1 | 2 | 3> {
+	let out: string;
+	let stops: { review: number; run: number };
+	let verifier: string | undefined;
+	let misses: {
+		miss: Miss;
+		target: ReviewTarget & { readonly head: string };
+		location: MissLocation;
+		lenses: readonly string[];
+	}[];
+	let results: ParityResults;
+	try {
+		out = env.MELIAN_EVAL_PARITY_OUT ?? "";
+		if (out === "") throw new Error("MELIAN_EVAL_PARITY_OUT must name the results file a stopped run resumes from");
+		if (env.MELIAN_EVAL_MISSES === undefined || env.MELIAN_EVAL_MISSES === "")
+			throw new Error("MELIAN_EVAL_MISSES must name the misses file");
+		stops = {
+			review: tokensInt(env, "MELIAN_EVAL_PARITY_STOP_REVIEW"),
+			run: tokensInt(env, "MELIAN_EVAL_PARITY_STOP_RUN"),
+		};
+		if (env.MELIAN_EVAL_VERIFIER_MODEL) {
+			const { provider, modelId } = parseModelReference(
+				env.MELIAN_EVAL_VERIFIER_MODEL,
+				"verifier",
+				"MELIAN_EVAL_VERIFIER_MODEL",
+			);
+			verifier = `${provider}/${modelId}`;
+		}
+		const trust = ProbeTrust.parse(env.MELIAN_EVAL_PROBE_TRUST);
+		const named = (env.MELIAN_EVAL_PARITY_MISSES ?? "")
+			.split(",")
+			.map((name) => name.trim())
+			.filter((name) => name !== "");
+		const loaded = Miss.load(env.MELIAN_EVAL_MISSES);
+		const unknown = named.filter((name) => !loaded.some((miss) => miss.name === name));
+		if (unknown.length > 0)
+			throw new Error(`MELIAN_EVAL_PARITY_MISSES names no miss called ${unknown.map(visibleText).join(", ")}`);
+		const chosen = named.length === 0 ? loaded : loaded.filter((miss) => named.includes(miss.name));
+		const unlined = chosen.filter((miss) => miss.lines === undefined).map(({ name }) => visibleText(name));
+		if (unlined.length > 0)
+			throw new Error(
+				`A whole review scores a miss only on its hand-entered lines, which ${unlined.join(", ")} lack`,
+			);
+		misses = [];
+		for (const miss of chosen) {
+			const target = miss.target(trust, "whole", []);
+			if (!target.writer.trusted)
+				throw new Error(
+					`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of ${miss.name}, so its probes cannot run`,
+				);
+			const reviewers = await miss.reviewers(target, "whole");
+			if ("refusal" in reviewers) throw new Error(`The misses file cannot be scored: ${reviewers.refusal}`);
+			misses.push({ miss, target, location: await miss.locate(target.head), lenses: reviewers.lenses });
+		}
+		const availability = await runners.availability();
+		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
+		const commit = runners.commit();
+		if (existsSync(out)) {
+			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
+			if (earlier.version !== 1 || earlier.arm !== parityArmName)
+				throw new Error(`${out} is not a results file of this measurement`);
+			if (earlier.commit !== commit)
+				throw new Error(
+					`${out} was measured at ${earlier.commit}, not this checkout's ${commit}; resume from that commit or name a new file`,
+				);
+			const { stopped: _, ...kept } = earlier;
+			results = kept;
+		} else results = { version: 1, arm: parityArmName, commit, reviews: [] };
+	} catch (error) {
+		printError(visibleText(error instanceof Error ? error.message : String(error)));
+		return 2;
+	}
+	// Written whole through a rename, so a cut run leaves every review it finished, never a torn file.
+	const save = () => {
+		const written = `${out}.${process.pid}.tmp`;
+		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`);
+		renameSync(written, out);
+	};
+	const stop = (reason: string): 3 => {
+		results = { ...results, stopped: reason };
+		save();
+		print(visibleText(`stopped: ${reason}; resume with the same MELIAN_EVAL_PARITY_OUT`));
+		return 3;
+	};
+	save();
+	const models = await runners.models();
+	let spent = results.reviews.reduce((sum, review) => sum + review.tokens, 0);
+	let uncachedSpent = results.reviews.reduce((sum, review) => sum + review.tokens - review.cacheRead, 0);
+	for (const { miss, target, location, lenses } of misses) {
+		for (const arm of ["committed", "parity"] as const) {
+			if (results.reviews.some((review) => review.miss === miss.name && review.arm === arm)) continue;
+			let route: ProbingRoute = new CommittedArm();
+			let total: number | undefined;
+			if (arm === "parity") {
+				const committed = results.reviews.find(
+					(review) => review.miss === miss.name && review.arm === "committed",
+				)!;
+				if (committed.error !== undefined) {
+					results = {
+						...results,
+						reviews: [
+							...results.reviews,
+							{
+								miss: miss.name,
+								arm,
+								said: "not run: the committed arm had no review",
+								tokens: 0,
+								cacheRead: 0,
+								stages: [],
+							},
+						],
+					};
+					save();
+					continue;
+				}
+				total = uncached(committed.stages) - uncached(committed.stages.filter(offTop));
+				route = new ParityArm(total);
+			}
+			if (spent >= stops.run)
+				return stop(`the run's ${spent} tokens reached MELIAN_EVAL_PARITY_STOP_RUN, ${stops.run}`);
+			// A review a stop cut keeps its store too, so a resumed review takes the next free name.
+			const stores = `${out}.stores`;
+			mkdirSync(stores, { recursive: true });
+			const stem = `${miss.name.replace(/[^A-Za-z0-9._-]/g, "_")}-${arm}`;
+			let attempt = 1;
+			const storeOf = () => join(stores, attempt === 1 ? `${stem}.sqlite` : `${stem}.${attempt}.sqlite`);
+			while (existsSync(storeOf())) attempt += 1;
+			const store = storeOf();
+			const mode: LiveGoldenMode = {
+				store,
+				kind: "live",
+				models,
+				probing: route,
+				...(verifier === undefined ? {} : { verifierModel: verifier }),
+			};
+			let run: RangeRun | undefined;
+			let error: string | undefined;
+			try {
+				run = await runners.range(target, mode);
+			} catch (thrown) {
+				error = thrown instanceof Error ? thrown.message : String(thrown);
+			}
+			const paths = (await Changeset.resolve(target.repo, target.range)).revision.paths();
+			const stages = run === undefined ? [] : measuredStages(run, paths);
+			const tokens = stages.reduce((sum, stage) => sum + stage.tokens, 0);
+			const cacheRead = stages.reduce((sum, stage) => sum + stage.cacheRead, 0);
+			const cause = stopCause(run, error);
+			if (cause !== undefined) {
+				spent += tokens;
+				return stop(`${parityLabel(arm)} on ${miss.name} met ${cause}`);
+			}
+			let judged: { said: string; found?: boolean } = { said: `no score: ${error}` };
+			if (run !== undefined) {
+				try {
+					judged = await miss.judge(run, miss.match(run, location, "whole"), target, location, lenses);
+				} catch (thrown) {
+					error = thrown instanceof Error ? thrown.message : String(thrown);
+					judged = { said: `no score: ${error}` };
+				}
+			}
+			results = {
+				...results,
+				reviews: [
+					...results.reviews,
+					{
+						miss: miss.name,
+						arm,
+						said: judged.said,
+						...(judged.found === undefined ? {} : { found: judged.found }),
+						...(error === undefined ? {} : { error }),
+						...(total === undefined ? {} : { total }),
+						tokens,
+						cacheRead,
+						stages,
+						store,
+					},
+				],
+			};
+			save();
+			spent += tokens;
+			uncachedSpent += tokens - cacheRead;
+			print(
+				visibleText(
+					`${parityLabel(arm)} ${miss.name}: ${judged.said}; ${tokens} tokens, ${cacheRead} of them cache reads; run so far ${spent} tokens, ${uncachedSpent} without cache reads`,
+				),
+			);
+			for (const stage of stages.filter((each) => each.ended !== undefined))
+				print(
+					visibleText(
+						`    ${stage.subject}${stage.role === "prober" ? " prober" : ""} ended at its ${stage.ended} share of ${stage.limit ?? "no limit"}${stage.unread === undefined ? "" : `, ${stage.unread.length} covered files unread`}${stage.openAttacks === undefined ? "" : `, ${stage.openAttacks} attacks open`}`,
+					),
+				);
+			if (tokens > stops.review)
+				return stop(
+					`${parityLabel(arm)} on ${miss.name} spent ${tokens} tokens, past MELIAN_EVAL_PARITY_STOP_REVIEW, ${stops.review}`,
+				);
+		}
+	}
+	return results.reviews.every((review) => review.found !== undefined) ? 0 : 1;
+}
+
+function parityLabel(arm: "committed" | "parity"): string {
+	return arm === "committed" ? "committed" : parityArmName;
+}
+
+/**
+ * The checkout's commit, which a results file is tied to so a resumed run measures the same code. Throws when the
+ * checkout has changes no commit holds, since then no commit names the code that ran.
+ */
+export function checkoutCommit(directory: string = import.meta.dirname): string {
+	const git = (...args: string[]) => execFileSync("git", ["-C", directory, ...args], { encoding: "utf8" });
+	const dirty = git("status", "--porcelain", "--untracked-files=normal").trimEnd();
+	if (dirty !== "")
+		throw new Error(`The checkout has changes no commit holds, so no commit names the code that ran:\n${dirty}`);
+	return git("rev-parse", "HEAD").trim();
+}

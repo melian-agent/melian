@@ -1,0 +1,486 @@
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+	type ChangedFile,
+	defaultConfig,
+	type Hunk,
+	Lens,
+	lensGraphToolNames,
+	type MelianConfig,
+	Verdict,
+} from "@melian-agent/core";
+import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildGoldenRepository, loadGoldens, type RangeRun } from "../src/goldens.ts";
+import {
+	CommittedArm,
+	checkoutCommit,
+	graphGuidance,
+	measureParity,
+	ParityArm,
+	type ParityResults,
+	type ParityRunners,
+	parityArmName,
+} from "../src/parity.ts";
+
+let scratch: string;
+beforeEach(() => {
+	scratch = mkdtempSync(join(tmpdir(), "melian-parity-eval-"));
+});
+afterEach(() => rmSync(scratch, { recursive: true, force: true }));
+
+const config: MelianConfig = {
+	...defaultConfig,
+	models: {
+		heavy: { model: "h/heavy", thinking: "low", fallbacks: ["h/other"] },
+		medium: { model: "m/medium", fallbacks: ["m/other"] },
+		light: { model: "l/light" },
+		verifier: { model: "v/verify", fallbacks: ["v/other"] },
+	},
+	tiers: { ...defaultConfig.tiers, full: ["lens.a", "lens.b"] },
+	stages: { ...defaultConfig.stages, "pull-request": "full" },
+	lenses: { a: { route: { model: "r/route", fallbacks: ["r/other"] } } },
+};
+
+function file(path: string, oldLines: number, newLines: number): ChangedFile {
+	const hunk: Hunk = { file: path, index: 0, oldStart: 1, oldLines, newStart: 1, newLines, header: "", text: "" };
+	return { status: "modified", path, binary: false, hunks: [hunk] };
+}
+
+async function named(name: string, paths: readonly string[], from = "correctness"): Promise<Lens> {
+	const lens = (await Lens.builtins()).find((each) => each.name === from)!;
+	return Lens.from({ ...lens.toJSON(), name, paths: [...paths], probesAs: from });
+}
+
+describe("CommittedArm", () => {
+	it("holds every route to its first model and leaves the lenses and the rest of the policy alone", async () => {
+		const lenses = [await named("a", ["src/**"])];
+		const routed = new CommittedArm().routed(config, lenses);
+		expect(routed.lenses).toBe(lenses);
+		expect(routed.config).toEqual({
+			...config,
+			models: {
+				heavy: { model: "h/heavy", thinking: "low" },
+				medium: { model: "m/medium" },
+				light: { model: "l/light" },
+				verifier: { model: "v/verify" },
+			},
+			lenses: { a: { route: { model: "r/route" } } },
+		});
+		expect(new CommittedArm().graph).toBe(true);
+	});
+});
+
+describe("ParityArm", () => {
+	it("refuses a total that is not a positive whole number", () => {
+		for (const total of [0, -1, 1.5, Number.NaN]) expect(() => new ParityArm(total)).toThrow(/positive total/);
+		expect(new ParityArm(1).total).toBe(1);
+	});
+
+	it("shares the total half equally and half by the changed lines of the files each lens of the tier selects", async () => {
+		const lenses = [await named("a", ["src/**"]), await named("b", ["docs/**"]), await named("c", ["**"])];
+		const files = [file("src/x.ts", 10, 20), file("docs/y.md", 4, 6)];
+		expect(new ParityArm(1000).shares(config, lenses, files)).toEqual(
+			new Map([
+				["a", 625],
+				["b", 375],
+			]),
+		);
+		const binary = [
+			{ ...file("src/x.ts", 0, 0), hunks: [] },
+			{ ...file("docs/y.md", 0, 0), hunks: [] },
+		];
+		expect(new ParityArm(1001).shares(config, lenses, binary)).toEqual(
+			new Map([
+				["a", 500],
+				["b", 500],
+			]),
+		);
+		const tierless = { ...config, stages: {}, tiers: { ...config.tiers, full: ["lens.b"] } };
+		expect(new ParityArm(1000).shares(tierless, lenses, files)).toEqual(new Map([["b", 1000]]));
+		expect(new ParityArm(1000).shares(config, lenses, [file("src/x.ts", 1, 1)])).toEqual(new Map([["a", 1000]]));
+	});
+
+	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
+		const builtins = await Lens.builtins();
+		const graphed = Lens.from({
+			...(await named("b", ["**"], "design")).toJSON(),
+			tools: ["read_file", ...lensGraphToolNames],
+		});
+		const probing = builtins.filter((lens) => lens.probeRefusal() === undefined).map((lens) => lens.name);
+		const unprobing = builtins.filter((lens) => lens.probeRefusal() !== undefined).map((lens) => lens.name);
+		expect(probing.length).toBeGreaterThan(0);
+		expect(unprobing.length).toBeGreaterThan(0);
+		const a = await named("a", ["src/**"], probing[0]);
+		const off = await named("off", ["**"]);
+		const lenses = [a, graphed, off];
+		const files = [file("src/x.ts", 0, 3), file("docs/y.md", 0, 1)];
+		const arm = new ParityArm(1000);
+		const shares = arm.shares(config, lenses, files);
+		const routed = arm.routed(config, lenses, files);
+		expect(routed.config.models).toEqual({
+			heavy: { model: "h/heavy", thinking: "high" },
+			medium: { model: "m/medium", thinking: "high" },
+			light: { model: "l/light", thinking: "high" },
+			verifier: { model: "v/verify" },
+		});
+		expect(routed.config.lenses).toEqual({
+			a: { route: { model: "r/route", thinking: "high" }, level: { floor: "deep", ceiling: "deep" } },
+			b: { level: { floor: "deep", ceiling: "deep" } },
+		});
+		const [routedA, routedB, routedOff] = routed.lenses;
+		expect(routedOff).toBe(off);
+		expect(routedA!.tools).toEqual([...new Set([...a.tools, ...lensGraphToolNames])]);
+		expect(routedA!.instructions).toBe(`${a.instructions}\n\n${graphGuidance}`);
+		expect(routedB!.tools).toEqual(graphed.tools);
+		expect(routedB!.instructions).toBe(graphed.instructions);
+		const base = a.levels.deep ?? a.levels.careful;
+		expect(routedA!.level("deep")).toEqual({
+			...base,
+			budget: {
+				findings: Math.max(base.budget.findings, 16),
+				tokens: Math.floor(shares.get("a")! / 2),
+				tools: 400,
+				ended: "count",
+			},
+			probe: base.probe ?? {},
+		});
+		expect(routedA!.level("careful")).toEqual(a.level("careful"));
+		const unprobed = await named("b", ["**"], unprobing[0]);
+		const [, again] = arm.routed(config, [a, unprobed], files).lenses;
+		expect(again!.level("deep").probe).toBeUndefined();
+		expect(again!.level("deep").budget.tokens).toBe(arm.shares(config, [a, unprobed], files).get("b"));
+	});
+});
+
+const failOpen = loadGoldens().find((each) => each.name === "trust-boundary-fail-open")!;
+
+function usage(models: Record<string, number>, cacheRead = 4) {
+	const cost = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 };
+	return new TokenUsage(
+		Object.fromEntries(
+			Object.entries(models).map(([model, total]) => [
+				model,
+				{ input: total - cacheRead, output: 0, cacheRead, cacheWrite: 0, totalTokens: total, cost },
+			]),
+		),
+	).toJSON();
+}
+
+type StageFields = ConstructorParameters<typeof StageTelemetry>[1][number];
+const lensStage = (fields: Partial<StageFields> = {}): StageFields => ({
+	id: "lens",
+	task: 1,
+	name: "melian.lens",
+	subject: "correctness@1@deep",
+	outcome: "completed",
+	timing: "unavailable",
+	reused: false,
+	resumed: false,
+	durationMs: 120_000,
+	tools: 7,
+	usage: usage({ model: 100 }, 40),
+	...fields,
+});
+
+function ran(stages: readonly StageFields[]): RangeRun {
+	return {
+		telemetry: new StageTelemetry("base..head", [...stages]),
+		findings: [],
+		sightings: [],
+		verdict: new Verdict({
+			status: "passed",
+			blocking: false,
+			findings: { block: [], acknowledge: [], advisory: [], silent: [] },
+			dismissed: [],
+			notRun: [],
+		}),
+		rendered: "",
+		toolMismatches: [],
+		probers: {},
+		notes: [],
+		tiers: {},
+	};
+}
+
+describe("measureParity", { timeout: 60_000 }, () => {
+	let repo: string;
+	let env: NodeJS.ProcessEnv;
+	beforeEach(() => {
+		const built = buildGoldenRepository(failOpen);
+		repo = built.repo;
+		const misses = join(scratch, "misses.json");
+		const at = { repo, base: built.base, head: built.head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] };
+		writeFileSync(
+			misses,
+			JSON.stringify([
+				{ name: "one", ...at },
+				{ name: "two", ...at },
+			]),
+		);
+		env = {
+			MELIAN_EVAL_MISSES: misses,
+			MELIAN_EVAL_PARITY_OUT: join(scratch, "parity.json"),
+			MELIAN_EVAL_PARITY_STOP_REVIEW: "1000000",
+			MELIAN_EVAL_PARITY_STOP_RUN: "1000000",
+			MELIAN_EVAL_PROBE_TRUST: `${built.base},${built.head}`,
+		};
+	});
+	afterEach(() => rmSync(repo, { recursive: true, force: true }));
+
+	const committedStages = [
+		lensStage(),
+		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
+		lensStage({ id: "p", role: "prober", usage: usage({ model: 50 }, 20) }),
+	];
+
+	function runners(
+		stages: readonly (readonly StageFields[])[] = [committedStages],
+		fields: Partial<ParityRunners> = {},
+	) {
+		let call = 0;
+		return {
+			availability: vi.fn(async () => ({ available: true }) as const),
+			models: vi.fn(async () => createFakeModels({ models: [{ id: "x" }] }).review),
+			range: vi.fn(async () => ran(stages[Math.min(call++, stages.length - 1)]!)),
+			commit: () => "c".repeat(40),
+			...fields,
+		} satisfies ParityRunners;
+	}
+
+	async function measure(settings: NodeJS.ProcessEnv, using: ParityRunners) {
+		const lines: string[] = [];
+		const errors: string[] = [];
+		const status = await measureParity(
+			settings,
+			using,
+			(line) => lines.push(line),
+			(line) => errors.push(line),
+		);
+		return { status, lines, errors };
+	}
+
+	const results = (): ParityResults => JSON.parse(readFileSync(env.MELIAN_EVAL_PARITY_OUT!, "utf8"));
+
+	it("refuses a run it cannot finish or resume before any model, and writes no results file", async () => {
+		const cases: [NodeJS.ProcessEnv, RegExp, Partial<ParityRunners>?][] = [
+			[{ MELIAN_EVAL_PARITY_OUT: "" }, /MELIAN_EVAL_PARITY_OUT must name/],
+			[{ MELIAN_EVAL_MISSES: "" }, /MELIAN_EVAL_MISSES must name/],
+			[{ MELIAN_EVAL_PARITY_STOP_REVIEW: undefined }, /MELIAN_EVAL_PARITY_STOP_REVIEW must be/],
+			[{ MELIAN_EVAL_PARITY_STOP_RUN: "0" }, /MELIAN_EVAL_PARITY_STOP_RUN must be/],
+			[{ MELIAN_EVAL_PARITY_STOP_RUN: "1.5" }, /MELIAN_EVAL_PARITY_STOP_RUN must be/],
+			[{ MELIAN_EVAL_PARITY_MISSES: "one,three" }, /names no miss called three/],
+			[{ MELIAN_EVAL_PROBE_TRUST: "d".repeat(40) }, /does not vouch for the base and head of one/],
+			[
+				{},
+				/Probes cannot run on this host: no sandbox/,
+				{ availability: async () => ({ available: false, reason: "no sandbox" }) },
+			],
+		];
+		for (const [settings, error, fields] of cases) {
+			const using = runners(undefined, fields);
+			const { status, errors } = await measure({ ...env, ...settings }, using);
+			expect(status, String(error)).toBe(2);
+			expect(errors).toEqual([expect.stringMatching(error)]);
+			expect(using.models).not.toHaveBeenCalled();
+			expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
+		}
+		const unlined = join(scratch, "unlined.json");
+		const [one] = JSON.parse(readFileSync(env.MELIAN_EVAL_MISSES!, "utf8"));
+		writeFileSync(unlined, JSON.stringify([{ ...one, lines: undefined }]));
+		expect((await measure({ ...env, MELIAN_EVAL_MISSES: unlined }, runners())).errors).toEqual([
+			"A whole review scores a miss only on its hand-entered lines, which one lack",
+		]);
+	});
+
+	it("runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent", async () => {
+		const using = runners();
+		const { status, lines } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using);
+		expect(status).toBe(1);
+		const arms = vi.mocked(using.range).mock.calls.map(([, mode]) => mode.probing);
+		expect(arms.map((arm) => arm?.constructor)).toEqual([CommittedArm, ParityArm]);
+		expect((arms[1] as ParityArm).total).toBe(60);
+		expect(lines[0]).toBe(
+			"committed two: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds src/scan.ts; 180 tokens, 70 of them cache reads; run so far 180 tokens, 110 without cache reads",
+		);
+		expect(lines[1]).toMatch(/^Parity per total budget two: .*; run so far 360 tokens, 220 without cache reads$/);
+		const written = results();
+		expect(written).toMatchObject({ version: 1, arm: parityArmName, commit: "c".repeat(40) });
+		expect(written.stopped).toBeUndefined();
+		expect(written.reviews.map(({ miss, arm, total, store }) => [miss, arm, total, store])).toEqual([
+			["two", "committed", undefined, `${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.sqlite`],
+			["two", "parity", 60, `${env.MELIAN_EVAL_PARITY_OUT}.stores/two-parity.sqlite`],
+		]);
+		expect(vi.mocked(using.range).mock.calls.map(([, mode]) => mode.store)).toEqual(
+			written.reviews.map(({ store }) => store),
+		);
+		expect(written.reviews[0]!.stages[0]).toEqual({
+			name: "melian.lens",
+			subject: "correctness@1@deep",
+			outcome: "completed",
+			tokens: 100,
+			cacheRead: 40,
+			tools: 7,
+			minutes: 2,
+		});
+	});
+
+	it("records what a lens its share ended had left: covered files it never saw, and attacks its prober never ran", async () => {
+		const cut = [
+			lensStage({
+				ended: "tokens",
+				limits: { tokens: 50 },
+				coverage: { scope: "", paths: ["src/**"], nearer: [] },
+				shown: ["src/rules.ts"],
+				read: [],
+			}),
+			lensStage({
+				id: "p",
+				role: "prober",
+				ended: "tokens",
+				probes: { attacks: 3, skipped: [1], runs: [{ attack: 0 }] },
+			} as Partial<StageFields>),
+		];
+		const { lines } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners([cut]));
+		const [stage, prober] = results().reviews[0]!.stages;
+		expect(stage).toMatchObject({ ended: "tokens", limit: 50, unread: ["src/scan.ts"] });
+		expect(stage).not.toHaveProperty("openAttacks");
+		expect(prober).toMatchObject({ role: "prober", ended: "tokens", openAttacks: 1 });
+		expect(prober).not.toHaveProperty("unread");
+		expect(lines).toContain("    correctness@1@deep ended at its tokens share of 50, 1 covered files unread");
+		expect(lines).toContain("    correctness@1@deep prober ended at its tokens share of no limit, 1 attacks open");
+	});
+
+	it("resumes from its results file, skipping what it finished, and refuses one another commit measured", async () => {
+		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
+		expect(results().stopped).toMatch(/the run's 360 tokens reached MELIAN_EVAL_PARITY_STOP_RUN, 200/);
+		expect(results().reviews.map(({ miss, arm }) => [miss, arm])).toEqual([
+			["one", "committed"],
+			["one", "parity"],
+		]);
+		// A store the cut review left stays, and the review it resumes takes the next name.
+		writeFileSync(`${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.sqlite`, "cut\n");
+		const resumed = runners();
+		expect((await measure(env, resumed)).status).toBe(1);
+		expect(readFileSync(`${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.sqlite`, "utf8")).toBe("cut\n");
+		expect(vi.mocked(resumed.range).mock.calls.map(([, mode]) => mode.store)).toEqual([
+			`${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.2.sqlite`,
+			`${env.MELIAN_EVAL_PARITY_OUT}.stores/two-parity.sqlite`,
+		]);
+		expect(resumed.range).toHaveBeenCalledTimes(2);
+		expect(results().stopped).toBeUndefined();
+		expect(results().reviews.map(({ miss, arm }) => [miss, arm])).toEqual([
+			["one", "committed"],
+			["one", "parity"],
+			["two", "committed"],
+			["two", "parity"],
+		]);
+		const moved = runners(undefined, { commit: () => "d".repeat(40) });
+		expect(await measure(env, moved)).toMatchObject({
+			status: 2,
+			errors: [expect.stringMatching(/was measured at c{40}, not this checkout's d{40}/)],
+		});
+		expect(moved.models).not.toHaveBeenCalled();
+	});
+
+	it("stops after a review that passed its stop, and at the run's stop before the next review", async () => {
+		const review = await measure({ ...env, MELIAN_EVAL_PARITY_STOP_REVIEW: "179" }, runners());
+		expect(review.status).toBe(3);
+		expect(results().stopped).toBe("committed on one spent 180 tokens, past MELIAN_EVAL_PARITY_STOP_REVIEW, 179");
+		expect(results().reviews).toHaveLength(1);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_REVIEW: "180" }, runners())).status).toBe(1);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const run = runners();
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "180" }, run)).status).toBe(3);
+		expect(run.range).toHaveBeenCalledTimes(1);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const under = runners();
+		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "181", MELIAN_EVAL_PARITY_MISSES: "one" }, under);
+		expect(under.range).toHaveBeenCalledTimes(2);
+	});
+
+	it("stops on a provider's usage limit, or a lens that answered on a second model, and records no score for that review", async () => {
+		const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
+		const failedOver = lensStage({ usage: usage({ first: 50, second: 50 }) });
+		const proberOnTwo = lensStage({ role: "prober", usage: usage({ first: 50, second: 50 }) });
+		const verifierOnTwo = lensStage({
+			name: "melian.verification",
+			subject: "verifier",
+			usage: usage({ first: 50, second: 50 }),
+		});
+		for (const [stages, reason] of [
+			[
+				[limited],
+				/^committed on one met a provider's usage limit in correctness@1@deep: You have hit your usage limit\.$/,
+			],
+			[
+				[failedOver],
+				/^committed on one met correctness@1@deep answered on first and second, so a model failed over$/,
+			],
+			[[proberOnTwo], /^committed on one met correctness@1@deep answered on first and second/],
+			[[verifierOnTwo], /^committed on one met verifier answered on first and second/],
+		] as const) {
+			const { status, lines } = await measure(env, runners([stages]));
+			expect(status).toBe(3);
+			expect(results().stopped).toMatch(reason);
+			expect(results().reviews).toEqual([]);
+			expect(lines.at(-1)).toMatch(/^stopped: .*; resume with the same MELIAN_EVAL_PARITY_OUT$/);
+			rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		}
+		const thrown = runners(undefined, {
+			range: vi.fn(async () => {
+				throw new Error("429 rate_limit_error: quota exceeded");
+			}),
+		});
+		expect((await measure(env, thrown)).status).toBe(3);
+		expect(results().stopped).toMatch(/^committed on one met a provider's usage limit: 429/);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const other = runners(undefined, {
+			range: vi.fn(async () => {
+				throw new Error("the clone vanished");
+			}),
+		});
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, other)).status).toBe(1);
+		expect(results().reviews).toEqual([
+			{
+				miss: "one",
+				arm: "committed",
+				said: "no score: the clone vanished",
+				error: "the clone vanished",
+				tokens: 0,
+				cacheRead: 0,
+				stages: [],
+				store: `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.sqlite`,
+			},
+			{
+				miss: "one",
+				arm: "parity",
+				said: "not run: the committed arm had no review",
+				tokens: 0,
+				cacheRead: 0,
+				stages: [],
+			},
+		]);
+	});
+});
+
+describe("checkoutCommit", () => {
+	it("names a clean checkout's head, and refuses one with changes no commit holds", () => {
+		const { repo } = buildGoldenRepository(failOpen);
+		try {
+			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+			expect(checkoutCommit(repo)).toBe(head);
+			writeFileSync(join(repo, "stray.txt"), "untracked\n");
+			expect(() => checkoutCommit(repo)).toThrow(/^The checkout has changes no commit holds, .*\n\?\? stray\.txt$/s);
+			rmSync(join(repo, "stray.txt"));
+			writeFileSync(join(repo, "src/scan.ts"), "changed\n");
+			expect(() => checkoutCommit(repo)).toThrow(/ M src\/scan\.ts$/);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
