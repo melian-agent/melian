@@ -44,7 +44,7 @@ import {
 	visibleText,
 } from "./render.ts";
 import type { ResolutionSource } from "./resolution.ts";
-import { VerificationState } from "./verification.ts";
+import { injectionAttemptRuleId, VerificationState } from "./verification.ts";
 
 /** What adjudication reads at one path: what resolution reads there, and the path's `ruleAliases`. */
 export type PolicyAt = ResolutionSource & Pick<MelianConfig, "ruleAliases">;
@@ -232,6 +232,31 @@ export class Defect {
 			report.silentAt(policyFor(report.properties.path, report.ruleId)),
 		);
 		return (["P0", "P1", "P2", "P3", "nit"] as const).filter((severity) => silent.includes(severity));
+	}
+
+	/**
+	 * The IDs of the instruction-file notices that report this defect in its place, or none. `notices` maps each file a
+	 * notice of {@link Finding.instructionsNotice} covers to that notice's ID. A live defect qualifies when lenses alone
+	 * reported it, every report under `melian/injection-attempt` in one location, and every file it names has a notice;
+	 * one that names any other file is reported whole.
+	 */
+	replacedBy(notices: ReadonlyMap<string, string>): string[] | undefined {
+		const rules = [this.speaker.ruleId, ...this.members.map((member) => member.ruleId)];
+		if (
+			this.speaker.properties.status === "dismissed" ||
+			!this.lensOnly() ||
+			rules.some((rule) => rule !== injectionAttemptRuleId) ||
+			this.reports.some((report) => report.locations.length !== 1)
+		) {
+			return undefined;
+		}
+		const ids = new Set<string>();
+		for (const file of [this.speaker, ...this.reports].flatMap((report) => report.files())) {
+			const id = notices.get(file);
+			if (id === undefined) return undefined;
+			ids.add(id);
+		}
+		return [...ids].sort();
 	}
 
 	/** Whether lenses alone reported this defect. */
@@ -1064,6 +1089,10 @@ export class Adjudication {
 	 * dropped or counted as `silent` for lacking one. A failed check, one its budget ended, a skipped one not allowed to
 	 * skip, or a check of the manifest with no record makes the review `not-reviewed`, even with no findings. Otherwise
 	 * a finding above `silent` makes it `findings`, and nothing does `passed`. A dismissed finding counts toward neither.
+	 *
+	 * A lens's injection finding in a file the policy lists as instructions resolves `silent`, with `decidedBy.replacedBy`
+	 * naming the notice on that file, live or dismissed ({@link Defect.replacedBy}). The notice quotes what the lens
+	 * flagged ({@link Finding.quoting}) and keeps its acknowledge floor, so a maintainer reads that text once.
 	 */
 	adjudicate(): Verdict {
 		const defects = this.defects();
@@ -1075,14 +1104,38 @@ export class Adjudication {
 				[defect.speaker.id, ...defect.members.map((member) => member.id)],
 			]),
 		);
+		const notices = new Map(
+			this.findings
+				.filter((finding) => finding.instructionsNotice())
+				.map((finding) => [finding.properties.path, finding.id] as const),
+		);
+		const replacing = new Map<string, string[]>();
+		const quoted = new Map<string, Finding[]>();
+		for (const defect of defects) {
+			const by = defect.replacedBy(notices);
+			if (by === undefined) continue;
+			replacing.set(defect.speaker.id, by);
+			for (const id of by) quoted.set(id, [...(quoted.get(id) ?? []), defect.speaker]);
+		}
 		const lifted = new Set<string>();
 		const resolved = defects
 			.map((defect) => {
 				const decision = defect.decision(this.#configFor, this.#verificationRan);
+				const replacedBy = replacing.get(defect.speaker.id);
+				if (replacedBy !== undefined) {
+					// The notice holds the floors now: a maintainer reads what the lens flagged there, never silently.
+					const { floor: _, trustFloor: __, ...decidedBy } = decision.decidedBy;
+					return defect.speaker.decided({ resolution: "silent", decidedBy: { ...decidedBy, replacedBy } });
+				}
 				const protectedMinimum = decision.decidedBy.trustFloor?.some((claim) => claim.minimum !== "silent");
 				if (defect.refuted() && !protectedMinimum) refutedIds.add(defect.speaker.id);
 				if (decision.lifted) lifted.add(defect.speaker.id);
-				return defect.speaker.decided(decision);
+				const quotes = quoted.get(defect.speaker.id);
+				const speaker =
+					quotes === undefined
+						? defect.speaker
+						: defect.speaker.quoting([...quotes].sort((a, b) => a.compareReading(b)));
+				return speaker.decided(decision);
 			})
 			.sort((a, b) => a.compareReading(b));
 		const counted = resolved.filter(
@@ -1103,7 +1156,7 @@ export class Adjudication {
 			(finding) => finding.properties.resolution !== "silent" && !lifted.has(finding.id),
 		);
 		const important = counted
-			.filter((finding) => finding.important() || lifted.has(finding.id))
+			.filter((finding) => !replacing.has(finding.id) && (finding.important() || lifted.has(finding.id)))
 			.map(
 				(finding): ImportantFinding => ({
 					id: finding.id,

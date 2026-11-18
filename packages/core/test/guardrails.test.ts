@@ -1376,7 +1376,12 @@ describe("instruction files", () => {
 	const notices = (findings: readonly Finding[]) =>
 		findings
 			.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
-			.map(({ properties }) => [properties.path, properties.discriminator, properties.severity, properties.guardrail]);
+			.map(({ properties }) => [
+				properties.path,
+				properties.discriminator,
+				properties.severity,
+				properties.guardrail,
+			]);
 
 	it("draws a marked policy notice for each listed file the revision changes, though the review is switched off", async () => {
 		const { findings } = await guardrails(

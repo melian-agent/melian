@@ -121,6 +121,13 @@ export function describeDecision(by: DecidedBy, own: { readonly check: string; r
 			? []
 			: [`${capNames[by.cap]}${by.capBy === undefined ? "" : ` by ${by.capBy.file}'s ${by.capBy.key}`}`]),
 		...(by.floor === undefined ? [] : [floorNames[by.floor]]),
+		...(by.replacedBy === undefined
+			? []
+			: [
+					by.replacedBy.length === 1
+						? `silent, since the notice ${by.replacedBy[0]} on the instruction file reports it in its place`
+						: `silent, since the notices ${by.replacedBy.join(", ")} on the instruction files report it in its place`,
+				]),
 	].join("; ");
 }
 
