@@ -18,6 +18,8 @@ it.each([
 	["ENOLA-INTENT.YAML", "Enola"],
 	["Enola/Constraints/layers.yaml", "Enola"],
 	[".Enola/Suppressions.Yaml", "Enola"],
+	["Enola/Constraints/Lay\nx.yaml", "Enola"],
+	["Enola/Recipes/Lay\nered.yaml", "Enola"],
 ])("recognises the analyser policy path %s in any case", (path, analyser) => {
 	expect(isAnalyserConfig(path)).toBe(true);
 	expect(isPolicyFile(path)).toBe(true);
