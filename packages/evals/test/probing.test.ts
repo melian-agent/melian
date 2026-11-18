@@ -345,7 +345,7 @@ describe("ProbingCombination", () => {
 			shadowsBuiltin: true,
 		});
 		expect(() =>
-			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(config, [...loaded, shadow]),
+			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(config, [...loaded, shadow], changed),
 		).toThrow(
 			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, which cannot probe: "probe" takes its wording from the built-in lens a lens extends/,
 		);
