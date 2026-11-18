@@ -389,6 +389,13 @@ export {
 	toolResultSchema,
 } from "./static.ts";
 export {
+	type AccountClaim,
+	type RoundFacts,
+	TierAccount,
+	type TierAccountRefusal,
+	type TierLenses,
+} from "./tier-account.ts";
+export {
 	type EscalationEvidence,
 	EscalationRule,
 	type EscalationTrigger,

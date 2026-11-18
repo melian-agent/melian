@@ -1,0 +1,4141 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "e6ed960bda8ee511eeaca5db531974b536b7aa07",
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024"
+ },
+ "claimsIn": [
+  "packages/core/src/tier-account.ts",
+  "packages/pipeline/src/review.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+ "mutants": [
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 43,
+   "column": 17,
+   "endLine": 43,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "5a501ba195963826d784a7f5bc6e481dec94d755201a53e9ff8b564757270e01"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 59,
+   "column": 90,
+   "endLine": 63,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "1963dc68e2592d8716ce49723f9e4f58a4c5e8e058b014d159239c3c75838973",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "names the tier's checks in order"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 66,
+   "column": 80,
+   "endLine": 68,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "2ea896bdf72349ac3f295a52bfa791a187e048afc7b2dd9a1e7792c5f6684e10",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "names the tier's checks in order"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 75,
+   "column": 90,
+   "endLine": 97,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "733d008446e7a5cf637fb438efcd3ce6aacda16ac4111adfdefe9bcd9e206b28",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 76,
+   "column": 39,
+   "endLine": 76,
+   "endColumn": 60,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "b83e311cdddd5c4e68828ec6d014f6179e8ed791d6b0a556e4c6ac2e0e57c5e6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a lens or a question that already has a record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 78,
+   "column": 54,
+   "endLine": 96,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "65e4643073ae378fd109781e07698017fa1640d247f22896ce44dcecb9ff70ce",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 79,
+   "column": 7,
+   "endLine": 79,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "5d868aa2c0c9b2c906db75735fa3efee949a546dbe715f312f8e72596d1a9914",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 79,
+   "column": 7,
+   "endLine": 79,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "687d69a658d76fac5920db24d1aca34a2dac5af8a2f40df1cfe6e957557c5887",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a lens or a question that already has a record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 79,
+   "column": 34,
+   "endLine": 79,
+   "endColumn": 36,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "5872741a4ef239e171f459c4685de51190a0163fe70c54005a921b9ddf4f8a63",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 80,
+   "column": 7,
+   "endLine": 80,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "4cca0647bf9d85c170b3160c7a36e5ecd6502858ea9fdd218ab4f74a41bb937f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 80,
+   "column": 7,
+   "endLine": 80,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "215002b76c7b44256ce9952f62ebc7815b35c607f836f0193644b9e264e6e137",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 80,
+   "column": 7,
+   "endLine": 80,
+   "endColumn": 31,
+   "mutatorName": "MethodExpression",
+   "replacement": "name.endsWith(\"lens.\")",
+   "status": "generated",
+   "id": "c997ace23b46ca4023a56c7c745fe685113ae6dab638a07db8916c54c4c9157f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 80,
+   "column": 23,
+   "endLine": 80,
+   "endColumn": 30,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "afbc58a80971551663ff730f34683d91bfe95528986e88ff79b0ac616abc06f2"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 80,
+   "column": 33,
+   "endLine": 86,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "dc0a7d635b2cf605f515e7dfdc985565d483917ebaeef12049820786549957d6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 81,
+   "column": 17,
+   "endLine": 81,
+   "endColumn": 43,
+   "mutatorName": "MethodExpression",
+   "replacement": "name",
+   "status": "generated",
+   "id": "a31b0a79376724a5808f7f4b6575adeba87fdfc61af0f111382655d07e3e3d09",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 81,
+   "column": 28,
+   "endLine": 81,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "a579ac8d9558e1e1e9aa4d0e0787e5f8e4f571c08dee8d42d5b08e48e86516a1"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 82,
+   "column": 8,
+   "endLine": 82,
+   "endColumn": 43,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "this.#lenses.loaded.includes(lens)",
+   "status": "generated",
+   "id": "f731888be82ffbb0347821e49c26a7b3d1a106adeddd8f2ee023605f7e06dc51",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 82,
+   "column": 8,
+   "endLine": 82,
+   "endColumn": 43,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "abfbe68b6ec82aaa2360c5a1e26633aeba52e40351279e0d995cd2a50c3a7b7f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 82,
+   "column": 8,
+   "endLine": 82,
+   "endColumn": 43,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "9418bcb075383e2367f67b4129615424efdad94862a04e0576edd652286b8675",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens no file defines as failed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 83,
+   "column": 12,
+   "endLine": 83,
+   "endColumn": 76,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "1c617e517c7920b24625fd3cb5084e12ad8bf1eb272604ab60a48fb8f654767d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens no file defines as failed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 83,
+   "column": 13,
+   "endLine": 83,
+   "endColumn": 75,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "30e1440e68619c552cbe1e6e70e733345749d91fb024304041f12e3b301d0558",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens no file defines as failed"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 83,
+   "column": 29,
+   "endLine": 83,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "cbdae3211a7465145d53ad1a97c926233ac0c3d663e73b0315e826527dc3060d"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 83,
+   "column": 47,
+   "endLine": 83,
+   "endColumn": 73,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "863ffdca23f619645590a60d51feef817406820c1bdc9f6da38a6464f31297b9"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 8,
+   "endLine": 84,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "5847e0c3ccf050101ea4ca2a071c52914bf89116392906133380677d7d1bdd4a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 8,
+   "endLine": 84,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "8e3769a024e611244d3167221920dd72156362f2a9eaad9c53ad336ae8c7f21f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 37,
+   "endLine": 84,
+   "endColumn": 109,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "5c8d63f871e1622e6bf28aa21e1faba26d63af88813203dfed297576e43f44bf",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 38,
+   "endLine": 84,
+   "endColumn": 108,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "30b7cbdf1ee14de8c48c1ff5248b8dee80938489d667c3f80f0768bbe16623e5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 54,
+   "endLine": 84,
+   "endColumn": 63,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "296784ba16355ed454abc92d5b0f3f4be45caf039133746956e9a7f526c37e9a"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 84,
+   "column": 73,
+   "endLine": 84,
+   "endColumn": 106,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "69e4f40772a9073ffb5f68e6fe54c14485836e640c15a2b1bbebbf86026d71fa"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 85,
+   "column": 33,
+   "endLine": 85,
+   "endColumn": 35,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "144307257c9085b9995d5de9c9735591a96fc9ef62c0f45f108b8ba406b0a012",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 85,
+   "column": 38,
+   "endLine": 85,
+   "endColumn": 87,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "1c71d172ba30de317c02c6cdabcd32dce838b63137b459999e73690c213c1b05",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 85,
+   "column": 39,
+   "endLine": 85,
+   "endColumn": 86,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "aab5df036cd1756a774fa77e0df6979a73fbac864e871e4850dfc395b57db0ec",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 85,
+   "column": 55,
+   "endLine": 85,
+   "endColumn": 64,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "03e03e41e635f685650c3d1595f8cc56eb9a91dae278204dc5b0e7048d519efa"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 85,
+   "column": 74,
+   "endLine": 85,
+   "endColumn": 84,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "48adc540d32a3be30d3e4d0d61b65202a6bb18570960b8af784be4a844d5884d"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 7,
+   "endLine": 87,
+   "endColumn": 37,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "name.startsWith(\"decisions.\")",
+   "status": "generated",
+   "id": "0611cb45f6ad3292fcc0045f6ec87b2f312a312196b0f65f80e60aa5121c6156",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 7,
+   "endLine": 87,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "3e20edca6517a715fc8366dd6f7c4dbe5c3324c16fefa759c70b2fa98de10243",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 7,
+   "endLine": 87,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7af360a889b2dff68d9fbf2b4f0158fa718a624cb30b374c41bb38fadd5abf6c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a host check of the tier with no record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 8,
+   "endLine": 87,
+   "endColumn": 37,
+   "mutatorName": "MethodExpression",
+   "replacement": "name.endsWith(\"decisions.\")",
+   "status": "generated",
+   "id": "3344d9ed3c56ac218bb83bdd5b804b0ca88ae98d062ac8109f2e77b7d183095b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 24,
+   "endLine": 87,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "ae26031dbafb0f361cdf2809859f55c6a73a3d1d5587fb39ec8f1e52337e345d"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 87,
+   "column": 46,
+   "endLine": 87,
+   "endColumn": 48,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "1016c90e089af17e8c511fff14356ccbd463ee3a57a8193225b6af2ccc0822bd",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a host check of the tier with no record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 88,
+   "column": 7,
+   "endLine": 88,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "fcd27d1e8dba5995e09c74c5279ba6ad8e357930b0db6dfe3c20da909b3fe998",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a question skipped without leave when a provider is configured"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 88,
+   "column": 7,
+   "endLine": 88,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f81b60f685ab4b64a4a919be745135096534e7b3edc1d41c9697b4195aa096b5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 88,
+   "column": 7,
+   "endLine": 88,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "provider !== undefined",
+   "status": "generated",
+   "id": "ddff8756643f7385973965726fddb1b486b9f13b56d34349b40f86d5b4c83d01",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 88,
+   "column": 31,
+   "endLine": 91,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "ea456e8c10405b8911667abe34dddc93310e6883e51a040ec104ae51e779b9b8",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 89,
+   "column": 20,
+   "endLine": 89,
+   "endColumn": 43,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "32b32bf17cda2281f8f29240067dcdeb4040c30479e8decbf4d53839e70f3a8a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "names the decider that answered triage in a skipped question's reason"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 89,
+   "column": 20,
+   "endLine": 89,
+   "endColumn": 43,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0513fe37d26063d19cbc2b6cb43ca2c75b3719c7763b2a92c53682d1d9023bfa",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 89,
+   "column": 20,
+   "endLine": 89,
+   "endColumn": 43,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triagedBy !== undefined",
+   "status": "generated",
+   "id": "ebf4a4a725a5f44efcd7c31b93174b992d5b730366b7b5024f9e4a1c663a2184",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 89,
+   "column": 46,
+   "endLine": 89,
+   "endColumn": 48,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "b1c05cb8f85eb7341ef7b190085401442261ee36a02eeeb70c22ed3b03f648a6"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 89,
+   "column": 51,
+   "endLine": 89,
+   "endColumn": 81,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "8718ed4777ec05a2eccc80affd55cd4fd77c5027da56b93b5301ea9f293047a1"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 90,
+   "column": 11,
+   "endLine": 90,
+   "endColumn": 96,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "5da08d888054d6a2ad8131b919f6788ec13d047602637329c2d4c4910a077a16",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 90,
+   "column": 12,
+   "endLine": 90,
+   "endColumn": 95,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "3ced0fa191809daf1f68d16523d1ef19103754c29c023cfc17aed0275e995e8c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 90,
+   "column": 28,
+   "endLine": 90,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "d661cebdf91d1c1e53791309a349670d88b6d6541231d424d1c09025b83689c9"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 90,
+   "column": 47,
+   "endLine": 90,
+   "endColumn": 93,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "650b70be7ec2037f82e9af939525ed53a1acc6ec5040f5573eb7992058cbe4b0"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 94,
+   "column": 18,
+   "endLine": 94,
+   "endColumn": 108,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "03017a774bd726e3dc1a2e0b25f612505c2545bc7d4eedb404a4643f3db658d6"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 95,
+   "column": 10,
+   "endLine": 95,
+   "endColumn": 47,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "93728b9e7f8cdcb5d40ccb62caa2c38656f27570d2a23a652897d2910a1ea810",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a question skipped without leave when a provider is configured"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 95,
+   "column": 11,
+   "endLine": 95,
+   "endColumn": 46,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "d027b5206c61d5bf57b2cd524658ae43b5edc19a02030f03f7fed833ed563542",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a question skipped without leave when a provider is configured"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 95,
+   "column": 27,
+   "endLine": 95,
+   "endColumn": 36,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "3c88cd69aa409f8ed9241ba9bdce2e12c82cbfcca114699e070130002fa154bc"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 104,
+   "column": 40,
+   "endLine": 128,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "27126efd23b9ab92d17f18d36b6d4613e4f30fb3f306515e2287648b6126940f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 107,
+   "column": 3,
+   "endLine": 107,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c24e871651fded826ab807be5b690ccdee71119c70bc5bae5cfc24fc916be6e1",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 107,
+   "column": 3,
+   "endLine": 107,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "32ea0591e3ad3c0b7b5dccd1e96efa076513dd292643895b6f7869e556f8c808",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 107,
+   "column": 3,
+   "endLine": 107,
+   "endColumn": 42,
+   "mutatorName": "LogicalOperator",
+   "replacement": "triage === undefined && triage.inputCut",
+   "status": "generated",
+   "id": "06e0e1c713517883df380c281bbb400096ef1466ac4b874bb47973c11036520b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 107,
+   "column": 3,
+   "endLine": 107,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "77bab3c6b9e84f85d35efd1206d53810ea50a3bf4128f980991b8815dcbfe784",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 107,
+   "column": 3,
+   "endLine": 107,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triage !== undefined",
+   "status": "generated",
+   "id": "5b8b290594f6853a59aabe25e15744748fc3464a1fcbe7fbcd225b9917637101",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 108,
+   "column": 6,
+   "endLine": 108,
+   "endColumn": 8,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "05cdf61e1a7a57809d699cf6bc1421e706661260915607e6d7970cef5ab263e1",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 109,
+   "column": 6,
+   "endLine": 114,
+   "endColumn": 7,
+   "mutatorName": "MethodExpression",
+   "replacement": "this.#lenses.selected",
+   "status": "generated",
+   "id": "659de9bffa895ed6d7bb67deaf97be0650550b5ea2e4d815b9f68f31a27afd51",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage chose a level"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 111,
+   "column": 7,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "8423cf71da3c3e12f61e608c3e72444980b22f3ebc74b3e329f0fc043df41a11",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "8e66d9eacb2054c534c4aa97b0e987a6451360ce2852796db5ed4ed37ef75be4",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage chose a level"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "125e51954a5e687db75871aac7a15c5aee3c51fce736581cf520203723edf49e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "LogicalOperator",
+   "replacement": "band.floor === \"skip\" || triage.answers.find(answer => answer.question === name)?.chosen === \"skip\"",
+   "status": "generated",
+   "id": "51424fea15165afbb0f9f09a433fd46c49e95cdb73cfc40cdb3f5d8938015ec0",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage chose a level"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 8,
+   "endLine": 112,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "9bdcadf1f99d522ad2c1bb5f79a2d1497b8861d37877cf41085a0f0593a0a28c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when the floor is quick"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 8,
+   "endLine": 112,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "band.floor !== \"skip\"",
+   "status": "generated",
+   "id": "18608eb1a13839a0f40cadee17a29229866c68234248a85941a52c3f79a7711d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 112,
+   "column": 23,
+   "endLine": 112,
+   "endColumn": 29,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "ef0baadd6d9f30032484146ca5eb52f689171742b36d11293c53cffcbb54c0a9"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "bf58c6f576b57ef95290b80f2b2fbf7b534024761b92a2c1b8814deb480df80d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage chose a level"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triage.answers.find(answer => answer.question === name)?.chosen !== \"skip\"",
+   "status": "generated",
+   "id": "8907d83cc92731ac7649ec7dd494eaa6cc7d5526c78c88e5adbc8685f63f93f6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 8,
+   "endLine": 113,
+   "endColumn": 73,
+   "mutatorName": "OptionalChaining",
+   "replacement": "triage.answers.find(answer => answer.question === name).chosen",
+   "status": "generated",
+   "id": "319c59d8fdac685680ce44dab59ace9fe72d129b50c59fab9e4cbb5e911654e8",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage answered another lens"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 28,
+   "endLine": 113,
+   "endColumn": 64,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "6c1cf6bcca3bb08f3f699471a40fb35cc3cdb13113348995dd880ec288fdf4fd",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 40,
+   "endLine": 113,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c869cad3bc1eccb6823e5b451ae32a7ab33b8abb2eb9afcc4247de91a864354b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no triage skip when triage answered another lens"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 40,
+   "endLine": 113,
+   "endColumn": 64,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "e87e9bd178f83e1b94b047e6be2a4303eafd3b9060922af9a891ddddfbf1df4d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 40,
+   "endLine": 113,
+   "endColumn": 64,
+   "mutatorName": "EqualityOperator",
+   "replacement": "answer.question !== name",
+   "status": "generated",
+   "id": "a0b6a42d48039c134f1fd266522809e505f887d2ecfc118fd1a941fd91016c11",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 113,
+   "column": 78,
+   "endLine": 113,
+   "endColumn": 84,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "3ad5867e1329f045fdb4490c4a458ee304da047b0d796e08706de8eb3c696b7b"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 115,
+   "column": 11,
+   "endLine": 115,
+   "endColumn": 39,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "5974243b202487ef31ccd384242b4d7393026739336fdd971f4d27b047eddae6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 115,
+   "column": 25,
+   "endLine": 115,
+   "endColumn": 39,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "a2c74e3b77ee7acfdd9b9fcf0baa81ecc246c0fae429ead4ad97d277ff430e06"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 118,
+   "column": 19,
+   "endLine": 119,
+   "endColumn": 92,
+   "mutatorName": "MethodExpression",
+   "replacement": "facts.records",
+   "status": "generated",
+   "id": "a6a7a0da547cd1a3a9abe3a032485ca8046e51c8bf650ff78e6b967b18da2ee0",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 11,
+   "endLine": 119,
+   "endColumn": 91,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "1dd718deb734f1a22ec1f04367a76711215455fe7d658aa0a8f9d4f70f062ed0",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 22,
+   "endLine": 119,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "6654a7b9a7a95c332e9447c5d84dacd71bd9890c384e88b990d7b88512cb2a50",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 22,
+   "endLine": 119,
+   "endColumn": 91,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "67668d666ee8d5673a354d5815bb8ea641cb4fc81aa1eae39b767b9ced5c4043",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 22,
+   "endLine": 119,
+   "endColumn": 91,
+   "mutatorName": "LogicalOperator",
+   "replacement": "check.name === \"static.mutation\" || mutationSkipHasLeave(check.cause)",
+   "status": "generated",
+   "id": "083288d3513e0cfee92bc7ac24e277cf54c89e0db679a68c87a0ffc3869acec3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 22,
+   "endLine": 119,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "9a8c30af590928bf1e69b4bbb756353f871a678a0bc9accddcabe7f932b2ce7b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows a mutation skip only for a change with no production lines"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 22,
+   "endLine": 119,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "check.name !== \"static.mutation\"",
+   "status": "generated",
+   "id": "fd9ee7dd2f52b61c5e33a4f45e08568f9f66f9be505aff8fcc13b7ddc4d08257",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 119,
+   "column": 37,
+   "endLine": 119,
+   "endColumn": 54,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "02888b61004e5a39cec3d967214cb223b4ce2ce556188dbac6d5354936e511b2"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 120,
+   "column": 8,
+   "endLine": 120,
+   "endColumn": 29,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "bd260d2de0ccc1b2bc26745e9c0e7d4f5aac6e05acbbe5f7246668d571e06fc5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "puts configuration's skips first, then triage's, then mutation's, then the tier's"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 121,
+   "column": 15,
+   "endLine": 126,
+   "endColumn": 4,
+   "mutatorName": "MethodExpression",
+   "replacement": "this.checks",
+   "status": "generated",
+   "id": "0ca70cfecd39e4a511614203e3e6188f8fa616afe5440d4cc68cceff9c793bdc",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 121,
+   "column": 44,
+   "endLine": 126,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a2341764fd5adb6d8da3afe58cf5ec207cde1cdb725d49c80f69bc01e7c2d021",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 7,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "df14cd21269f999919082ba4acbbec69ce86fbf35a653064eea2ae78edfd743b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 7,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7cdf107a0c101280a22a9ca73df752507009013c5c92eeee7518bf260e862dce",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 7,
+   "endLine": 122,
+   "endColumn": 36,
+   "mutatorName": "MethodExpression",
+   "replacement": "name.endsWith(\"decisions.\")",
+   "status": "generated",
+   "id": "7c356a1a7396e340812e93dad3795983745776e26f786ad602bf608c38660e09",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 23,
+   "endLine": 122,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f6fc657f86b4f0f7354c1a30bbfc2f2d2a74f3b19ed48765d1b8e076e4616769"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 45,
+   "endLine": 122,
+   "endColumn": 90,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "e82539b5c0ed28f3fa036abc8fc737f939bd9754a9a8a5c34bbf4804aeca5a56",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no question's skip when a provider is configured"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 45,
+   "endLine": 122,
+   "endColumn": 90,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "2954eeb6bc677bf2498bba7a6f0614051c3caf73404e788601e964e8b757a290",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 122,
+   "column": 45,
+   "endLine": 122,
+   "endColumn": 90,
+   "mutatorName": "EqualityOperator",
+   "replacement": "this.#config.decisions.provider !== undefined",
+   "status": "generated",
+   "id": "adf2fb216fe5bf5dfe339942fae287f78ef473147507a47abd625cbc238759d2",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 7,
+   "endLine": 123,
+   "endColumn": 32,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "name.startsWith(\"lens.\")",
+   "status": "generated",
+   "id": "5a4d07542728120e8891ce444b5239c94d1abaf61cb34ca87a7e8d96ace7bc45",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 7,
+   "endLine": 123,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "123f189492b36c070ee3acac8eef8bbc631069e7487f300e87e115dcc7ae2fc3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 7,
+   "endLine": 123,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "ca31cda2694f944ebe99e61ff5de3bae1ea176c417b4091120c4ffe07984b4ef",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no skip of a host check whose name ends in a loaded lens's name"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 8,
+   "endLine": 123,
+   "endColumn": 32,
+   "mutatorName": "MethodExpression",
+   "replacement": "name.endsWith(\"lens.\")",
+   "status": "generated",
+   "id": "9565178befcf302ec2b1d61e841eb11285d2e3822a7ad2c8dc1a683073a3941b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 24,
+   "endLine": 123,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "d09295776bd541ff3b91917c97aaf7d2f03667c7d448822e2a877b7e4f613439"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 123,
+   "column": 41,
+   "endLine": 123,
+   "endColumn": 46,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "status": "generated",
+   "id": "3c11c7c623b27bafa127cec300fb173bb0a3455bf53cc63a3c4b6e5e4c8f0be9",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 124,
+   "column": 16,
+   "endLine": 124,
+   "endColumn": 42,
+   "mutatorName": "MethodExpression",
+   "replacement": "name",
+   "status": "generated",
+   "id": "6d3df16602930505e6fac89f32a5fad2c71cbce630e8f091c7fd95efd416b470",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 124,
+   "column": 27,
+   "endLine": 124,
+   "endColumn": 34,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "3ad71856e3d687d57a1611e720296493791c45ff26e2c1cf15766b6df306cb1f"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 10,
+   "endLine": 125,
+   "endColumn": 93,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "474c5615947d64274b6c36c75e24f141efd7b821641efcff417e25fd39443216",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 10,
+   "endLine": 125,
+   "endColumn": 93,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "898d9970d94eec23e8276e60a147b6179eeb370cc08119b23b27614acb983b63",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 10,
+   "endLine": 125,
+   "endColumn": 93,
+   "mutatorName": "LogicalOperator",
+   "replacement": "this.#lenses.loaded.includes(lens) && !this.#disabled(lens) || !this.#covered(lens)",
+   "status": "generated",
+   "id": "713425649d08f072858741dcde5c05e2c200e4959ea86abac2db8f46bdeac987",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 10,
+   "endLine": 125,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "78b42afb91fcd821d837adf4027ad14fd0942396ad40496d4555eef369522e00",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows no skip of a tier lens no file defines, or one configuration disables"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 10,
+   "endLine": 125,
+   "endColumn": 69,
+   "mutatorName": "LogicalOperator",
+   "replacement": "this.#lenses.loaded.includes(lens) || !this.#disabled(lens)",
+   "status": "generated",
+   "id": "d1b2f443d3865273464fcb2f04769872b5e91d3ccec183d42f1b9d59ebe1729d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 48,
+   "endLine": 125,
+   "endColumn": 69,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "this.#disabled(lens)",
+   "status": "generated",
+   "id": "c0ae8f209c6756eb404e9f6c6a5528e2f5c4417aaa8828c41f00674f3b0358a0",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 125,
+   "column": 73,
+   "endLine": 125,
+   "endColumn": 93,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "this.#covered(lens)",
+   "status": "generated",
+   "id": "1d9f7766b1f69c86d01eb215fb52a79e9e679500cc1e377364515605a586c883",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 127,
+   "column": 9,
+   "endLine": 127,
+   "endColumn": 77,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "7887d88dd0ddae0bad683bb3cd2dfc6a765f7f44e716cf8beb5f70153994be0e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "allowSkip",
+      "allows the tier's question with no provider and its lens that covers nothing, and no other"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 134,
+   "column": 83,
+   "endLine": 141,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "fede334849a7f3ee3dcd263a80f2a1ac11b9bdd55d4b9a71273983b08fa92e64",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses the verifier named twice"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 135,
+   "column": 16,
+   "endLine": 135,
+   "endColumn": 66,
+   "mutatorName": "MethodExpression",
+   "replacement": "account.checks",
+   "status": "generated",
+   "id": "df9565191027ff275ae52108bbfb989c9a10d57b8d38f90884c19008818935f7",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing when the account names the verifier once and the round holds its record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 135,
+   "column": 38,
+   "endLine": 135,
+   "endColumn": 65,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "6265018ed721ce0eaf17dee5c324eb95073b7432bea8b2359053c4626f170082",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 135,
+   "column": 48,
+   "endLine": 135,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "ced8792a7225cf66069f961ee7434ff285aa7e2ff5c97c6d0b4b2e341d7cdb80",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing when the account names the verifier once and the round holds its record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 135,
+   "column": 48,
+   "endLine": 135,
+   "endColumn": 65,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "2ef59963e3524c7a7ed35094fae4be68bef757fc2460974df052bc2ce87ce85a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 135,
+   "column": 48,
+   "endLine": 135,
+   "endColumn": 65,
+   "mutatorName": "EqualityOperator",
+   "replacement": "name === verifier",
+   "status": "generated",
+   "id": "cdfaa998163d5aa324c904243a00f72ec6f5a60c1e404f8fb92fd59ae172d211",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 78,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "d4ef348abd88825ed4309f20c792c1c07843b78de5b566f098c1e9c920416fd5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 78,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "232391ad28922615eacc2ca038a28c5ccdf0879be0ab5ff32bf7e20d605c889e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses the verifier named twice"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 78,
+   "mutatorName": "LogicalOperator",
+   "replacement": "account.checks.length - named.length > 1 && !sameSet(named, this.checks)",
+   "status": "generated",
+   "id": "bddc25def9789180481e7ca6ad62d9053d0f72617bb3e327d8f2727ac0542670",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses the verifier named twice"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7b8afa932fddccb5670eaa9fec713f4210e92b2545745590eecc7f923528be8c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses the verifier named twice"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "account.checks.length - named.length >= 1",
+   "status": "generated",
+   "id": "52649925c9a8ac462d84e3e4a2a6b8863a247fb0f2eeb327400a7a7829802774",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing when the account names the verifier once and the round holds its record"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "account.checks.length - named.length <= 1",
+   "status": "generated",
+   "id": "dfe69087e579ab9c7d2f419a2d837da09ad98148e7fd2668c0ca590d37e4526e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 6,
+   "endLine": 136,
+   "endColumn": 42,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "account.checks.length + named.length",
+   "status": "generated",
+   "id": "feac76e917044f2c3d621cadcb875c2c5bdae0d42c6cfc8991b07eed18e7393a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 50,
+   "endLine": 136,
+   "endColumn": 78,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "sameSet(named, this.checks)",
+   "status": "generated",
+   "id": "4c11bd5f2ab784ba44dd1d6471c151bef12a5cb1f67b677e117282f487b5029c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 136,
+   "column": 87,
+   "endLine": 136,
+   "endColumn": 100,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "0f291f99f7a330164a04685893e92b9c15451db01c8030cc67632df64bb09e64"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 137,
+   "column": 45,
+   "endLine": 137,
+   "endColumn": 66,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "0e87c9293fe3ea00d3e97b8872edc0c07311ad25a08823125882b61a2974e67b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 6,
+   "endLine": 138,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c874a16ddf4ab67172f79ecda17bc45cf4fe6bd1cbd295aa0a31c75fc4d65985",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 6,
+   "endLine": 138,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "e0a83d2e8a36391a4bbb3742e512ff5d8eaf2aedb1850588ee344abc2c751fcd",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account missing a record for a check of the tier"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 6,
+   "endLine": 138,
+   "endColumn": 56,
+   "mutatorName": "MethodExpression",
+   "replacement": "account.checks.every(name => !recorded.has(name))",
+   "status": "generated",
+   "id": "4fe827f49d7a203e934fa98bcdf57b6cd16114cbadaa491fc103a8eda9bb55e3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account missing a record for a check of the tier"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 26,
+   "endLine": 138,
+   "endColumn": 55,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "8b895bf85a1433cd8938f709a3619dbdb2c545abdf55acc0fbd68812050f4e17",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account missing a record for a check of the tier"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 36,
+   "endLine": 138,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "recorded.has(name)",
+   "status": "generated",
+   "id": "f1a58a625fbdd315c837cca13fa45669e165d105d46e42b65d9b945658e79b5a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 138,
+   "column": 65,
+   "endLine": 138,
+   "endColumn": 80,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "fdde73c67cd4a0f7482a1800ec1a606221613b38d223d96657ff30a6a88728c6"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 6,
+   "endLine": 139,
+   "endColumn": 84,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "sameSet([...new Set(account.allowSkip)], [...new Set(this.allowSkip(facts))])",
+   "status": "generated",
+   "id": "a73ff539d4eab589a4ccd5490b9c27a5a85f08757eb4ae1ee7d05fe9b4d76bb4",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 6,
+   "endLine": 139,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "68869230aef8174877604ca5ff963ad9cdfc86c49b09cad6bf4a20df098b2583",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 6,
+   "endLine": 139,
+   "endColumn": 84,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "224d826c114f3391280a9761f2359b5917e7e00490f121f6e4a12c81c8fdc83d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account that allows a skip none of the reasons gives"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 15,
+   "endLine": 139,
+   "endColumn": 46,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "552beb859191f5bd25c96332511873d47561504f463437b487877e15210a12ef",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 48,
+   "endLine": 139,
+   "endColumn": 83,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "c893be6fa2b97a023453659acc2e931beb4333c94a0e96b1f64a0a953f826ccb",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 139,
+   "column": 93,
+   "endLine": 139,
+   "endColumn": 105,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "521d3df376f3ee0f1044351a1c266d8125f623d6ea7094a3637065b9ed2674dc"
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 143,
+   "column": 34,
+   "endLine": 146,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "32e7c71ed1074317a4f24920adfa68e3de077b99de97beb3dc33efecb91c99d9",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 145,
+   "column": 9,
+   "endLine": 145,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "3a324fdd3182b89e96e12e386e1c799844736fe18179733891ac3747b5566274",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 145,
+   "column": 9,
+   "endLine": 145,
+   "endColumn": 36,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "39f8050664f8f54e139fe456b8795634912a391b468448fe54080cdab4b99299",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 145,
+   "column": 9,
+   "endLine": 145,
+   "endColumn": 36,
+   "mutatorName": "EqualityOperator",
+   "replacement": "settings?.enabled !== false",
+   "status": "generated",
+   "id": "b460d4505e9f62cd9f38a99c4badbc448f9a5c7b224420e3686ffabcd4ddef0a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 145,
+   "column": 9,
+   "endLine": 145,
+   "endColumn": 26,
+   "mutatorName": "OptionalChaining",
+   "replacement": "settings.enabled",
+   "status": "generated",
+   "id": "adff514b8f8c319a045f106449832071cf607970e6e15f0c3b530b65b956b4ae",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 145,
+   "column": 31,
+   "endLine": 145,
+   "endColumn": 36,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "status": "generated",
+   "id": "5d97f79f8df5e2f5797bb9bc8abbc6a72c36e70bb2e5af0f0f3afbb894551d58",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records a lens configuration disables as skipped for that"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 148,
+   "column": 33,
+   "endLine": 150,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "774ea0f49e1cccc49ae1de4e6bb407e46130733227f564eee96bdfe705b4c9f9",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 9,
+   "endLine": 149,
+   "endColumn": 93,
+   "mutatorName": "MethodExpression",
+   "replacement": "this.#lenses.selected.every(({\n  name,\n  covers\n}) => name === lens && covers.length > 0)",
+   "status": "generated",
+   "id": "ac0c88e0abe9cce4b9bff973c2fc301acbecd37593c20cee1a8029b2d9f0ac9e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 36,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "0f444a9d135cccaf4821d549bcd7eb80ae65e537b60a739714b4d3c08d6b2622",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 58,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "7621e2d08ff1d1fc36333357e4d90343b1b2c5b443590544df469eeb6f58b0d5",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 58,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "448889adbf2c3693c8693a2aa7336a52c497a42eeb0c875cc8abf83d1a5b185a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 58,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "LogicalOperator",
+   "replacement": "name === lens || covers.length > 0",
+   "status": "generated",
+   "id": "7576248fd1e6495e8c4be61ba2a540c836cf21479041dbf897f180cbdd200df7",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 58,
+   "endLine": 149,
+   "endColumn": 71,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "40f1daec3c7a155a364b707955b255e172bb1666fe811a94d7f229267704628b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 58,
+   "endLine": 149,
+   "endColumn": 71,
+   "mutatorName": "EqualityOperator",
+   "replacement": "name !== lens",
+   "status": "generated",
+   "id": "ea0b11be9ef6ae7f7d39b8669abaebc1d5e2f52d0bc00384751f3adf28df5831",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "records each unrecorded lens and question of the tier, and nothing for a recorded one"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 75,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "0b2a26b7d903d28b48763108901ce26bb4b53ba236cbde60e02544b865792b2e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills a selected lens that covers no path as no paths"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 75,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "EqualityOperator",
+   "replacement": "covers.length >= 0",
+   "status": "generated",
+   "id": "fd8fff3bf0e04d451975933c4a05ba71cbfdc5cbdc2481a17ea84c704b7c6d45",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills a selected lens that covers no path as no paths"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 149,
+   "column": 75,
+   "endLine": 149,
+   "endColumn": 92,
+   "mutatorName": "EqualityOperator",
+   "replacement": "covers.length <= 0",
+   "status": "generated",
+   "id": "35e3dd20195bc0bcef82eab0fc40854b037a3036d470de712ee21e49926d3ae3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "filled",
+      "fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 154,
+   "column": 81,
+   "endLine": 159,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "99f557d65a5c7c814ce4a634c5b92804f646278b93c31451709a20eb54b193be",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 113,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "5181b2cabb13e48608000cbf4f52a43449e207ff97c7e226cd9ac2c4d1071482",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check fewer than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 113,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "c97f2ed105d2b1c63d3ed8012393729907f3553fc8b2e6644875dcab8513771f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 113,
+   "mutatorName": "LogicalOperator",
+   "replacement": "values.length === set.size && new Set(values).size === values.length || values.every(value => set.has(value))",
+   "status": "generated",
+   "id": "d641bc53cfa141198214eb3c568b0b8419cb866c985aa2491ba7f54c52744554",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check fewer than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c7f40d2ecee417355b89688bcfe43c7fee14f4c5fd00cb656017f487c3aabb16",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check fewer than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 70,
+   "mutatorName": "LogicalOperator",
+   "replacement": "values.length === set.size || new Set(values).size === values.length",
+   "status": "generated",
+   "id": "c38a6e6f04337a3c830797bb5259dfd14028110a1b0ee888e0991e99c56ddb09",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check fewer than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "9d13be9e7279e7baf682e10922d6f38b8a0b1aecdeffda81998ea67cc9526885",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check fewer than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 2,
+   "endLine": 157,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "values.length !== set.size",
+   "status": "generated",
+   "id": "1cb24464bb56e6b430d17bf47716e3aad7c9da170360979f0e06069b9959655a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 32,
+   "endLine": 157,
+   "endColumn": 70,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "e414eaa1e5c6bf41ce72287db8c287fc480ff65518a930a43e1b44e380023f5b",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with one check twice in another's place than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 32,
+   "endLine": 157,
+   "endColumn": 70,
+   "mutatorName": "EqualityOperator",
+   "replacement": "new Set(values).size !== values.length",
+   "status": "generated",
+   "id": "dd204f032ecdbb02782e7508b0d527020e0550fb6c75052bd7cb0b222fe03450",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 74,
+   "endLine": 157,
+   "endColumn": 113,
+   "mutatorName": "MethodExpression",
+   "replacement": "values.some(value => set.has(value))",
+   "status": "generated",
+   "id": "1eeb8cd9f96ebd5b1fa46da64e8b9c83ed1990ba2e7ca43fd9c185e7aa96311c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses an account with another check in one's place than the tier names"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/core/src/tier-account.ts",
+   "line": 157,
+   "column": 87,
+   "endLine": 157,
+   "endColumn": 112,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "2657e25dc5529cbc88e7a378c7d959d9fcdc3c81508ef60c9490f594e770bd0d",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/core/test/tier-account.test.ts",
+     "path": [
+      "TierAccount",
+      "refusal",
+      "refuses nothing in the account the tier and the round's records give"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2151,
+   "column": 9,
+   "endLine": 2151,
+   "endColumn": 29,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.checks && []",
+   "status": "generated",
+   "id": "06b82f83100aaee24cbc0560e119d53b0dcde6aeed2dd0e265ce8098847501ce",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2151,
+   "column": 27,
+   "endLine": 2151,
+   "endColumn": 29,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "5003c98fb6c714b676490d210b8f3cef005a6c459622d13869ccfca17b33d683",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "planned() sets options.checks to an array on both of its returns, so the ?? fallback never runs"
+   },
+   "survivorClasses": [
+    "seeded-default"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2190,
+   "column": 14,
+   "endLine": 2190,
+   "endColumn": 54,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "df8b875f21d878dd78bd338ec4f0a0ace590da44ed54a47cdd03c1ba2be4093a",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2191,
+   "column": 13,
+   "endLine": 2191,
+   "endColumn": 62,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "6a5c3c0748b98d6ab96cd2a093d3b38c61fa3258d592ef465304bc5fdc5f0085",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2193,
+   "column": 81,
+   "endLine": 2193,
+   "endColumn": 105,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "9d28b92bb3ecb506afbaaeb12d8be4613f9cc930be538fe9744e13321d4c0c2c",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2470,
+   "column": 50,
+   "endLine": 2473,
+   "endColumn": 2,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "e0977677c94f3ba173dba41b5b85719685ab0796c68f9d0d6ea2d7d55f58bfe3",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2471,
+   "column": 29,
+   "endLine": 2471,
+   "endColumn": 48,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "7d050ff615310ea29d00a62496c877869cb2c473da464f52f066f440e4c6dd06",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "a lens of the tier that covers no changed path",
+      "records it skipped for no paths and allows the skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2472,
+   "column": 25,
+   "endLine": 2472,
+   "endColumn": 100,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "fa6cf9818a03e9c8db66efecb1a8e0de7ea0017bd8d90e2b9d8716c48f17bdf6",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2472,
+   "column": 48,
+   "endLine": 2472,
+   "endColumn": 99,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "b0a5752eb55092a0999f1b1adf4daa7f1264514cd92c9f80a1f4b5c30c952f13",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3397,
+   "column": 2,
+   "endLine": 3397,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "e84842c81ef5645d34eb1d387f75c140587c1a10483dc2faeb120b3b197ef210",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "triage",
+      "passes a lens it skips under a floor of skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3397,
+   "column": 2,
+   "endLine": 3397,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "a485d0321ddee56afae71e6d6958838bfc4c40710dfe0b20be1ad5e497252104",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3397,
+   "column": 2,
+   "endLine": 3397,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triaged.decision !== undefined",
+   "status": "generated",
+   "id": "c15905d27116e2ffa35cb86c56a88ab9a90c2e43f3e66271d0286dd0fb8b3575",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3397,
+   "column": 47,
+   "endLine": 3397,
+   "endColumn": 111,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "fa99b48a7e34f8723bdae897ddb36a4bebf9f43000eadc0bf16bd0605595da8f",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "triage",
+      "passes a lens it skips under a floor of skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3398,
+   "column": 2,
+   "endLine": 3398,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c142e71d2987df7c9890a8152b179eb1c8b91f6d6e8e7480ed8ff68fec69c4bf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "path": [
+      "the LLM fallback",
+      "answers triage on a text model through one tool, uncalibrated, and the lens runs at its answer"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3398,
+   "column": 2,
+   "endLine": 3398,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "3318086f51c7bb7800b15f55e378ebab608ec26dc3ae6474a354b6787d06f111",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3398,
+   "column": 2,
+   "endLine": 3398,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triaged.decision !== undefined",
+   "status": "generated",
+   "id": "6b121fed6b7319f2e93210dcef7e8f85d33561f95dafa353e98fbc50bb498a79",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "allows no skip when every check of the tier ran"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3400,
+   "column": 5,
+   "endLine": 3400,
+   "endColumn": 56,
+   "mutatorName": "MethodExpression",
+   "replacement": "triaged.decision.decider.endsWith(\"llm-fallback\")",
+   "status": "generated",
+   "id": "63522423c1b3540d6c110cfedcb8fa48b1cd8eaddfd277e7d12ccd251d7ff641",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "path": [
+      "the LLM fallback",
+      "answers triage on a text model through one tool, uncalibrated, and the lens runs at its answer"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3400,
+   "column": 41,
+   "endLine": 3400,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "6f3162bcf18c65223a61c60ada219639130cb21363242110e28cdcb80460cb3b"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3401,
+   "column": 6,
+   "endLine": 3401,
+   "endColumn": 24,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "35ca4e1a37889fe65e18f08c63f9d85d8a4352ad94f0cd83de6866af479c5a18"
+  }
+ ],
+ "total": 192,
+ "omitted": 0,
+ "unmutated": []
+}
