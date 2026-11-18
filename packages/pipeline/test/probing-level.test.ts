@@ -782,8 +782,22 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 		const { verdict } = await run;
 		expect(record(verdict)).toMatchObject({ status: "ended" });
-		expect(record(verdict).reason).toContain("its prober left attack 1 with no finding on a probe that failed");
+		expect(record(verdict).reason).toMatch(/^its prober left attack 1 with no finding on a probe that failed/);
 		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("refuses a skip that names a probe before any probe ran", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("skip_attack", { attack: 1, probe: "p1", reason: "it was wrong" }),
+				call("skip_attack", { attack: 1, reason: "no probe can reach it" }),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		expect(lastResults(requests[prober]![1]!)).toContain("no probe p1 ran in this conversation");
+		expect(record(verdict)).toMatchObject({ status: "ran" });
 	});
 
 	it("refuses a skip that names a probe that passed, one of another attack, or one with no reason", async () => {

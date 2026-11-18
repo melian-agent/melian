@@ -743,10 +743,12 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 							(attack) => !probes.some((probe) => probe.attack === attack && probeConclusive(probe.result)),
 						),
 					unanswered: open,
-					closed: Object.entries(state.closed ?? {}).flatMap(([id, reason]) => {
-						const closed = state.probes?.[id];
-						return closed === undefined ? [] : [{ attack: closed.attack, probe: id, reason }];
-					}),
+					// skip_attack closes only a probe it read from this document, so every closed ID names a stored probe.
+					closed: Object.entries(state.closed ?? {}).map(([id, reason]) => ({
+						attack: state.probes![id]!.attack,
+						probe: id,
+						reason,
+					})),
 				};
 			};
 			// One run: its conversation, and for a level that probes, its planner's then its prober's.
