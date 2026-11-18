@@ -1,0 +1,2017 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "be01a4e1c918a462091132f8d35648c4e070336e",
+  "head": "8c0b318b68f1359db7c7d7736432ea8a1cd16446"
+ },
+ "claimsIn": [
+  "packages/pipeline/src/review.ts",
+  "packages/pipeline/src/change-lenses.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 37,
+   "column": 3,
+   "endLine": 41,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "e681f6e66d98705d6c55df483deec1a4cc47bbc848fae09d1ab284d1412fea78",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 57,
+   "column": 27,
+   "endLine": 87,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a9b2d30cb23d8ab44cb1f2d0ea1533ed1ca321cd6b07f59c055c13da41817252",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 60,
+   "column": 3,
+   "endLine": 61,
+   "endColumn": 47,
+   "mutatorName": "MethodExpression",
+   "replacement": "checksOfTier(config, options.tier)",
+   "status": "generated",
+   "id": "be63cc7bc920e23e0d620127ff3d44e33df0aad9b26e3903a6a5ff8f1df3311e",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "selects no lens whose name is the tail of a check that is not a lens"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 61,
+   "column": 12,
+   "endLine": 61,
+   "endColumn": 46,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "b34a6e9573d87c1865a2bab0510d59d15286b59ddeeffc8f945a56de4ed4edf5",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 61,
+   "column": 22,
+   "endLine": 61,
+   "endColumn": 46,
+   "mutatorName": "MethodExpression",
+   "replacement": "name.endsWith(\"lens.\")",
+   "status": "generated",
+   "id": "1d720d58314fd90e63ea5509507c902b4ac5615e014fc8033c94e04ba02dd421",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 61,
+   "column": 38,
+   "endLine": 61,
+   "endColumn": 45,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f9cbd2e3a98ead2ae92e49e535c20f8394f710dd7e644456d70b0b9e2730fa68"
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 62,
+   "column": 9,
+   "endLine": 62,
+   "endColumn": 45,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "74f7edece68824adfadfddef4616174100d9519cf5387cd83929a05978e4d1bf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 62,
+   "column": 19,
+   "endLine": 62,
+   "endColumn": 45,
+   "mutatorName": "MethodExpression",
+   "replacement": "name",
+   "status": "generated",
+   "id": "588517db93a64ce32dd5c8471e6d639141ace7224cd1560fa583daa9ba94adb8",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 62,
+   "column": 30,
+   "endLine": 62,
+   "endColumn": 37,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "4824a812845ddb81648edbf44f78f9ad41414b9e620b831b8f62abd702b87863"
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 65,
+   "column": 3,
+   "endLine": 65,
+   "endColumn": 48,
+   "mutatorName": "MethodExpression",
+   "replacement": "lenses",
+   "status": "generated",
+   "id": "b942f669101361d1bafedc8c71e0937e4137bdd1c5617642faad53308cc8a2d8",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 65,
+   "column": 17,
+   "endLine": 65,
+   "endColumn": 47,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "2d69c222d98d623a73c4d5db5e47be3954939f20493a6d5e03c5bb8c70376c04",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 70,
+   "column": 47,
+   "endLine": 76,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "49ed59f898c4cb15dde61e208f4f5ee8f73869051ed223ce55f14cda00ec5952",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 72,
+   "column": 17,
+   "endLine": 73,
+   "endColumn": 111,
+   "mutatorName": "MethodExpression",
+   "replacement": "changeset.revision.files",
+   "status": "generated",
+   "id": "7da83867fde67f7b0804ca35443f0e2e1db15903bf5c99dd06aabc29fc87428d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 12,
+   "endLine": 73,
+   "endColumn": 110,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "449fd7decee20085dd070aefc21e2de29cccdce18d6f49cabde8242314586777",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 110,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "ab1004986f57cfab36e8d1597065e07520e79684f493ce05d69c40e108d89323",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 110,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "fa6fe8facb3aa98c320afa968e70eec6602b047db6423484ccd1714acaa69825",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 110,
+   "mutatorName": "LogicalOperator",
+   "replacement": "file.oldPath !== undefined && files.includes(file.oldPath) || !files.includes(file.path)",
+   "status": "generated",
+   "id": "43885152b9f68b86d90af27f2cc1930fd08f70fe9f4c3bdc15b473327c38672b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "dbbd768c18365d8c1bd377a603c0902793d9842401bbfbd6274a322e950f2e89",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "covers only the changed files a lens's paths hold"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 80,
+   "mutatorName": "LogicalOperator",
+   "replacement": "file.oldPath !== undefined || files.includes(file.oldPath)",
+   "status": "generated",
+   "id": "a663e10734b2e8b502bdfc51d190fb44e6884243094f0788b47c70b3d36765b7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 48,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "7c83bd205147e168711a1fd9413a7da89f445b369cfb5ced44af2276db331be7",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "a file with no old path is never in files, so dropping the oldPath check moves nothing"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 22,
+   "endLine": 73,
+   "endColumn": 48,
+   "mutatorName": "EqualityOperator",
+   "replacement": "file.oldPath === undefined",
+   "status": "generated",
+   "id": "a11b6ca076f76ea2528fda44ca60229980332028a94b98ebfc37406a28ee47fd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "holds a lens selected through a renamed file's old path to its head path's band too"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 73,
+   "column": 84,
+   "endLine": 73,
+   "endColumn": 110,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "files.includes(file.path)",
+   "status": "generated",
+   "id": "34fdf6160ffe91ca1f1812e9a811e19ef459e499953f5c11b011adb4be15261e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 74,
+   "column": 9,
+   "endLine": 74,
+   "endColumn": 28,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "4b895811fd1e8f3a7aff65269ef25cae9715363b58feafc25568e152ba5a30d1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "selects a lens whose paths hold only a renamed file's old path"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 75,
+   "column": 10,
+   "endLine": 75,
+   "endColumn": 63,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "78d7654e1c45ba4774b1460a64f84842544859eff8c449fc0e659783578ce503",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 75,
+   "column": 41,
+   "endLine": 75,
+   "endColumn": 61,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "e10041a9e14c073cce41d4cd25dae733e0f7613388d0b794e8a5822269d3c007",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 77,
+   "column": 17,
+   "endLine": 77,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "942c3f463f48f4079bdae545589d77b0822b4380ff45d9066023bedae23d428c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 77,
+   "column": 17,
+   "endLine": 77,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b90a7d8deb6542c78ef54ab1c75a30eccca18daa1476ffddc49e02ef61927030",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 77,
+   "column": 17,
+   "endLine": 77,
+   "endColumn": 37,
+   "mutatorName": "EqualityOperator",
+   "replacement": "policy !== undefined",
+   "status": "generated",
+   "id": "9362c25948f21b3d307748624b82213761b9e139095eb6bbb7e580dacce61a71",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 79,
+   "column": 43,
+   "endLine": 85,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "80f59626318b740fd2f6833d1d4ba80765fd594479434c8ffd8db406bb0351c1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 80,
+   "column": 19,
+   "endLine": 80,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "de9b40bd3dacaf24932a68808c6cee838fcf63760b2a180f5ec4d979a2c293f1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 80,
+   "column": 19,
+   "endLine": 80,
+   "endColumn": 39,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "bb5930bff44d912187f10c737b7740e43725a8a98e79e2fdad6e1ea4f78afa68",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 80,
+   "column": 19,
+   "endLine": 80,
+   "endColumn": 39,
+   "mutatorName": "EqualityOperator",
+   "replacement": "lookup !== undefined",
+   "status": "generated",
+   "id": "7659bfea444ae5b630b4ffa4f4f8228907a0d11e9615b54e01da68cf0d496454",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 80,
+   "column": 42,
+   "endLine": 80,
+   "endColumn": 50,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "aaf1f1fa5339b9ee4cf6c3121a44dc0e8565e9adbd3d520b5f032bce7a594506",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 80,
+   "column": 82,
+   "endLine": 80,
+   "endColumn": 104,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "1da49e80f73337d0208c72a1ecd2e136bf2a948fa712d1ef40bfa84ac83fc4dd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 81,
+   "column": 32,
+   "endLine": 82,
+   "endColumn": 78,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "fd5a22094122a4a7b1095128da299d1b49646db1a570621ef292cc2000997529",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "reads each band from the configuration it is handed when no policy names the files"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 84,
+   "column": 49,
+   "endLine": 84,
+   "endColumn": 91,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "559a8b674f43f6e1eebbbbd799ef805fa8f4721dc22a8a59f4075a9514e16da2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 84,
+   "column": 72,
+   "endLine": 84,
+   "endColumn": 83,
+   "mutatorName": "OptionalChaining",
+   "replacement": "each.level",
+   "status": "generated",
+   "id": "c262af832f73f0378f8481f3d272de90c2b4a7c955e30890e49b4d647243d695",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 90,
+   "column": 29,
+   "endLine": 94,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "2ff8af789c4de5cce68bd5f11fd1306ae2090e619331c8d76478be14e36da350",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 92,
+   "column": 6,
+   "endLine": 92,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "8f230ad4cbf6fbcfaf36f5917d58377844c867b2fe7e076347fb0ae9fbc2bf48",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 92,
+   "column": 6,
+   "endLine": 92,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "07b1e01afef4f3b5e8b9a27e50c020ec6e70ad72d5c7947cbde41e9624c9b66a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "refuses the band of a lens it did not select"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 92,
+   "column": 6,
+   "endLine": 92,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "band !== undefined",
+   "status": "generated",
+   "id": "f8cb7c6a83485016eea89a3ea1855d15549dc366c85973e0f91c146ec59bda78",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 92,
+   "column": 26,
+   "endLine": 92,
+   "endColumn": 99,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "61d659308a7b2a7d5e1bc1364adf74faa7bcd622551bdb0e394d49040f7b80b7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "refuses the band of a lens it did not select"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 92,
+   "column": 47,
+   "endLine": 92,
+   "endColumn": 97,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "00070e8d36c0d7ed55c808b959180c80a6a61b63adf7f3c032ffabf0be6ef736"
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 97,
+   "column": 26,
+   "endLine": 102,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "e0b18096f9a4c258b8e53513367143218a085102852f49ffe79ea63ef1c08c5d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 98,
+   "column": 9,
+   "endLine": 101,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "645e41483625dfe24863f11fa4dea7e7091300c1d699971018e052ffa1fe0c71",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 99,
+   "column": 27,
+   "endLine": 99,
+   "endColumn": 46,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "f8a41d56e6f726a3b7fe6af960a6c3ed540eeb21ef65fe7f3b48aa53a22fbc22",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 100,
+   "column": 31,
+   "endLine": 100,
+   "endColumn": 105,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "cfd2288f04e0e1c4d3e3b73f85dbf45ef6bd15288e09ed783ff5ea8ea4c75b5e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/change-lenses.ts",
+   "line": 100,
+   "column": 54,
+   "endLine": 100,
+   "endColumn": 104,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "4b9b229f6007405722e384a3fe5635f35f47a76fa812ec675f2e1fd5ae3494a6",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/change-lenses.test.ts",
+     "path": [
+      "ChangeLenses",
+      "gives TierAccount every loaded lens and each selected one's covered paths and band"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "23bec2e4d5bf00e98edd2dd131e1177601a7976767690236f790fa756e4f2e6e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "9266149290f62bb62689bdad99f115f998f17e21e7542b3c1c8f1314ee568b3e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.origin?.kind === \"pull-request\" && options.policy?.kind === \"revision\"",
+   "status": "generated",
+   "id": "5aeaa1ef8b7135a0f514843a237ed84b619d73dc6ee65e1e771a1c2df4801bbe",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b01d6a8d640b1854c091922961e37ce54526453d18bc5bde3f567bc99da13639",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 58,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.origin?.kind !== \"pull-request\"",
+   "status": "generated",
+   "id": "67dd92c7420ced7ea054c6db468ceacad3d85c5efdc9bc8e6492b4a9dda277d7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 19,
+   "endLine": 2430,
+   "endColumn": 39,
+   "mutatorName": "OptionalChaining",
+   "replacement": "options.origin.kind",
+   "status": "generated",
+   "id": "e86593905dbea8514c5e658cc5702c7686534e71d6236fd27f0eecb59c676a0c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 44,
+   "endLine": 2430,
+   "endColumn": 58,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "603884980d814cf733d2630644fbf8254331a8586c904a6986561461b5682552"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 62,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "c7d6c5f177ffd08a18f62eca1655123005830badb67c58bbb990a567a767072e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "path": [
+      "triage",
+      "keeps a range's lenses at careful or above when its policy comes from the base, and quick from the worktree"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 62,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.policy?.kind !== \"revision\"",
+   "status": "generated",
+   "id": "e9697833a99dba691570c98342c8bcd35097676c23a4e54a9cdc3d3929dc300f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for a trusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 62,
+   "endLine": 2430,
+   "endColumn": 82,
+   "mutatorName": "OptionalChaining",
+   "replacement": "options.policy.kind",
+   "status": "generated",
+   "id": "89f19294f701049efdf84bab2665a0d0675f06d5af29d0d4baa2b717f226dafb",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2430,
+   "column": 87,
+   "endLine": 2430,
+   "endColumn": 97,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "e191d50d8c4611b979cd9d46fba5f1ad17f0d54c5e094535d888ebd6d7d6ab75"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2436,
+   "column": 6,
+   "endLine": 2436,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "b8bdb02bb24ad1ed6fa86d79a4d1d8c903d8fd0238c6b4908750563cb1a83aa8",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2436,
+   "column": 6,
+   "endLine": 2436,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "cf192c7ef4208ec82c2a68617335c15d21157420634b30451cef20ab6589efea",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "ChangeLenses.read treats a policy of undefined as absent, as it treats a missing one"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2436,
+   "column": 6,
+   "endLine": 2436,
+   "endColumn": 34,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.policy !== undefined",
+   "status": "generated",
+   "id": "49ec804c9593b1a77225a18b084fb132d4a1bbf53fa2b796f87c1f7f790d705c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2436,
+   "column": 42,
+   "endLine": 2436,
+   "endColumn": 68,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "3f4a69a7e25652b3d174be2caa99a541a7bfa7bda9e328de585f8a53df6d1e2b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "skips a lens by triage under a nested melian.yaml whose floor is skip"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 9,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "bd8dfa8c53c1eb5f8552eda5ed1cec71ba5522f70ffc07291c535b7e6f0bb87c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 9,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "ef3965e0c09ca16897bff1c384f5dd07094b223dd435e9f8335d157896e5462e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/tier-account-review.test.ts",
+     "path": [
+      "the account a review gives its adjudication",
+      "the default floor",
+      "never offers or allows a skip for an untrusted head and an uncalibrated decider"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 9,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "LogicalOperator",
+   "replacement": "untrusted || options.decider?.calibrated !== true",
+   "status": "generated",
+   "id": "223dc6d59106757ea3586064b9fdd4a0dacc9c722f91e1f6306b94cea32ce5b0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 22,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "43b9059235ae62025abb2683b975acfdd8547d66c013b53fadf6968696b02926",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 22,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.decider?.calibrated === true",
+   "status": "generated",
+   "id": "c8f38973540b1f472c95b5f968bd17fc3f653848a4f4d1a6b56d7d94eccc4c1a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 22,
+   "endLine": 2437,
+   "endColumn": 49,
+   "mutatorName": "OptionalChaining",
+   "replacement": "options.decider.calibrated",
+   "status": "generated",
+   "id": "f1fe4855ffdde9c1fbdb7c4cb2b02d6881961c2fc458f5e1ca3a999994860547",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "runs a selected lens when an untrusted review has no decider"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 54,
+   "endLine": 2437,
+   "endColumn": 58,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "status": "generated",
+   "id": "fa9feacc6b5cb989acff2175202fa26c516214ef7e5e4d04fdbda325e12628fd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/lens-coverage-review.test.ts",
+     "path": [
+      "the lenses a review selects, and the band of each",
+      "reads no floor from a nested melian.yaml beside the change"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 61,
+   "endLine": 2437,
+   "endColumn": 70,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "e6d4b7e7f30850532da25cde19856757ba7c5cdba899ab564e6f3f1c76e11328"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2437,
+   "column": 73,
+   "endLine": 2437,
+   "endColumn": 80,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "8c15dd5a86f0252bd04cfbe66884eea12c16eacd48b684a6df04e5703b5475f0"
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 2440,
+   "column": 36,
+   "endLine": 2440,
+   "endColumn": 90,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "dd52ad608a204efe2e95ebcd699c87e3877fa874ee034de480e41ee35c560f31",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3163,
+   "column": 3,
+   "endLine": 3163,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "e920a4fd8228016846583041deec9496f794a047f5efc6d6300f51e3a1c9c81b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3163,
+   "column": 3,
+   "endLine": 3163,
+   "endColumn": 22,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "48fb62c1ba37f9d1a3844eb137179892d80a4e943c2765dfddefca973a141ebf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/recorded-round.test.ts",
+     "path": [
+      "a round read back from its records",
+      "decides the verdict the review decided"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3163,
+   "column": 3,
+   "endLine": 3163,
+   "endColumn": 22,
+   "mutatorName": "EqualityOperator",
+   "replacement": "asked !== undefined",
+   "status": "generated",
+   "id": "b02073382e3c7f96286d25da547439ed8d7d46ff9b83e7b9caadf131684d695d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3164,
+   "column": 6,
+   "endLine": 3164,
+   "endColumn": 8,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "1cadd8786a668df58362464a170c553d15eb686d462978bb581d74350ea6bd8f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/recorded-round.test.ts",
+     "path": [
+      "a round read back from its records",
+      "decides the verdict the review decided"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3165,
+   "column": 6,
+   "endLine": 3171,
+   "endColumn": 6,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "66945c52b0d86252440b7cf2a8b43704da2be947a8bd45a40169c2f90e29c1e2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3166,
+   "column": 32,
+   "endLine": 3170,
+   "endColumn": 7,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "c07433570a3130525993af13c3e5f6e44d3d8161c5c7cca0208ed1335cc83f27",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3167,
+   "column": 11,
+   "endLine": 3167,
+   "endColumn": 41,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "53e05a5509c31950b2adaf4bde1ee7f812bb47abcda6a3e3e38f95544eb82d7b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3167,
+   "column": 11,
+   "endLine": 3167,
+   "endColumn": 41,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f36cca820f2182e17a489d5583bb36a4a715891a2809d1a1418eed7b4966dcdd",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3167,
+   "column": 11,
+   "endLine": 3167,
+   "endColumn": 41,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triaged.decision !== undefined",
+   "status": "generated",
+   "id": "af917d3972069519b523df358c4424143bd255903de23777630859604108e3df",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3167,
+   "column": 49,
+   "endLine": 3167,
+   "endColumn": 88,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "0a3fd7048b77d67446b15bd60b13ea052877df85f74b9bf6bc185d1b8200e498",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3168,
+   "column": 11,
+   "endLine": 3168,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "ecc6d4cf832b28ee5f998e57883bfd3e08fef1d7503f5fbcc685ceb8fda258bd",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3168,
+   "column": 11,
+   "endLine": 3168,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7c7442a8c7ea284c4889c49b45654256a54fe0be02dc047bb09aa276fe94c184",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "a failure of undefined is left out of the stored payload, as an absent one is"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3168,
+   "column": 11,
+   "endLine": 3168,
+   "endColumn": 40,
+   "mutatorName": "EqualityOperator",
+   "replacement": "triaged.failure !== undefined",
+   "status": "generated",
+   "id": "510c698243d9fbce1679be1efdfd7d08f3729ca6f1558d6a338773bfe8c05627",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3168,
+   "column": 48,
+   "endLine": 3168,
+   "endColumn": 76,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "e12af6e2fe0b86eddaabd516fc1857e544bd16d550a59569545c39436285b494",
+   "claim": "new-test",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "holds triage's failure, and no decision, when triage failed"
+     ]
+    }
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3174,
+   "column": 12,
+   "endLine": 3174,
+   "endColumn": 69,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "56ef90c8aabc754b551999f59d280b75564a108993977fc57aa648a08305197c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3174,
+   "column": 28,
+   "endLine": 3174,
+   "endColumn": 50,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "a89eb4f9cef529c9bfb0228c890f62ddb7fbbcfdfd99a99c479809cefe140e1e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3179,
+   "column": 15,
+   "endLine": 3179,
+   "endColumn": 81,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "2006bd637ab2f875cf555c88900b0784ecccde51fc756a157cfa05e6c7148482",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3179,
+   "column": 31,
+   "endLine": 3179,
+   "endColumn": 53,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "c7e4b674dfa7a657a388ce1c7c957e46abf39d1efe827b15d8c47b932d54c8f2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage-record-export.test.ts",
+     "path": [
+      "a round's triage record",
+      "is named by the round, with triage's choice and whether its input was cut"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3291,
+   "column": 2,
+   "endLine": 3291,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "3ee68273ea6ba106ca89311828a6122fbf7efe9bf245baa709969a6214436799",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "path": [
+      "triage",
+      "omits the whole-review quick caveat when another selected lens is skipped"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3291,
+   "column": 2,
+   "endLine": 3291,
+   "endColumn": 37,
+   "mutatorName": "EqualityOperator",
+   "replacement": "settling.length !== covering.length",
+   "status": "generated",
+   "id": "c5bf27d42828fa6c4719a17512e0b960bbefb3a763f19007e622066498e71312",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/triage.test.ts",
+     "path": [
+      "triage",
+      "runs a lens at quick when the decider chooses it, and stores the whole distribution"
+     ]
+    }
+   },
+   "survivorClasses": []
+  }
+ ],
+ "total": 93,
+ "omitted": 0,
+ "unmutated": []
+}

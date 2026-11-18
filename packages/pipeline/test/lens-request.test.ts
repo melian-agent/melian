@@ -3,7 +3,7 @@ import { type LensProbingWording, type LensToolName, lensProbingWording, type Se
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it, vi } from "vitest";
 import { piVersions } from "../src/harness.ts";
-import { continuePrompt, lensRequest, type MutantLister } from "../src/lens-request.ts";
+import { handoverWording, lensRequest, type MutantLister } from "../src/lens-request.ts";
 import {
 	injectionPolicySection,
 	lensListedTools,
@@ -132,7 +132,7 @@ describe("lensRequest", () => {
 	it("keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition", () => {
 		const { request } = build(sample);
 		expect(request.policy).toEqual({ section: "injection_policy", text: injectionPolicy(identityNonce) });
-		expect(request.continue).toBe(continuePrompt);
+		expect(request.handover).toEqual({ continue: handoverWording.continue, fresh: handoverWording.fresh });
 		expect(request.tools).toEqual(
 			[lensListedTools.read_file, lensListedTools.search, reportFinding, recordPlan].map(specOf),
 		);

@@ -407,7 +407,7 @@ const accountFields = {
 
 /**
  * An account record's payload: how a round accounts for every check its tier names. It holds the tier's checks in tier
- * order, the IDs of the check and lens records it counts, the record it made for each check no record holds, the checks
+ * order, the IDs of the check, lens, verification and triage records it counts, the record it made for each check no record holds, the checks
  * whose skip lets the review pass, and the sources whose findings the review counts, each with the finding IDs it keeps
  * where it keeps only some. Version 2 names the resolution policy the review decided under by its fingerprint, or
  * `null` when the review read no policy source, so a reader decides the round only under that policy.
