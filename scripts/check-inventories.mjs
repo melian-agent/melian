@@ -9,12 +9,19 @@ const directory = "docs/progress-log";
 const listFile = ".unreadable-inventories.json";
 const sections = ["version2", "legacy"];
 
-// Shape alone picks an inventory out of the log, by the keys its writers emit; the sampler's reader judges it.
-const isInventory = (value) =>
+// A file is an inventory by the keys its writers emit or by its name, so one that lost both keys still reaches the
+// sampler; the sampler's reader judges it.
+const hasInventoryKeys = (value) =>
 	typeof value === "object" &&
 	value !== null &&
 	!Array.isArray(value) &&
 	("melianMutants" in value || "mutants" in value);
+// Merged files named as inventories that hold hand-run results, not an inventory, with why each is no inventory.
+export const runLogs = new Map([
+	["2026-11-07-pr-299-mutants.json", "an array of hand mutant runs, each with its test and result"],
+	["2026-11-14-issue-394-wave-mutants.json", "an array of hand mutant runs, each with its baseline and result"],
+]);
+const isInventory = (name, value) => hasInventoryKeys(value) || (name.includes("mutants") && !runLogs.has(name));
 
 // main is main's copy of the list, or undefined before main has one; an entry it lacks is a new one.
 export function readUnreadable(list, main) {
@@ -82,7 +89,7 @@ export function checkInventories({ files, unreadable, onMain }) {
 			continue;
 		}
 		const listed = unreadable.get(name);
-		if (!isInventory(value)) {
+		if (!isInventory(name, value)) {
 			if (listed !== undefined) problems.push(`${listFile} lists ${name}, which is not an inventory`);
 			continue;
 		}
@@ -92,7 +99,7 @@ export function checkInventories({ files, unreadable, onMain }) {
 		} catch (error) {
 			refusal = error.message;
 		}
-		const section = value.melianMutants === 2 ? "version2" : "legacy";
+		const section = value?.melianMutants === 2 ? "version2" : "legacy";
 		if (listed === undefined) {
 			if (refusal !== undefined) problems.push(`${directory}/${name}: the sampler refuses it: ${refusal}`);
 		} else if (refusal === undefined) {

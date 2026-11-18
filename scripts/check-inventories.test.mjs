@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { checkInventories, readUnreadable } from "./check-inventories.mjs";
+import { checkInventories, readUnreadable, runLogs } from "./check-inventories.mjs";
 import { sampleMutants } from "./mutant-sample.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -60,6 +60,26 @@ describe("checkInventories", () => {
 			`docs/progress-log/empty-mutants.json: the sampler refuses it: ${refusalOf(JSON.stringify({ mutants: [] }))}`,
 			`docs/progress-log/not-array.json: the sampler refuses it: ${refusalOf(JSON.stringify({ mutants: "oops" }))}`,
 			`docs/progress-log/version.json: the sampler refuses it: ${refusalOf(JSON.stringify({ melianMutants: 2 }))}`,
+		]);
+	});
+
+	it("judges a file named as an inventory whatever its keys, so misspelt keys still reach the sampler", () => {
+		const text = JSON.stringify({ melianMutant: 2, mutant: [] });
+		expect(check({ "2026-11-19-fix-mutants.json": text })).toEqual([
+			`docs/progress-log/2026-11-19-fix-mutants.json: the sampler refuses it: ${refusalOf(text)}`,
+		]);
+	});
+
+	it("leaves null and primitive JSON alone when the name does not call it an inventory", () => {
+		expect(check({ "null.json": "null", "number.json": "3", "string.json": '"x"', "true.json": "true" })).toEqual([]);
+	});
+
+	it("skips a named run log on the skip list, and judges it once it holds an inventory's keys", () => {
+		const runs = JSON.stringify([{ mutant: "a hand mutant", killed: true }]);
+		expect(check({ "2026-11-07-pr-299-mutants.json": runs })).toEqual([]);
+		const keyed = JSON.stringify({ mutants: [] });
+		expect(check({ "2026-11-07-pr-299-mutants.json": keyed })).toEqual([
+			`docs/progress-log/2026-11-07-pr-299-mutants.json: the sampler refuses it: ${refusalOf(keyed)}`,
 		]);
 	});
 
@@ -181,6 +201,13 @@ describe("the committed log", () => {
 		expect(checkInventories({ files, unreadable: readUnreadable(list), onMain: (name) => files.get(name) })).toEqual(
 			[],
 		);
+	});
+
+	it("skips only run logs that are in it, named as inventories, each an array of runs", () => {
+		for (const name of runLogs.keys()) {
+			expect(name).toContain("mutants");
+			expect(Array.isArray(JSON.parse(readFileSync(join(log, name), "utf8")))).toBe(true);
+		}
 	});
 });
 
