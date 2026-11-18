@@ -187,6 +187,23 @@ describe("the account a review gives its adjudication", () => {
 			});
 		});
 
+		it("asks triage nothing when a decider is given and no lens covers the change", async () => {
+			const { verdict } = await review({
+				decider: choosing("quick", true),
+				config: {
+					tiers: { ...defaultConfig.tiers, full: ["guardrails", "static", "lens.contracts"] },
+					lenses: { contracts: { paths: ["docs/**"] } },
+				},
+			});
+
+			expect(verdict.status).toBe("passed");
+			expect(await account()).toEqual({
+				manifest: ["guardrails", "static.biome", "static.tsc", "lens.contracts"],
+				checks: [...ran, { name: "lens.contracts", status: "skipped", reason: "no paths" }],
+				allowSkip: ["lens.contracts"],
+			});
+		});
+
 		it("allows no skip of a lens configuration disables", async () => {
 			const { verdict } = await review({
 				config: { ...tiered("lens.contracts"), lenses: { contracts: { paths: ["docs/**"], enabled: false } } },
