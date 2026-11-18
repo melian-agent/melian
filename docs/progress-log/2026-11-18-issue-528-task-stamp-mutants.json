@@ -31,7 +31,15 @@
 			"status": "generated",
 			"id": "bcfab43277a6d4495a598618b150263439b08ed3e83d8ce2813e3ccc0f68b482",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -45,7 +53,15 @@
 			"status": "generated",
 			"id": "31c2c607c101afd60003ee69da467db902fc4054a9a222e163627b4b79e787ce",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: a check task main stored before its input carried the run's key > runs its check under today's version, and leaves its sightings without a stamp",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"a check task main stored before its input carried the run's key",
+						"runs its check under today's version, and leaves its sightings without a stamp"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -59,7 +75,15 @@
 			"status": "generated",
 			"id": "39492274aabd4f151afdab71aad044a75ada3f66dcdaac086082f90dfb4953bb",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -73,7 +97,15 @@
 			"status": "generated",
 			"id": "6ae7a53712a45181561558ba3180b8d49178214916d48a37abc20f392a0d6bd1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -87,7 +119,15 @@
 			"status": "generated",
 			"id": "f8a086d674317606ed3f4157f006d3d255207c86869ff6f1cbdce24b642a8723",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: a check task main stored before its input carried the run's key > runs its check under today's version, and leaves its sightings without a stamp",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"a check task main stored before its input carried the run's key",
+						"runs its check under today's version, and leaves its sightings without a stamp"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -101,7 +141,15 @@
 			"status": "generated",
 			"id": "8079ea9a8d6245787ce6b7e110cdc4d093f0d271903c843f98d067b17fd1a580",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -115,7 +163,15 @@
 			"status": "generated",
 			"id": "ed8374bd237dbfe7312b7e1eaea5100d730faaf4f1b00eee51be6f5a392c3158",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -129,7 +185,15 @@
 			"status": "generated",
 			"id": "0114c90525dc5ebdb1031ffaa674dd20d77390194a5bbff733f3b87a3ad892d7",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -143,7 +207,15 @@
 			"status": "generated",
 			"id": "1e2f5ec349aec8891c66df9c1b96f78093faf992c7f01a07472291a73c4ed02d",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-requests.test.ts :: the requests the checks document keeps > hold a run's whole request under its key, which every check of the run stamps",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -157,7 +229,15 @@
 			"status": "generated",
 			"id": "e65635f2451bc8c3fd13ac66ab72ab144fc4ee328e99cb24d156805d8cb0f127",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/findings-check-stamp.test.ts :: a check's stamp on its sightings at a revision > is kept in a dismissal, which a later run's stamp does not change",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is kept in a dismissal, which a later run's stamp does not change"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -184,7 +264,15 @@
 			"status": "generated",
 			"id": "59aad6cb494b211a1e62a042bb39150ec3a42d2b3c1f9fe918c07073908a3bf1",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/findings-check-stamp.test.ts :: a check's stamp on its sightings at a revision > is absent from a dismissal made while no run stands",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is absent from a dismissal made while no run stands"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -198,7 +286,15 @@
 			"status": "generated",
 			"id": "8566312c1ef08ada777694678393afaa7831ef304d7805ca2edf82a382cb5d22",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts :: a review that names a record store > exports each check, lens run and verification, the account, and a round that names them all",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -212,7 +308,15 @@
 			"status": "generated",
 			"id": "23045a84837138aa51f380b1fa754b7657ede6fa6edabac9d1c1f7ad491a734d",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -226,7 +330,15 @@
 			"status": "generated",
 			"id": "276ede3e06aa4b4b5eed623e0c968336c2956caadba431c93d369284f7189353",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > never passes a round once any record it names loses what it decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"never passes a round once any record it names loses what it decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -240,7 +352,15 @@
 			"status": "generated",
 			"id": "5c802e2f91704d4865522a35191fae711f883a80c7d029d4c2c25f25d99b15ab",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > never passes a round once any record it names loses what it decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"never passes a round once any record it names loses what it decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -254,7 +374,9 @@
 			"status": "generated",
 			"id": "305d636ae35b2354e7c591982210c53a8b971d56c376d636e1710a392ad8014b",
 			"claim": "equivalent",
-			"evidence": "planned() in review.ts drops every lens. record from the checks exportRound reads, so the lens. prefix test never decides; the whole pipeline suite passes with it mutated.",
+			"evidence": {
+				"reason": "planned() in review.ts drops every lens. record from the checks exportRound reads, so the lens. prefix test never decides; the whole pipeline suite passes with it mutated."
+			},
 			"survivorClasses": [
 				"compound-condition"
 			]
@@ -283,7 +405,15 @@
 			"status": "generated",
 			"id": "ac6578768dbcd3810a2d8fe5819e61276093631af48016bf513a4285ec93462c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > never passes a round once any record it names loses what it decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"never passes a round once any record it names loses what it decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -310,7 +440,15 @@
 			"status": "generated",
 			"id": "49f705e7b562932dbb5cebe0763541088b18318ec9c9c86b839385cb282aa606",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -324,7 +462,15 @@
 			"status": "generated",
 			"id": "1984da0953e90653c167b43a48d282b147fc65db51a6e047e604ecf4704a9c92",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -351,7 +497,15 @@
 			"status": "generated",
 			"id": "7a065cc7576d5e8a6083584bd1b82f7959d24ec081d157a76097b88a0b26afc8",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -365,7 +519,15 @@
 			"status": "generated",
 			"id": "4d4970f482fb7fb51b13cb704bd01f049cfb9fbbe7dd5d3de00baef89a5c9705",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -379,7 +541,15 @@
 			"status": "generated",
 			"id": "39e692632be8ccd71323532c1733850e714425f45858bac2857de7f97928c240",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -393,7 +563,15 @@
 			"status": "generated",
 			"id": "58e5f35508b5491cd827aee03afb98405e460e2d50c2909ba1ba017c933ba176",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -407,7 +585,15 @@
 			"status": "generated",
 			"id": "768452f6b33aa9e79d259806ffd9a26619b57cfed71695d1ac679907f2d3e25d",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -434,7 +620,15 @@
 			"status": "generated",
 			"id": "3910889ba1678c28f6c67a6b3a5626101144e5462b1dc4705db70606744cec74",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -448,7 +642,15 @@
 			"status": "generated",
 			"id": "cc05ee22b032183ca7b93835b1b4339e38b99a1dce6a966c908cc30007668031",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's record, handed in beside the run that stored another > is withheld when its run stored no record of it, though the caller says it ran",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's record, handed in beside the run that stored another",
+						"is withheld when its run stored no record of it, though the caller says it ran"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -462,7 +664,15 @@
 			"status": "generated",
 			"id": "c279237774311bf504a52a91155e8bcdc44e924b514958b3c4cfb9cedd01575b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -489,7 +699,15 @@
 			"status": "generated",
 			"id": "86c3b20ba801405929ed9b7ef97ed56834a1a3c45f595eb33f564da0daa2732a",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -503,7 +721,14 @@
 			"status": "generated",
 			"id": "f3af51a0d50856719a86097ae069a36d580f18472efb4f0ab2869f9489ce9d9f",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -517,7 +742,14 @@
 			"status": "generated",
 			"id": "73637069401eea56da4c891bf1b8a4aba4a2052c97060ab58147f22356e88093",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -531,7 +763,14 @@
 			"status": "generated",
 			"id": "04a718cca04a44bfd9f308d5fd2211da000627df5a615c755d174a7345640df3",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -545,7 +784,15 @@
 			"status": "generated",
 			"id": "7eede732bb0e93784f6851f2c414fc47c63d7060615cc7bebad7d0c49de4a279",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts :: a review that names a record store > exports each check, lens run and verification, the account, and a round that names them all",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -559,7 +806,15 @@
 			"status": "generated",
 			"id": "464a6b10ed309e95edac1e5d8a3f129d8144615a43b6c282a307d23abf6942e7",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -573,7 +828,15 @@
 			"status": "generated",
 			"id": "7baef203790bc929dd5b93fe9e9efeb3935d94ad5fed011ceceb8fbbfcdf458c",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts :: a check record's key > is the same for two runs of one request that differ only in their task",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -587,7 +850,15 @@
 			"status": "generated",
 			"id": "895fcbff0c0e6f948a82e8816f69c0485c3914f5dee3ec7e36f7a0201597f2e9",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -601,7 +872,15 @@
 			"status": "generated",
 			"id": "d5ad95960b8b06ea1d06f1b8936cb79f9407c2a392297523b4d568ea4d08e215",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-export.test.ts :: a check record's key > is the same for two runs of one request that differ only in their task",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a check record's key",
+						"is the same for two runs of one request that differ only in their task"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -615,7 +894,14 @@
 			"status": "generated",
 			"id": "259d46ed783f25786e6ff7d37730182b941f7629644ce55300861773e28a1e86",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -629,7 +915,15 @@
 			"status": "generated",
 			"id": "3f0131076451927645530aa4057ea1f5811c49077da39b20618cf643b9e59186",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -643,7 +937,15 @@
 			"status": "generated",
 			"id": "53669c48f097206ca8109b3c30daca0f0e2aceda762fd9099319520e82a3c47b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -657,7 +959,15 @@
 			"status": "generated",
 			"id": "ea9329f5782995a82c409b0a572c7161e0c24bfdc0a284b7357ab704107cc869",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -671,7 +981,14 @@
 			"status": "generated",
 			"id": "04660150684c4925590088ca42e4dd231498edb5db4f85811632b477e2cd3075",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -685,7 +1002,14 @@
 			"status": "generated",
 			"id": "c990a5458fdee5a275f5a26ad3cfc32ffc67935425033227c9af076b14f88baa",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -699,7 +1023,15 @@
 			"status": "generated",
 			"id": "a1bc81e15cd614a18154d76f47014addfd270f56e3f7a9f66b45154dcbcb709b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -713,7 +1045,15 @@
 			"status": "generated",
 			"id": "ddeb095285818dfc356f484e3499646a7e7613885f9378efc25f0e48aba6d346",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, beside the run a host made of the same revision > are withheld when a sighting an older build stored sits beside them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -727,7 +1067,15 @@
 			"status": "generated",
 			"id": "26d6fcede9499e04335d72593c31331eea75d6338fd708cd1a52bb3f0c6ae21e",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -741,7 +1089,14 @@
 			"status": "generated",
 			"id": "8421769879c022e7a91a88f92ac48eeb20d9a3732308a2e9abf7fbb097ff2b8b",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/check-stamp-reopen.test.ts :: reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -755,7 +1110,15 @@
 			"status": "generated",
 			"id": "e305f0e9b013564d8890cc66cd86151b3d79843aceb16a90a937ea666a5a0605",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/review-records-planted-sighting.test.ts :: a static check's sightings, after its request ran again under the same key > are withheld from the first execution, whose record no longer describes them",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, after its request ran again under the same key",
+						"are withheld from the first execution, whose record no longer describes them"
+					]
+				}
+			},
 			"survivorClasses": []
 		},
 		{
@@ -769,7 +1132,15 @@
 			"status": "generated",
 			"id": "0a39eee395ca0e22aee9b57b0a6bdf1d95ff04944eb5693b4304f240dfd7c115",
 			"claim": "killed",
-			"evidence": "packages/pipeline/test/recorded-round.test.ts :: a round read back from its records > decides the verdict the review decided",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
 			"survivorClasses": []
 		}
 	],
