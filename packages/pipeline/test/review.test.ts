@@ -2629,7 +2629,7 @@ describe("reviewChangeset", () => {
 			return { ...config, models: { heavy: { model: `${provider}/heavy`, fallbacks: [`${provider}/backup`] } } };
 		};
 
-		it("moves a lens to its tier's next model and continues the review there", async () => {
+		it("moves a lens whose model failed before it started to the next model, which starts the review afresh", async () => {
 			const answeredBy: string[] = [];
 			const requests = scriptConversations(fake, [
 				{
@@ -2655,8 +2655,38 @@ describe("reviewChangeset", () => {
 			expect(findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
 			const handover = requests[correctness]![1]!.filter((message) => message.role === "user").map(textOf);
 			expect(handover).toHaveLength(2);
-			expect(handover[1]).toContain("The model reviewing this change failed, and you take over.");
+			expect(handover[0]).toMatch(/^Review the change from /);
+			expect(handover[1]).toContain("failed before it started");
+			expect(handover[1]).toContain("from the beginning");
+			expect(handover[1]).not.toMatch(/already recorded|take over|continue/i);
 			expect(requests[contracts]).toHaveLength(1);
+		});
+
+		it("moves a lens whose model failed after a tool call to the next model, which continues the review", async () => {
+			const answeredBy: string[] = [];
+			const requests = scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [
+						call("report_finding", nullDeref),
+						overloaded,
+						(_, model) => {
+							answeredBy.push(model);
+							return fauxAssistantMessage("Reported no more findings.");
+						},
+					],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+
+			const findings = await review({ config: withBackup() });
+
+			expect(answeredBy).toEqual(["backup"]);
+			expect(findings.map((finding) => finding.ruleId)).toEqual(["null-dereference"]);
+			const handover = requests[correctness]![2]!.filter((message) => message.role === "user").map(textOf);
+			expect(handover).toHaveLength(2);
+			expect(handover[1]).toContain("The model reviewing this change failed, and you take over.");
+			expect(handover[1]).toContain("findings already recorded stay recorded");
 		});
 
 		it("names every model tried when the route runs out", async () => {

@@ -47,13 +47,13 @@ export const maxKeyedPolicyBytes = 1024 * 1024;
 // no run of an earlier build is reused; nothing checks that you did until issue #437. Biome 2 and tsc 2 keep no tool
 // text, and tsc 3 asks tsc --showConfig for its projects. Enola 2 and mutation 2 keep no tool text in a discriminator,
 // and Enola 2 hashes a rule no policy declares. Enola 3 replaces a head's recipes with the base's, and Enola 4 restores a
-// base policy file with a newline in its name.
+// base policy file with a newline in its name. Biome 3, tsc 4, Enola 5 and mutation 3 stamp their sightings with the run.
 const checkVersions: Readonly<Record<DeterministicCheck, number>> = {
 	guardrails: 1,
-	"static.biome": 2,
-	"static.tsc": 3,
-	"static.enola": 4,
-	"static.mutation": 2,
+	"static.biome": 3,
+	"static.tsc": 4,
+	"static.enola": 5,
+	"static.mutation": 3,
 };
 
 // The configuration without its display-only keys, which change how a review reads and never what a check finds, so a
@@ -102,7 +102,7 @@ export function writesFixedText(asked: KeyedRequest<RecordJson>, check: string):
  * Whether a run of this request may stand for a later one with the same key. A key holds what was read, so an input
  * that could not be read leaves nothing to compare, and the run is not reused.
  */
-export function checkReusable(input: CheckRequestInput): boolean {
+export function checkReusable(input: Pick<CheckRequestInput, "policy" | "install">): boolean {
 	return input.policy !== "unread" && input.install.identified;
 }
 

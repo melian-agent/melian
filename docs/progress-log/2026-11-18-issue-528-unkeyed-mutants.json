@@ -1,0 +1,610 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "b597683d481888e7e974cbef55e314e3b9ae2ca9",
+		"head": "d87c7a532f1639987af9e9e14a6d1ee0bf10d6e6"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/static-proof.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 121,
+			"column": 1,
+			"endLine": 121,
+			"endColumn": 10,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fd91333a0e69e70bf33b7a4d30c593ea5374d1367c2e64be4025c7b47dfdbd3"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3168,
+			"column": 19,
+			"endLine": 3173,
+			"endColumn": 16,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "46e2a9c1a0c2de13d28955443d78005f2d54d6e468f5eb3666d30d90d1c75557",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 3,
+			"endLine": 3169,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2bfa9d34715123b01d55a13adef4f66aff79018391c7c22074aa987bef56caa8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 3,
+			"endLine": 3169,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "30b67a60626c8a7fbc530dd63db7c14c2085ab2870b786171305c010554a5d26",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 3,
+			"endLine": 3169,
+			"endColumn": 74,
+			"mutatorName": "LogicalOperator",
+			"replacement": "run === undefined && !proof.proves(state, reviewed, check, run.request)",
+			"status": "generated",
+			"id": "e24015c03619ad1267d130638af4f5f43077e72f751e0a0ba1702eaa5dc05aa5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 3,
+			"endLine": 3169,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b604c2c4ba36599f738a0c28c140cc3bee6c341170b634fb67f1eff129b2e628",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 3,
+			"endLine": 3169,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run !== undefined",
+			"status": "generated",
+			"id": "9f47165d2311f24b017336f3f5b8bcc25f95db2397981fe1e36b72d6eb5850b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3169,
+			"column": 24,
+			"endLine": 3169,
+			"endColumn": 74,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "proof.proves(state, reviewed, check, run.request)",
+			"status": "generated",
+			"id": "20165180e9f93a9ed8e07b5cc6eef5bb7d6f7f6654c31cef66ba00e10dd9ec61",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3170,
+			"column": 6,
+			"endLine": 3170,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ebf50d8518b868d6a7c4adfd614751bab61877a517b3396d3553c4755cee1fe7"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3173,
+			"column": 7,
+			"endLine": 3173,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2651d391c94257f97fa2ed23e66b026eece557d20149d4882520ad8abf5c0d02"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3182,
+			"column": 18,
+			"endLine": 3182,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fae9ae0fd1f44760b05180a23679fa436fa3a021f7203dcdf63fe1acd3e55a73",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3182,
+			"column": 18,
+			"endLine": 3182,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0a19fe61298bead033fd3c60e3ad99281215addc6913b3bc931ecf2e108415f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3182,
+			"column": 18,
+			"endLine": 3182,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.name.startsWith(\"static.\") || counted",
+			"status": "generated",
+			"id": "650c3072f42d5a7eaddcfcb21134c520d5f81f7028340dca0c4ef2d91c8050d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3182,
+			"column": 18,
+			"endLine": 3182,
+			"endColumn": 50,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.name.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "441c2922425fa3622f2dca8ab74ebce76b2086ca052369e093756051cd994cdc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3182,
+			"column": 40,
+			"endLine": 3182,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d55b47764c85384e9439e73db705a66d2d0ea3f81dc1094b036543eec89e3c78"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3183,
+			"column": 7,
+			"endLine": 3183,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ec3b912b82d333f940ceda260c1c4f0dabe2cb280eaef6fe7e84489d13c04b37",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3183,
+			"column": 7,
+			"endLine": 3183,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "02477fbe6a07645cb13b63973e2741ff523d715594a55dc41f9cc5f0738d960c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3183,
+			"column": 7,
+			"endLine": 3183,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reason === undefined",
+			"status": "generated",
+			"id": "0df005ed06c4fd1051e17fd50c2cfb5d364711855984dec4e2e0685832fabd6c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3184,
+			"column": 37,
+			"endLine": 3184,
+			"endColumn": 94,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9b2cabcbfcb95ffa98b15e50828ebcfd4591b9b0e3539f0bae78dbfdefaaf988",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"exports each check, lens run and verification, the account, and a round that names them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3184,
+			"column": 65,
+			"endLine": 3184,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "60cacb32f05f9354596ee2822b7697a155c64cb08294eef350d728000e9047cf"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3184,
+			"column": 90,
+			"endLine": 3184,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fee21a8824918bbeaeaec7a32964b90f29333df9b2aa45e186027e1503a76c43"
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 50,
+			"column": 38,
+			"endLine": 59,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "bc9bdd133deaef5783df0ac51d040ad543889d41e92f126ff6114569527128eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 51,
+			"column": 6,
+			"endLine": 55,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7a6c0afbd9af5860dd91bf1330e6e91b35c6f197bec0dc15912b70f1a2a038b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 53,
+			"column": 4,
+			"endLine": 53,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "83cbcc9abdbe3dbdd7a0b77a8c82bf4b2b2f0f12d852b9c6c9d77a08e50de28f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"withhold a check whose run's request was not keyed fully, though its stamp and stored request prove it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 53,
+			"column": 4,
+			"endLine": 53,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "22cf2d861de8294a11a1b84986771212c0dd4ed4bcb63484a2966e20542c6e5c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 53,
+			"column": 4,
+			"endLine": 53,
+			"endColumn": 111,
+			"mutatorName": "EqualityOperator",
+			"replacement": "checkReusable(this.#requests[request] as unknown as Pick<CheckRequestInput, \"policy\" | \"install\">) !== true",
+			"status": "generated",
+			"id": "7be91887e77783d21e70a5370a88be8436a44f8dd0a2f5261c35216b5d9ba0cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 53,
+			"column": 107,
+			"endLine": 53,
+			"endColumn": 111,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5d43bb0a0505be708c8f188364932c884ff102e17bdbe79f4727986583de68b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 55,
+			"column": 10,
+			"endLine": 58,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0f701c5dc9c141af25c912ebea54308596803af01cf77550e8be14152a57b23d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static-proof.test.ts",
+					"path": [
+						"the proof the checks document's requests give",
+						"keys a run fully only for a request whose install is identified and whose policy was read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 57,
+			"column": 10,
+			"endLine": 57,
+			"endColumn": 15,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "eaaaa5b7ea2053ec40b3fa7e8a387c392696ac45a4445a619c1a179be67e287d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static-proof.test.ts",
+					"path": [
+						"the proof the checks document's requests give",
+						"keys a run fully only for a request whose install is identified and whose policy was read"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 29,
+	"omitted": 0,
+	"unmutated": []
+}

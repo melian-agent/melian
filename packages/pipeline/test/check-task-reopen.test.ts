@@ -87,7 +87,7 @@ it("reopens a version-1 check with its input intact and no invented timing start
 		result: { name: "guardrails", status: "ran", findings: 1, notes: [] },
 	});
 	const task = (await storage.task(id, context))!;
-	expect(task.version).toBe(4);
+	expect(task.version).toBe(5);
 	expect(task.input).toEqual(input);
 	expect((await second.snapshot(ChecksDocument, root.id, context))!.runs[input.run]).toEqual({
 		guardrails: { name: "guardrails", status: "ran", findings: 1, notes: [] },
