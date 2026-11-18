@@ -59,3 +59,7 @@ The own-build round at abf57d68b raised one acknowledgement, 145e304dfafe8871. A
 ## Merging main after pull request #571
 
 Main had raised Enola's check version to 4 on its own, so the merge takes Enola to 5, above both, with Biome 3, tsc 4 and mutation 3 as before. Main's reviews and readers now name the policy their account records, by [issue #502](https://github.com/melian-agent/melian/issues/502), so the planted-sighting tests hand `policy: { kind: "worktree" }` to the review and to the reader, as main's own tests do.
+
+## The Actions round at ca07b6346
+
+[Run 44247767431](https://github.com/melian-agent/melian/actions/runs/44247767431) found the upgrade test in `packages/pipeline/test/check-requests.test.ts` vacuous, finding f3900dd71df0b37d. Its older request asked for Enola 2, but main's build asks for Enola 4. So any request differed from it, even with the Biome, tsc and mutation bumps reverted. Run with those three reverted at ca07b6346, the test passed. It now builds the older request from main's table, and asserts the current versions exactly. Each of the four bumps reverted alone now fails it. The round's other acknowledgement, 60e092d779392abd, is a caller who writes the store's documents through the raw harness. It went to the coordinator as the maintainer's limit of 2026-11-17 on a caller who writes the store.

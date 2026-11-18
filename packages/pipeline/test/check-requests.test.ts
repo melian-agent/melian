@@ -95,15 +95,24 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 	const taskOf = async (root: { readonly id: ConversationId }, run: number, check: string) =>
 		(await harness.snapshot(CheckSources, root.id, String(run), context))?.tasks[check];
 
-	// A build before the stamp asked for these versions of each check, and its run's terminal commit wrote no stamp.
+	// Main's build before the stamp asked for these versions of each check, and its run's terminal commit wrote no stamp.
+	const before = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 4, "static.mutation": 2 };
 	it("never reuse a run an earlier build completed without a stamp, so asking again stamps the sightings", async () => {
 		const { made, root, changeset } = await run();
 		const revision = Revision.key(changeset.revision);
 		const stored = (await harness.snapshot(ChecksDocument, root.id, context))!;
 		const kept = stored.requests![made.request] as Record<string, unknown>;
+		// Every static check stamps its sightings, so each asks under a version no build before the stamp asked.
+		expect(kept.checks).toEqual({
+			guardrails: 1,
+			"static.biome": 3,
+			"static.tsc": 4,
+			"static.enola": 5,
+			"static.mutation": 3,
+		});
 		const old = KeyedRequest.of("check", {
 			...kept,
-			checks: { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 2, "static.mutation": 2 },
+			checks: before,
 		} as never).key;
 		const { base, head } = changeset.revision;
 		const current = `${base} ${head} fast ${made.request.slice(0, 16)} 0`;
@@ -115,7 +124,7 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 			runs.tasks[`${base} ${head} fast ${old.slice(0, 16)} 0`] = task;
 			runs.requests![old] = {
 				...kept,
-				checks: { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 2, "static.mutation": 2 },
+				checks: before,
 			} as never;
 			delete (await tx.doc(FindingsDocument, root.id)).checkRuns![revision];
 		}, context);
