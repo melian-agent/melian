@@ -438,6 +438,35 @@ export class Miss {
 	}
 
 	/** Why the miss has no score, from what {@link unscoped} found of each lens. */
+	/**
+	 * Whether a review found the miss, by `match`: found or missed, or no verdict when no responsible lens saw the miss or
+	 * only a sighting outside hand-entered lines answered it, with the line a measurement prints.
+	 */
+	async judge(
+		run: RangeRun,
+		match: MissMatch,
+		target: ReviewTarget,
+		location: MissLocation,
+		lenses: readonly string[],
+	): Promise<{ readonly said: string; readonly found?: boolean; readonly unseen?: readonly MissUnseen[] }> {
+		const hit = match.hits.length > 0;
+		const unseen = await this.unscoped(run, target, location, lenses);
+		const unscoped = unseen === undefined ? undefined : this.unseenReason(unseen, location);
+		const seen = unseen === undefined ? {} : { unseen };
+		if (unscoped !== undefined) return { said: `unadjudicated, no score: ${unscoped}`, ...seen };
+		// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
+		if (match.matched === "lines" || (!hit && match.near.length === 0))
+			return { said: hit ? "found" : "missed", found: hit, ...seen };
+		if (match.matched !== "fix hunks") return { said: "unadjudicated, no score: matched by file and rule alone", ...seen };
+		const span = (ranges: readonly (readonly [number, number])[]) =>
+			ranges.map(([first, last]) => `${first}-${last}`).join(", ");
+		const overlaps = match.hunks.filter((hunk) => match.hits.some((each) => each.hunks.includes(hunk)));
+		return {
+			said: `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${this.file} (${span(match.hunks)}), and the sightings overlap ${overlaps.length === 0 ? "none of them" : span(overlaps)}`,
+			...seen,
+		};
+	}
+
 	unseenReason(unseen: readonly MissUnseen[], location: MissLocation): string {
 		const what =
 			location.by === "file and rule"
@@ -1041,29 +1070,9 @@ async function measured(
 				});
 				if (scored === undefined) continue;
 				const { run, match } = scored;
-				const hit = match.hits.length > 0;
-				const unseen = await miss.unscoped(run, target, location, lenses);
-				const unscoped = unseen === undefined ? undefined : miss.unseenReason(unseen, location);
-				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
-				const unadjudicated =
-					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
-				if (unadjudicated) failed.push(miss.name);
+				const { said, found: hit, unseen } = await miss.judge(run, match, target, location, lenses);
+				if (hit === undefined) failed.push(miss.name);
 				else if (hit) found += 1;
-				const span = (ranges: readonly (readonly [number, number])[]) =>
-					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
-				const overlapped = ({ hunks, hits }: Extract<MissMatch, { matched: "fix hunks" }>) => {
-					const overlaps = hunks.filter((hunk) => hits.some((each) => each.hunks.includes(hunk)));
-					return overlaps.length === 0 ? "none of them" : span(overlaps);
-				};
-				const said = !unadjudicated
-					? hit
-						? "found"
-						: "missed"
-					: unscoped !== undefined
-						? `unadjudicated, no score: ${unscoped}`
-						: match.matched === "fix hunks"
-							? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
-							: "unadjudicated, no score: matched by file and rule alone";
 				const foundBy = new Map(match.hits.map(({ sightedBy }) => [JSON.stringify(sightedBy), sightedBy]));
 				const probedBy = run.telemetry.stages
 					.filter((stage) => stage.role === "prober" && stage.outcome === "completed")
@@ -1071,9 +1080,9 @@ async function measured(
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
-					...(unadjudicated ? {} : { found: hit }),
+					...(hit === undefined ? {} : { found: hit }),
 					...match,
-					...(hit && !unadjudicated ? { foundBy: [...foundBy.values()] } : {}),
+					...(hit === true ? { foundBy: [...foundBy.values()] } : {}),
 					probedBy: [...new Set(probedBy)].sort(),
 					...(unseen === undefined ? {} : { unseen }),
 				});
