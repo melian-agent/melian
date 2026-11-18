@@ -37,6 +37,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FindingsDocument, findingsVersion, replaceCheckFindings, verificationClaims } from "../src/findings.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import { type VerificationInput, verificationRequest } from "../src/verification.ts";
 import { verifierMarker } from "../src/verification-instructions.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -1035,6 +1036,84 @@ describe("a dismissal carrying to a restatement", () => {
 		};
 		expect(verification.claims.map(({ verification }) => verification.matches)).toEqual([{ [root]: "same" }]);
 		expect(verification.dismissals).toEqual([{ finding: root, record }]);
+	});
+
+	// What a round exported for `root` into `store`, and the record IDs the verification's input and record name for it.
+	const roundFor = async (store: MemoryRecordStore, changeset: Changeset, root: string) => {
+		await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			records: store,
+		});
+		const stored = await store.list(changeset.id);
+		const owner = (await harness.root(context)).id;
+		const entry = (await harness.snapshot(ReviewIndex, owner, context))!.reviews[Revision.key(changeset.revision)]!
+			.verification!;
+		const input = (await harness.getTask(entry.task as unknown as TaskId<string>, context))!
+			.input as unknown as VerificationInput;
+		const verification = stored.find(({ kind }) => kind === "verification")!.payload as {
+			dismissals: { finding: string; record: string }[];
+		};
+		return {
+			dismissals: stored.filter(({ kind, key }) => kind === "dismissal" && key === root),
+			shown: input.candidates[0]!.dismissed?.map(({ id, record }) => [id, record]),
+			named: verification.dismissals,
+		};
+	};
+	// Another host's dismissal of `root`, under a reason of its own, as an import would add it.
+	const foreignDismissal = async (changeset: Changeset, root: string) => {
+		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
+		const { base, head } = changeset.revision;
+		const own = ReviewRecords.of(changeset.id, { base, head }).dismissalOf(state, root, [])!.toJSON();
+		const payload = { ...(own.payload as object), by: "Another host", reason: "Accepted elsewhere." };
+		return SharedRecord.parse({ ...own, payload }, reviewPayloads);
+	};
+
+	it("supersedes another host's dismissal of the root its store held, and names the record that does", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const imported = await foreignDismissal(changeset, root);
+		await store.add([imported.toJSON()]);
+		const { dismissals, shown, named } = await roundFor(store, changeset, root);
+		const exported = dismissals
+			.map((each) => SharedRecord.parseEnvelope(each))
+			.find((each) => each.id !== imported.id)!;
+		expect(dismissals).toHaveLength(2);
+		expect(exported.supersedes).toEqual([imported.id]);
+		expect(shown).toEqual([[root, exported.id]]);
+		expect(named).toEqual([{ finding: root, record: exported.id }]);
+	});
+
+	it("leaves a dismissal imported after the review listed its store out of what the review names and supersedes", async () => {
+		const root = await dismissedRoot();
+		pushElsewhere("other");
+		script([restatement]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const imported = await foreignDismissal(changeset, root);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const list = store.list.bind(store);
+		let listed = 0;
+		vi.spyOn(store, "list").mockImplementation(async (id) => {
+			const held = await list(id);
+			if (listed++ === 0) await store.add([imported.toJSON()]);
+			return held;
+		});
+		const { dismissals, shown, named } = await roundFor(store, changeset, root);
+		const exported = dismissals
+			.map((each) => SharedRecord.parseEnvelope(each))
+			.find((each) => each.id !== imported.id)!;
+		expect(dismissals).toHaveLength(2);
+		expect(exported.supersedes).toEqual([]);
+		expect(shown).toEqual([[root, exported.id]]);
+		expect(named).toEqual([{ finding: root, record: exported.id }]);
 	});
 
 	it("never treats a dismissed static finding as a root, so a lens claim of its rule is verified on its own", async () => {

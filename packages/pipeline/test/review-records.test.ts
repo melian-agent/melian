@@ -1,4 +1,12 @@
-import { Finding, RecordError, reviewPayloads, SharedRecord, type StoredFinding } from "@melian-agent/core";
+import {
+	everyRecordCounts,
+	Finding,
+	RecordError,
+	RecordSet,
+	reviewPayloads,
+	SharedRecord,
+	type StoredFinding,
+} from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
 import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 
@@ -121,6 +129,75 @@ describe("ReviewRecords", () => {
 			trigger: { hash: "h", proof: [] },
 		});
 		expect((record.toJSON().payload as { head: string }).head).toBe(earlier);
+	});
+
+	describe("what a dismissal supersedes", () => {
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const facts = (reason: string): DismissalFacts => ({
+			finding: sighting.properties.id,
+			by: "maintainer",
+			reason,
+			at: "2026-11-15T00:00:00.000Z",
+			severity: "P1",
+			sighting: { revision: `${base}..${head}`, finding: sighting },
+			rounds: [],
+			trigger: { hash: "h", proof: [] },
+		});
+		const other = finding("lens.security", "abc@careful", "two");
+		// Built inside each test, so a mutant that throws while building it fails that test, never the file.
+		const firstRecord = () => records().dismissal(facts("Accepted once"));
+
+		it("names every earlier dismissal of its finding the listing holds, and changes its key with them", () => {
+			const earlier = firstRecord();
+			const alone = records().dismissal(facts("Accepted again"));
+			const second = records().dismissal({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" });
+			// Descending, with a repeat, so only a sorted list of distinct IDs passes.
+			const listing = [earlier, second].sort((a, b) => (a.id < b.id ? 1 : -1));
+			const record = records().dismissal(
+				facts("Accepted again"),
+				[...listing, listing[0]!].map((each) => each.toJSON()),
+			);
+			expect(record.toJSON()).toEqual({ ...alone.toJSON(), supersedes: [earlier.id, second.id].sort() });
+			expect(record.id).not.toBe(alone.id);
+			expect(SharedRecord.parse(record.toJSON(), reviewPayloads).id).toBe(record.id);
+		});
+
+		it("supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding", () => {
+			const alone = records().dismissal(facts("Accepted again"));
+			const otherFinding = records().dismissal({
+				...facts("Accepted"),
+				finding: other.properties.id,
+				sighting: { revision: `${base}..${head}`, finding: other },
+			});
+			const otherChangeset = ReviewRecords.of("e".repeat(64), { base, head }).dismissal(facts("Accepted once"));
+			const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
+			const keyed = SharedRecord.parse({ ...lens.toJSON(), key: sighting.properties.id } as never, reviewPayloads);
+			const record = records().dismissal(facts("Accepted again"), [
+				otherFinding.toJSON(),
+				otherChangeset.toJSON(),
+				keyed.toJSON(),
+			]);
+			expect(record.toJSON()).toEqual(alone.toJSON());
+			expect(record.id).toBe(alone.id);
+		});
+
+		it("leaves one standing dismissal for each of two writers who each dismissed again from the same listing", () => {
+			const earlier = firstRecord();
+			const first = records().dismissal(facts("Accepted by one"), [earlier.toJSON()]);
+			const second = records().dismissal(facts("Accepted by two"), [earlier.toJSON()]);
+			const merged = RecordSet.of([earlier, first, second], { counts: everyRecordCounts, payloads: reviewPayloads });
+			expect(merged.unsuperseded().map(({ id }) => id)).toEqual([first.id, second.id].sort());
+		});
+
+		it("never supersedes itself, nor its own copy a listing taken by another round holds", () => {
+			const earlier = firstRecord();
+			const alone = records().dismissal(facts("Accepted again"));
+			const exported = records().dismissal(facts("Accepted again"), [earlier.toJSON()]);
+			expect(records().dismissal(facts("Accepted again"), [alone.toJSON()]).id).toBe(alone.id);
+			const again = records().dismissal(facts("Accepted again"), [exported.toJSON(), earlier.toJSON()]);
+			expect(again.id).toBe(exported.id);
+			expect(again.toJSON().supersedes).toEqual([earlier.id]);
+		});
 	});
 
 	it("carries a writer's dismisser and reason as written, and nothing else a writer wrote", () => {

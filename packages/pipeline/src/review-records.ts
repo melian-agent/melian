@@ -10,6 +10,7 @@ import {
 	KeyedRequest,
 	type LensPayload,
 	type NamedRecord,
+	type RecordEnvelope,
 	type RecordJson,
 	Revision,
 	type RunStage,
@@ -353,31 +354,35 @@ export class ReviewRecords {
 	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
 	 * version 11 lacks and every reopen drops.
 	 */
-	dismissalOf(state: FindingsState, id: string): SharedRecord | undefined {
+	dismissalOf(state: FindingsState, id: string, held: readonly RecordEnvelope[]): SharedRecord | undefined {
 		const { lifecycle } = state.items[id]!;
 		const sighting = lifecycle.dismissedSighting;
 		if (sighting === undefined) return undefined;
-		return this.dismissal({
-			finding: id,
-			by: lifecycle.dismissedBy!,
-			reason: lifecycle.dismissedReason!,
-			at: lifecycle.dismissedAt!,
-			severity: lifecycle.dismissedSeverity!,
-			// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
-			sighting: {
-				revision: sighting.revision,
-				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+		return this.dismissal(
+			{
+				finding: id,
+				by: lifecycle.dismissedBy!,
+				reason: lifecycle.dismissedReason!,
+				at: lifecycle.dismissedAt!,
+				severity: lifecycle.dismissedSeverity!,
+				// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+				sighting: {
+					revision: sighting.revision,
+					finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+				},
+				rounds: [],
+				trigger: lifecycle.dismissedTrigger!,
 			},
-			rounds: [],
-			trigger: lifecycle.dismissedTrigger!,
-		});
+			held,
+		);
 	}
 
 	/**
 	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
-	 * sighting, since a later round exports a dismissal made at an earlier head.
+	 * sighting, since a later round exports a dismissal made at an earlier head. It supersedes every other dismissal of its
+	 * finding in `held`, the records the writer's store held when the review began, so it names only what this writer saw.
 	 */
-	dismissal(facts: DismissalFacts): SharedRecord {
+	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[] = []): SharedRecord {
 		const { check } = facts.sighting.finding.properties.source;
 		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
 		if (check.startsWith("static."))
@@ -400,10 +405,16 @@ export class ReviewRecords {
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
-		return SharedRecord.parse(
-			{ v: 1, changeset: this.changeset, kind: "dismissal", key: facts.finding, payload },
-			reviewPayloads,
-		);
+		const envelope = { v: 1, changeset: this.changeset, kind: "dismissal", key: facts.finding, payload };
+		const own = SharedRecord.parse(envelope, reviewPayloads).id;
+		// A copy of this dismissal another round exported is this dismissal, whatever its listing let it supersede.
+		const earlier = held.flatMap((each) => {
+			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== facts.finding) return [];
+			const { supersedes: _, ...bare } = each;
+			return SharedRecord.parseEnvelope(bare).id === own ? [] : [SharedRecord.parseEnvelope(each).id];
+		});
+		if (earlier.length === 0) return SharedRecord.parse(envelope, reviewPayloads);
+		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(earlier)].sort() }, reviewPayloads);
 	}
 
 	#record(kind: string, key: string, payload: unknown): SharedRecord {

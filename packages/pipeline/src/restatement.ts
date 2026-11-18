@@ -4,6 +4,7 @@ import {
 	LineMap,
 	type LineSpan,
 	type ProvingHunk,
+	type RecordEnvelope,
 	Revision,
 	snippetHash,
 	VerificationState,
@@ -83,10 +84,10 @@ export class Predecessors {
 
 	/**
 	 * The ID of the dismissal record a round of `changeset` exports for root `id`, from the findings the roots were read
-	 * from. Every root froze a sighting, so each has one.
+	 * from and `held`, the review's one listing of its store. Every root froze a sighting, so each has one.
 	 */
-	recordOf(changeset: string, id: string): string {
-		return ReviewRecords.of(changeset, this.#review).dismissalOf(this.#state, id)!.id;
+	recordOf(changeset: string, id: string, held: readonly RecordEnvelope[]): string {
+		return ReviewRecords.of(changeset, this.#review).dismissalOf(this.#state, id, held)!.id;
 	}
 
 	static #members(defect: Defect): string[] {

@@ -2463,6 +2463,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const run = checked ?? request.checkRun;
 	const options = planned({ ...request, checkRun: undefined, checks: run?.records ?? supplied ?? [] });
 	const { changeset, config, standards, models } = options;
+	// The one listing the review fills each dismissal's `supersedes` from, in verification and export alike; a store
+	// that cannot be listed fails the review, as a failed export does.
+	const held = request.records === undefined ? [] : await request.records.list(changeset.id);
 	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
 	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
 	spans.step("standards.trust");
@@ -3036,7 +3039,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					: {
 							dismissed: restatement.dismissed.map((each) => ({
 								...each,
-								record: predecessors.recordOf(changeset.id, each.id),
+								record: predecessors.recordOf(changeset.id, each.id, held),
 							})),
 							dismissals: Object.fromEntries(
 								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
@@ -3235,7 +3238,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const unshared: UnsharedDismissal[] = [];
 		for (const id of state === undefined ? [] : Object.keys(state.items)) {
 			try {
-				const record = records.dismissalOf(state!, id);
+				const record = records.dismissalOf(state!, id, held);
 				if (record !== undefined) dismissals.push(record);
 			} catch (error) {
 				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
@@ -3243,7 +3246,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			}
 		}
 		const read = [...counted.map(({ record }) => record), account];
-		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
 		// issue #395 data it had to distrust.
@@ -3253,7 +3255,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			[],
 			previous === undefined
 				? []
-				: stored
+				: held
 						.filter((each) => each.kind === "round" && each.revision === previous)
 						.map((each) => SharedRecord.parseEnvelope(each).id),
 		);

@@ -2,10 +2,12 @@ import { rmSync } from "node:fs";
 import {
 	Changeset,
 	defaultConfig,
+	everyRecordCounts,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	RecordSet,
 	reviewPayloads,
 	SharedRecord,
 } from "@melian-agent/core";
@@ -297,6 +299,27 @@ describe("a review that names a record store", () => {
 		expect(verdict.findings.block.map(({ id }) => id)).toEqual(plain.verdict.findings.block.map(({ id }) => id));
 	});
 
+	it("names in before the rounds of the revision before that its store held when the review began, and no later one", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const earlier = first.stored.find(({ kind }) => kind === "round")!;
+		const { base, head } = first.changeset.revision;
+		const late = ReviewRecords.of(first.changeset.id, { base, head }).round([], undefined, [], []);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const list = store.list.bind(store);
+		let listed = 0;
+		vi.spyOn(store, "list").mockImplementation(async (id) => {
+			const held = await list(id);
+			if (listed++ === 0) await store.add([late.toJSON()]);
+			return held;
+		});
+		const later = await review(store);
+		const round = later.stored.find(({ kind, revision }) => kind === "round" && revision !== earlier.revision)!
+			.payload as { before: string[] };
+		expect(later.stored.map((each) => SharedRecord.parseEnvelope(each).id)).toContain(late.id);
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier).id]);
+	});
+
 	it("adds the same bytes when the same head is reviewed again", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const first = (await review(store)).stored;
@@ -371,6 +394,28 @@ describe("a review that names a record store after a dismissal", () => {
 		expect(again.map((each) => SharedRecord.parseEnvelope(each).id)).toEqual(
 			once.map((each) => SharedRecord.parseEnvelope(each).id),
 		);
+	});
+
+	it("exports a dismissal made again as superseding the record of the one it replaced, which then stands nowhere", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+		});
+
+		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const replacing = stored.find((each) => each.id !== once!.id)!;
+		expect(stored).toHaveLength(2);
+		expect(replacing.supersedes).toEqual([once!.id]);
+		expect((replacing.toJSON().payload as { reason: string }).reason).toBe(again.reason);
+		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
+		expect(standing.map(({ id }) => id)).toEqual([replacing.id]);
 	});
 
 	it("exports no record of a dismissal stored with no sighting, as one before findings document version 11 was", async () => {
