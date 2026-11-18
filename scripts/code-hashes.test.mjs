@@ -82,7 +82,10 @@ describe("the check over a scratch repository", () => {
 		const outside = mkdtempSync(join(tmpdir(), "melian-code-hashes-outside-"));
 		try {
 			writeFileSync(join(outside, "o.ts"), "export const o = 1;\n");
-			write("src/entry.ts", `import { o } from ${JSON.stringify(join(outside, "o.ts"))};\nexport const entry = o;\n`);
+			write(
+				"src/entry.ts",
+				`import { o } from ${JSON.stringify(join(outside, "o.ts"))};\nexport const entry = o;\n`,
+			);
 			expect(failure(() => reachedModules("src/entry.ts", repo))).toBe(
 				`src/entry.ts reaches ${join(outside, "o.ts")}, outside the repository`,
 			);
@@ -167,10 +170,14 @@ describe("the command", () => {
 		expect(run("--write").status).toBe(0);
 		write("packages/pipeline/src/a.ts", "export const a = 2;\n");
 		const script = pathToFileURL(join(repo, "scripts/code-hashes.mjs")).href;
-		const imported = spawnSync(process.execPath, ["--input-type=module", "-e", `await import(${JSON.stringify(script)});`], {
-			cwd: repo,
-			encoding: "utf8",
-		});
+		const imported = spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", `await import(${JSON.stringify(script)});`],
+			{
+				cwd: repo,
+				encoding: "utf8",
+			},
+		);
 		expect(imported).toMatchObject({ status: 0, stdout: "" });
 	});
 
@@ -197,7 +204,7 @@ describe("the command's formatting", () => {
 		symlinkSync(join(root, "node_modules/.bin/tsc"), join(repo, "node_modules/.bin/tsc"));
 		writeFileSync(
 			join(repo, "node_modules/.bin/biome"),
-			'#!/bin/sh\nprintf "%s\\n" "$PWD" "$@" > "$0.args"\nexit "${BIOME_EXIT:-0}"\n',
+			'#!/bin/sh\nprintf "%s\\n" "$PWD" "$@" > "$0.args"\nexit "$BIOME_EXIT"\n',
 		);
 		chmodSync(join(repo, "node_modules/.bin/biome"), 0o755);
 		mkdirSync(join(repo, "scripts"));
