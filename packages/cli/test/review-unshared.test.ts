@@ -7,7 +7,7 @@ import type { Io } from "../src/commands.ts";
 import { main } from "../src/main.ts";
 
 const unshared = [{ finding: "f-static-1", code: "unprovenRun" as const }];
-const failWith = vi.hoisted(() => ({ fail: false }));
+const failWith = vi.hoisted(() => ({ fail: false, bare: false, index: undefined as string | undefined }));
 const dismissed = vi.hoisted(() => ({ records: false, storeFails: false }));
 
 vi.mock("@melian-agent/pipeline", async (importOriginal) => {
@@ -16,11 +16,12 @@ vi.mock("@melian-agent/pipeline", async (importOriginal) => {
 		...actual,
 		reviewChangeset: async (...args: Parameters<typeof actual.reviewChangeset>) => {
 			const review = await actual.reviewChangeset(...args);
-			if (!failWith.fail) return { ...review, unshared };
+			const index = failWith.index === undefined ? {} : { decisionIndexWarning: failWith.index };
+			if (!failWith.fail) return failWith.bare ? review : { ...review, ...index, unshared };
 			throw new actual.ReviewError("verifierFailed", "the review failed after its export", {
 				lenses: [],
 				verdict: review.verdict,
-				unshared,
+				...(failWith.bare ? {} : { unshared }),
 			});
 		},
 		recordDismissal: async (options: Parameters<typeof actual.recordDismissal>[0]) => {
@@ -58,6 +59,8 @@ let io: Io & {
 };
 beforeEach(() => {
 	failWith.fail = false;
+	failWith.bare = false;
+	failWith.index = undefined;
 	dismissed.storeFails = false;
 	repo = createRepository();
 	commit(repo, {
@@ -102,6 +105,31 @@ it("warns of an unshared dismissal when the review failed after its export", asy
 	expect(io.stderr).toHaveBeenCalledWith("melian: the review failed after its export\n");
 	expect(io.stderr).toHaveBeenCalledWith(`melian: ${warning}\n`);
 	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({ warnings: [warning] });
+});
+
+it("warns of nothing, and prints no warnings, when the review left every dismissal shared", async () => {
+	failWith.bare = true;
+	expect(await main(["review", "main...HEAD", "--json"], io)).toBe(0);
+	expect(io.stderr.mock.calls.flat().join("")).not.toContain("not shared");
+	expect(JSON.parse(io.stdout.mock.calls[0]![0])).not.toHaveProperty("warnings");
+});
+
+it("warns of no unshared dismissal when a failed review names none", async () => {
+	failWith.fail = true;
+	failWith.bare = true;
+	await main(["review", "main...HEAD", "--json"], io);
+	expect(io.stderr).toHaveBeenCalledWith("melian: the review failed after its export\n");
+	expect(io.stderr.mock.calls.flat().join("")).not.toContain("not shared");
+	expect(JSON.parse(io.stdout.mock.calls[0]![0])).not.toHaveProperty("warnings");
+});
+
+it("gives the decision index warning before each unshared dismissal", async () => {
+	failWith.index = "The decision log is long.";
+	expect(await main(["review", "main...HEAD", "--json"], io)).toBe(0);
+	expect(io.stderr).toHaveBeenCalledWith("melian: The decision log is long.\n");
+	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({
+		warnings: ["The decision log is long.", warning],
+	});
 });
 
 it("names each dismissal melian dismiss --records left unshared", async () => {

@@ -275,6 +275,32 @@ describe("a dismissed static finding, exported by a later round", () => {
 		expect(read.status).not.toBe("passed");
 		expect(read.dismissed).toEqual([]);
 	});
+
+	it.each([
+		["another error", () => new Error("the dismissal's sighting is unreadable")],
+		[
+			"a dismissal error of another code",
+			() =>
+				new DismissError("notReviewed", "the dismissal's sighting is unreadable", { revision: "r", finding: "f" }),
+		],
+	])("fails the review with %s that building its record throws", async (_, error) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" },
+		});
+		const thrown = error();
+		vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw thrown;
+		});
+
+		await expect(review(store, {}, undefined)).rejects.toBe(thrown);
+	});
 });
 
 describe("a dismissed static finding, made with the store", () => {
