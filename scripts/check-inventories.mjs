@@ -56,8 +56,21 @@ function mainList() {
 	return JSON.parse(git("show", `origin/main:${listFile}`));
 }
 
+function mainFile(name) {
+	try {
+		return execFileSync("git", ["show", `origin/main:${directory}/${name}`], {
+			encoding: "utf8",
+			maxBuffer: 64 << 20,
+			stdio: ["ignore", "pipe", "ignore"],
+		});
+	} catch {
+		return undefined;
+	}
+}
+
 // files maps each JSON file's name in the log to its text. Returns one line per problem.
-export function checkInventories({ files, unreadable }) {
+// onMain(name) gives main's text of a log file, or undefined where main lacks it.
+export function checkInventories({ files, unreadable, onMain }) {
 	const problems = [];
 	for (const [name, text] of [...files].sort(([a], [b]) => a.localeCompare(b))) {
 		let value;
@@ -85,6 +98,8 @@ export function checkInventories({ files, unreadable }) {
 			problems.push(`${listFile} lists ${name}, which the sampler now reads; remove it from the list`);
 		} else if (listed !== section) {
 			problems.push(`${listFile} lists ${name} under ${listed}, but it is a ${section} inventory`);
+		} else if (onMain(name) !== text) {
+			problems.push(`${listFile} lists ${name}, but it differs from main's copy; fix the inventory`);
 		}
 	}
 	for (const name of unreadable.keys())
@@ -102,6 +117,7 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 		const problems = checkInventories({
 			files,
 			unreadable: readUnreadable(JSON.parse(readFileSync(listFile, "utf8")), mainList()),
+			onMain: mainFile,
 		});
 		for (const problem of problems) console.error(problem);
 		if (problems.length > 0) {

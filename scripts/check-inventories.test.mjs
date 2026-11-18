@@ -28,8 +28,12 @@ const refusalOf = (text) => {
 };
 
 const unreadable = (entries = {}) => new Map(Object.entries(entries));
-const check = (files, entries) =>
-	checkInventories({ files: new Map(Object.entries(files)), unreadable: unreadable(entries) });
+const check = (files, entries, main = files) =>
+	checkInventories({
+		files: new Map(Object.entries(files)),
+		unreadable: unreadable(entries),
+		onMain: (name) => main[name],
+	});
 
 describe("checkInventories", () => {
 	it("fails an inventory the sampler refuses, with the sampler's own message", () => {
@@ -65,6 +69,20 @@ describe("checkInventories", () => {
 
 	it("accepts a listed inventory the sampler still refuses", () => {
 		expect(check({ "old-mutants.json": malformed() }, { "old-mutants.json": "version2" })).toEqual([]);
+	});
+
+	it("fails a listed inventory that differs from main's copy, or that main lacks", () => {
+		const emptied = JSON.stringify({ melianMutants: 2, mutants: [] });
+		const problem =
+			".unreadable-inventories.json lists old-mutants.json, but it differs from main's copy; fix the inventory";
+		expect(
+			check(
+				{ "old-mutants.json": emptied },
+				{ "old-mutants.json": "version2" },
+				{ "old-mutants.json": malformed() },
+			),
+		).toEqual([problem]);
+		expect(check({ "old-mutants.json": malformed() }, { "old-mutants.json": "version2" }, {})).toEqual([problem]);
 	});
 
 	it("fails a listed inventory the sampler now reads, so the list only shrinks", () => {
@@ -154,7 +172,9 @@ describe("the committed log", () => {
 				.map((name) => [name, readFileSync(join(log, name), "utf8")]),
 		);
 		const list = JSON.parse(readFileSync(join(root, ".unreadable-inventories.json"), "utf8"));
-		expect(checkInventories({ files, unreadable: readUnreadable(list) })).toEqual([]);
+		expect(checkInventories({ files, unreadable: readUnreadable(list), onMain: (name) => files.get(name) })).toEqual(
+			[],
+		);
 	});
 });
 
@@ -210,6 +230,21 @@ describe("the gate's command", () => {
 		);
 		const result = run();
 		expect(result.stderr).toContain("2026-11-01-old-mutants.json is not on main's list");
+		expect(result.status).toBe(1);
+	});
+
+	it("exits 1 for a listed inventory edited since main, and 0 while it is as main has it", () => {
+		const name = "2026-11-01-old-mutants.json";
+		writeFileSync(join(scratch, "docs/progress-log", name), malformed());
+		writeFileSync(
+			join(scratch, ".unreadable-inventories.json"),
+			JSON.stringify({ version2: [{ file: name, pullRequest: 1 }], legacy: [] }),
+		);
+		commitMain();
+		expect(run().status).toBe(0);
+		writeFileSync(join(scratch, "docs/progress-log", name), JSON.stringify({ melianMutants: 2, mutants: [] }));
+		const result = run();
+		expect(result.stderr).toContain(`lists ${name}, but it differs from main's copy`);
 		expect(result.status).toBe(1);
 	});
 
