@@ -41,6 +41,7 @@ import {
 	type Review,
 	ReviewError,
 	readVerdict,
+	recordDismissal,
 	reviewChangeset,
 	type TaskId,
 	upsertFinding,
@@ -358,6 +359,26 @@ describe("reviewChangeset", () => {
 			expect(await adjudication()).not.toBe(decided);
 			expect(fake.provider.state.callCount).toBe(calls);
 			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
+		});
+
+		it("dismisses under the dismissing build's code a review another build decided", async () => {
+			script();
+			const [finding] = (await reviewed()).verdict.findings.block;
+			code.version = "changed";
+
+			const recorded = await recordDismissal({
+				harness,
+				revision: (await Changeset.resolve(repo, "main...feature")).revision,
+				id: finding!.properties.id,
+				dismissal: { by: "Tal <tal@melian.invalid>", reason: "Checked by hand.", at: "2026-10-04T01:00:00Z" },
+				repoRoot: repo,
+			});
+
+			expect(recorded.finding.properties).toMatchObject({ id: finding!.properties.id, status: "dismissed" });
+			const stored = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
+				reviewedRevision()
+			]!.adjudication!;
+			expect(JSON.parse(stored.input).code).toBe("changed");
 		});
 
 		it("attaches to the stored decision when the build's deciding code is the same", async () => {
