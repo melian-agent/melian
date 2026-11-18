@@ -118,6 +118,9 @@ afterEach(async () => {
 	rmSync(repo, { recursive: true, force: true });
 });
 
+// The probe's command with its script emptied, so it starts and the probe passes.
+const passingRun = (command: string) => `printf '' > ${command.slice(command.lastIndexOf(" ") + 1)} && ${command}`;
+
 // Whether a probe is running in a tree of the head, asked while it runs: Probe starts every probe in its tree, and only
 // the head's holds files, the empty probe's that checks the sandbox none.
 function inHeadTree(command: string): boolean {
@@ -215,6 +218,8 @@ async function review(
 		unlockModels?: ReviewOptions["unlockModels"];
 		rerun?: boolean;
 		policy?: ReviewOptions["policy"];
+		requireProbes?: boolean;
+		probeGap?: ReviewOptions["probeGap"];
 		records?: ReviewOptions["records"];
 	} = {},
 ) {
@@ -267,6 +272,8 @@ async function review(
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.policy === undefined ? {} : { policy: options.policy }),
+		...(options.requireProbes === undefined ? {} : { requireProbes: options.requireProbes }),
+		...(options.probeGap === undefined ? {} : { probeGap: options.probeGap }),
 		...(options.records === undefined ? {} : { records: options.records }),
 	});
 	return { run, requests, sandbox, heads, changeset, config };
@@ -543,7 +550,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const error = await run.then(
 			() => undefined,
@@ -579,7 +586,11 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 	});
 
 	it("reads back from its records the verdict of a review whose prober left an attack untried", async () => {
+		// A reader decides a round only under the policy the review read, so the band moves into the base's melian.yaml.
+		withBasePolicy("lenses:\n  trust-boundary:\n    level:\n      floor: deep\n");
 		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		const base = gitIn(repo, "rev-parse", "main");
+		const policy = { kind: "revision", commit: base } as const;
 		const { run, changeset, config } = await review(
 			{
 				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
@@ -589,15 +600,18 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					fauxAssistantMessage("Still done."),
 				],
 			},
-			{ records },
+			{ records, policy },
 		);
 		const { verdict } = await run;
 		expect(verdict.status).toBe("not-reviewed");
+		expect(
+			[...(verdict.ran ?? []), ...verdict.notRun].find(({ name }) => name === "lens.trust-boundary")?.level,
+		).toBe("deep");
 		const stored = await records.list(changeset.id);
 		const round = SharedRecord.parseEnvelope(stored.filter(({ kind }) => kind === "round").at(-1)!).id;
 		const recorded = RecordedRound.of(stored, round, () => true);
 		expect(recorded.refusal()).toBeUndefined();
-		const read = await recorded.verdict({ revision: changeset.revision, config });
+		const read = await recorded.verdict({ revision: changeset.revision, config, repoRoot: repo, policy });
 		expectSharedVerdict(read.toJSON(), verdict.toJSON());
 	});
 
@@ -2179,7 +2193,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? "exit 0" : command) },
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -3857,5 +3871,457 @@ describe("the trust-boundary lens's probing turns", () => {
 		expect(shown).toContain(name);
 		const golden = readFileSync(new URL("golden/trust-boundary-probing-turns.txt", import.meta.url), "utf8");
 		expect(`${shown.replaceAll(name, "trust-boundary")}\n`).toBe(golden);
+	});
+});
+
+describe("a review that requires probes", { timeout: 60_000 }, () => {
+	// The review's record of the lens and the gaps it reported, whether the review passed or failed.
+	async function settled(run: Promise<{ verdict: { ran?: readonly CheckRecord[]; notRun: readonly CheckRecord[] } }>) {
+		const verdict = await run.then(
+			(done) => done.verdict,
+			(thrown: unknown) => {
+				if (!(thrown instanceof ReviewError) || thrown.verdict === undefined) throw thrown;
+				return thrown.verdict;
+			},
+		);
+		return record(verdict);
+	}
+
+	it("fails a level that cannot probe here rather than run it without probes, and reports why", async () => {
+		const gaps: unknown[] = [];
+		const { run, requests } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({
+			status: "failed",
+			level: "deep",
+			reason: "probes are required, and deep ran without probes, which cannot run here: octocat has read permission",
+		});
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "untrusted-writer" }]);
+		expect(requests[reviewer]).toEqual([]);
+	});
+
+	it.each([
+		["no writer", { writer: undefined }, "no-writer"],
+		[
+			"a sandbox that cannot run",
+			{ sandbox: { ...unconfinedSandbox(), unavailable: () => "no seatbelt" } },
+			"sandbox-unavailable",
+		],
+		["a prober's tier with no model", { lens: probingWith({ prober: "light" }) }, "prober-tier-unrouted"],
+	] as const)("names the cause for %s", async (_, options, cause) => {
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({ ...options, requireProbes: true, probeGap: (gap) => gaps.push(gap) });
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual([cause]);
+	});
+
+	it("names the cause when the base policy trusts no writer", async () => {
+		withBasePolicy("trust:\n  writers: false\n");
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({
+			writer: { trusted: true, by: "writer" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["writers-untrusted"]);
+	});
+
+	it("names the cause when the head refuses probes", async () => {
+		const limits = headTreeLimits as { entries: number };
+		const entries = limits.entries;
+		limits.entries = 1;
+		onTestFinished(() => {
+			limits.entries = entries;
+		});
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({ requireProbes: true, probeGap: (gap) => gaps.push(gap) });
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["head-refuses"]);
+	});
+
+	it("names the cause when the plan refuses its prober's tier", async () => {
+		const fake = createFakeModels();
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({
+			fake,
+			lens: probingWith({ prober: "medium" }),
+			config: {
+				models: {
+					heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					medium: { accept: ["nowhere/model"], unavailable: "fail" },
+				},
+			},
+			plan: async (config, lenses, fake) => {
+				const { catalog, credentials } = await planInputs(fake.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
+			},
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["prober-tier-refused"]);
+	});
+
+	it("still runs a level that does not probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			lens: (lens) => lens,
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "ran", level: "deep" });
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose probes ran, and one whose planner found nothing to probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect(await settled(run)).toMatchObject({ status: "ran" });
+		await harness?.close();
+		harness = undefined;
+		const empty = await review(
+			{ planner: [call("record_plan", { attacks: [] }), plan[1]!], prober: [] },
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect(await settled(empty.run)).toMatchObject({ status: "ran" });
+		expect(gaps).toEqual([]);
+	});
+
+	// A prober whose one probe the sandbox refuses, which then skips the attack.
+	const refusing = (requireProbes: boolean, gaps: unknown[]) => {
+		const base = unconfinedSandbox();
+		return review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
+			{
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+	};
+
+	it("fails a level whose prober asked for a probe that could not run, keeping the level's own reason", async () => {
+		const passed = await settled((await refusing(false, [])).run);
+		expect(passed.status).toBe("ran");
+		await harness?.close();
+		harness = undefined;
+		const gaps: unknown[] = [];
+		const failed = await settled((await refusing(true, gaps)).run);
+		expect(failed).toEqual({
+			...passed,
+			status: "failed",
+			reason: `probes are required, and 1 probe the deep prober asked for could not run; ${passed.reason}`,
+		});
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
+	});
+
+	const ending = (script: string, prober: ScriptedReply[], gaps: unknown[], rewrite?: string) =>
+		review(
+			{ planner: plan, prober: [call("run_probe", { attack: 1, script }), ...prober] },
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				...(rewrite === undefined ? {} : { rewrite: (command) => (inHeadTree(command) ? rewrite : command) }),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+
+	it.each([
+		["timed out", "sleep 10"],
+		["was cut at its output limit", "yes x | head -c 40000"],
+		["was ended by a signal", "kill -9 $$"],
+		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
+	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(passing, [fauxAssistantMessage("Done.")], gaps, rewrite);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it("fails a level that answered one attack while every probe of another showed nothing", async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 2, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 2 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		const failed = await settled(run);
+		expect([heads, failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			2,
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it("fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[
+				fauxAssistantMessage("Done."),
+				call("skip_attack", { attack: 1, reason: "the sandbox did not start its probe" }),
+				fauxAssistantMessage("Skipped it."),
+			],
+			gaps,
+			"exit 1",
+		);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and 1 probe the deep prober asked for could not run",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
+	});
+
+	it.each([
+		["passed", passing],
+		["failed", failing],
+	])("passes a level whose probe of its attack %s", async (_, script) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(script, [fauxAssistantMessage("Done.")], gaps);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[call("skip_attack", { attack: 1, reason: "its probe timed out" }), fauxAssistantMessage("Skipped it.")],
+			gaps,
+			"sleep 10",
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 1 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect([heads, gaps]).toEqual([2, []]);
+	});
+
+	it("passes a level whose prober skipped every attack without asking for a probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [call("skip_attack", { attack: 1, reason: "nothing to run" }), fauxAssistantMessage("Skipped it.")],
+			},
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("names the quick level when it and its escalation would both run without probes", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			...options,
+			lens: (lens) => {
+				const careful = options.lens(lens);
+				return Lens.from({
+					...careful.toJSON(),
+					levels: { ...careful.levels, quick: { ...careful.level("quick"), probe: {} } },
+				});
+			},
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "quick" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "untrusted-writer" }]);
+	});
+
+	it("checks no level above one triage did not choose quick for", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			...options,
+			decider: new RecordedDecider(
+				{ triage: { version: "1", answers: { "trust-boundary": { distribution: { careful: 1 } } } } },
+				{ name: "recorded" },
+			),
+			lens: probingWith({}),
+			config: {
+				...options.config,
+				lenses: { "trust-boundary": { level: { floor: "quick", ceiling: "deep" } } },
+			},
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "ran", level: "careful" });
+		expect(gaps).toEqual([]);
+	});
+
+	it("fails a level that cannot probe when the host takes no gaps", async () => {
+		const { run } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "deep" });
+	});
+
+	it("fails a level whose prober's probe could not run when the host takes no gaps", async () => {
+		const base = unconfinedSandbox();
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
+			{
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+			},
+		);
+		expect((await settled(run)).status).toBe("failed");
+	});
+
+	it("fails a level whose quick run's probe could not run, though the level it escalated to probed", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const base = unconfinedSandbox();
+		let refusals = 1;
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{
+				planner: [...plan, ...plan],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					...probing(failing),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				...options,
+				lens: (lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: {
+							...lens.levels,
+							quick: { ...lens.level("quick"), probe: {} },
+							careful: { ...lens.level("careful"), probe: {} },
+						},
+					}),
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command) && refusals-- > 0) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "careful" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "probe-refused" }]);
+	});
+
+	it("fails as the lens failed when its task ended with no result", async () => {
+		const aborted: ScriptedReply = async () => {
+			const root = await harness!.harness.root(backgroundContext);
+			const index = await harness!.harness.snapshot(ReviewIndex, root.id, backgroundContext);
+			await harness!.harness.abortTask(Object.values(index!.reviews)[0]!.task as TaskId, backgroundContext);
+			return fauxAssistantMessage("Reported 0 findings.");
+		};
+		const { run } = await review(
+			{ planner: [], prober: [], others: [{ match: reviewer, replies: [aborted] }] },
+			{ lens: (lens) => lens, requireProbes: true, probeGap: () => {} },
+		);
+		await expect(run).rejects.toMatchObject({ code: "lensFailed" });
+	});
+
+	it("fails a quick level whose escalation would run without probes, before it runs", async () => {
+		const fake = createFakeModels();
+		const gaps: unknown[] = [];
+		const { run, requests } = await withoutProbes({
+			...escalating(fake),
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "careful" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "careful", cause: "untrusted-writer" }]);
+		expect(requests[reviewer]).toEqual([]);
 	});
 });

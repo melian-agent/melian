@@ -121,6 +121,7 @@ async function round(
 		standards: [],
 		models: fake.review,
 		checkRun: handed,
+		policy: { kind: "worktree" },
 		records: store,
 	});
 	return { changeset, verdict, root, store, handed, stored: await store.list(changeset.id) };
@@ -156,6 +157,8 @@ describe("a static check's sightings, beside the run a host made of the same rev
 		const read = await RecordedRound.of(reviewed.stored, id, everyRecordCounts).verdict({
 			revision: reviewed.changeset.revision,
 			config,
+			repoRoot: repo,
+			policy: { kind: "worktree" },
 		});
 		expect(read.status).toBe("not-reviewed");
 	});
@@ -376,6 +379,8 @@ describe("a dismissal of a static finding whose sighting its run stamped", { tim
 		const read = await RecordedRound.of(stored, id, everyRecordCounts).verdict({
 			revision: reviewed.changeset.revision,
 			config,
+			repoRoot: repo,
+			policy: { kind: "worktree" },
 		});
 		// Today's reader reads no dismissal record, so the finding still blocks there; issue #481 reads it as dismissed.
 		expect(read.status).toBe("findings");

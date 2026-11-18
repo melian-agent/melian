@@ -55,3 +55,7 @@ Codex's fifth review, at 244cded55, found that adjudication and the account stil
 ## A hand-built run: the own-build round at abf57d68b
 
 The own-build round at abf57d68b raised one acknowledgement, 145e304dfafe8871. A caller that builds a `CheckRun` by hand, pairing run A's identity with run B's request, gets A's skipped or failed record filed under B's request. `runChecks` never returns such a pair. The maintainer read it on 2026-11-18, in the coordinator's session, and ruled that it falls under the limit of 2026-11-17 on a caller who forges a run, with no code change here. The coordinator recorded it as a second row on the audit, [pull request #572](https://github.com/melian-agent/melian/pull/572). The identity guideline's check-record row now says its promise holds for the options `reviewChangeset` takes, and that a hand-built `CheckRun` is outside it.
+
+## Merging main after pull request #571
+
+Main had raised Enola's check version to 4 on its own, so the merge takes Enola to 5, above both, with Biome 3, tsc 4 and mutation 3 as before. Main's reviews and readers now name the policy their account records, by [issue #502](https://github.com/melian-agent/melian/issues/502), so the planted-sighting tests hand `policy: { kind: "worktree" }` to the review and to the reader, as main's own tests do.

@@ -1,0 +1,91 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "cb81674af11f4da881468ecd1b37ec7633f2e311",
+    "head": "e451da5fa346c918237ee911ae050ddf483cd130"
+  },
+  "claimsIn": [
+    "scripts/round-probe-containment.mjs"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+  "mutants": [
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 311,
+      "column": 1,
+      "endLine": 311,
+      "endColumn": 13,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cc023fe7497e55f1f3da93e63b58b1f52afdacc1aa8f6b58efad5b09fbfe3c60"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 377,
+      "column": 39,
+      "endLine": 377,
+      "endColumn": 100,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "780edca41204882282679e395637b06a5eb61abb50cbc698e147a0be5a2c2465",
+      "claim": "killed",
+      "evidence": "scripts/round-probe-containment.test.mjs > judge > fails each address the probe's network namespace holds beyond loopback, of either family",
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 377,
+      "column": 53,
+      "endLine": 377,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "27058c99c8a6e323b7624f5d9cd21e1f0d0f4b08e741f29246acf8d1e3bda03a"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 763,
+      "column": 2,
+      "endLine": 763,
+      "endColumn": 58,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "68e2fda4f1708e5a429f3365818e70e55b1150141cf37dda8d0ceafe10fda7f2",
+      "claim": "killed",
+      "evidence": "scripts/round-probe-containment.test.mjs > the containment step > shuts every route on this machine, and prints each line a reader of the log needs",
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 763,
+      "column": 6,
+      "endLine": 763,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2029a0de15fd014334b662e0c7a1c34b1488afdbdcddf1e0c333b7cfd84d688a"
+    }
+  ],
+  "total": 5,
+  "omitted": 0,
+  "unmutated": []
+}

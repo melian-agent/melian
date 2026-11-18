@@ -46,12 +46,13 @@ export const maxKeyedPolicyBytes = 1024 * 1024;
 // Melian's own code of each check. Raise a check's number when its logic changes what it finds or how it reports, so
 // no run of an earlier build is reused; nothing checks that you did until issue #437. Biome 2 and tsc 2 keep no tool
 // text, and tsc 3 asks tsc --showConfig for its projects. Enola 2 and mutation 2 keep no tool text in a discriminator,
-// and Enola 2 hashes a rule no policy declares. Biome 3, tsc 4, Enola 3 and mutation 3 stamp their sightings with the run.
+// and Enola 2 hashes a rule no policy declares. Enola 3 replaces a head's recipes with the base's, and Enola 4 restores a
+// base policy file with a newline in its name. Biome 3, tsc 4, Enola 5 and mutation 3 stamp their sightings with the run.
 const checkVersions: Readonly<Record<DeterministicCheck, number>> = {
 	guardrails: 1,
 	"static.biome": 3,
 	"static.tsc": 4,
-	"static.enola": 3,
+	"static.enola": 5,
 	"static.mutation": 3,
 };
 

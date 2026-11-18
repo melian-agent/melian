@@ -264,6 +264,30 @@ jobs:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: melian
+      # The trust-boundary lens probes the head in sandbox-runtime, which needs bubblewrap, socat and ripgrep on Linux,
+      # and user namespaces that Ubuntu 24.04's AppArmor can restrict. No login is in this job's environment yet.
+      - name: Let probes run under bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          # Runner images differ: an image without the restriction has no such setting.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+      # Before any step holds a login, prove on this runner that a probe reaches none of what the round's process will
+      # hold. The script plants fake values under the logins' names, so it needs none of them. A failure ends the round
+      # unreviewed, and the report posts that no round ran.
+      - name: Prove a probe cannot reach the round's secrets
+        working-directory: melian
+        env:
+          MELIAN_PROBE_POLICY_COMMIT: ${{ needs.gate.outputs.base }}
+        run: |
+          if ! node --conditions=@melian-agent/source scripts/round-probe-containment.mjs; then
+            echo "::error::a probe on this runner reached what the round would hold, so the round does not run"
+            mkdir -p "$RUNNER_TEMP/public"
+            echo none > "$RUNNER_TEMP/public/exit"
+            exit 1
+          fi
       # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
       # approved. Refuse one that moved, before the step that holds them; the report then posts its stale notice. Seconds
       # remain between this read and Melian's own, and the comment's check of what the round reviewed covers them.
@@ -315,9 +339,12 @@ jobs:
           node packages/cli/bin/melian.js doctor || true
           set +e
           # Melian refuses, before it reads a login, a pull request that moved after the gate approved this base and head.
+          # A level that probes and cannot probe here fails rather than pass without probes; this log names each one's cause
+          # from a closed set, since its reason can name a path in the head.
           node packages/cli/bin/melian.js review "#$NUMBER" --expect-base "$BASE" --expect-head "$HEAD" --json --no-walkthrough \
-            > "$raw/verdict.json" 2> "$raw/round.err"
+            --require-probes --probe-gaps "$raw/probe-gaps.json" > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
+          node --conditions=@melian-agent/source scripts/round-probe-gaps.mjs "$raw/probe-gaps.json" "$out/probe-gaps.json"
           node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
@@ -426,7 +453,7 @@ jobs:
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
-            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --probe-gaps "$out/probe-gaps.json" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
           # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post

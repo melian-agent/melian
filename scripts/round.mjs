@@ -128,6 +128,18 @@ function checkLine({ name, status }) {
 	return oneLine(`  ${name}  ${status}`);
 }
 
+const unprobed = "since it probes and could not probe here; the round's log names why";
+
+// The checks the round's probe gaps name, from the file the round job wrote. The comment marks only a check the verdict
+// also lists, so nothing else in the file reaches the comment.
+function probeGapChecks(text) {
+	try {
+		return new Set(JSON.parse(text).map((gap) => field(gap, "check")));
+	} catch {
+		return new Set();
+	}
+}
+
 const localRun = "A local run of melian review shows why each check did not run.";
 
 function lineageLine({ name, lineage }) {
@@ -184,6 +196,19 @@ function readOr(path, fallback) {
 	}
 }
 
+// A check's route, by the fields core's CheckLineage names, so a field a later build adds stays in the job until this
+// copies it.
+function routeOf({ model, wanted, by, outside, moved, thinking }) {
+	return {
+		model,
+		wanted,
+		by,
+		outside,
+		moved: moved && { by: moved.by, from: moved.from, to: moved.to },
+		thinking: thinking && { level: thinking.level, wanted: thinking.wanted, by: thinking.by },
+	};
+}
+
 // What of a verdict may leave the job: the fields the comment renders, and nothing a static tool printed. A head's
 // tool configuration can reach outside the checkout, as a biome.json that extends /proc/<pid>/environ does, and the
 // tool's error then quotes that file. So a check keeps its name, status and route, and a static finding its rule and
@@ -196,7 +221,7 @@ export function publicVerdict(text) {
 	try {
 		const verdict = JSON.parse(text);
 		spend = spendOf(verdict);
-		const check = ({ name, status, lineage }) => ({ name, status, lineage });
+		const check = ({ name, status, lineage }) => ({ name, status, lineage: lineage && routeOf(lineage) });
 		const finding = ({ ruleId, message, locations, properties }) => {
 			const { id, severity, resolution, path, source, explanation, failureScenario } = properties;
 			const region = locations[0]?.physicalLocation.region;
@@ -315,8 +340,9 @@ const staticText = "A static check's finding; a local run shows its text.";
 // either is undefined when its read failed. Finding text comes from models that read the head, so everything after
 // the link sits inside one code fence that no backtick run in it can close.
 export class RoundComment {
-	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current }) {
+	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current, unprobed }) {
 		this.verdict = verdict;
+		this.unprobed = unprobed ?? new Set();
 		this.runId = runId;
 		this.nonce = nonce;
 		this.exitCode = exitCode;
@@ -328,7 +354,7 @@ export class RoundComment {
 		this.current = current;
 	}
 
-	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current }) {
+	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current, probeGaps }) {
 		let parsed;
 		try {
 			parsed = publicVerdict(readFileSync(verdict, "utf8"));
@@ -347,6 +373,7 @@ export class RoundComment {
 			mergeBase,
 			reviewed,
 			current,
+			unprobed: probeGapChecks(readOr(probeGaps, "")),
 		});
 	}
 
@@ -391,7 +418,16 @@ export class RoundComment {
 		const notRun = verdict.notRun.filter((check) => check.status !== "provisional");
 		if (provisional.length > 0) quoted.push("", "Provisional:", ...provisional.map(checkLine), localRun);
 		if (notRun.length > 0)
-			quoted.push("", `${plural(notRun.length, "check")} did not run:`, ...notRun.map(checkLine), localRun);
+			quoted.push(
+				"",
+				`${plural(notRun.length, "check")} did not run:`,
+				...notRun.map((check) =>
+					check.status === "failed" && this.unprobed.has(check.name)
+						? oneLine(`  ${check.name}  failed, ${unprobed}`)
+						: checkLine(check),
+				),
+				localRun,
+			);
 		const lineage = [...(verdict.ran ?? []), ...verdict.notRun].filter((check) => check.lineage !== undefined);
 		if (lineage.length > 0)
 			quoted.push("", `${plural(lineage.length, "check")} left the committed routes:`, ...lineage.map(lineageLine));

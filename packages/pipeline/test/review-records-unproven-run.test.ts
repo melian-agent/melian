@@ -91,7 +91,7 @@ const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
 		records: checks,
 	};
 };
-const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 3, "static.mutation": 3 };
+const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 5, "static.mutation": 3 };
 const asked = askFor(current);
 
 // What the host's store holds beside the sightings: the request key each check task's terminal commit stamped, and the
@@ -161,6 +161,7 @@ async function review(
 		standards: [],
 		models: fake.review,
 		...(checkRun === undefined ? { checks } : { checkRun }),
+		policy: { kind: "worktree" },
 		records: store,
 	});
 	const stored = await store.list(changeset.id);
@@ -185,6 +186,8 @@ function readBack(reviewed: Awaited<ReturnType<typeof review>>) {
 	return RecordedRound.of(reviewed.stored, id, everyRecordCounts).verdict({
 		revision: reviewed.changeset.revision,
 		config: reviewed.config,
+		repoRoot: repo,
+		policy: { kind: "worktree" },
 	});
 }
 
@@ -300,7 +303,8 @@ describe("a static check's sightings, exported from a run that does not prove th
 
 		expect(reviewed.verdict.status).toBe("findings");
 		expect(verdict.status).toBe("not-reviewed");
-		expect(verdict.notRun.map(({ name }) => name)).toContain("static.biome");
+		// The withheld record drops the sighting whose path the review's policy was read for, so the reader reads another.
+		expect(verdict.notRun.map(({ name }) => name)).toEqual(["records"]);
 	});
 });
 

@@ -1,0 +1,248 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "88d8333009f10475c23e47f761f649bf37ec8563",
+    "head": "bff619c712dea6eaebcccb808b026495cf0cca46"
+  },
+  "claimsIn": [
+    "scripts/round-probe-containment.mjs"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 383,
+      "column": 5,
+      "endLine": 383,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9b29d73d735d64644d1b8bfd51bf53fac82d0f528aeecfb727935092f76fedf4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "unfinished",
+            "passes a probe that exited 0 in time with its whole output"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 383,
+      "column": 5,
+      "endLine": 383,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d589832de69ec01a5191d29e2b919a5276dc840afd39f94d280a6de72aacade0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "unfinished",
+            "names a probe that exited 0 but whose processes could not be stopped"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 383,
+      "column": 5,
+      "endLine": 383,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "result.error === undefined",
+      "status": "generated",
+      "id": "55433f3991fa4d782c5599e31d7042ae85709d165cb34b3f416f657e6e5161b0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "unfinished",
+            "passes a probe that exited 0 in time with its whole output"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 383,
+      "column": 40,
+      "endLine": 383,
+      "endColumn": 113,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "456f2f3ba715e1f39c340722d13a7d102f932771db15bb6ea3a30897472d643a"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 557,
+      "column": 10,
+      "endLine": 557,
+      "endColumn": 26,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "cleanup.removed",
+      "status": "generated",
+      "id": "55a5dd58ab4640ba4eee36f3d4c4661cd64999a4af9b2f75e133b5a3fe21c8e7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "main",
+            "fails a probe that did not finish, and leaves nothing it planted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 558,
+      "column": 7,
+      "endLine": 558,
+      "endColumn": 11,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fd979c0795b16277fada6e36c0f4e16bde904565cd5d4077a27f417db25359e5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "main",
+            "fails a probe that did not finish, and leaves nothing it planted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 558,
+      "column": 7,
+      "endLine": 558,
+      "endColumn": 11,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6a3445875ab84c355fb023eabe2270160c534dfaecab6627fe2eae67a273cecf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "main",
+            "names the probe's scratch when closing it left some"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 558,
+      "column": 13,
+      "endLine": 558,
+      "endColumn": 80,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "5ff49f9999cbe8c859c59617b9783827e76cbfb7dd52487ba3a0a321fcabdcc2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "main",
+            "names the probe's scratch when closing it left some"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 558,
+      "column": 25,
+      "endLine": 558,
+      "endColumn": 78,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9d2d27d27d37425e9af1b00ae974d9d5f80a5a48203aa6393962e8c1c69caf65"
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 560,
+      "column": 6,
+      "endLine": 560,
+      "endColumn": 10,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "88c2a53cac43d948225c17310509746bd8b1eca2e97a8143a1898aca2899b8a1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "the containment step",
+            "shuts every route on this machine, and prints each line a reader of the log needs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/round-probe-containment.mjs",
+      "line": 560,
+      "column": 6,
+      "endLine": 560,
+      "endColumn": 10,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a10fcd7f5f8213f9c42d5ff4362159535cf2e0be01aacf529056a4e807a75900",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/round-probe-containment.test.mjs",
+          "path": [
+            "main",
+            "fails a probe that finished when closing it left its scratch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 11,
+  "omitted": 0,
+  "unmutated": []
+}

@@ -4,7 +4,6 @@ import {
 	type ChoiceQuestion,
 	type ConfigFor,
 	checksOfTier,
-	configLookup,
 	type Decider,
 	type Decision,
 	defaultScrutinyLevel,
@@ -22,7 +21,7 @@ import {
 	type LensRule,
 	type LensTier,
 	type LensToolName,
-	LevelBand,
+	type LevelBand,
 	lensLimits,
 	loadConfig,
 	Manifest,
@@ -32,12 +31,12 @@ import {
 	type ModelReference,
 	type ModelRoute,
 	ModelRoutingError,
-	mutationSkipHasLeave,
 	parseModelReference,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
 	Revision,
+	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
 	type ScrutinyLevel,
@@ -46,6 +45,7 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
+	TierAccount,
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
@@ -66,6 +66,7 @@ import {
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
+import { ChangeLenses } from "./change-lenses.ts";
 import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
@@ -348,6 +349,44 @@ type LensOutcome =
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
 // the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
+/**
+ * Why a level that probes could not probe, as one of a closed set, so a host decides and prints on it without reading
+ * the reason's text, which can name a path in the head.
+ */
+export type ProbeGapCause =
+	| "no-writer"
+	| "untrusted-writer"
+	| "writers-untrusted"
+	| "sandbox-unavailable"
+	| "head-refuses"
+	| "prober-tier-refused"
+	| "prober-tier-unrouted"
+	| "probe-refused"
+	| "probe-inconclusive";
+
+/** One fixed sentence for each {@link ProbeGapCause}, which a host may print where the reason's text may not go. */
+export const probeGapSentences: Readonly<Record<ProbeGapCause, string>> = {
+	"no-writer": "the host did not say whose head this is",
+	"untrusted-writer": "the head's writer is not trusted to have its code run",
+	"writers-untrusted": "the base policy sets trust.writers to false",
+	"sandbox-unavailable": "the probe sandbox cannot run on this machine",
+	"head-refuses": "the head holds what a probe's tree refuses, such as a link out of the tree or too many files",
+	"prober-tier-refused": "the review plan refuses the prober's tier",
+	"prober-tier-unrouted": "the prober's tier reaches no model with credentials",
+	"probe-refused": "a probe the prober asked for could not open, run, stop or clean up",
+	"probe-inconclusive":
+		"every probe the prober ran for an attack timed out, was cut or was ended by a signal, and it did not skip the attack",
+};
+
+/** A level that probes and could not, under {@link ReviewSettings.requireProbes}: its check, level and cause. */
+export interface ProbeGap {
+	readonly check: string;
+	readonly level: ScrutinyLevel;
+	readonly cause: ProbeGapCause;
+}
+
+type ProbeGapReason = { readonly cause: ProbeGapCause; readonly reason: string };
+
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
@@ -1408,6 +1447,14 @@ interface ReviewSettings {
 	readonly records?: RecordStore;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;
+	/**
+	 * Fail every level that probes and cannot, rather than run it without probes: the lens records `failed`, and a level
+	 * whose prober asked for a probe that could not run records `failed` once it ends. A level that plans no attack, or
+	 * skips one with a reason, still passes. Each such level is handed to `probeGap` as it is found.
+	 */
+	readonly requireProbes?: boolean;
+	/** Told each level {@link requireProbes} failed, by its structured cause. */
+	readonly probeGap?: (gap: ProbeGap) => void;
 	readonly context?: Context;
 }
 
@@ -1440,14 +1487,15 @@ async function probeRefusal(
 	request: ReviewOptions,
 	config: MelianConfig,
 	revision: { readonly repoRoot: string; readonly head: string },
-): Promise<string | undefined> {
+): Promise<ProbeGapReason | undefined> {
 	const { writer } = request;
-	if (writer === undefined) return "the host did not say whose head this is";
-	if (!writer.trusted) return writer.detail;
-	if (writer.by === "writer" && !config.trust.writers) return "trust.writers is false in the repository's policy";
+	if (writer === undefined) return { cause: "no-writer", reason: "the host did not say whose head this is" };
+	if (!writer.trusted) return { cause: "untrusted-writer", reason: writer.detail };
+	if (writer.by === "writer" && !config.trust.writers)
+		return { cause: "writers-untrusted", reason: "trust.writers is false in the repository's policy" };
 	const sandbox = probeSandboxOf(request);
 	const available = await Probe.availability(sandbox);
-	if (!available.available) return available.reason;
+	if (!available.available) return { cause: "sandbox-unavailable", reason: available.reason };
 	const refused = await headRefusal(
 		revision,
 		{
@@ -1458,7 +1506,7 @@ async function probeRefusal(
 		},
 		sandbox,
 	);
-	return refused === undefined ? undefined : `the head refuses probes: ${refused}`;
+	return refused === undefined ? undefined : { cause: "head-refuses", reason: `the head refuses probes: ${refused}` };
 }
 
 // The probe each claim of a probing run rests on, read from its planner's and its prober's conversations, with what its
@@ -2010,6 +2058,8 @@ type SettledLens = {
 	readonly outcome: LensOutcome | undefined;
 	readonly notes: string[];
 	readonly kept?: Producer;
+	// The run that escalated to this one, which `--require-probes` must still read.
+	readonly escalatedFrom?: { readonly level: ScrutinyLevel; readonly outcome: LensOutcome | undefined };
 };
 
 function plural(count: number, noun: string): string {
@@ -2041,6 +2091,7 @@ function settle(first: LensRun, result: LensResult | undefined, rule: Escalation
 		outcome: result?.[next.key],
 		notes,
 		...(kept.length === 0 ? {} : { kept: { ...source, ids: [...kept] } }),
+		escalatedFrom: { level: first.level, outcome },
 	};
 }
 
@@ -2135,75 +2186,29 @@ function verificationOutcome(outcome: VerificationResult[string]): VerificationP
 	return { status: outcome.status, reason: outcome.reason };
 }
 
-// Records for the lenses and decision questions the tier names; the lens step owns `lens.*` and `decisions.*`, so a
-// record of either from elsewhere, such as a check runner that skips them, gives way. Every other check's record comes
-// from `supplied`; adjudication calls one with none a check that never started. `lenses` holds the lens step's own
-// records, and `skippable` the lenses whose skip it allows. The producers are the sources whose findings the review
-// counts: each lens at the level of the run that stands for it.
-function account(
-	checks: readonly string[],
-	settled: readonly SettledLens[],
-	lenses: {
-		readonly records: readonly CheckRecord[];
-		readonly skippable: readonly string[];
-		// The decider that answered triage, when one did.
-		readonly triagedBy?: string;
-	},
-	options: Pick<ReviewOptions, "config" | "lenses" | "checks">,
-): { readonly manifest: Manifest; readonly producers: Producer[] } {
-	const { config } = options;
-	// The lens step owns `lens.*` and `decisions.*`, so the host's records of them give way. The plan's `failed` record of
-	// a lens it refused at the level triage chose is the lens step's own, in `lenses.records`, beside the record of a
-	// variant in another folder that ran, so a refused lens never reads as one no lens is named for.
-	const supplied = (options.checks ?? []).filter(
+// The host's records of the checks the tier names. The lens step owns `lens.*` and `decisions.*`, so the host's
+// records of them give way. The plan's `failed` record of a lens it refused at the level triage chose is the lens
+// step's own, beside the record of a variant in another folder that ran, so a refused lens never reads as one no lens
+// is named for.
+function suppliedChecks(options: Pick<ReviewOptions, "checks">): CheckRecord[] {
+	return (options.checks ?? []).filter(
 		(check) => !check.name.startsWith("decisions.") && !check.name.startsWith("lens."),
 	);
-	const manifest = new Manifest(checks, [...supplied, ...lenses.records], config.checks.allowSkip);
-	for (const name of lenses.skippable) manifest.allowSkip(name);
-	// Mutation testing is advisory, so a change it has nothing to mutate in, or is too big or slow to mutate, or may not
-	// run on, passes with the reason recorded. Any other skip of it still leaves the review not reviewed, and so does a
-	// failed record, since the manifest lets only a skip pass.
-	for (const check of supplied) {
-		if (check.name === "static.mutation" && mutationSkipHasLeave(check.cause)) {
-			manifest.allowSkip(check.name);
-		}
-	}
-	const recorded = new Set(manifest.records().map((check) => check.name));
-	const { provider } = config.decisions;
-	for (const name of checks) {
-		if (recorded.has(name)) continue;
-		if (name.startsWith("lens.")) {
-			const lens = name.slice("lens.".length);
-			const settings = Object.hasOwn(config.lenses, lens) ? config.lenses[lens] : undefined;
-			if (!options.lenses.some((each) => each.name === lens)) {
-				manifest.record({ name, status: "failed", reason: `no lens is named ${lens}` });
-			} else if (settings?.enabled === false) {
-				manifest.record({ name, status: "skipped", reason: `lenses.${lens}.enabled is false` });
-			} else {
-				// Nothing it covers changed, so there was nothing for it to review: a change of excluded paths alone passes
-				// on its deterministic checks.
-				manifest.record({ name, status: "skipped", reason: "no paths" });
-				manifest.allowSkip(name);
-			}
-		} else if (name.startsWith("decisions.")) {
-			if (provider === undefined) {
-				// The design lets the fast tier run without decision questions when no provider is configured.
-				const triaged = lenses.triagedBy === undefined ? "" : `; triage ran on ${lenses.triagedBy}`;
-				manifest.record({ name, status: "skipped", reason: `no decision provider is configured${triaged}` });
-				manifest.allowSkip(name);
-			} else {
-				// A configured provider asks for the questions, and Melian cannot ask them yet, so the review fails closed
-				// with the reason rather than with no record.
-				const reason = `decisions.provider is ${provider}, and Melian has no adapter for a decision provider yet`;
-				manifest.record({ name, status: "skipped", reason });
-			}
-		}
-	}
+}
+
+// The sources whose findings the review counts: each lens at the level of the run that stands for it, and every other
+// check the tier names or the host recorded, at the tool version its record names.
+function producersOf(
+	checks: readonly string[],
+	settled: readonly SettledLens[],
+	options: Pick<ReviewOptions, "checks">,
+): Producer[] {
+	const supplied = suppliedChecks(options);
 	const versions = new Map(supplied.map((check) => [check.name, check.version]));
 	const others = [...new Set([...checks, ...supplied.map((check) => check.name)])].filter(
 		(name) => !name.startsWith("lens."),
 	);
-	const producers: Producer[] = [
+	return [
 		...settled.flatMap(({ run, kept }) => [
 			lensSource(run.name, run.version, run.level),
 			...(kept === undefined ? [] : [kept]),
@@ -2213,36 +2218,22 @@ function account(
 			return version === undefined ? { check } : { check, version };
 		}),
 	];
-	return {
-		manifest: new Manifest(checks, inManifestOrder(checks, manifest.records()), manifest.skippable()),
-		producers,
-	};
 }
 
-// The band each selected lens's level must lie in, per selection, so two folder variants of one name keep their own:
-// the band of every file it reviews, each from the configuration of
-// that file's path, read from the policy source, or `config` for every path without one.
-async function bandsOf(
-	selections: readonly { readonly lens: Lens; readonly covers: readonly string[] }[],
-	options: Pick<ReviewOptions, "config" | "policy" | "changeset" | "origin" | "decider">,
-): Promise<Map<Lens, LevelBand>> {
-	const { policy, config, changeset } = options;
-	// A head the host does not trust writes the change triage reads, so until a calibrated decision model answers, its
-	// default floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look. The host
-	// says it does not trust the head the way the CLI does for policy: a pull request, or a range whose policy it reads
-	// from a revision rather than the working tree.
-	const untrusted = options.origin?.kind === "pull-request" || policy?.kind === "revision";
-	const floor = untrusted && options.decider?.calibrated !== true ? "careful" : "quick";
-	const lookup = policy === undefined ? undefined : configLookup(changeset.repoRoot, policy);
-	const bands = new Map<Lens, LevelBand>();
-	for (const { lens, covers } of selections) {
-		const configs = lookup === undefined ? [config] : await Promise.all(covers.map((path) => lookup(path)));
-		const settings = configs.map((each) =>
-			Object.hasOwn(each.lenses, lens.name) ? each.lenses[lens.name] : undefined,
-		);
-		bands.set(lens, LevelBand.across(settings.map((each) => LevelBand.of(each?.level, floor))));
-	}
-	return bands;
+// The round's account: a record for every check the tier names, the host's beside the lens step's `records`, with
+// `tierAccount` filling each one no record holds and deciding which skips let the review pass. Adjudication calls a
+// check with no record one that never started.
+function account(
+	tierAccount: TierAccount,
+	records: readonly CheckRecord[],
+	triage: RoundFacts["triage"],
+	triagedBy: string | undefined,
+	options: Pick<ReviewOptions, "checks">,
+): Manifest {
+	const held = [...suppliedChecks(options), ...records];
+	const all = [...held, ...tierAccount.filled(held, triagedBy)];
+	const { checks } = tierAccount;
+	return new Manifest(checks, inManifestOrder(checks, all), tierAccount.allowSkip({ records: all, triage }));
 }
 
 // One question per name: two variants of a lens in different folders share a name, and so its answer, which each
@@ -2460,20 +2451,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	spans.step("abort.replaced");
 	await abortReplacedRuns(harness, context);
 	const root = (await harness.root(context)).id;
-	// A file's old path too, so a move out of a lens's paths still runs the lens on what left them.
-	const paths = changeset.revision.paths();
 	const manifest = checksOfTier(config, tier);
-	const named = new Set(manifest.filter((name) => name.startsWith("lens.")).map((name) => name.slice("lens.".length)));
-	const selected = Lens.select(
-		options.lenses.filter((lens) => named.has(lens.name)),
-		config,
-		paths,
-	);
 	const nonce = reviewNonce();
 	let headFunctions: Promise<EnclosingFunctions> | undefined;
 	const enclosing = () => (headFunctions ??= spans.time("functions", () => EnclosingFunctions.read(changeset)));
 	const { unlockModels } = options;
-	const prompt = new ChangePrompt(changeset, nonce);
 	const { repoRoot, revision } = changeset;
 	const { base, head } = revision;
 	const reviewed = Revision.key(revision);
@@ -2483,16 +2465,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		decisionIndexWarning = index.warning();
 		return index;
 	};
-	// A lens selected through a file's old path covers its head path for this review, so it can report what it moved.
-	const covering = selected.map((selection) => {
-		const { files } = selection;
-		const moved = changeset.revision.files
-			.filter((file) => file.oldPath !== undefined && files.includes(file.oldPath) && !files.includes(file.path))
-			.map((file) => file.path);
-		return { ...selection, moved, covers: [...files, ...moved] };
-	});
 	spans.step("bands");
-	const bands = await bandsOf(covering, options);
+	// A head the host does not trust writes the change triage reads, so until a calibrated decision model answers, its
+	// default floor is careful: an uncalibrated model the head can steer never sends every lens to a quick look. The host
+	// says it does not trust the head the way the CLI does for policy: a pull request, or a range whose policy it reads
+	// from a revision rather than the working tree.
+	const untrusted = options.origin?.kind === "pull-request" || options.policy?.kind === "revision";
+	const changeLenses = await ChangeLenses.read({
+		changeset,
+		lenses: options.lenses,
+		config,
+		tier,
+		...(options.policy === undefined ? {} : { policy: options.policy }),
+		floor: untrusted && options.decider?.calibrated !== true ? "careful" : "quick",
+	});
+	const { covering } = changeLenses;
+	const bands = new Map(covering.map(({ lens }) => [lens, changeLenses.band(lens)] as const));
+	const tierAccount = TierAccount.of(config, tier, changeLenses.tierLenses());
 	spans.step("routes");
 	const { plan } = request;
 	const levelRoutes = new Map(
@@ -2592,44 +2581,63 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				throw error;
 			},
 		));
-	let probesAsked: Promise<string | undefined> | undefined;
+	let probesAsked: Promise<ProbeGapReason | undefined> | undefined;
 	const probeRefused = () =>
 		(probesAsked ??= baseConfig().then((policy) => probeRefusal(request, policy, { repoRoot, head })));
 	// Why a level that probes runs without them here: probes may not run, or its prober's tier reaches no model, or the
 	// plan refuses that tier. It then runs as it would without `probe`, and its record says why.
-	const withoutProbes = async (lens: Lens, level: ScrutinyLevel, settings: LensLevel): Promise<string | undefined> => {
+	const withoutProbes = async (
+		lens: Lens,
+		level: ScrutinyLevel,
+		settings: LensLevel,
+	): Promise<ProbeGapReason | undefined> => {
 		const refused = await probeRefused();
-		if (refused !== undefined) return `${level} ran without probes, which cannot run here: ${refused}`;
+		if (refused !== undefined)
+			return {
+				cause: refused.cause,
+				reason: `${level} ran without probes, which cannot run here: ${refused.reason}`,
+			};
 		const prober = proberAt(lens, level);
 		const planned =
 			settings.probe!.prober === undefined
 				? plan?.judge(lens.name, level, undefined, lens.scope).refusal
 				: plan?.refusal(settings.probe!.prober);
 		if (planned !== undefined)
-			return `${level} ran without probes, since the plan refuses its prober's tier, ${prober.on}: ${planned}`;
+			return {
+				cause: "prober-tier-refused",
+				reason: `${level} ran without probes, since the plan refuses its prober's tier, ${prober.on}: ${planned}`,
+			};
 		const route = resolved.get(prober.key)!;
 		return "route" in route
 			? undefined
-			: `${level} ran without probes, since its prober runs on ${prober.on}, and ${route.unrouted}`;
+			: {
+					cause: "prober-tier-unrouted",
+					reason: `${level} ran without probes, since its prober runs on ${prober.on}, and ${route.unrouted}`,
+				};
 	};
-	const triageInput = prompt.renderInput(undefined, { tools: false });
 	spans.end();
-	const triaged =
+	const asked =
 		options.decider === undefined || covering.length === 0
+			? undefined
+			: triageRequest({
+					decider: options.decider,
+					questionSet: triageQuestionSet,
+					questions: sharedQuestions(
+						covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
+					),
+					change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
+					nonce,
+				});
+	// Whether triage's input was cut, as its request records it, so the review and the triage record agree.
+	const inputCut = asked?.request.inputCut === true;
+	const triaged =
+		asked === undefined || options.decider === undefined
 			? {}
 			: await triage(
 					harness,
 					reviewed,
 					options.decider,
-					triageRequest({
-						decider: options.decider,
-						questionSet: triageQuestionSet,
-						questions: sharedQuestions(
-							covering.map(({ lens }) => lens.triageQuestion(bands.get(lens)!, runnable.get(lens)!)),
-						),
-						change: (shown) => new ChangePrompt(changeset, shown).renderInput(undefined, { tools: false }),
-						nonce,
-					}),
+					asked,
 					options.rerun === true,
 					context,
 					options.triageProviders ?? [],
@@ -2640,7 +2648,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		covering.map(({ lens }) => {
 			const levels = runnable.get(lens)!;
 			const choice = lens.triage(bands.get(lens)!, levels, triaged.decision);
-			return [lens, triageInput.cut && choice === "skip" ? levels[0]! : choice] as const;
+			return [lens, inputCut && choice === "skip" ? levels[0]! : choice] as const;
 		}),
 	);
 	// The plan judges each lens at the level triage chose for it: a lens it refuses there records `failed` with the
@@ -2720,7 +2728,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			];
 		const omitted = reading.note();
 		if (omitted !== undefined) noted.push(omitted);
-		if (options.decider !== undefined && triageInput.cut) noted.push("triage input was cut, so no lens could skip");
+		if (options.decider !== undefined && inputCut) noted.push("triage input was cut, so no lens could skip");
 
 		if (triaged.failure !== undefined)
 			noted.push(`triage failed, so it ran at its default level: ${triaged.failure}`);
@@ -2786,7 +2794,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			// The head's functions around the hunks, read once for the review, at the levels that read functions.
 			const functions = settings.reads === "functions" ? await enclosing() : undefined;
 			const band = bands.get(lens)!;
-			const skipped = settings.probe === undefined ? undefined : await withoutProbes(lens, level, settings);
+			const skipped =
+				settings.probe === undefined ? undefined : (await withoutProbes(lens, level, settings))?.reason;
 			if (skipped !== undefined && !noted.includes(skipped)) noted.push(skipped);
 			const probing =
 				settings.probe === undefined || skipped !== undefined ? undefined : await probingAt(settings, level);
@@ -2852,11 +2861,35 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 		};
 		const level = choices.get(lens) as ScrutinyLevel;
+		const next = level === "quick" ? lens.escalation(level, bands.get(lens)!) : undefined;
+		if (options.requireProbes === true) {
+			// Every level this lens may run at, its escalation's included, must probe if it is set to.
+			let gap: (ProbeGapReason & { level: ScrutinyLevel }) | undefined;
+			for (const at of next === undefined ? [level] : [level, next]) {
+				const settings = lens.level(at);
+				const found = settings.probe === undefined ? undefined : await withoutProbes(lens, at, settings);
+				if (found !== undefined) {
+					gap = { ...found, level: at };
+					break;
+				}
+			}
+			if (gap !== undefined) {
+				const name = `lens.${lens.name}`;
+				refusals.set(`${lens.name}@${lens.version}`, {
+					name,
+					version: lens.version,
+					status: "failed",
+					level: gap.level,
+					reason: `probes are required, and ${gap.reason}`,
+				});
+				options.probeGap?.({ check: name, level: gap.level, cause: gap.cause });
+				continue;
+			}
+		}
 		if (level !== "quick") {
 			lenses.push(await runAt(level));
 			continue;
 		}
-		const next = lens.escalation(level, bands.get(lens)!);
 		// The plan judges the escalation's next level as it judged the first: a level it refuses caps the escalation.
 		const nextRefusal = next === undefined ? undefined : plan?.judge(lens.name, next, undefined, lens.scope).refusal;
 		const escalation =
@@ -3087,7 +3120,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						.map((lens) => stored.get(lens.key) ?? lens)
 						.filter((first) => ended[first.key] !== undefined)
 						.map((first) => settle(first, ended, rule));
-					const { producers } = account(manifest, settledEnded, { records: [], skippable: [] }, options);
+					const producers = producersOf(manifest, settledEnded, options);
 					const { candidates } = await candidatesFor(producers, ended, runs.lenses);
 					// startWave keeps only the candidates no wave already stands for.
 					const started =
@@ -3156,6 +3189,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		producers: readonly Producer[],
 		walkthrough: SharedRecord | undefined,
 		state: FindingsState | undefined,
+		resolutionPolicy: string | null,
 	) => {
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		const sighted = (source: FindingSource) =>
@@ -3224,14 +3258,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			if (left > 0) carried.set(same(record), left - 1);
 			return left === 0;
 		});
+		// Triage's record, when it asked, so a reader can check a skip it allowed.
+		const triageRecord =
+			asked === undefined
+				? []
+				: [
+						records.triage(asked.key, {
+							...(triaged.decision === undefined ? {} : { decision: triaged.decision.toJSON() }),
+							...(triaged.failure === undefined ? {} : { failure: triaged.failure }),
+							inputCut: asked.request.inputCut,
+						}),
+					];
 		const account = records.account({
 			checks: adjudicated.some(({ name }) => name === "verifier") ? [...manifest, "verifier"] : manifest,
-			records: counted.map(({ record }) => record),
+			records: [...counted.map(({ record }) => record), ...triageRecord],
 			filled,
 			allowSkip: accounted.skippable(),
 			producers,
+			resolutionPolicy,
 		});
-		const read = [...counted.map(({ record }) => record), account];
+		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
 		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
@@ -3343,7 +3389,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// The change triage reads can steer it, so a review in which every lens stayed at quick says so.
 	const light =
 		triaged.decision !== undefined &&
-		settling.length === selected.length &&
+		settling.length === covering.length &&
 		settling.every(({ run }) => run.level === "quick")
 			? [lightTriage]
 			: [];
@@ -3417,6 +3463,42 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		),
 		...refusals.values(),
 	];
+	// A probe the prober asked for that could not run leaves an attempt with no probe, which nothing else records. An
+	// attack whose every probe showed nothing, and that the prober did not skip, has no answer.
+	if (options.requireProbes === true)
+		for (let index = 0; index < settled.length; index++) {
+			const { run, outcome, escalatedFrom } = settled[index]!;
+			for (const ran of [...(escalatedFrom === undefined ? [] : [escalatedFrom]), { level: run.level, outcome }]) {
+				const prober = ran.outcome?.status === "done" ? ran.outcome.probing?.prober : undefined;
+				if (prober === undefined) continue;
+				const state = (await harness.snapshot(ProbingDocument, prober, context)) ?? {};
+				const refused = (state.attempts ?? []).filter((id) => state.probes?.[id] === undefined).length;
+				const probes = Object.values(state.probes ?? {});
+				const answered = new Set([
+					...Object.keys(state.skips ?? {}).map(Number),
+					...probes.filter((probe) => probeConclusive(probe.result)).map((probe) => probe.attack),
+				]);
+				const inconclusive = new Set(probes.map((probe) => probe.attack).filter((attack) => !answered.has(attack)))
+					.size;
+				if (refused === 0 && inconclusive === 0) continue;
+				const record = records[index]!;
+				const why =
+					refused > 0
+						? `probes are required, and ${plural(refused, "probe")} the ${ran.level} prober asked for could not run`
+						: `probes are required, and every probe the ${ran.level} prober ran for ${plural(inconclusive, "attack")} showed nothing`;
+				records[index] = {
+					...record,
+					status: "failed",
+					reason: [why, ...(record.reason ? [record.reason] : [])].join("; "),
+				};
+				options.probeGap?.({
+					check: record.name,
+					level: ran.level,
+					cause: refused > 0 ? "probe-refused" : "probe-inconclusive",
+				});
+				break;
+			}
+		}
 	if (callers.coverage)
 		for (let index = 0; index < settled.length; index++)
 			records[index] = { ...records[index]!, coverage: callers.coverage };
@@ -3430,22 +3512,18 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			};
 	// Only the lenses this review ran count, each at the level whose record stands for it: one that configuration has
 	// since disabled or retiered, or a quick run that escalated, leaves nothing behind.
-	const { manifest: accounted, producers } = account(
-		manifest,
-		settled,
-		{
-			records,
-			skippable: skipped.map((name) => `lens.${name}`),
-			...(triaged.decision === undefined
-				? {}
-				: {
-						triagedBy: triaged.decision.decider.startsWith("llm-fallback")
-							? "the LLM fallback"
-							: triaged.decision.decider,
-					}),
-		},
+	const accounted = account(
+		tierAccount,
+		records,
+		triaged.decision === undefined ? undefined : { answers: triaged.decision.answers, inputCut },
+		triaged.decision === undefined
+			? undefined
+			: triaged.decision.decider.startsWith("llm-fallback")
+				? "the LLM fallback"
+				: triaged.decision.decider,
 		options,
 	);
+	const producers = producersOf(manifest, settled, options);
 	await (await harness.root(context)).commit(
 		(tx) =>
 			reopenDismissals(
@@ -3788,6 +3866,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						summary.walkthrough,
 					),
 			findings,
+			input.resolutionPolicy ?? null,
 		);
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>
