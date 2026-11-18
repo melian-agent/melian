@@ -1142,6 +1142,50 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		}
 	});
 
+	// An eval turns probing on in memory, and asks the loader's own rule whether the lens may probe.
+	it("says why a loaded lens may not probe, as loading a level that set probe would refuse it", async () => {
+		const builtins = await Lens.builtins();
+		const builtin = (name: string) => builtins.find((lens) => lens.name === name)!;
+		expect(builtin("trust-boundary").probeRefusal()).toBeUndefined();
+		expect(builtin("correctness").probeRefusal()).toBeUndefined();
+		expect(builtin("tests").probeRefusal()).toBe(
+			'"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
+		);
+		expect(builtin("contracts").probeRefusal()).toBe(
+			'"probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens\'s words',
+		);
+		// A lens of another name probes in the words of the built-in it extends.
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary-probes/LENS.md": lensFile([
+				"name: trust-boundary-probes",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { probe: {} }",
+			]),
+		});
+		const loaded = (await load(["src/index.ts"])).find((lens) => lens.name === "trust-boundary-probes")!;
+		expect(loaded.probeRefusal()).toBeUndefined();
+	});
+
+	it("refuses probing to a loaded lens that takes a built-in's name without extending it, though it does not probe", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary/LENS.md": lensFile(
+				security.map((line) => line.replace("name: security", "name: trust-boundary")),
+			),
+			".melian/lenses/correctness/LENS.md": lensFile(["name: correctness", "extends: correctness"]),
+		});
+		const loaded = await load(["src/index.ts"]);
+		const named = (name: string) => loaded.find((lens) => lens.name === name)!;
+		expect(named("trust-boundary").probeRefusal()).toBe(
+			'"probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in trust-boundary lens\'s name without extending it; give it and every farther trust-boundary lens "extends: trust-boundary"',
+		);
+		expect(named("correctness").probeRefusal()).toBeUndefined();
+		// The version the code before shadowsBuiltin gave this lens, so marking it reviews nothing again.
+		expect(named("trust-boundary").version).toBe("efdecea8e615");
+		expect(Lens.from(named("trust-boundary").toJSON()).probeRefusal()).toBe(named("trust-boundary").probeRefusal());
+		expect(Object.keys(named("correctness").toJSON())).not.toContain("shadowsBuiltin");
+	});
+
 	// A lens that takes a built-in's name without extending it has a purpose of its own, which the built-in's probing
 	// wording was not written for.
 	it("refuses a level that probes in a lens that takes a built-in's name without extending the built-in", async () => {
