@@ -456,7 +456,8 @@ export class Miss {
 		// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
 		if (match.matched === "lines" || (!hit && match.near.length === 0))
 			return { said: hit ? "found" : "missed", found: hit, ...seen };
-		if (match.matched !== "fix hunks") return { said: "unadjudicated, no score: matched by file and rule alone", ...seen };
+		if (match.matched !== "fix hunks")
+			return { said: "unadjudicated, no score: matched by file and rule alone", ...seen };
 		const span = (ranges: readonly (readonly [number, number])[]) =>
 			ranges.map(([first, last]) => `${first}-${last}`).join(", ");
 		const overlaps = match.hunks.filter((hunk) => match.hits.some((each) => each.hunks.includes(hunk)));
