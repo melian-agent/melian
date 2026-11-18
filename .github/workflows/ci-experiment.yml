@@ -62,20 +62,29 @@ jobs:
       - name: tsc
         run: npx tsc --noEmit
       - name: audit
-        continue-on-error: true
-        run: npm audit --audit-level=high
+        run: node scripts/check-audit.mjs
       - name: vitest
+        id: vitest
         continue-on-error: true
         run: npx vitest --run ${{ matrix.arm.vitest }} --reporter=default --reporter=json --outputFile.json="$RUNNER_TEMP/vitest.json"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MELIAN_PROBE_SANDBOX: "1"
+      # Logs and artefacts live in blob storage the measuring session cannot read, so the results go out as annotations.
       - name: Load
         if: ${{ !cancelled() }}
+        env:
+          OUTCOME: ${{ steps.vitest.outcome }}
         run: |
-          echo "nproc $(nproc); load $(cat /proc/loadavg)"
-          jq -r '[.testResults[].assertionResults[] | select((.duration // 0) > 4000)] | "tests over 4 s: \(length)"' "$RUNNER_TEMP/vitest.json"
-          jq -r '"tests: \(.numTotalTests) passed \(.numPassedTests) failed \(.numFailedTests) pending \(.numPendingTests)"' "$RUNNER_TEMP/vitest.json"
+          r="$RUNNER_TEMP/vitest.json"
+          summary=$(jq -r --arg nproc "$(nproc)" --arg load "$(cut -d' ' -f1-3 /proc/loadavg)" --arg outcome "$OUTCOME" '
+            [.testResults[].assertionResults[]] as $t
+            | "outcome \($outcome); nproc \($nproc); load \($load); tests \(.numTotalTests) passed \(.numPassedTests) failed \(.numFailedTests) pending \(.numPendingTests); over 4 s \([$t[] | select((.duration // 0) > 4000)] | length); over 2 s \([$t[] | select((.duration // 0) > 2000)] | length); slowest ms \([$t[].duration // 0] | max | floor)"' "$r")
+          echo "::notice title=measure::$summary"
+          jq -r '.testResults[] | (.name | sub("^.*?/(?<p>(packages|scripts)/)"; "\(.p)")) as $f
+            | .assertionResults[] | select(.status == "failed") | "::warning title=failed::\($f) > \((.ancestorTitles + [.title]) | join(" > "))"' "$r" | head -n 10 || true
+          jq -r '[.testResults[] | (.name | sub("^.*?/(?<p>(packages|scripts)/)"; "\(.p)")) as $f
+            | .assertionResults[] | select((.duration // 0) > 4000) | "\($f) > \(.title) \(.duration | floor)"] | if length > 0 then "::notice title=over 4 s::" + join(" | ") else empty end' "$r"
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
