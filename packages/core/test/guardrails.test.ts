@@ -760,13 +760,13 @@ describe("policy-change-review", () => {
 		});
 
 		it("raises none without the glob", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {2}policy-change-review:\n) {4}files: \[".github\/\*\*"\]\n/m, "$1");
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
 
 		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {2}policy-change-review:\n) {4}files: \[".github\/\*\*"\]\n/m, "$1");
 			expect(stripped).not.toBe(own);
 			const { findings } = await guardrails(
 				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
