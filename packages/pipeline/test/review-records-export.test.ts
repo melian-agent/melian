@@ -20,6 +20,8 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	RecordedRound,
+	type RecordedRoundContents,
 	type ReviewOptions,
 	readVerdict,
 	recordDismissal,
@@ -322,6 +324,56 @@ describe("a review that names a record store", () => {
 		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier).id]);
 	});
 
+	it("names in before, on a host with no history of the changeset, each round of another revision no other names", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const rounds = async () => {
+			const held = (await store.list((await Changeset.resolve(repo, "main...feature")).id)).filter(
+				({ kind }) => kind === "round",
+			);
+			return held.map((each) => ({
+				id: SharedRecord.parseEnvelope(each).id,
+				...(each.payload as { before: string[] }),
+				revision: each.revision,
+			}));
+		};
+		const fresh = async () => {
+			await harness?.close(context);
+			harness = undefined;
+			commit(repo, { [`src/${(await rounds()).length}.ts`]: lines("export const n = 1;") });
+			return review(store);
+		};
+		const first = await review(store);
+		const [one] = await rounds();
+		const second = await fresh();
+		const two = (await rounds()).find(({ revision }) => revision === Revision.key(second.changeset.revision))!;
+		expect(two.before).toEqual([one!.id]);
+		const third = await fresh();
+		const three = (await rounds()).find(({ revision }) => revision === Revision.key(third.changeset.revision))!;
+		expect(three.before).toEqual([two.id]);
+		expect(first.changeset.id).toBe(third.changeset.id);
+	});
+
+	it("names in before every branch of a forked history, on a host with no history of the changeset", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		const other = ReviewRecords.of(first.changeset.id, { base: "4".repeat(40), head: "5".repeat(40) }).round(
+			[],
+			undefined,
+			[],
+			[],
+		);
+		await store.add([other.toJSON()]);
+		await harness?.close(context);
+		harness = undefined;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		const round = later.stored.find(
+			({ kind, revision }) => kind === "round" && revision === Revision.key(later.changeset.revision),
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id, other.id].sort());
+	});
+
 	it("adds the same bytes when the same head is reviewed again", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const first = (await review(store)).stored;
@@ -525,6 +577,30 @@ describe("a review that names a record store after a dismissal", () => {
 
 		expect(made.unshared).toEqual([]);
 		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+	});
+});
+
+describe("a dismissal shared across hosts", () => {
+	it("still counts in a round a third host, with no history of the changeset, exports after a second", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		await review(store);
+		for (const file of ["src/b.ts", "src/c.ts"]) {
+			await harness?.close(context);
+			harness = undefined;
+			commit(repo, { [file]: lines("export const b = 1;") });
+			await review(store);
+		}
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const held = await store.list(changeset.id);
+		const round = held
+			.filter(({ kind, revision }) => kind === "round" && revision === Revision.key(changeset.revision))
+			.map((each) => SharedRecord.parseEnvelope(each).id)
+			.at(-1)!;
+		const contents = RecordedRound.of(held, round, everyRecordCounts).contents(
+			changeset.revision,
+		) as RecordedRoundContents;
+		expect(contents.dismissals.map(({ finding }) => finding)).toHaveLength(1);
 	});
 });
 

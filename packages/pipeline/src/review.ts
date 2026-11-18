@@ -32,6 +32,7 @@ import {
 	type ModelRoute,
 	ModelRoutingError,
 	parseModelReference,
+	type RecordEnvelope,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -2189,6 +2190,18 @@ function lensRecord(
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
+// The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
+// before, or, on a host with no earlier revision of the changeset, every held round of another revision that no such
+// round names, so a fresh host's round keeps the store's chain rather than starting one.
+function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
+	const rounds = held
+		.filter((each) => each.kind === "round" && each.revision !== reviewed)
+		.map((each) => SharedRecord.parseEnvelope(each));
+	if (previous !== undefined) return rounds.filter((each) => each.revision === previous).map(({ id }) => id);
+	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
+	return rounds.filter(({ id }) => !named.has(id)).map(({ id }) => id);
+}
+
 function verificationOutcome(outcome: VerificationResult[string]): VerificationPayload["outcomes"][number]["outcome"] {
 	if (outcome.status === "done") return { status: "done", model: outcome.model };
 	if (outcome.status === "ended") {
@@ -3294,17 +3307,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
-		// issue #395 data it had to distrust.
-		const round = records.round(
-			read,
-			walkthrough,
-			[],
-			previous === undefined
-				? []
-				: held
-						.filter((each) => each.kind === "round" && each.revision === previous)
-						.map((each) => SharedRecord.parseEnvelope(each).id),
-		);
+		// issue #395 data it had to distrust. `before` names only rounds of the one listing `held`, which this writer read.
+		const round = records.round(read, walkthrough, [], predecessors(held, reviewed, previous));
 		await store.add(
 			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
 				record.toJSON(),

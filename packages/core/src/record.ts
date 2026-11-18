@@ -34,7 +34,7 @@ export type NamedRecord = { kind: string; key: string; id: string };
 
 /**
  * A round's manifest, by rule 4: every record it read, its walkthrough or `null` for none, the earlier rounds of its
- * revision it replaces, and the rounds of the revision before.
+ * revision it replaces, and the rounds it follows.
  */
 export type RoundManifest = {
 	read: NamedRecord[];

@@ -328,7 +328,7 @@ export class ReviewRecords {
 
 	/**
 	 * A round's record: every record it read, its walkthrough, the rounds of this revision it replaces, and the rounds
-	 * of the revision before, each read once in ID order, as core requires. Its key is a request of the revision and
+	 * it follows, each read once in ID order, as core requires. Its key is a request of the revision and
 	 * the IDs it read, so a round that read the same records is the same record.
 	 */
 	round(

@@ -281,9 +281,9 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecor
 }
 
 // The rounds from `round` back along each round's `before`, stopping at those of `revision`, which it leaves out:
-// the rounds a dismissal made at `revision` has seen since. A chain that begins after `revision` is taken whole.
-// `undefined` when the chain names a round of the changeset the set does not hold, or a round that names a record the
-// set does not hold, since what that round cited is unknown.
+// the rounds a dismissal made at `revision` has seen since. `undefined` when any branch of the chain ends before a
+// round of `revision`, names a round of the changeset the set does not hold, or names a round that names a record the
+// set does not hold, since what the rounds past that point cited is unknown.
 function roundsSince(set: RecordSet, round: SharedRecord, revision: string): SharedRecord[] | undefined {
 	const rounds = new Map(
 		set
@@ -299,7 +299,9 @@ function roundsSince(set: RecordSet, round: SharedRecord, revision: string): Sha
 		seen.add(each.id);
 		if (set.missing(each).length > 0) return undefined;
 		since.push(each);
-		for (const id of each.manifest()!.before) {
+		const { before } = each.manifest()!;
+		if (before.length === 0) return undefined;
+		for (const id of before) {
 			const earlier = rounds.get(id);
 			if (earlier === undefined) return undefined;
 			next.push(earlier);
