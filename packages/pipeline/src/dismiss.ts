@@ -4,6 +4,7 @@ import {
 	type AdjudicationResult,
 	AdjudicationTask,
 	type AdjudicationTaskInput,
+	adjudicationKey,
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
@@ -136,7 +137,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		if (known === undefined) {
 			throw new DismissError("notReviewed", `Melian has no adjudication of ${revision} to repeat; ${again}`, where);
 		}
-		const previous = JSON.parse(known.input) as AdjudicationTaskInput;
+		const { code: _, ...previous } = JSON.parse(known.input) as AdjudicationTaskInput & { code?: string };
 		const findings = await tx.doc(FindingsDocument, root.id);
 		const recorded = findings.items;
 		// A report's site at this revision, as the snippet pass groups by, among the producers the review selected. A
@@ -170,8 +171,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			);
 			if (report === own) replaced = before;
 		}
-		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
-		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
+		// The review's own input with the findings version the dismissal moved to, so a later review that computes the same
+		// input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
@@ -181,7 +182,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			repoRoot: checkout,
 			findingsVersion,
 		};
-		const key = JSON.stringify(input);
+		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = found.members
 			.filter((other) => other.id !== own && dismissed.includes(other.id))

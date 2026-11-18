@@ -130,7 +130,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/decisions/src/recorded.ts": "825e8ee8644d8a7a2f5850ad335db0d181cb0dea136e417870753380f4b2446a",
 
-	"packages/pipeline/src/adjudication.ts": "db6b9098daa9dec80758ffb5bddb6741dc2769f2bfc12103a033592a48fc260b",
+	"packages/pipeline/src/adjudication.ts": "ce296408a1693054075456bae787f6ce27d61501b0569c2f0c970ccb9aad83e0",
 
 	"packages/pipeline/src/cache-scratch.ts": "525ebcf4936524e650601977391088828a7e06fd8eb6efc87544e49e6af6ee1d",
 
@@ -141,6 +141,8 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/pipeline/src/check-request.ts": "9eed52198fa6c5bc2699da843a6df80ca25090bb919733f67422fc4ce8b05f1f",
 
 	"packages/pipeline/src/checks.ts": "d738554dc8861cb99ceed165590635be555211aecaf7afaa53de7e537fcaa328",
+
+	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
 	"packages/pipeline/src/compare.ts": "92259fab884ae2da5cefd8a990dc534f2b6d16bbb41fe1ce9c48b2046998ef51",
 
@@ -371,6 +373,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/check-request.ts",
 
 		"packages/pipeline/src/checks.ts",
+
+		"packages/pipeline/src/code-version.ts",
 
 		"packages/pipeline/src/compare.ts",
 

@@ -55,6 +55,11 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// The deciding code's version, which a test moves to stand for a build whose adjudication code differs.
+const code = vi.hoisted(() => ({ version: "recorded" }));
+vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version }));
+
 import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { strykerNotInstalled } from "../src/mutation-static.ts";
@@ -327,6 +332,46 @@ describe("reviewChangeset", () => {
 		await reviewed({ unlockModels: unlock });
 		expect(unlock).toHaveBeenCalledWith(["faux", "faux"]);
 		expect(fake.provider.state.callCount).toBe(4);
+	});
+	describe("on a repeat review at the same head and inputs", () => {
+		const adjudication = async () =>
+			(await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))?.reviews[reviewedRevision()]
+				?.adjudication?.task;
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		afterEach(() => {
+			code.version = "recorded";
+		});
+
+		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {
+			script();
+			const first = await reviewed();
+			const decided = await adjudication();
+			const calls = fake.provider.state.callCount;
+			code.version = "changed";
+
+			const repeat = await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
+			expect(fake.provider.state.callCount).toBe(calls);
+			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
+		});
+
+		it("attaches to the stored decision when the build's deciding code is the same", async () => {
+			script();
+			const first = await reviewed();
+			const decided = await adjudication();
+			const calls = fake.provider.state.callCount;
+
+			const repeat = await reviewed();
+
+			expect(await adjudication()).toBe(decided);
+			expect(fake.provider.state.callCount).toBe(calls);
+			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
+		});
 	});
 	it("keeps the first call's caller notes and coverage on a repeat review whose graph cache is gone", async () => {
 		scriptConversations(fake, [

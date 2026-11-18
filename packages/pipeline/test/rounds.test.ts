@@ -38,7 +38,7 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
+import { type AdjudicationTaskInput, adjudicationKey, VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
@@ -403,6 +403,17 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
+// Main's key predates the code version, so this build's first review of main's store decides again, as
+// adjudication-key-reopen.test.ts shows. The tests below are about the round an attachment keeps, so they move the
+// stored key to this build's before they review.
+async function withCurrentKey(harness: Harness) {
+	const root = await harness.root(context);
+	await root.commit(async (tx) => {
+		const adjudication = (await tx.doc(ReviewIndex, root.id)).reviews[legacy.key]!.adjudication!;
+		adjudication.input = adjudicationKey(JSON.parse(adjudication.input) as AdjudicationTaskInput);
+	}, context);
+}
+
 // The check as main's rounds fixture recorded it, bare, so a run that carries it reviews the same input.
 const legacyChecks = [{ name: "static.mutation", status: "ran" }] as unknown as CheckRunRecord[];
 
@@ -413,6 +424,7 @@ it.each([
 	const { storage } = await oldStorage("decided");
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
+		await withCurrentKey(reopened);
 		const root = await reopened.root(context);
 		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
 		const input = JSON.parse(before.input) as AdjudicationTaskInput;
@@ -459,6 +471,7 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 	const { storage } = await oldStorage("decided");
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
+		await withCurrentKey(reopened);
 		const root = await reopened.root(context);
 		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
 		const input = JSON.parse(before.input) as AdjudicationTaskInput;

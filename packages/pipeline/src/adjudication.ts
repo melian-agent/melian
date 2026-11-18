@@ -4,6 +4,7 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
+	canonicalJson,
 	LensError,
 	type MelianConfig,
 	type ModelRoute,
@@ -23,6 +24,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -219,6 +221,13 @@ export type AdjudicationTaskInput = {
 	// version 1 input, which merges by snippet alone.
 	files?: ChangedFile[];
 };
+
+// What a stored adjudication is reused for: its input, with the version of the code that decides it beside the input's
+// fields as `code`, so a build whose deciding code differs decides again. The dismissal, compare and publish read the
+// input back from the key. The JSON round trip drops an absent field, which `canonicalJson` refuses.
+export function adjudicationKey(input: AdjudicationTaskInput): string {
+	return canonicalJson(JSON.parse(JSON.stringify({ ...input, code: codeVersion("adjudication") })));
+}
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
