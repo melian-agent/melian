@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DirectoryRecordStore } from "./directory-record-store.ts";
 import { RecordError, type RecordErrorCode } from "./errors.ts";
+import { findingIdDigits } from "./findings.ts";
 import { type PayloadChecks, type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
 import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } from "./record-store.ts";
 import type { KeyedRequest, UnkeyedInput } from "./request-key.ts";
@@ -52,6 +54,30 @@ export const testPayloads: PayloadChecks = Object.fromEntries(
 	].map((kind) => [kind, () => undefined]),
 );
 
+const labels = new Map<string, string>();
+
+/**
+ * A key such as Melian writes for a review's record, made from `label`, so a test names its record by what it is and
+ * the key still passes the check a record's key gets on read. {@link labelOf} reads the label back.
+ */
+export function recordKey(label: string): string {
+	const key = createHash("sha256").update(label).digest("hex");
+	labels.set(key, label);
+	return key;
+}
+
+/** A finding's ID made from `label`, the key a dismissal record takes. {@link labelOf} reads the label back. */
+export function findingKey(label: string): string {
+	const key = createHash("sha256").update(label).digest("hex").slice(0, findingIdDigits);
+	labels.set(key, label);
+	return key;
+}
+
+/** The label {@link recordKey} or {@link findingKey} made `key` from, or `key` itself when neither did. */
+export function labelOf(key: string): string {
+	return labels.get(key) ?? key;
+}
+
 const changeset = "pull-0123456789abcdef";
 const other = "range-0123456789abcdef";
 
@@ -59,7 +85,14 @@ const revision = ["a".repeat(40), "b".repeat(40)].join("..");
 
 function envelope(kind: string, key: string, payload: RecordJson, within = changeset): RecordEnvelope {
 	if (kind === "round") payload = { read: [], walkthrough: null, replaces: [], before: [] };
-	return { v: 1, changeset: within, kind, key, payload, ...(kind === "round" ? { revision } : {}) };
+	return {
+		v: 1,
+		changeset: within,
+		kind,
+		key: kind === "dismissal" ? findingKey(key) : recordKey(key),
+		payload,
+		...(kind === "round" ? { revision } : {}),
+	};
 }
 
 function ids(records: RecordEnvelope[]): string[] {
@@ -98,7 +131,13 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				const second = envelope("check", "guardrails", { status: "ran", findings: 1 });
 				await store.add([first]);
 				await store.add([
-					{ payload: { findings: 0, status: "ran" }, key: "static.biome", kind: "check", changeset, v: 1 },
+					{
+						payload: { findings: 0, status: "ran" },
+						key: recordKey("static.biome"),
+						kind: "check",
+						changeset,
+						v: 1,
+					},
 				]);
 				await store.add([first, second]);
 				const listed = await store.list(changeset);

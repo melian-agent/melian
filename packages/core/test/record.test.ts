@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalJson, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
-import { testPayloads } from "@melian-agent/core/testing";
+import { findingKey, recordKey, testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const hex = (character: string) => character.repeat(64);
@@ -12,7 +12,14 @@ const parse = (value: unknown) => SharedRecord.parse(value, testPayloads);
 const read = (bytes: string, id: string) => SharedRecord.read(bytes, id, testPayloads);
 
 function envelope(fields: Partial<RecordEnvelope> = {}): RecordEnvelope {
-	return { v: 1, changeset: "pull-0123456789abcdef", kind: "check", key: "static.biome", payload: {}, ...fields };
+	return {
+		v: 1,
+		changeset: "pull-0123456789abcdef",
+		kind: "check",
+		key: fields.kind === "dismissal" ? findingKey("static.biome") : recordKey("static.biome"),
+		payload: {},
+		...fields,
+	};
 }
 
 function refusal(value: unknown): RecordError {
@@ -88,7 +95,7 @@ describe("SharedRecord", () => {
 		const fields = envelope({ payload: { b: 1, a: [2, 3] } });
 		const record = parse(fields);
 		expect(record.bytes).toBe(
-			'{"changeset":"pull-0123456789abcdef","key":"static.biome","kind":"check","payload":{"a":[2,3],"b":1},"v":1}',
+			`{"changeset":"pull-0123456789abcdef","key":"${recordKey("static.biome")}","kind":"check","payload":{"a":[2,3],"b":1},"v":1}`,
 		);
 		expect(record.id).toBe(sha256(record.bytes));
 		expect(record.toJSON()).toEqual(fields);
@@ -98,7 +105,7 @@ describe("SharedRecord", () => {
 		const a = parse(envelope({ payload: { b: 1, a: 2 } }));
 		const b = parse({
 			payload: { a: 2, b: 1 },
-			key: "static.biome",
+			key: recordKey("static.biome"),
 			kind: "check",
 			changeset: "pull-0123456789abcdef",
 			v: 1,
@@ -109,7 +116,7 @@ describe("SharedRecord", () => {
 	it("changes its ID when any field changes", () => {
 		const base = envelope({
 			kind: "post",
-			key: "finding",
+			key: recordKey("finding"),
 			supersedes: [hex("a")],
 			payload: { reason: "x" },
 			signer: "host",
@@ -120,7 +127,7 @@ describe("SharedRecord", () => {
 			changeset: "pull-fedcba9876543210",
 			revision: `${commit("a")}..${commit("b")}`,
 			kind: "status",
-			key: "finding-2",
+			key: recordKey("finding-2"),
 			supersedes: [hex("b")],
 			payload: { reason: "y" },
 			signer: "other",
@@ -137,9 +144,9 @@ describe("SharedRecord", () => {
 	});
 
 	it("hashes its key for the path its adapter files it under", () => {
-		const record = parse(envelope({ key: "src/a b/\u00fc.ts:12 ../../etc" }));
+		const record = parse(envelope({ kind: "post", key: "src/a b/\u00fc.ts:12 ../../etc" }));
 		expect(record.keyHash).toBe(sha256("src/a b/\u00fc.ts:12 ../../etc"));
-		expect(record.path).toBe(`changesets/pull-0123456789abcdef/check/${record.keyHash}/${record.id}.json`);
+		expect(record.path).toBe(`changesets/pull-0123456789abcdef/post/${record.keyHash}/${record.id}.json`);
 	});
 
 	it("signs the canonical bytes of the whole envelope without its signature", () => {
@@ -154,7 +161,7 @@ describe("SharedRecord", () => {
 			changeset: "pull-0123456789abcdef",
 			revision: `${commit("a")}..${commit("b")}`,
 			kind: "post",
-			key: "review",
+			key: recordKey("review"),
 			supersedes: [target],
 			payload: { n: 1 },
 			signer: "host",
@@ -169,7 +176,7 @@ describe("SharedRecord", () => {
 			envelope({
 				kind: "round",
 				revision,
-				payload: { read: [], walkthrough: { key: "w", id: hex("9") }, replaces: [], before: [] },
+				payload: { read: [], walkthrough: { key: recordKey("w"), id: hex("9") }, replaces: [], before: [] },
 			}),
 		);
 		expect(() => (round.replaces() as string[]).push(hex("1"))).toThrow(TypeError);
@@ -179,7 +186,7 @@ describe("SharedRecord", () => {
 		const post = parse(envelope({ kind: "post", supersedes: [hex("1")] }));
 		expect(() => (post.supersedes as string[]).push(hex("2"))).toThrow(TypeError);
 		expect(round.replaces()).toEqual([]);
-		expect(round.manifest()?.walkthrough).toEqual({ key: "w", id: hex("9") });
+		expect(round.manifest()?.walkthrough).toEqual({ key: recordKey("w"), id: hex("9") });
 	});
 
 	it("gives an unfrozen copy from toJSON", () => {

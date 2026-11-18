@@ -16,6 +16,7 @@ import {
 	Standards,
 	type Verdict,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type CheckRunRecord,
@@ -418,7 +419,7 @@ describe("a round its records cannot stand for", () => {
 					records,
 					round,
 					account,
-					SharedRecord.parseEnvelope({ ...account.toJSON(), key: "k".repeat(64) }),
+					SharedRecord.parseEnvelope({ ...account.toJSON(), key: recordKey("another request") }),
 				);
 			},
 			"names an account of other records than its own",
@@ -477,7 +478,7 @@ describe("a round its records cannot stand for", () => {
 				const payload = lens.payload as { sightings: { properties: object }[] };
 				const other = SharedRecord.parseEnvelope({
 					...lens.toJSON(),
-					key: "k".repeat(64),
+					key: recordKey("another request"),
 					payload: { ...payload, sightings: [lowered(payload.sightings[0]!)] } as unknown as RecordJson,
 				});
 				return added(reviewed, records, round, other);

@@ -7,6 +7,7 @@ import {
 	SharedRecord,
 	withheld,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const head = "b".repeat(40);
@@ -589,7 +590,7 @@ describe("review payload checks", () => {
 			v: 1,
 			changeset: "pull-0123456789abcdef",
 			kind: "walkthrough",
-			key: "w",
+			key: recordKey("w"),
 			revision,
 			payload: { v: 1 },
 		};

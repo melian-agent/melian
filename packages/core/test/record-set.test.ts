@@ -6,7 +6,7 @@ import {
 	RecordSet,
 	SharedRecord,
 } from "@melian-agent/core";
-import { testPayloads } from "@melian-agent/core/testing";
+import { recordKey, testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const changeset = "pull-0123456789abcdef";
@@ -14,7 +14,10 @@ const revision = `${"a".repeat(40)}..${"b".repeat(40)}`;
 const later = `${"a".repeat(40)}..${"c".repeat(40)}`;
 
 function record(fields: Partial<RecordEnvelope>): SharedRecord {
-	return SharedRecord.parse({ v: 1, changeset, kind: "post", key: "review", payload: {}, ...fields }, testPayloads);
+	return SharedRecord.parse(
+		{ v: 1, changeset, kind: "post", key: recordKey("review"), payload: {}, ...fields },
+		testPayloads,
+	);
 }
 
 function post(payload: RecordJson, supersedes?: SharedRecord[], fields: Partial<RecordEnvelope> = {}): SharedRecord {
@@ -26,7 +29,7 @@ function round(name: string, replaces: SharedRecord[] = [], at = revision, field
 	const ids = replaces.map((target) => target.id).sort();
 	return record({
 		kind: "round",
-		key: name,
+		key: recordKey(name),
 		revision: at,
 		payload: { read: [], walkthrough: null, replaces: ids, before: [] },
 		...fields,
@@ -136,7 +139,7 @@ describe("RecordSet", () => {
 
 		it.each([
 			["kind", { kind: "status" }],
-			["key", { key: "other" }],
+			["key", { key: recordKey("other") }],
 			["changeset", { changeset: "pull-fedcba9876543210" }],
 		])("does not reach a record of another %s", (_name, fields) => {
 			const target = post({ n: 1 }, undefined, fields);
