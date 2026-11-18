@@ -37,6 +37,6 @@ A name in class 4 comes from the base's configuration, which a writer controls, 
 
 ## What this gives up
 
-A tool's version is still up to 64 characters of the head's choosing in semver's form, as the earlier decision accepted. An unknown kind's refusal repeats the kind, at most dot-joined segments of `[a-z0-9-]`, because a store must say which kind it refused.
+A tool's version is still up to 64 characters of the head's choosing in semver's form, as the earlier decision accepted. The head may choose up to 64 letters, digits, hyphens and dots, and `+` is outside that set, so a version with a build tag, such as `1.2.3+linux.1`, is withheld; the earlier decision's "build tags stay" yields to its own narrower limit. An unknown kind's refusal repeats the kind, at most dot-joined segments of `[a-z0-9-]`, because a store must say which kind it refused.
 
 Core computes the lens version and pipeline the verifier's, and core cannot import pipeline, so both lengths live in core, `lensVersionDigits` and `verifierVersionDigits`, and each producer cuts its hash with them. `record-payload-classes.test.ts` reads every built-in lens's version against the schema, and `packages/pipeline/test/review-records-classes.test.ts` keeps the verifier's own version, so a drift fails there first.
