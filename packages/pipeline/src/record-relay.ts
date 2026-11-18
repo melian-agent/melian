@@ -15,6 +15,7 @@ import {
 	SharedRecord,
 	type TierAccount,
 	type TriagePayload,
+	type VerificationPayload,
 } from "@melian-agent/core";
 
 /**
@@ -42,7 +43,8 @@ export type RelayRefusalCode =
 	| "unnamedRecord"
 	| "tooManyExtras"
 	| "accountCount"
-	| "tierAccount";
+	| "tierAccount"
+	| "otherCheck";
 
 const says: Record<RelayRefusalCode, string> = {
 	strayEntry: "is no record file a review's directory store writes",
@@ -59,10 +61,11 @@ const says: Record<RelayRefusalCode, string> = {
 	unresolvedRead: "is a round that reads a record the batch does not hold",
 	roundCount: "leaves a writer's batch with no round, or more than one",
 	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
-	unnamedRecord: "is a record the batch's round does not name, and no triage or telemetry of it",
-	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage and telemetry records`,
+	unnamedRecord: "is a record the batch's round does not name, and no triage, telemetry or early lens copy of it",
+	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage, telemetry and early lens records`,
 	accountCount: "is a round that reads no account, or more than one",
 	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
+	otherCheck: "names a check the base's tier does not give",
 };
 
 const hex64 = /^[0-9a-f]{64}$/;
@@ -157,8 +160,8 @@ export class RelayBatch {
 	}
 
 	// A writer's batch is one round and what it rests on: every record the round reads, held here at the run's revision,
-	// and a bounded number of triage records and the round's telemetry. The round sets no other round aside, and its
-	// account is the one the base's tier gives for the records it counts.
+	// and a bounded number of triage records, the round's telemetry, and early copies of the lens runs it reads. The
+	// round sets no other round aside, and its account is the one the base's tier gives for the records it counts.
 	static #rests(records: readonly SharedRecord[], tier: TierAccount): void {
 		const rounds = records.filter((record) => record.kind === "round");
 		const round = rounds[0];
@@ -174,10 +177,14 @@ export class RelayBatch {
 				throw new RelayRefusal("unresolvedRead", round.path);
 		}
 		const read = new Set(manifest.read.map((named) => named.id));
+		const lensKeys = new Set(manifest.read.filter((named) => named.kind === "lens").map((named) => named.key));
+		// A lens run's copy exported as the lens ended, with no check, under the key of the run the round reads.
+		const early = (record: SharedRecord) =>
+			record.kind === "lens" && (record.payload as LensPayload).check === null && lensKeys.has(record.key);
 		let extras = 0;
 		for (const record of records) {
 			if (record === round || read.has(record.id)) continue;
-			if (record.kind !== "triage" && !(record.kind === "telemetry" && record.key === round.id))
+			if (record.kind !== "triage" && !(record.kind === "telemetry" && record.key === round.id) && !early(record))
 				throw new RelayRefusal("unnamedRecord", record.path);
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
 		}
@@ -192,14 +199,14 @@ export class RelayBatch {
 	}
 
 	// What the records an account counts say decides a skip, read as the review wrote them: each check record's result,
-	// each lens record's check, the account's own filled records, and triage's answers when it decided.
+	// each lens and verification record's check, the account's own filled records, and triage's answers when it decided.
 	static #facts(counted: readonly SharedRecord[], claim: AccountPayload | LegacyAccountPayload): RoundFacts {
 		const records: Pick<CheckRecord, "name" | "status" | "cause">[] = claim.filled.map(fact);
 		let triage: RoundFacts["triage"];
 		for (const record of counted) {
 			if (record.kind === "check") records.push(fact((record.payload as CheckPayload).result));
-			if (record.kind === "lens") {
-				const { check } = record.payload as LensPayload;
+			if (record.kind === "lens" || record.kind === "verification") {
+				const { check } = record.payload as LensPayload | VerificationPayload;
 				if (check !== null) records.push(fact(check));
 			}
 			const decision = record.kind === "triage" ? (record.payload as TriagePayload).decision : null;
@@ -260,10 +267,37 @@ export class RelayBatch {
 		if (record.refusedFromHeadCode(own) !== undefined) throw new RelayRefusal("refusedKind", file);
 		if (record.refusedFromHeadCode(run) !== undefined) throw new RelayRefusal("otherRevision", file);
 		if (record.signer !== undefined) throw new RelayRefusal("signed", file);
+		let checked: SharedRecord;
 		try {
-			return record.checked(reviewPayloads);
+			checked = record.checked(reviewPayloads);
 		} catch (error) {
 			throw new RelayRefusal("invalidRecord", file, error instanceof RecordError ? error.code : undefined);
+		}
+		// The payload schema takes a check's name as free text, since the names come from a configuration it does not
+		// hold. The relay holds the base's, so this is where a check name is closed.
+		if (RelayBatch.#checkNames(checked).some((name) => !run.tier.checks.includes(name)))
+			throw new RelayRefusal("otherCheck", file);
+		return checked;
+	}
+
+	// Every check a record names beyond what its schema ties to its kind: a check record's own, a lens record's lens, whose
+	// check the schema names for it, each producer a verification holds claims of, and each check an account filled.
+	static #checkNames(record: SharedRecord): string[] {
+		switch (record.kind) {
+			case "check":
+				return [(record.payload as CheckPayload).result.name];
+			case "lens":
+				return [`lens.${(record.payload as LensPayload).name}`];
+			case "verification":
+				return (record.payload as VerificationPayload).claims.map((claim) => claim.source.check);
+			// The account's `checks` are the tier's by `TierAccount.refusal`, which reads them; its filled records are not, and
+			// one is the verifier's when it failed or was skipped before any verification record.
+			case "account":
+				return (record.payload as AccountPayload | LegacyAccountPayload).filled
+					.map((each) => each.name)
+					.filter((name) => name !== "verifier");
+			default:
+				return [];
 		}
 	}
 

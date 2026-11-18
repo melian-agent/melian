@@ -1,15 +1,22 @@
 import { rmSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
 	Changeset,
+	DirectoryRecordStore,
 	defaultConfig,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	Revision,
 	reviewPayloads,
 	SharedRecord,
+	TierAccount,
 } from "@melian-agent/core";
 import {
+	ChangeLenses,
 	type CheckRun,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -33,6 +40,7 @@ import { VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, Tx } from "../src/harness.ts";
+import { RelayBatch } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -232,6 +240,29 @@ describe("a review that names a record store", () => {
 		)!.payload as { sightings: { ruleId: string }[] };
 		expect(contractsRun.sightings.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
 		expect(stored.every((record) => record.changeset === changeset.id)).toBe(true);
+	});
+
+	it("exports a batch the relay takes whole, under the tier the review read", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { changeset, stored } = await review(store);
+		const directory = await mkdtemp(join(tmpdir(), "melian-relay-export-"));
+		try {
+			const artefact = await DirectoryRecordStore.open(directory, reviewPayloads);
+			await artefact.add(stored);
+			await artefact.close();
+			const config = { ...defaultConfig, tiers: twoLensTiers };
+			const lenses = (await Lens.builtins()).filter(({ name }) => ["correctness", "contracts"].includes(name));
+			const selection = await ChangeLenses.read({ changeset, lenses, config, tier: "full", floor: "quick" });
+			const batch = await RelayBatch.read(directory, {
+				changeset: changeset.id,
+				revision: Revision.key(changeset.revision),
+				fork: false,
+				tier: TierAccount.of(config, "full", selection.tierLenses()),
+			});
+			expect(batch.records).toHaveLength(stored.length);
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 
 	it("exports each lens run as its lens ends, with no check, which the round's export adds", async () => {

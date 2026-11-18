@@ -27,6 +27,14 @@ const tier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome"]
 	selected: [],
 });
 const writer = { changeset, revision, fork: false, tier };
+// A tier that gives a second check, for batches whose refusal comes before the account's.
+const wide = {
+	...writer,
+	tier: TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome", "static.tsc"] } }, "relay", {
+		loaded: [],
+		selected: [],
+	}),
+};
 const fork = { changeset, revision, fork: true, tier };
 
 const records = () => ReviewRecords.of(changeset, { base, head });
@@ -214,7 +222,7 @@ describe("RelayBatch", () => {
 			records().round([biome], undefined, [], []),
 			records().round([biome, tsc], undefined, [], []),
 		);
-		expect((await refusal(RelayBatch.read(both, writer))).code).toBe("roundCount");
+		expect((await refusal(RelayBatch.read(both, wide))).code).toBe("roundCount");
 	});
 
 	it.each([
@@ -234,12 +242,12 @@ describe("RelayBatch", () => {
 		const triage = records().triage(request, { inputCut: false });
 		const batch = await RelayBatch.read(await artefact(...written, telemetry, triage), writer);
 		expect(batch.records).toHaveLength(5);
-		expect((await refusal(RelayBatch.read(await artefact(...written, check("static.tsc")), writer))).code).toBe(
+		expect((await refusal(RelayBatch.read(await artefact(...written, check("static.tsc")), wide))).code).toBe(
 			"unnamedRecord",
 		);
 		const otherRound = records().round([biome, check("static.tsc")], undefined, [], []);
 		const stray = records().telemetry(otherRound, { durationMs: 5, stages: [] });
-		expect((await refusal(RelayBatch.read(await artefact(...written, stray), writer))).code).toBe("unnamedRecord");
+		expect((await refusal(RelayBatch.read(await artefact(...written, stray), wide))).code).toBe("unnamedRecord");
 	});
 
 	it("takes the most triage and telemetry records it allows, and refuses one more", async () => {
@@ -395,4 +403,73 @@ describe("RelayBatch", () => {
 		await plant(at, `changesets/${changeset}/check/${"1".repeat(64)}/${"f".repeat(64)}.json`, " ");
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("batchTooLarge");
 	}, 120_000);
+
+	describe("closes check names to the base's tier", () => {
+		const claim = (source: string) => ({
+			id: "0123456789abcdef",
+			source: { check: source, version: "2.0.0" },
+			verification: {
+				verdict: "confirmed",
+				reason: "It runs",
+				executor: "llm",
+				model: "a/m",
+				version: "1",
+			} as const,
+		});
+		const verification = (source: string) =>
+			records().verification("f".repeat(64), {
+				claims: [claim(source)],
+				dismissals: [],
+				outcomes: [],
+				check: { name: "verifier", status: "ran", version: "1", findings: 0, notes: [] },
+			});
+		const lensRun = { version: "abc", level: "careful", request: "e".repeat(64), probe: false } as const;
+		const unanswered = { status: "unanswered", reason: "no reply" } as const;
+		const lensTier = TierAccount.of(
+			{ ...defaultConfig, tiers: { relay: ["static.biome", "lens.correctness"] } },
+			"relay",
+			{
+				loaded: ["correctness"],
+				selected: [{ name: "correctness", covers: ["a.ts"], band: LevelBand.of(undefined) }],
+			},
+		);
+
+		it.each([
+			["a check record's", () => check("static.planted")],
+			["a lens record's own", () => records().lens({ name: "planted", ...lensRun }, unanswered, [])],
+			["a verification claim's source", () => verification("static.planted")],
+			[
+				"an account's filled record",
+				() => account([], { filled: [{ name: "static.planted", status: "skipped", reason: "planted" }] }),
+			],
+		])("refuses %s name the tier does not give", async (_, made) => {
+			const found = await refusal(RelayBatch.read(await artefact(made()), { ...writer, tier: lensTier }));
+			expect([found.code, found.file]).toEqual(["otherCheck", `${made().id}.json`]);
+		});
+
+		it("refuses a fork's check record named outside the tier", async () => {
+			expect((await refusal(RelayBatch.read(await artefact(check("static.planted")), fork))).code).toBe(
+				"otherCheck",
+			);
+		});
+
+		it("takes an account that filled the verifier's failed check", async () => {
+			const biome = check();
+			const failed = { name: "verifier", status: "failed", reason: "no route" } as const;
+			const batch = await RelayBatch.read(
+				await artefact(...accounted([biome], { checks: ["static.biome", "verifier"], filled: [failed] })),
+				writer,
+			);
+			expect(batch.records).toHaveLength(3);
+		});
+
+		it("takes a verification's claims of a check the tier gives", async () => {
+			const biome = check();
+			const batch = await RelayBatch.read(
+				await artefact(...accounted([biome, verification("static.biome")])),
+				writer,
+			);
+			expect(batch.records).toHaveLength(4);
+		});
+	});
 });
