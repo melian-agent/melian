@@ -66,14 +66,12 @@ export function recordKey(label: string): string {
 	return key;
 }
 
-/** A finding's ID made from `label`, the key a dismissal record takes. {@link labelOf} reads the label back. */
+/** A finding's ID made from `label`, the key a dismissal record takes. */
 export function findingKey(label: string): string {
-	const key = createHash("sha256").update(label).digest("hex").slice(0, findingIdDigits);
-	labels.set(key, label);
-	return key;
+	return createHash("sha256").update(label).digest("hex").slice(0, findingIdDigits);
 }
 
-/** The label {@link recordKey} or {@link findingKey} made `key` from, or `key` itself when neither did. */
+/** The label {@link recordKey} made `key` from, or `key` itself when it made none. */
 export function labelOf(key: string): string {
 	return labels.get(key) ?? key;
 }
@@ -89,7 +87,7 @@ function envelope(kind: string, key: string, payload: RecordJson, within = chang
 		v: 1,
 		changeset: within,
 		kind,
-		key: kind === "dismissal" ? findingKey(key) : recordKey(key),
+		key: recordKey(key),
 		payload,
 		...(kind === "round" ? { revision } : {}),
 	};
