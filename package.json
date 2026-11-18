@@ -6,7 +6,7 @@
 		"packages/*"
 	],
 	"scripts": {
-		"check": "biome check --write --error-on-warnings . && node scripts/check-pinned-deps.mjs && node scripts/check-release-age.mjs && node scripts/check-tools.mjs && tsc --noEmit && node scripts/check-audit.mjs && vitest --run",
+		"check": "biome check --write --error-on-warnings . && node scripts/check-pinned-deps.mjs && node scripts/check-release-age.mjs && node scripts/check-tools.mjs && node scripts/check-inventories.mjs && tsc --noEmit && node scripts/check-audit.mjs && vitest --run",
 		"lint": "biome check --error-on-warnings .",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest --run",
