@@ -136,7 +136,8 @@ export const MutationProcesses = defineDoc<{ trees: Record<string, MutationTreeR
  */
 export type WriterTrust = { trusted: true; by: "writer" | "reviewer" } | { trusted: false; detail: string };
 
-function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
+/** The key the checks document stores a run's records under. */
+export function identityKey({ base, head, tier, policy, task }: RunIdentity): string {
 	return `${base} ${head} ${tier} ${policy} ${task}`;
 }
 

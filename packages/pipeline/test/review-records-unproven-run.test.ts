@@ -30,7 +30,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CheckSources, ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument, identityKey } from "../src/checks.ts";
 import { replaceCheckFindings } from "../src/findings.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -130,9 +130,22 @@ async function review(
 	const changeset = await Changeset.resolve(repo, "main...feature");
 	const root = await harness.root(context);
 	const at = Revision.key(changeset.revision);
+	// A run built here names this review's revision, so only its proof is in question.
+	const checkRun =
+		run.checkRun === undefined || run.asMade
+			? run.checkRun
+			: {
+					...run.checkRun,
+					identity: { ...run.checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
+				};
 	await root.commit(async (tx) => {
 		const runs = await tx.doc(ChecksDocument, root.id);
 		runs.requests = structuredClone({ ...held.requests });
+		// The run's own task stored the records it was handed, under its identity.
+		if (checkRun !== undefined)
+			runs.runs[identityKey(checkRun.identity)] = Object.fromEntries(
+				checkRun.records.map((record) => [record.name, record]),
+			);
 		// The run's own task, 7, records the check task it started for each check, which stamps what that task wrote.
 		(await tx.doc(CheckSources, root.id, "7", null)).tasks = { "static.biome": 11, "static.tsc": 12 };
 		const stamp = (request: string | undefined, task: number) =>
@@ -147,21 +160,7 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => name === "correctness" || name === "contracts"),
 		standards: [],
 		models: fake.review,
-		...(run.checkRun === undefined
-			? { checks }
-			: run.asMade
-				? { checkRun: run.checkRun }
-				: // A run built here names this review's revision, so only its proof is in question.
-					{
-						checkRun: {
-							...run.checkRun,
-							identity: {
-								...run.checkRun.identity,
-								base: changeset.revision.base,
-								head: changeset.revision.head,
-							},
-						},
-					}),
+		...(checkRun === undefined ? { checks } : { checkRun }),
 		records: store,
 	});
 	const stored = await store.list(changeset.id);

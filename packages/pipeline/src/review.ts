@@ -3165,22 +3165,30 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		// under a stored request that asks for check code that stores no tool text. A run handed in proves nothing alone.
 		// The stamp names the check task that wrote them, which must be the one the run's own task recorded. A request that did
 		// not key everything its run read vouches for no result to another host, whatever its task.
-		const proof = await StaticProof.read(harness, root, context, run?.identity.task);
+		const proof = await StaticProof.read(harness, root, context, run?.identity);
 		const unshared = (check: string): "withheld" | "unkeyed" | undefined =>
 			run === undefined || !proof.proves(state, reviewed, check, run.request)
 				? "withheld"
 				: proof.keyedFully(run.request)
 					? undefined
 					: "unkeyed";
-		const exported = checks.flatMap((check) => {
-			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
+		const exported = checks.flatMap((handed) => {
+			if (handed.name.startsWith("lens.") || handed.name.startsWith("decisions.")) return [];
+			// A static check is exported as the run stored it: a caller's record beside a genuine run is not its word.
+			const stored = handed.name.startsWith("static.") ? proof.recorded(handed.name) : undefined;
+			const check = stored ?? handed;
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
 			const counted = check.status === "ran" || check.status === "provisional";
 			const sightings = counted
 				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
 				: [];
 			// An empty result needs the proof too: a stale run that found nothing replaces the sightings and stamps its own key.
-			const reason = check.name.startsWith("static.") && counted ? unshared(check.name) : undefined;
+			const reason =
+				check.name.startsWith("static.") && counted
+					? stored === undefined
+						? "withheld"
+						: unshared(check.name)
+					: undefined;
 			if (reason !== undefined) {
 				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason, error: "" };
 				return [{ name: check.name, record: records.check(request, withheld, []) }];

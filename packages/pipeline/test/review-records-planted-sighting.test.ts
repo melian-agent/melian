@@ -31,7 +31,7 @@ import {
 } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CheckSources, ChecksDocument } from "../src/checks.ts";
+import { CheckSources, ChecksDocument, identityKey } from "../src/checks.ts";
 import { DismissError } from "../src/errors.ts";
 import { FindingsDocument, replaceCheckFindings, stampOf } from "../src/findings.ts";
 import { type DismissalFacts, ReviewRecords } from "../src/review-records.ts";
@@ -177,6 +177,52 @@ describe("a static check's sightings, beside the run a host made of the same rev
 		expect(biome(reviewed.stored)).toEqual({
 			v: 1,
 			result: { name: "static.biome", status: "failed", reason: "withheld", error: expect.any(String) },
+			sightings: [],
+		});
+	});
+});
+
+// A caller hands in the genuine run with a record of its own making: the store's record, not the caller's, describes it.
+describe("a static check's record, handed in beside the run that stored another", { timeout: 120_000 }, () => {
+	beforeEach(() => {
+		config = { ...config, tiers: { ...config.tiers, full: ["static.biome", "static.tsc", "lens.correctness"] } };
+		commit(repo, {
+			"tsconfig.json": '{ "compilerOptions": { "strict": true, "noEmit": true }, "include": ["src"] }\n',
+			"src/a.ts": 'export const a: number = "two";\n',
+		});
+	});
+
+	it("is exported as the run stored it, so tsc's blocker is never shared as clean", async () => {
+		const reviewed = await round(async (_, __, run) => ({
+			...run,
+			records: run.records.map((record) =>
+				record.name === "static.tsc" ? { ...record, status: "ran", findings: 0, notes: [] } : record,
+			),
+		}));
+
+		const tsc = reviewed.stored.find(
+			({ kind, payload }) =>
+				kind === "check" && (payload as { result: { name: string } }).result.name === "static.tsc",
+		)!.payload as { result: { status: string; findings?: number }; sightings: unknown[] };
+		expect(tsc.result).toMatchObject({ status: "ran", findings: 1 });
+		expect(tsc.sightings).toHaveLength(1);
+	});
+
+	it("is withheld when its run stored no record of it, though the caller says it ran", async () => {
+		const reviewed = await round(async (root, _, run) => {
+			await root.commit(async (tx) => {
+				delete (await tx.doc(ChecksDocument, root.id)).runs[identityKey(run.identity)]!["static.tsc"];
+			}, context);
+			return undefined;
+		});
+
+		const tsc = reviewed.stored.find(
+			({ kind, payload }) =>
+				kind === "check" && (payload as { result: { name: string } }).result.name === "static.tsc",
+		)!.payload;
+		expect(tsc).toEqual({
+			v: 1,
+			result: { name: "static.tsc", status: "failed", reason: "withheld", error: expect.any(String) },
 			sightings: [],
 		});
 	});

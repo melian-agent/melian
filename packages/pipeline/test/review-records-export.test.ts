@@ -264,15 +264,15 @@ describe("a review that names a record store", () => {
 	it("exports a host's record that names an absent field as undefined", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const given = checks.map((check) =>
-			check.name === "static.biome" ? { ...check, notes: undefined as never, error: undefined } : check,
+			check.name === "guardrails" ? { ...check, notes: undefined as never, error: undefined } : check,
 		);
-		// Biome's record is exported as it ran only from a run the store proves.
-		const { stored } = await review(store, given, undefined, undefined, { proven: true });
-		const biome = stored.find(
+		// A static check's record is the one its run stored, so only a check outside the run takes the host's.
+		const { stored } = await review(store, given);
+		const guardrails = stored.find(
 			({ kind, payload }) =>
-				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
+				kind === "check" && (payload as { result: { name: string } }).result.name === "guardrails",
 		)!.payload as { result: { notes: string[] } };
-		expect(biome.result.notes).toEqual([]);
+		expect(guardrails.result.notes).toEqual([]);
 	});
 
 	it("names no round as replaced, though another host's blocking round is stored, which leaves what blocks unchanged", async () => {

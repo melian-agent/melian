@@ -94,7 +94,14 @@ describe("the proof the checks document's requests give", () => {
 		}, context);
 		const state = await harness!.snapshot(FindingsDocument, made.id, context);
 		const proves = async (run: number | undefined, check: string, request = asked.key) =>
-			(await StaticProof.read(harness!, made.id, context, run)).proves(state, revision, check, request);
+			(
+				await StaticProof.read(
+					harness!,
+					made.id,
+					context,
+					run === undefined ? undefined : { base: "b", head: "h", tier: "full", policy: "p", task: run },
+				)
+			).proves(state, revision, check, request);
 
 		expect({
 			"the task its run recorded": await proves(1, "static.biome"),
