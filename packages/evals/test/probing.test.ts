@@ -997,7 +997,12 @@ describe("ProbingSettings", () => {
 		expect(ProbingSettings.parse(env).combinations[0]!.proberTier).toBe("medium");
 		expect(ProbingSettings.parse(env).probeLenses).toEqual(["trust-boundary"]);
 		expect(ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: "" }).probeLenses).toEqual(["trust-boundary"]);
-		const named = ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary " });
+		const named = ProbingSettings.parse({
+			...env,
+			MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary ",
+			MELIAN_EVAL_MISSES: "m.json",
+			MELIAN_EVAL_PROBE_SET: "misses",
+		});
 		expect(named.probeLenses).toEqual(["correctness", "trust-boundary"]);
 		expect(named.combinations[0]!.lenses).toEqual(["correctness", "trust-boundary"]);
 		expect(ProbingSettings.parse(env).missReview).toBe("lens");
@@ -1020,6 +1025,15 @@ describe("ProbingSettings", () => {
 		[{ MELIAN_EVAL_PROBER_TIER: "verifier" }, /MELIAN_EVAL_PROBER_TIER must be light, medium or heavy/],
 		[{ MELIAN_EVAL_PROBE_LENSES: "correctness,correctness" }, /MELIAN_EVAL_PROBE_LENSES repeats correctness/],
 		[{ MELIAN_EVAL_PROBE_LENSES: " , " }, /MELIAN_EVAL_PROBE_LENSES names no lens/],
+		// Round 44241903552 on #550: another lens was scored on goldens curated for trust-boundary's probing.
+		[
+			{ MELIAN_EVAL_PROBE_LENSES: "correctness" },
+			/^MELIAN_EVAL_PROBE_LENSES names correctness, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses$/,
+		],
+		[
+			{ MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness", MELIAN_EVAL_MISSES: "m.json" },
+			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, correctness, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses$/,
+		],
 		[{ MELIAN_EVAL_MISS_REVIEW: "Whole" }, /^MELIAN_EVAL_MISS_REVIEW must be lens or whole, not "Whole"$/],
 		[{ MELIAN_EVAL_VERIFIER_MODEL: "" }, /MELIAN_EVAL_VERIFIER_MODEL/],
 		[{ MELIAN_EVAL_MODEL: "nomodel" }, /MELIAN_EVAL_MODEL/],
@@ -1043,21 +1057,36 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		defect = (await runGolden(lost, { kind: "scripted", probes: "unconfined" })).findings;
 	});
 
-	it("exits 2 at the first review for a probe lens core refuses, or one the golden's policy does not load or run", async () => {
-		for (const [named, refusal] of [
-			["tests", /^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/],
-			["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
-			[
-				"trust-boundary-probes",
-				/^MELIAN_EVAL_PROBE_LENSES names trust-boundary-probes, which the review's full tier does not run$/,
-			],
-		] as const) {
-			const using = runners({ goldens: () => [lost], golden: vi.fn(runGolden) });
-			const { status, lines, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_LENSES: named }, using);
-			expect(errors, named).toEqual([expect.stringMatching(refusal)]);
-			expect(status, named).toBe(2);
-			expect(using.golden, named).toHaveBeenCalledTimes(1);
-			expect(lines, named).toEqual(["pair: planner a/plan, prober b/probe on the medium tier"]);
+	it("exits 2 at the first review for a probe lens core refuses, or one the miss's policy does not load", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base, head } = buildGoldenRepository(failOpen);
+		const misses = missesFile([
+			{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+		]);
+		const settings = {
+			...env,
+			MELIAN_EVAL_MISSES: misses,
+			MELIAN_EVAL_PROBE_SET: "misses",
+			MELIAN_EVAL_MISS_REVIEW: "whole",
+			MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+		};
+		try {
+			for (const [named, refusal] of [
+				[
+					"tests",
+					/^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/,
+				],
+				["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
+			] as const) {
+				const using = runners({ range: vi.fn(runRange) });
+				const { status, lines, errors } = await measure({ ...settings, MELIAN_EVAL_PROBE_LENSES: named }, using);
+				expect(errors, named).toEqual([expect.stringMatching(refusal)]);
+				expect(status, named).toBe(2);
+				expect(using.range, named).toHaveBeenCalledTimes(1);
+				expect(lines, named).toEqual(["pair: planner a/plan, prober b/probe on the medium tier"]);
+			}
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
 		}
 	});
 
@@ -1235,17 +1264,28 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 
 	it("counts no lens the combination probes as sharing the prober's tier, though it names several", async () => {
 		const tiers = { "lens.trust-boundary": "medium", "lens.correctness": "medium", "lens.tests": "medium" } as const;
-		const using = runners({ golden: vi.fn(async (each: Golden) => ({ golden: each, ...ran([], { tiers }) })) });
-		const { lines } = await measure(
-			{
-				...env,
-				MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness",
-				MELIAN_EVAL_PROBE_PASSES: "1",
-				MELIAN_EVAL_GOLDEN: clean.name,
-			},
-			using,
-		);
-		expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const using = runners({ range: vi.fn(async () => ran([], { tiers })) });
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_MISS_REVIEW: "whole",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+					]),
+				},
+				using,
+			);
+			expect(using.range).toHaveBeenCalledTimes(1);
+			expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 
 	it("runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for", async () => {

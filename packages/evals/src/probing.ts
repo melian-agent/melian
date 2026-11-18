@@ -760,6 +760,10 @@ export class ProbingSettings {
 			);
 		if (set !== "goldens" && misses === undefined)
 			throw new Error(`MELIAN_EVAL_PROBE_SET=${set} needs MELIAN_EVAL_MISSES`);
+		if (set !== "misses" && (probeLenses.length !== 1 || probeLenses[0] !== probingLens))
+			throw new Error(
+				`MELIAN_EVAL_PROBE_LENSES names ${probeLenses.map(visibleText).join(", ")}, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses`,
+			);
 		const model = env.MELIAN_EVAL_MODEL || undefined;
 		if (model !== undefined) parseModelReference(model, "every tier", "MELIAN_EVAL_MODEL");
 		return new ProbingSettings({
