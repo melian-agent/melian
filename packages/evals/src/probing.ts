@@ -939,9 +939,7 @@ async function measured(
 				return { miss, target, reviewers: await miss.reviewers(target, review) };
 			}),
 		);
-		const refused = assessed.flatMap(({ reviewers }) =>
-			"refusal" in reviewers ? [reviewers.refusal] : [],
-		);
+		const refused = assessed.flatMap(({ reviewers }) => ("refusal" in reviewers ? [reviewers.refusal] : []));
 		if (refused.length > 0) throw new Error(`The misses file cannot be scored: ${refused.join("; ")}`);
 		misses = await Promise.all(
 			assessed.flatMap(({ miss, target, reviewers }) =>
