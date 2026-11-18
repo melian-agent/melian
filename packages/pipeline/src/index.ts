@@ -1,4 +1,5 @@
 export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
+export { ChangeLenses, type CoveringLens } from "./change-lenses.ts";
 export {
 	type CheckRun,
 	type CheckRunRecord,
