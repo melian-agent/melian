@@ -7,6 +7,7 @@ import {
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	RecordError,
 	RecordSet,
 	Revision,
 	reviewPayloads,
@@ -301,6 +302,19 @@ describe("a review that names a record store", () => {
 		expect(verdict.blocking).toBe(plain.verdict.blocking);
 		expect(verdict.all().map(({ id }) => id)).toEqual(plain.verdict.all().map(({ id }) => id));
 		expect(verdict.findings.block.map(({ id }) => id)).toEqual(plain.verdict.findings.block.map(({ id }) => id));
+	});
+
+	it("fails the review with a record error when the store lists a round whose payload is no round", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const earlier = first.stored.find(({ kind }) => kind === "round")!;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const list = store.list.bind(store);
+		vi.spyOn(store, "list").mockImplementation(async (id) => [
+			...(await list(id)).filter((each) => SharedRecord.parseEnvelope(each).kind !== "round"),
+			{ ...earlier, payload: null },
+		]);
+		await expect(review(store)).rejects.toBeInstanceOf(RecordError);
 	});
 
 	it("names in before the rounds of the revision before that its store held when the review began, and no later one", async () => {

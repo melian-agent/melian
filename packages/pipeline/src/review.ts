@@ -40,6 +40,7 @@ import {
 	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
+	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
@@ -2202,7 +2203,7 @@ function lensRecord(
 function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
 	const rounds = held
 		.filter((each) => each.kind === "round" && each.revision !== reviewed)
-		.map((each) => SharedRecord.parseEnvelope(each));
+		.map((each) => SharedRecord.parse(each, reviewPayloads));
 	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
 	return rounds
 		.filter(({ id, revision }) => revision === previous || !named.has(id))
