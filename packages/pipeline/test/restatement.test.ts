@@ -1146,9 +1146,7 @@ describe("a dismissal carrying to a restatement", () => {
 			records: { store, changeset: changeset.id },
 		});
 		const { dismissals, shown, named } = await roundFor(store, changeset, root);
-		const made = dismissals
-			.map((each) => SharedRecord.parseEnvelope(each))
-			.find((each) => each.id !== imported.id)!;
+		const made = dismissals.map((each) => SharedRecord.parseEnvelope(each)).find((each) => each.id !== imported.id)!;
 		expect(dismissals).toHaveLength(2);
 		expect(made.supersedes).toEqual([imported.id]);
 		expect(shown).toEqual([[root, made.id]]);
