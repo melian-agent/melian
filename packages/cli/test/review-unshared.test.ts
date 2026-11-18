@@ -8,6 +8,7 @@ import { main } from "../src/main.ts";
 
 const unshared = [{ finding: "f-static-1", code: "unprovenRun" as const }];
 const failWith = vi.hoisted(() => ({ fail: false }));
+const dismissed = vi.hoisted(() => ({ records: false }));
 
 vi.mock("@melian-agent/pipeline", async (importOriginal) => {
 	const actual = await importOriginal<typeof Pipeline>();
@@ -22,6 +23,20 @@ vi.mock("@melian-agent/pipeline", async (importOriginal) => {
 				unshared,
 			});
 		},
+		recordDismissal: async (options: Parameters<typeof actual.recordDismissal>[0]) => {
+			dismissed.records = options.records !== undefined;
+			return {
+				finding: {
+					ruleId: "biome/no-debugger",
+					properties: { path: "a.ts", id: "f-static-1" },
+					locations: [{ physicalLocation: { region: { startLine: 1 } } }],
+				},
+				also: [],
+				live: [],
+				verdict: { status: "passed", blocking: false },
+				unshared,
+			} as unknown as Awaited<ReturnType<typeof actual.recordDismissal>>;
+		},
 	};
 });
 
@@ -35,7 +50,7 @@ beforeEach(() => {
 	repo = createRepository();
 	commit(repo, {
 		"a.ts": "export const a = 1;\n",
-		"melian.yaml": "tiers:\n  fast: [guardrails]\n  full: [fast]\n",
+		"melian.yaml": "tiers:\n  fast: [guardrails]\n  full: [fast]\ntrust:\n  writers: true\n",
 	});
 	gitIn(repo, "checkout", "--quiet", "-b", "change");
 	commit(repo, { "a.ts": "export const a = 2;\n" });
@@ -75,4 +90,16 @@ it("warns of an unshared dismissal when the review failed after its export", asy
 	expect(io.stderr).toHaveBeenCalledWith("melian: the review failed after its export\n");
 	expect(io.stderr).toHaveBeenCalledWith(`melian: ${warning}\n`);
 	expect(JSON.parse(io.stdout.mock.calls[0]![0])).toMatchObject({ warnings: [warning] });
+});
+
+it("names each dismissal melian dismiss --records left unshared", async () => {
+	expect(await main(["review", "main...HEAD"], io)).toBe(0);
+	io.stderr.mockClear();
+	const store = `dir:${join(repo, "records")}`;
+	const id = "0123456789abcdef";
+
+	expect(await main(["dismiss", "main...HEAD", id, "--reason", "meant to stay", "--records", store], io)).toBe(0);
+
+	expect(dismissed.records).toBe(true);
+	expect(io.stderr.mock.calls).toEqual([[`melian: ${warning}\n`]]);
 });
