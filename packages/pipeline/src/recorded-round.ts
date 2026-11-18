@@ -264,15 +264,14 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 // The set's dismissal records of `changeset` that no other supersedes, in ID order. A dismissal record names no round,
 // so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round stricter.
 // Each carries every proving hunk a sighting of its finding in the set cites, at any revision, so a hunk a shared
-// round cited and the revision has since changed reopens it, as the host's memory of that round would.
+// round cited and the revision has since changed reopens it, as the host's memory of that round would. A dismissal's
+// own sighting adds none: its trigger's proof already holds every hunk that sighting cites.
 function dismissalsOf(set: RecordSet, changeset: string): SharedDismissalRecord[] {
 	const cited = citedProof(
 		set.records().flatMap((record) => {
 			if (record.changeset !== changeset) return [];
 			if (record.kind === "lens" || record.kind === "check")
 				return (record.payload as { sightings: unknown[] }).sightings as StoredFinding[];
-			if (record.kind === "dismissal")
-				return [(record.payload as DismissalPayload).sighting.finding as unknown as StoredFinding];
 			return [];
 		}),
 	);
