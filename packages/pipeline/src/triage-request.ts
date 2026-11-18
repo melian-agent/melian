@@ -44,7 +44,8 @@ export function triageRequest(
 			questionSet,
 			questions,
 			state: keyed.state,
-			inputCut: keyed.cut,
+			// Cut when either copy is: quoting can shorten one, and the decider reads the other.
+			inputCut: keyed.cut || shown.cut,
 		},
 		{ nonce: { questionSet, questions, state: shown.state } },
 	);

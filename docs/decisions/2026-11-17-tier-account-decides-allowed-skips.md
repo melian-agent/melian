@@ -52,7 +52,7 @@ No round exports a triage record yet: `ReviewRecords.triage` has the schema, and
 
 The default floor depends on whether the host trusts the head and whether triage's decider is calibrated: `careful` for an untrusted head and an uncalibrated decider, `quick` otherwise. Neither is ever `skip`. So the head's trust and the decider's calibration never decide a skip, and only a configured floor of `skip` does. A test in `tier-account-review.test.ts` holds this for all four combinations.
 
-The review reads triage's cut from the change it rendered under its own nonce, and the triage record holds the cut of the same change rendered under the fixed identity nonce. Both nonces are 24 characters, so the two agree.
+The review reads triage's cut from triage's request, which the triage record also holds. The request counts the change as cut when either its copy under the review's nonce or its copy under the fixed identity nonce is cut. Quoting replaces each copy of a nonce in the change, so a change made of runs of the identity nonce, 24 zeros, is shorter under it and could fit there while the decider's copy is cut; the review of record found that the two copies then disagreed. Reading one flag makes the review and a reader of the record agree.
 
 ## What it gives up
 
