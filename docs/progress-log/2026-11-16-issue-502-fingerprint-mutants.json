@@ -1,0 +1,40 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "8650772c5ad3597db03f956102826ab64788d6a3",
+		"head": "7fbc8f49584074511af62c00bf4fb713a3af0875"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/configurations.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 113,
+			"column": 27,
+			"endLine": 113,
+			"endColumn": 46,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "8c264451dd20dc7c114203be73f2354efb869685640e2f8b79ccad3353f42e78",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes when two lenses of the folder a file left swap their declared resolutions",
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 1,
+	"omitted": 0,
+	"unmutated": []
+}

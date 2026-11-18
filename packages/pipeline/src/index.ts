@@ -1,4 +1,5 @@
 export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
+export { ChangeLenses, type CoveringLens } from "./change-lenses.ts";
 export {
 	type CheckRun,
 	type CheckRunRecord,
@@ -91,6 +92,9 @@ export {
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
+	type ProbeGap,
+	type ProbeGapCause,
+	probeGapSentences,
 	type Review,
 	ReviewHarness,
 	type ReviewHarnessOptions,

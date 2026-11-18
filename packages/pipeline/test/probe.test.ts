@@ -48,7 +48,7 @@ function passthrough(
 	overrides: {
 		unavailable?: string;
 		open?: () => Promise<void>;
-		wrap?: () => Promise<never>;
+		wrap?: (command: string, policy: ProbePolicy) => Promise<never>;
 		platform?: "darwin" | "linux";
 	} = {},
 ) {
@@ -193,9 +193,8 @@ describe("Probe.open", () => {
 		["sp ace"],
 		["probe.mjs"],
 		["PROBE.MJS"],
-		["run.mjs"],
 		["watchdog.mjs"],
-		["main.mjs"],
+		["run.mjs"],
 	])("refuses the file path %j", async (path) => {
 		const { sandbox } = passthrough();
 		const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
@@ -232,24 +231,22 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual([
-			"a",
-			"main.mjs",
-			"probe.mjs",
-			"run.mjs",
-			"watchdog.mjs",
-		]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs", "watchdog.mjs"]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
-		// The probe's own process imports the watchdog, then the probe's module, statically and in that order, so the
-		// watchdog is armed first. The watchdog exits the probe at its own limit even if nothing outside the sandbox stops
-		// it, and is unref'd, so a probe that finishes keeps its own exit code. The runner starts that process.
-		const main = readFileSync(join(root, "probe", "main.mjs"), "utf8");
-		expect(main).toBe('import "./watchdog.mjs";\nimport "./probe.mjs";\n');
-		expect(readFileSync(join(root, "probe", "run.mjs"), "utf8")).toContain('new URL("./main.mjs", import.meta.url)');
+		// The runner starts the probe's own process with the watchdog preloaded, so the watchdog is armed first. It exits
+		// the probe at its own limit even if nothing outside the sandbox stops it, and is unref'd, so a probe that finishes
+		// keeps its own exit code. It reports the exit code on fd 4 and leaves the start marker.
+		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
+		expect(runner).toContain('["--import", new URL("./watchdog.mjs", import.meta.url).href, fileURLToPath(new URL("./probe.mjs", import.meta.url))]');
 		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
-		expect(watchdog).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\n$/m);
-		expect(watchdog).toMatch(/^process\.on\("exit", \(code\) => \{ try \{ writeSync\(4, .+\); \} catch \{\} \}\);$/m);
+		const lines = watchdog.split("\n");
+		expect(lines).toHaveLength(5);
+		expect(lines[0]).toBe('import { writeFileSync, writeSync } from "node:fs";');
+		expect(lines[1]).toBe('process.on("exit", (code) => { try { writeSync(4, `${code}\\n`); } catch {} });');
+		expect(lines[2]).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);$/);
+		expect(lines[3]).toBe('writeFileSync(new URL("../run/started", import.meta.url), "");');
+		expect(lines[4]).toBe("");
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
 	});
@@ -1127,6 +1124,54 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		await expect(probe.run()).rejects.toMatchObject({ code: "closed" });
 	});
 
+	it("refuses a run whose probe deletes the marker its runner left", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{ script: 'import { rmSync } from "node:fs";\nrmSync(new URL("../run/started", import.meta.url));\n' },
+			options(sandbox),
+		);
+		try {
+			await expect(probe.run()).rejects.toMatchObject({
+				code: "sandboxUnavailable",
+				message: "the probe never started: its sandbox exited 0",
+			});
+		} finally {
+			await probe.close();
+		}
+	});
+
+	it.each([
+		["imports a module that is not there", 'import "./missing.mjs";\n', "ERR_MODULE_NOT_FOUND"],
+		["does not parse", "const = 1;\n", "SyntaxError"],
+	])("reads a probe that %s as its own failure, after its runner started", async (_, script, error) => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script }, options(sandbox));
+		try {
+			const result = await probe.run();
+			expect([result.exitCode, result.timedOut, result.truncated]).toEqual([1, false, false]);
+			expect(result.output).toContain(error);
+		} finally {
+			await probe.close();
+		}
+	});
+
+	it("refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started", async () => {
+		let runs = 0;
+		const { sandbox } = passthrough({
+			wrap: (async (command: string) => ["/bin/bash", "-c", ++runs === 1 ? command : "exit 1"]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			expect((await probe.run()).exitCode).toBe(0);
+			await expect(probe.run()).rejects.toMatchObject({
+				code: "sandboxUnavailable",
+				message: "the probe never started: its sandbox exited 1",
+			});
+		} finally {
+			await probe.close();
+		}
+	});
+
 	it.each([
 		["settles", true],
 		["never settles", false],
@@ -1188,6 +1233,34 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		const seconds = Number(/ulimit -t (\d+) /.exec(asked[0]!.command)?.[1]);
 		expect(seconds).toBeGreaterThanOrEqual(2);
 		expect(seconds).toBeLessThanOrEqual(probeLimits.timeout.max / 1000);
+	});
+
+	it("starts the runner under Node, as the sandbox's last command", async () => {
+		const { sandbox, asked } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		const root = dirname(probe.policy.write[0]!);
+		await probe.run();
+		await probe.close();
+		expect(asked[0]!.command).toMatch(
+			new RegExp(` && exec '[^']+' '${join(root, "probe", "run.mjs").replaceAll(".", "\\.")}'$`),
+		);
+	});
+
+	it("runs the watchdog, and leaves its marker, before the probe's first statement", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open(
+			{
+				script:
+					'import { existsSync } from "node:fs";\nconsole.log(existsSync(new URL("../run/started", import.meta.url)));\n',
+			},
+			options(sandbox),
+		);
+		try {
+			const result = await probe.run();
+			expect([result.exitCode, result.output]).toEqual([0, "true\n"]);
+		} finally {
+			await probe.close();
+		}
 	});
 
 	it("cuts output that crosses its limit over several chunks", async () => {
@@ -1330,20 +1403,31 @@ describe("Probe.availability", () => {
 		});
 		expect(await Probe.availability(failing.sandbox)).toEqual({
 			available: false,
-			reason: "an empty probe exited 4: broken",
+			reason: "the probe never started: its sandbox exited 4: broken",
 		});
-		const silent = passthrough({
-			wrap: async () => ["/bin/sh", "-c", `${recorded('{"code":5,"signal":null}')}; exit 5`] as never,
+		const silent = passthrough({ wrap: async () => ["/bin/sh", "-c", "exit 5"] as never });
+		expect(await Probe.availability(silent.sandbox)).toEqual({
+			available: false,
+			reason: "the probe never started: its sandbox exited 5",
 		});
-		expect(await Probe.availability(silent.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
+		// A probe that started leaves the watchdog's marker, and then its runner's record says how it ended.
+		const started = (policy: ProbePolicy) => `: > '${policy.write[0]}/started'`;
+		const exited = passthrough({
+			wrap: async (_command, policy) =>
+				["/bin/sh", "-c", `${started(policy)}; ${recorded('{"code":5,"signal":null}')}; exit 5`] as never,
+		});
+		expect(await Probe.availability(exited.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
 		const killed = passthrough({
-			wrap: async () => ["/bin/sh", "-c", recorded('{"code":null,"signal":"SIGKILL"}')] as never,
+			wrap: async (_command, policy) =>
+				["/bin/sh", "-c", `${started(policy)}; ${recorded('{"code":null,"signal":"SIGKILL"}')}; exit 1`] as never,
 		});
 		expect(await Probe.availability(killed.sandbox)).toEqual({
 			available: false,
 			reason: "an empty probe was ended by SIGKILL",
 		});
-		const unrecorded = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
+		const unrecorded = passthrough({
+			wrap: async (_command, policy) => ["/bin/sh", "-c", `${started(policy)}; echo broken; exit 4`] as never,
+		});
 		expect(await Probe.availability(unrecorded.sandbox)).toEqual({
 			available: false,
 			reason: "an empty probe ended with no record of how: broken",
@@ -1419,7 +1503,36 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(fake, "win32").unavailable()).toBe("probes run on macOS and Linux, not win32");
 		expect(calls).toEqual([]);
 		expect(new RuntimeSandbox(fake, "darwin").platform).toBe("darwin");
-		expect(new RuntimeSandbox(fake, "linux").platform).toBe("linux");
+		expect(new RuntimeSandbox(fake, "linux", "/usr/bin/unshare").platform).toBe("linux");
+	});
+
+	it("refuses Linux without unshare, before asking sandbox-runtime, and never needs it on macOS", () => {
+		const linux = runtime();
+		expect(new RuntimeSandbox(linux.fake, "linux", null).unavailable()).toBe(
+			"util-linux's unshare is not installed, so a probe would share the host's IPC namespace",
+		);
+		expect(linux.names()).toEqual(["isSupportedPlatform"]);
+		const mac = runtime();
+		expect(new RuntimeSandbox(mac.fake, "darwin", null).unavailable()).toBeUndefined();
+		expect(new RuntimeSandbox(runtime().fake, "linux", "/usr/bin/unshare").unavailable()).toBeUndefined();
+	});
+
+	it("starts bubblewrap in an IPC namespace of its own on Linux alone, and never wraps without unshare", async () => {
+		const policy = { read: [], deny: ["/"], denyGlobs: [], write: [], denyWrite: [] };
+		expect(await new RuntimeSandbox(runtime().fake, "darwin", "/usr/bin/unshare").wrap("true", policy)).toEqual([
+			"wrapped",
+		]);
+		expect(await new RuntimeSandbox(runtime().fake, "linux", "/bin/unshare").wrap("true", policy)).toEqual([
+			"/bin/unshare",
+			"--user",
+			"--map-current-user",
+			"--ipc",
+			"--",
+			"wrapped",
+		]);
+		await expect(new RuntimeSandbox(runtime().fake, "linux", null).wrap("true", policy)).rejects.toThrow(
+			"util-linux's unshare is not installed",
+		);
 	});
 
 	it("says what sandbox-runtime lacks here, and refuses a warning that weakens confinement", () => {
@@ -1427,16 +1540,16 @@ describe("RuntimeSandbox", () => {
 			"sandbox-runtime does not support this platform",
 		);
 		const missing = runtime({ errors: ["bubblewrap (bwrap) not installed", "socat not found"] });
-		expect(new RuntimeSandbox(missing.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(missing.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: bubblewrap (bwrap) not installed; socat not found",
 		);
 		// A missing seccomp helper leaves unix sockets unrestricted; 0.0.81 reports it only as a warning.
 		const weak = runtime({ warnings: ["seccomp not available - unix socket access not restricted"] });
-		expect(new RuntimeSandbox(weak.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(weak.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: seccomp not available - unix socket access not restricted",
 		);
 		const both = runtime({ errors: ["bwrap missing"], warnings: ["an old bubblewrap"] });
-		expect(new RuntimeSandbox(both.fake, "linux").unavailable()).toBe(
+		expect(new RuntimeSandbox(both.fake, "linux", "/usr/bin/unshare").unavailable()).toBe(
 			"sandbox-runtime cannot run here: bwrap missing; an old bubblewrap",
 		);
 		const ready = runtime();
@@ -1468,8 +1581,8 @@ describe("RuntimeSandbox", () => {
 
 	it("shares one session count among every wrapper of one runtime, so closing one never resets another's", async () => {
 		const { fake, names } = runtime();
-		const first = new RuntimeSandbox(fake, "linux");
-		const second = new RuntimeSandbox(fake, "linux");
+		const first = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
+		const second = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await first.open();
 		await second.open();
 		await first.close();
@@ -1493,7 +1606,7 @@ describe("RuntimeSandbox", () => {
 				order.push("reset-end");
 			},
 		});
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await sandbox.open();
 		// A's close and B's open race on the shared manager; serialised, B initialises only after A's reset finishes.
 		const closing = sandbox.close();
@@ -1535,7 +1648,7 @@ describe("RuntimeSandbox", () => {
 				if (attempts === 1) throw new Error("no user namespaces");
 			},
 		});
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		await expect(sandbox.open()).rejects.toThrow("no user namespaces");
 		await sandbox.close();
 		expect(names()).toEqual(["initialize"]);
@@ -1546,7 +1659,7 @@ describe("RuntimeSandbox", () => {
 
 	it("passes every path as a literal, keeps deny globs as patterns, denies JAVA_TOOL_OPTIONS, and no network", async () => {
 		const { fake, calls } = runtime();
-		const sandbox = new RuntimeSandbox(fake, "linux");
+		const sandbox = new RuntimeSandbox(fake, "linux", "/usr/bin/unshare");
 		const policy = {
 			read: ["/w", "/w/**"],
 			deny: ["/", "/w/.git"],
@@ -1554,7 +1667,14 @@ describe("RuntimeSandbox", () => {
 			write: ["/s/run"],
 			denyWrite: ["/tmp/claude"],
 		};
-		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual(["wrapped"]);
+		expect(await sandbox.wrap("exec node probe.mjs", policy)).toEqual([
+			"/usr/bin/unshare",
+			"--user",
+			"--map-current-user",
+			"--ipc",
+			"--",
+			"wrapped",
+		]);
 		sandbox.cleanup();
 		const literal = (path: string) => ({ path, literal: true });
 		expect(calls).toEqual([

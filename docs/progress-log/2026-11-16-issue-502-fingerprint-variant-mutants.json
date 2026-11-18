@@ -1,0 +1,121 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "2a2e880de681c099517960971f980f0ff022a673",
+		"head": "7878e5f40c14165f81c4f5d1a531f47ceaa58666"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/configurations.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 62,
+			"column": 20,
+			"endLine": 62,
+			"endColumn": 83,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dea10c7100740a388781f02dc27451433106b66f0eda9ce2a0cbec393fd5d14d"
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 63,
+			"column": 28,
+			"endLine": 63,
+			"endColumn": 51,
+			"mutatorName": "LogicalOperator",
+			"replacement": "lens.resolution && null",
+			"status": "generated",
+			"id": "8fa2780cc699777743b2775a35457ba00ef5d96d539d18acd2fbc087978e9e4b",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes with the declared resolution of the variant a report carries, whatever the path defaults say",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 83,
+			"column": 3,
+			"endLine": 83,
+			"endColumn": 44,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "9364e8f3f6af787eaf2cdd95952eaba46ec7c0f557a28c1e6571f3e8e2c87fdc",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > falls back to the path's nearest lens default when the report's variant is no longer defined",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 120,
+			"column": 8,
+			"endLine": 120,
+			"endColumn": 55,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "8dd9e9db2ab0d0243125c803d6372770ee25f9fcabfbd64ea10dc11715d7226a",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes with the declared resolution of the variant a report carries, whatever the path defaults say",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 121,
+			"column": 8,
+			"endLine": 121,
+			"endColumn": 71,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "e52d2a62c6d65ac1b7872dea5c1a1101c0ae84c4dbb341076a126ec0e6c5d07a",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > falls back to the path's nearest lens default when the report's variant is no longer defined",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 122,
+			"column": 27,
+			"endLine": 122,
+			"endColumn": 61,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "83e19025ba8c42fed41fe5471a509c5096a4d9468bc175f872e9f67b15343e9b",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes when two folder variants of one lens swap their declared resolutions, neither above the path",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/configurations.ts",
+			"line": 122,
+			"column": 40,
+			"endLine": 122,
+			"endColumn": 53,
+			"mutatorName": "LogicalOperator",
+			"replacement": "scope && null",
+			"status": "generated",
+			"id": "3f3364043e2ff8a18e508fb74b865b9eaa0af67de71520431654fab570680fd8",
+			"claim": "killed",
+			"evidence": "packages/pipeline/test/configurations.test.ts > configsFor > the fingerprint's lens entries > changes when two folder variants of one lens swap their declared resolutions, neither above the path",
+			"survivorClasses": []
+		}
+	],
+	"total": 7,
+	"omitted": 0,
+	"unmutated": []
+}

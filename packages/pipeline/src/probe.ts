@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from "node:fs";
+import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
 import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
 import { homedir, constants as osConstants, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
@@ -23,7 +23,7 @@ function runnerSource(): string {
 		`import { spawn } from "node:child_process";`,
 		`import { writeSync } from "node:fs";`,
 		`import { fileURLToPath } from "node:url";`,
-		`const probe = spawn(process.execPath, [fileURLToPath(new URL("./${mainName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
+		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
 		`const exited = probe.stdio[4];`,
 		`let said = "";`,
 		`exited.setEncoding("utf8").on("data", (chunk) => { said += chunk; }).on("error", () => {});`,
@@ -46,25 +46,25 @@ function runnerSource(): string {
 	].join("\n");
 }
 
-// The probe's own process imports the watchdog, then the probe's module, both statically: a module's imports evaluate in
-// order, so the watchdog is armed, and its exit handler set, before the probe runs. The watchdog exits the probe at
-// `deadline` milliseconds even if nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes
-// leaves at its own exit code; a probe that hangs keeps the event loop alive until the timer fires and exits 124.
-function mainSource(): string {
-	return `import "./${watchdogName}";\nimport "./${scriptName}";\n`;
-}
-
+// The runner starts the probe's own process with the watchdog preloaded by --import, so it runs before the probe's
+// module links, and a probe that fails to link fails after the start marker, as its own failure. The watchdog sets the
+// exit handler that reports on fd 4, and exits the probe at `deadline` milliseconds even if nothing outside the sandbox
+// stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a probe that hangs keeps the
+// event loop alive until the timer fires and exits 124.
+// The watchdog also leaves a marker, before the probe is imported, that Probe.run reads back: a sandbox or Node that
+// fails to launch exits with a code of its own, which without the marker would read as the probe's.
 function watchdogSource(deadline: number): string {
 	return [
-		`import { writeSync } from "node:fs";`,
+		`import { writeFileSync, writeSync } from "node:fs";`,
 		`process.on("exit", (code) => { try { writeSync(4, \`\${code}\\n\`); } catch {} });`,
 		`setTimeout(() => process.exit(124), ${deadline}).unref();`,
+		`writeFileSync(new URL("../run/${startedName}", import.meta.url), "");`,
 		"",
 	].join("\n");
 }
 
 // The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer
-// fire, so the runner also runs under a CPU-time limit of this many seconds, which the kernel enforces.
+// fire, so the probe also runs under a CPU-time limit of this many seconds, which the kernel enforces.
 function backstop(timeout: number): number {
 	return timeout + closeGraceMs + 5_000;
 }
@@ -210,9 +210,9 @@ export type CleanupOutcome =
 
 const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
-const runnerName = "run.mjs";
 const watchdogName = "watchdog.mjs";
-const mainName = "main.mjs";
+const runnerName = "run.mjs";
+const startedName = "started";
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
 const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
@@ -459,6 +459,9 @@ async function writeHead({ checkout, commit, entries }: PlannedHead, tree: strin
 // secret, so it is left alone.
 const deniedEnvVars = ["JAVA_TOOL_OPTIONS"];
 
+// Where util-linux puts unshare. A fixed list, not PATH, which the host's environment decides.
+const unsharePaths = ["/usr/bin/unshare", "/bin/unshare"];
+
 // sandbox-runtime's reads of Node's install, for a probe's `node`. The grandparent of the executable is granted only
 // when it is a Node-only prefix, such as an nvm or a `node-*` directory; `/usr/bin/node`'s grandparent `/usr` would
 // expose `/usr/local/etc/npmrc`, so a system install grants the binary and its module directory alone, both already
@@ -512,7 +515,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName, runnerName, watchdogName, mainName]);
+	const seen = new Set<string>([scriptName, runnerName, watchdogName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -658,12 +661,18 @@ export class RuntimeSandbox implements ProbeSandbox {
 	readonly kind = "sandbox-runtime";
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
+	readonly #unshare: string | null;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
 	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
 	readonly #sessions: { count: number; queue: Promise<void> };
 
-	constructor(runtime: SandboxRuntime = SandboxManager, name: string = platform()) {
+	constructor(
+		runtime: SandboxRuntime = SandboxManager,
+		name: string = platform(),
+		unshare: string | null = unsharePaths.find((path) => existsSync(path)) ?? null,
+	) {
 		this.#runtime = runtime;
+		this.#unshare = unshare;
 		this.#sessions = sessionsOf.get(runtime) ?? { count: 0, queue: Promise.resolve() };
 		sessionsOf.set(runtime, this.#sessions);
 		this.#name = name;
@@ -676,6 +685,8 @@ export class RuntimeSandbox implements ProbeSandbox {
 	unavailable(): string | undefined {
 		if (this.#name !== "darwin" && this.#name !== "linux") return `probes run on macOS and Linux, not ${this.#name}`;
 		if (!this.#runtime.isSupportedPlatform()) return "sandbox-runtime does not support this platform";
+		if (this.platform === "linux" && this.#unshare === null)
+			return "util-linux's unshare is not installed, so a probe would share the host's IPC namespace";
 		const { errors, warnings } = this.#runtime.checkDependencies();
 		const problems = [...errors, ...warnings];
 		return problems.length === 0 ? undefined : `sandbox-runtime cannot run here: ${problems.join("; ")}`;
@@ -713,7 +724,13 @@ export class RuntimeSandbox implements ProbeSandbox {
 			},
 			credentials: { envVars: deniedEnvVars.map((name) => ({ name, mode: "deny" as const })) },
 		});
-		return argv;
+		if (this.platform === "darwin") return argv;
+		// bubblewrap shares the host's IPC namespace, where a probe running as the host's user could read or remove its
+		// System V and POSIX queues, semaphores and shared memory. A user namespace of our own, keeping the uid that
+		// sandbox-runtime chose its flags for, gives everything under bubblewrap a fresh one. unshare execs bubblewrap in
+		// place, so the pid Melian records is still the sandbox's.
+		if (this.#unshare === null) throw new Error("util-linux's unshare is not installed");
+		return [this.#unshare, "--user", "--map-current-user", "--ipc", "--", ...argv];
 	}
 
 	cleanup(): void {
@@ -812,12 +829,11 @@ export class Probe {
 				await mkdir(join(scratch, path), { recursive: true });
 			if (head !== undefined) installs = await writeHead(head, join(scratch, "tree"));
 			await writeFile(join(scratch, "probe", scriptName), input.script);
-			// A watchdog inside the runner exits the probe at its own limit even if the Melian process dies and so never
-			// stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe first; a
-			// grandchild that reparents away from the runner still escapes it, as the decision records.
+			// A watchdog inside the probe's Node process exits the probe at its own limit even if the Melian process dies
+			// and so never stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe
+			// first; a grandchild that reparents away from that process still escapes it, as the decision records.
 			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(backstop(limits.timeout)));
 			await writeFile(join(scratch, "probe", runnerName), runnerSource());
-			await writeFile(join(scratch, "probe", mainName), mainSource());
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
@@ -906,10 +922,13 @@ export class Probe {
 		let size = 0;
 		let truncated = false;
 		let record = Buffer.alloc(0);
+		// How the sandbox's own process exited, which a launch failure decides, apart from the probe's recorded ending.
+		let launched: number | null = null;
 		let child: ProbeProcess | undefined;
 		let argv: readonly string[] | undefined;
 		let outcome: ProbeResult | undefined;
 		try {
+			rmSync(join(this.#scratch, "run", startedName), { force: true });
 			// Starting the sandbox is bounded apart from the run, so wrapping the command cannot hang unbounded before the
 			// probe's own time limit begins.
 			const wrapping = this.#sandbox.wrap(command, this.policy);
@@ -951,6 +970,7 @@ export class Probe {
 				},
 			});
 			const exit = await child.wait();
+			launched = exit.code;
 			const bytes = Buffer.concat(chunks);
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
@@ -966,6 +986,18 @@ export class Probe {
 			// A run that settled keeps its result, with the failed stop as its error unless it already holds one.
 			if (outcome !== undefined && stopped !== undefined) outcome = { ...outcome, error: outcome.error ?? stopped };
 		}
+		const ended = !outcome.timedOut && !outcome.truncated && launched !== null;
+		if (
+			ended &&
+			!(await lstat(join(this.#scratch, "run", startedName)).then(
+				() => true,
+				() => false,
+			))
+		)
+			throw new ProbeError(
+				"sandboxUnavailable",
+				`the probe never started: its sandbox exited ${launched}${outcome.output === "" ? "" : `: ${outcome.output.trim()}`}`,
+			);
 		return outcome;
 	}
 

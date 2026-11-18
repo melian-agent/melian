@@ -267,14 +267,14 @@ describe("built-in lenses", () => {
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "acfe949c2b5b",
-			conventions: "52519f16435c",
-			correctness: "c49c348ce9f1",
-			design: "be363583ad90",
-			"removed-behaviour": "0885fd05330f",
-			tests: "7d8c4ba3c2e1",
-			"trust-boundary": "7d072a9e5e2c",
-			"trust-boundary-probes": "07e117503895",
+			contracts: "3a16d09447aa",
+			conventions: "a97206229c6c",
+			correctness: "2c762bea062a",
+			design: "a766d8d4346f",
+			"removed-behaviour": "4348907c4c79",
+			tests: "3cd6d87f2b68",
+			"trust-boundary": "5be761e59afa",
+			"trust-boundary-probes": "91442d54881b",
 		});
 	});
 
@@ -324,10 +324,29 @@ describe("built-in lenses", () => {
 			return (
 				!paths.includes("!packages/evals/goldens/**") ||
 				!paths.includes("!packages/evals/verifier/**") ||
-				!paths.includes("!packages/evals/triage/**")
+				!paths.includes("!packages/evals/triage/**") ||
+				!paths.includes("!docs/progress-log/*.json")
 			);
 		});
 		expect(unexcluded).toEqual([]);
+	});
+
+	it("shows no lens in Melian's root tier a mutation inventory, and still shows it the progress-log entry beside it", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const inventory = "docs/progress-log/2026-11-17-x-mutants.json";
+		const entry = "docs/progress-log/2026-11-17-x.md";
+		const elsewhere = "packages/core/test/fixtures/x.json";
+		const nested = "docs/progress-log/sub/x.json";
+		const covered = (path: string) => Lens.select(lenses, config, [path]).map(({ lens }) => lens.name);
+		expect(covered(inventory)).toEqual([]);
+		expect(covered(entry)).toContain("design");
+		expect(covered(entry)).toContain("trust-boundary-probes");
+		expect(covered(elsewhere)).toContain("design");
+		expect(covered(nested)).toContain("design");
 	});
 
 	it("run Melian's design lens on its own route, at Codex's model and effort, and every quick level on Terra at low", async () => {
