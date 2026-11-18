@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { statSync } from "node:fs";
 import type * as Fs from "node:fs/promises";
 import { readdir, rename } from "node:fs/promises";
 import { hostname } from "node:os";
@@ -76,7 +77,11 @@ describe("creating the repository", { timeout: 60_000 }, () => {
 		const path = join(remote.host(), "records.git");
 		await RecordRepository.open(path, Deadline.after(systemClock, 30_000));
 		const init = vi.mocked(git).mock.calls.find(([, args]) => args[0] === "init");
-		const host = createHash("sha256").update(hostname()).digest("hex").slice(0, 16);
+		const space =
+			process.platform === "linux"
+				? `\0${statSync("/proc/self/ns/pid").dev}:${statSync("/proc/self/ns/pid").ino}`
+				: "";
+		const host = createHash("sha256").update(`${hostname()}${space}`).digest("hex").slice(0, 16);
 		const owner = `${host}-${process.pid}`;
 		expect(init?.[1][3]).toMatch(
 			new RegExp(`^${path}\\.${owner}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),

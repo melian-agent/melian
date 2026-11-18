@@ -25,7 +25,7 @@ import {
 	providersWithCredentials,
 	staticToolSource,
 } from "@melian-agent/pipeline";
-import { GitRecordStore, type Sweep } from "@melian-agent/state-git";
+import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
@@ -572,6 +572,10 @@ function sweepNotes(sweep: Sweep): string[] {
 	else if (sweep.unswept !== undefined)
 		notes.push(
 			`the state directory holds ${sweep.unswept === 1 ? "a leftover of an exited call" : `${sweep.unswept} leftovers of exited calls`} that the sweep ran out of time to remove, which the next open removes`,
+		);
+	if (sweep.bounded === true)
+		notes.push(
+			`the sweep stopped listing at its bound of ${sweepBound} leftovers, so the state directory may hold more, which a later open lists once fewer are left`,
 		);
 	return notes;
 }

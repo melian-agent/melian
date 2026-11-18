@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { blindCallers, lightTriage } from "../src/caveats.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
 import { ReviewRecords, withheld } from "../src/review-records.ts";
-import type { StaticProof } from "../src/static-proof.ts";
 
 // Text a tool, a provider or the head's code wrote, such as a login one of them read.
 const token = "melian-test-token-5f1e2d";
@@ -44,11 +43,6 @@ const verdict = {
 	model: "anthropic/claude",
 	version: "1",
 } as const;
-
-// A store that proves Biome's run under one key, and nothing else.
-const proven = {
-	asks: (check: string, request: string | undefined) => check === "static.biome" && request === "e".repeat(64),
-} as StaticProof;
 
 const checks: CheckRunRecord[] = [
 	{ name: "static.enola", status: "ran", findings: 0, notes: [`line 3: ${token}`] },
@@ -108,19 +102,17 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 		const producers = [{ check: "static.biome", version: token }];
 		const account = { checks: ["static.biome"], records: [], filled: [], allowSkip: [], producers };
 		expect(bytes(records.account(account))).not.toContain(token);
-		const dismissal = records.dismissal(
-			{
-				finding: finding.properties.id,
-				by: "writer",
-				reason: "fine",
-				at: "2026-11-16T00:00:00.000Z",
-				severity: "P2",
-				sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding, run: "e".repeat(64) },
-				rounds: [],
-				trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
-			},
-			proven,
-		);
+		const dismissal = records.dismissal({
+			finding: finding.properties.id,
+			by: "writer",
+			reason: "fine",
+			at: "2026-11-16T00:00:00.000Z",
+			severity: "P2",
+			// A static finding's dismissal is shared only with its run's proof, so a guardrail's carries the version here.
+			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
+			rounds: [],
+			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
+		});
 		expect(bytes(dismissal)).not.toContain(token);
 	});
 
@@ -230,10 +222,11 @@ describe("an exported record keeps what Melian defines", () => {
 	});
 
 	it("exports a sighting of a check that names no version as it was found", () => {
-		const finding = sighting(undefined);
-		const result = { name: "static.biome", status: "ran", findings: 1, notes: [] } as CheckRunRecord;
-		const [exported] = payload(records.check("e".repeat(64), result, [finding])).sightings as StoredFinding[];
-		expect(exported!.properties.source).toStrictEqual(finding.properties.source);
+		const finding = sighting(undefined, "guardrails");
+		const result = { name: "guardrails", status: "ran", findings: 1, notes: [] } as CheckRunRecord;
+		expect((payload(records.check("e".repeat(64), result, [finding])).sightings as StoredFinding[])[0]).toStrictEqual(
+			finding,
+		);
 	});
 
 	it("keeps a lens's own version where a finding's source names it", () => {

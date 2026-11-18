@@ -23,7 +23,8 @@ export async function probingReview(
 	database: string,
 	replies: ProbingReplies,
 	sandbox: ProbeSandbox = unconfinedSandbox(),
-	plain?: { readonly lens: string; readonly match: string },
+	// A lens that does not probe, which answers once; `extra` is added to its instructions, which changes its request.
+	plain?: { readonly lens: string; readonly match: string; readonly extra?: string },
 ) {
 	const first = createFakeModels({ provider: "first", models: [{ id: "a" }] });
 	const second = createFakeModels({ provider: "second", models: [{ id: "b" }] }, first.review);
@@ -44,11 +45,13 @@ export async function probingReview(
 		probeSandbox: sandbox,
 	});
 	const changeset = await Changeset.resolve(repo, "main...feature");
-	const lenses = (await Lens.load(repo, { kind: "revision", commit: changeset.revision.base }, [])).map((lens) =>
-		lens.name === "trust-boundary"
-			? Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } })
-			: lens,
-	);
+	const lenses = (await Lens.load(repo, { kind: "revision", commit: changeset.revision.base }, [])).map((lens) => {
+		if (lens.name === "trust-boundary")
+			return Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep: { ...lens.level("deep"), probe: {} } } });
+		if (lens.name === plain?.lens && plain.extra !== undefined)
+			return Lens.from({ ...lens.toJSON(), instructions: `${lens.instructions}\n\n${plain.extra}` });
+		return lens;
+	});
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: { full: ["lens.trust-boundary", ...(plain === undefined ? [] : [`lens.${plain.lens}`])] },

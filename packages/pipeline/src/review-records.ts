@@ -423,7 +423,7 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].map((each) => shareable(sighting(each))).sort(byId) as unknown as RecordJson[];
+	return [...sightings].map((finding) => shareable(sighting(finding))).sort(byId) as unknown as RecordJson[];
 }
 
 // A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome

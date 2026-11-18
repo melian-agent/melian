@@ -1,0 +1,85 @@
+{
+ "range": "fefba47d...f0483bf4",
+ "total": 6,
+ "omitted": 0,
+ "mutants": [
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 661,
+   "column": 3,
+   "endLine": 661,
+   "endColumn": 21,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers no expectation in another file through a merged claim's cause there, so one claim counts once",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 661,
+   "column": 3,
+   "endLine": 661,
+   "endColumn": 21,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.file !== path",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines through a merged claim only where that claim's own cause sits",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 671,
+   "column": 16,
+   "endLine": 671,
+   "endColumn": 112,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers no expectation in another file through a merged claim's cause there, so one claim counts once",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 671,
+   "column": 41,
+   "endLine": 671,
+   "endColumn": 68,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines through a merged claim only where that claim's own cause sits",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 671,
+   "column": 41,
+   "endLine": 671,
+   "endColumn": 68,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines through a merged claim only where that claim's own cause sits",
+   "survivorClasses": [],
+   "run": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 671,
+   "column": 41,
+   "endLine": 671,
+   "endColumn": 68,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines !== undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts::scoreGolden > answers an expectation with lines through a merged claim only where that claim's own cause sits",
+   "survivorClasses": [],
+   "run": "killed"
+  }
+ ]
+}

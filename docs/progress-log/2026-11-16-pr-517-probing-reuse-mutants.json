@@ -1,0 +1,390 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "82e08c71c763adc5b2bd26d59a33a03aa3109628",
+		"head": "3d9bc970f2e06f30258d0df59c76fac7447a3ebd"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-reuse.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "63cf439b04a2a3b44214d85122edf29954c45ee1e783e69344e7d4cd739200ca",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 2,
+			"endLine": 40,
+			"endColumn": 67,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "outcome.model !== undefined && refused(run.key, outcome.model)",
+			"status": "generated",
+			"id": "53166b066afdff2dfe8935edb5ed8604ad6fc9306923a4260a632874008ef28a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 4,
+			"endLine": 40,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a34508bb6ffbedc0eb7923f0218bccf7dc324daf43ca1f129d9b06a79cb0e6c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 4,
+			"endLine": 40,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4bb6f91cfaf6d23537ee113a7f0122cfc1e9450a5a77d5cac8bba1496b78baf8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 4,
+			"endLine": 40,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "outcome.model !== undefined || refused(run.key, outcome.model)",
+			"status": "generated",
+			"id": "c2915d8a682704683f0b36a2ca2d4603ee49fe37545994cec647b02040a8f821",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a lens whose request matches a finished run, naming the task that asked it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 4,
+			"endLine": 40,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b98f174cd57ac9746e4bb04980f9d6b43ef1574c485a3d8fd0aa171de1ed60cc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"copies a run with no model recorded, since nothing names one to refuse"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-reuse.ts",
+			"line": 40,
+			"column": 4,
+			"endLine": 40,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outcome.model === undefined",
+			"status": "generated",
+			"id": "5fb9da8796ce61ddbddebe06c95f2f73e2eb79cc4fa26ed199ec1a3bffbad42f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/lens-reuse.test.ts",
+					"path": [
+						"lensCopies",
+						"never copies a run that ended on a model the plan now refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 235,
+			"column": 40,
+			"endLine": 235,
+			"endColumn": 71,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0237ef71f66fe09b401184bfd620fe9b7d21aa2023ae14481b2053c9ca185aaf"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 242,
+			"column": 8,
+			"endLine": 242,
+			"endColumn": 89,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3c144aa9b578eff610a6351eb10646fb93d5b4f52bdb139b0aee15b998b13cce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the host a probe runs on by its sandbox, the installed sandbox-runtime, and this process's Node"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 9,
+			"endLine": 621,
+			"endColumn": 107,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "390bcfaaec9b4ac3b0018ef35f96bdcaeeb067090adceda68799e463eb955542",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The sample host sits in the sample claim probeEvidenceRenderings renders, and renderProbeEvidence takes the claim without its environment, so every rendering, and the verifier version hashed over them, is the same."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 21,
+			"endLine": 621,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85b13896bce34cd7a55d7d443222956941d1880cd9225160e6ef307fdf72a580"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 39,
+			"endLine": 621,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c532fa77b0e94353b66e6f61f024e6600aef3eb28f0062e3358474ab9e1a621a"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 69,
+			"endLine": 621,
+			"endColumn": 76,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "01286c3626517dc8d6d2b1f47c77c5b71ca773e011e24fe0730af082f11bd957"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 84,
+			"endLine": 621,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b63f98ff97442743c0aace15f3da9cbc682ad1a3d7a5cbc6fc5a1d4a8ce9a362"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 621,
+			"column": 97,
+			"endLine": 621,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d4084cb1162a3392b17e0cce670711f2239657feb87db8e3ce045dc8021beaef"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1692,
+			"column": 4,
+			"endLine": 1692,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "968404284664d1d796e4eeb3712da417ec5687c84119361314d94d7d889820b5",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "It differs only for an indexed lens task that ended aborted, faulted or orphaned: the read then claims an attach, the commit refuses it as unattachable and the review unlocks every run provider and commits again, the same single unlock of the same providers the unmutated read makes, since nothing is copied from a task that did not complete."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1692,
+			"column": 4,
+			"endLine": 1692,
+			"endColumn": 69,
+			"mutatorName": "LogicalOperator",
+			"replacement": "record.state.status !== \"terminal\" && finished(record, undecided)",
+			"status": "generated",
+			"id": "ca689022c545859cba7fd782b1ec0503a49580fc02141eda99bbb29780ff4780",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"unlocking credentials",
+						"runs once, before any lens asks a model, and not for a repeat review that spends no tokens"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1692,
+			"column": 4,
+			"endLine": 1692,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b4ee2af7d7405584b8820efe17ed1eb7bd3a0363809ea074c040ead0f4f41ca4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-crash.test.ts",
+					"path": [
+						"report_finding across a crash",
+						"keeps the abandoned provider locked while a live lens-failover task attaches after a real kill"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1692,
+			"column": 4,
+			"endLine": 1692,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record.state.status === \"terminal\"",
+			"status": "generated",
+			"id": "c52a6d51e386aedb7f756ce49d0deb02e5a2499b1bb06a4196f8240c84eec5e5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-crash.test.ts",
+					"path": [
+						"report_finding across a crash",
+						"keeps the abandoned provider locked while a live lens-failover task attaches after a real kill"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 1692,
+			"column": 28,
+			"endLine": 1692,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "052b3e0beda19b9781d7484efa793e730858d8a8e7c0a0e478519e417b783e3e"
+		}
+	],
+	"total": 19,
+	"omitted": 0,
+	"unmutated": []
+}
