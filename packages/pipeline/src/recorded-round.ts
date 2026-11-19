@@ -1,6 +1,9 @@
 import {
 	type AccountPayload,
 	Adjudication,
+	type ChangedFile,
+	Changeset,
+	ChangesetError,
 	type CheckPayload,
 	type CheckRecord,
 	type ConfigFor,
@@ -21,7 +24,14 @@ import {
 	type VerificationPayload,
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
-import { citedProof, mergeSightings, type Producer, type SharedDismissal, type VerificationClaim } from "./findings.ts";
+import {
+	citedProof,
+	mergeSightings,
+	type Producer,
+	type SharedDismissal,
+	sharedDismissalHolds,
+	type VerificationClaim,
+} from "./findings.ts";
 import { provingHunk, reviewFiles } from "./lens-tools.ts";
 import { accountKey, inManifestOrder } from "./review-records.ts";
 
@@ -73,11 +83,20 @@ type Pieces =
 			readonly checks: CheckRecord[];
 			readonly sightings: StoredFinding[];
 			readonly claims: VerificationClaim[];
-			readonly dismissals: readonly SharedDismissalRecord[];
+			readonly dismissals: readonly PendingDismissal[];
 	  }
 	| { readonly refused: string };
 
 type Decided = Exclude<Pieces, { readonly refused: string }>;
+
+// A dismissal record with what each round since it sighted of its finding, which the revision that round reviewed
+// decides before the dismissal can stand.
+type PendingDismissal = { readonly dismissal: SharedDismissalRecord; readonly since: readonly SinceRound[] };
+type SinceRound = {
+	readonly round: string;
+	readonly revision: string | undefined;
+	readonly sightings: readonly StoredFinding[];
+};
 
 /**
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
@@ -118,24 +137,38 @@ export class RecordedRound {
 
 	/**
 	 * What the round's records hold at `revision`, or why they cannot stand for the round there: a round is read only at
-	 * the revision it reviewed, since a dismissal's trigger is met against that revision's hunks.
+	 * the revision it reviewed, since a dismissal's trigger is met against that revision's hunks. A dismissal stands only
+	 * if every sighting of its finding in a round since it still meets it at the revision that round reviewed, as the
+	 * host tested each when it was seen. Each such revision is read from the checkout at `repoRoot` by its base and
+	 * head, so a checkout that lacks one of their commits, as a shallow clone may, refuses the round and names it.
 	 */
-	contents(revision: Revision): RecordedRoundContents | { readonly refused: string } {
+	async contents(
+		revision: Revision,
+		repoRoot?: string,
+	): Promise<RecordedRoundContents | { readonly refused: string }> {
 		const pieces = this.#pieces;
 		if ("refused" in pieces) return pieces;
 		const asked = Revision.key(revision);
 		if (asked !== pieces.revision) return { refused: `reviewed ${pieces.revision}, not ${asked}` };
-		return {
-			revision: asked,
-			sightings: pieces.sightings,
-			hunks: reviewFiles(revision.files).flatMap((file) => file.hunks.map(provingHunk)),
-			dismissals: pieces.dismissals,
-		};
+		const hunks = new Map([[asked, hunksOf(revision.files)]]);
+		const dismissals: SharedDismissalRecord[] = [];
+		for (const { dismissal, since } of pieces.dismissals) {
+			let holds = true;
+			for (const { round, revision: reviewed, sightings } of since) {
+				if (!holds) break;
+				if (sightings.length === 0) continue;
+				const at = await hunksAt(round, reviewed, hunks, repoRoot);
+				if ("refused" in at) return at;
+				holds = sharedDismissalHolds(dismissal, sightings, at.hunks);
+			}
+			if (holds) dismissals.push(dismissal);
+		}
+		return { revision: asked, sightings: pieces.sightings, hunks: hunks.get(asked)!, dismissals };
 	}
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
-		const contents = this.contents(context.revision);
+		const contents = await this.contents(context.revision, context.repoRoot);
 		if ("refused" in contents) return notReviewed(this.id, contents.refused, context);
 		// `contents` refuses whatever the pieces refuse.
 		const pieces = this.#pieces as Decided;
@@ -268,7 +301,7 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 // does. A dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live, and so does
 // one whose record names no frontier: no record written before the field held one, and no shared store holds such a
 // record yet.
-function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecord[] {
+function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 	return set
 		.unsuperseded()
 		.filter((record) => record.kind === "dismissal" && record.changeset === round.changeset)
@@ -278,8 +311,24 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecor
 			const since = roundsSince(set, round, frontier);
 			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
-			const cited = citedProof(since.flatMap((each) => sightingsOf(set, each))).get(key) ?? [];
-			return [{ record: id, finding: key, revision: sighting.revision, supersedes, by, reason, at, trigger, cited }];
+			const seen = since.map((each) => ({
+				round: each.id,
+				revision: each.revision,
+				sightings: sightingsOf(set, each).filter(({ properties }) => properties.id === key),
+			}));
+			const cited = citedProof(seen.flatMap((each) => each.sightings)).get(key) ?? [];
+			const dismissal = {
+				record: id,
+				finding: key,
+				revision: sighting.revision,
+				supersedes,
+				by,
+				reason,
+				at,
+				trigger,
+				cited,
+			};
+			return [{ dismissal, since: seen }];
 		});
 }
 
@@ -324,6 +373,43 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 		}
 	}
 	return since;
+}
+
+// The proving hunks of a revision that changes `files`, as a lens cites them.
+function hunksOf(files: readonly ChangedFile[]): ProvingHunk[] {
+	return reviewFiles(files).flatMap((file) => file.hunks.map(provingHunk));
+}
+
+// The proving hunks of the revision `round` reviewed, from `known` or else resolved from the checkout at `repoRoot` by
+// its base and head with `Changeset.resolve`, the diff every review is read from. A key that names no base and head, a
+// reader with no checkout, and a checkout that cannot resolve the revision each refuse the round, naming why.
+async function hunksAt(
+	round: string,
+	revision: string | undefined,
+	known: Map<string, ProvingHunk[]>,
+	repoRoot: string | undefined,
+): Promise<{ readonly hunks: readonly ProvingHunk[] } | { readonly refused: string }> {
+	const sides = revision === undefined ? undefined : Revision.parseKey(revision);
+	if (revision === undefined || sides === undefined)
+		return { refused: `follows round ${round}, which names no revision a reader can resolve` };
+	const held = known.get(revision);
+	if (held !== undefined) return { hunks: held };
+	if (repoRoot === undefined)
+		return {
+			refused: `follows round ${round} of revision ${revision}, and is read with no checkout to resolve it in`,
+		};
+	let resolved: Changeset;
+	try {
+		resolved = await Changeset.resolve(repoRoot, { mode: "twoDot", base: sides.base, head: sides.head });
+	} catch (error) {
+		if (!(error instanceof ChangesetError)) throw error;
+		return {
+			refused: `follows round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need`,
+		};
+	}
+	const hunks = hunksOf(resolved.revision.files);
+	known.set(revision, hunks);
+	return { hunks };
 }
 
 // The sightings of the lens and check records `round` names. A dismissal record's own sighting adds none: its trigger's

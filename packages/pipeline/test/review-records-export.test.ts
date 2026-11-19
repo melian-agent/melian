@@ -696,9 +696,10 @@ describe("a dismissal shared across hosts", () => {
 			.filter(({ kind, revision }) => kind === "round" && revision === Revision.key(changeset.revision))
 			.map((each) => SharedRecord.parseEnvelope(each).id)
 			.at(-1)!;
-		const contents = RecordedRound.of(held, round, everyRecordCounts).contents(
+		const contents = (await RecordedRound.of(held, round, everyRecordCounts).contents(
 			changeset.revision,
-		) as RecordedRoundContents;
+			repo,
+		)) as RecordedRoundContents;
 		expect(contents.dismissals.map(({ finding }) => finding)).toHaveLength(1);
 	});
 });
