@@ -10,12 +10,27 @@ import {
 	Lens,
 	lensGraphToolNames,
 	type MelianConfig,
+	Revision,
 	Verdict,
 } from "@melian-agent/core";
-import { StageTelemetry, TokenUsage } from "@melian-agent/pipeline";
-import { createFakeModels } from "@melian-agent/pipeline/testing";
+import {
+	backgroundContext,
+	openSqliteStorage,
+	StageTelemetry,
+	TelemetryReader,
+	TokenUsage,
+} from "@melian-agent/pipeline";
+import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { buildGoldenRepository, commitGoldenTree, loadGoldens, type RangeRun } from "../src/goldens.ts";
+import {
+	buildGoldenRepository,
+	commitGoldenTree,
+	type LiveGoldenMode,
+	loadGoldens,
+	type RangeRun,
+	type ReviewTarget,
+	runRange,
+} from "../src/goldens.ts";
 import {
 	CommittedArm,
 	checkoutCommit,
@@ -774,6 +789,156 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		} finally {
 			spy.mockRestore();
 		}
+	});
+	describe("a run that ended during a review", () => {
+		const lensNames = [
+			"trust-boundary",
+			"correctness",
+			"contracts",
+			"removed-behaviour",
+			"tests",
+			"conventions",
+			"design",
+		];
+		const pendingStore = () => `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.sqlite`;
+
+		// The review never returns, as when the process dies during it; the attempt saved before it is all that is left.
+		async function endDuring(review: (mode: LiveGoldenMode, target: ReviewTarget) => Promise<void>) {
+			let started!: () => void;
+			const reviewed = new Promise<void>((resolve) => {
+				started = resolve;
+			});
+			const using = runners(undefined, {
+				range: vi.fn(async (target, mode) => {
+					await review(mode, target);
+					started();
+					return new Promise<RangeRun>(() => {});
+				}),
+			});
+			void measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using);
+			await reviewed;
+		}
+
+		const ended = {
+			miss: "one",
+			arm: "committed",
+			said: "not scored: the run ended during this review",
+			stopped: "committed on one ended with the run, during its review",
+			tokens: 0,
+			cacheRead: 0,
+			budgetTokens: 0,
+			stages: [],
+		};
+
+		it("saves the attempt before its review, and settles it on resume from what its store recorded", async () => {
+			const fake = createFakeModels();
+			scriptConversations(
+				fake,
+				lensNames.map((lens) => ({
+					match: `You are the ${lens} reviewer`,
+					replies: [fauxAssistantMessage("Reported 0 findings.")],
+				})),
+			);
+			const ref = fake.ref();
+			await endDuring(async (mode, target) => {
+				await runRange(target, {
+					kind: "live",
+					models: fake.review,
+					model: `${ref.provider}/${ref.modelId}`,
+					store: mode.store!,
+				}).catch(() => undefined);
+			});
+			expect(results().attempts).toEqual([{ ...ended, pending: true, store: pendingStore() }]);
+			const storage = await openSqliteStorage(pendingStore());
+			const recorded = await TelemetryReader.open(storage)
+				.read(Revision.key((await Changeset.resolve(repo, `${policy}...${head}`)).revision))
+				.finally(() => storage.close(backgroundContext));
+			const tokens = recorded.stages.reduce((sum, stage) => sum + (stage.usage?.total.totalTokens ?? 0), 0);
+			expect(tokens).toBeGreaterThan(0);
+			const resumed = runners();
+			const { status, lines } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, resumed);
+			expect(status).toBe(1);
+			const [settled, ...rest] = results().attempts;
+			expect(settled).toEqual({
+				...ended,
+				tokens,
+				cacheRead: recorded.stages.reduce((sum, stage) => sum + (stage.usage?.total.cacheRead ?? 0), 0),
+				budgetTokens: expect.any(Number),
+				stages: expect.arrayContaining([expect.objectContaining({ subject: recorded.stages[0]!.subject })]),
+				store: pendingStore(),
+			});
+			expect(settled!.stages).toHaveLength(recorded.stages.length);
+			expect(rest.map(({ arm, store }) => [arm, store])).toEqual([
+				["committed", `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.2.sqlite`],
+				["parity", `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-parity.sqlite`],
+			]);
+			expect(lines[0]).toMatch(new RegExp(`; run so far ${tokens + 180} tokens, `));
+		});
+
+		it("settles an attempt whose review never opened its store as spending nothing", async () => {
+			await endDuring(async () => {});
+			expect(existsSync(pendingStore())).toBe(false);
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners())).status).toBe(1);
+			expect(results().attempts[0]).toEqual({ ...ended, store: pendingStore() });
+			expect(existsSync(pendingStore())).toBe(false);
+		});
+
+		it("refuses to resume over a store it cannot read, or a miss the run no longer names", async () => {
+			await endDuring(async () => {});
+			const narrowed = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, runners());
+			expect(narrowed.status).toBe(2);
+			expect(narrowed.errors).toEqual([
+				`${env.MELIAN_EVAL_PARITY_OUT} holds a review of one that the run ended during; resume with one among MELIAN_EVAL_PARITY_MISSES to settle it`,
+			]);
+			writeFileSync(pendingStore(), "not a database");
+			const using = runners();
+			const { status, errors } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using);
+			expect(status).toBe(2);
+			expect(errors).toEqual([
+				expect.stringMatching(
+					new RegExp(
+						`^Cannot read ${pendingStore()}, the store of a review the run ended during, so its spend is unknown: `,
+					),
+				),
+			]);
+			expect(using.range).not.toHaveBeenCalled();
+			expect(results().attempts).toEqual([{ ...ended, pending: true, store: pendingStore() }]);
+		});
+
+		it("stops on resume when the store of the review it settled did not measure a model stage's usage", async () => {
+			await endDuring(async (mode) => {
+				await (await openSqliteStorage(mode.store!)).close(backgroundContext);
+			});
+			const read = vi
+				.spyOn(TelemetryReader.prototype, "read")
+				.mockResolvedValue(
+					new StageTelemetry("base..head", [
+						lensStage({ usage: undefined }),
+						lensStage({ id: "v", subject: "verifier" }),
+					]),
+				);
+			try {
+				const using = runners();
+				expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using)).status).toBe(3);
+				expect(using.range).not.toHaveBeenCalled();
+			} finally {
+				read.mockRestore();
+			}
+			expect(results().stopped).toBe(
+				"committed on one ended with the run, during its review, and its store did not measure usage in lens correctness",
+			);
+			expect(results().attempts).toEqual([
+				{
+					...ended,
+					tokens: 100,
+					cacheRead: 40,
+					budgetTokens: 60,
+					stages: [expect.objectContaining({ tokens: 0 }), expect.objectContaining({ tokens: 100 })],
+					store: pendingStore(),
+				},
+			]);
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners())).status).toBe(1);
+		});
 	});
 });
 

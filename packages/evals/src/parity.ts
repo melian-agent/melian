@@ -13,14 +13,18 @@ import {
 	type MelianConfig,
 	type ModelRoute,
 	parseModelReference,
+	Revision,
 	visibleText,
 } from "@melian-agent/core";
 import {
+	backgroundContext,
 	isProviderLimit,
+	openSqliteStorage,
 	type ProbeAvailability,
 	type ReviewModels,
 	type Stage,
 	type StageTelemetry,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import type { LiveGoldenMode, ProbingRoute, RangeRun, ReviewTarget } from "./goldens.ts";
 import { Miss, type MissLocation, ProbeTrust } from "./probing.ts";
@@ -221,6 +225,8 @@ export interface ParityAttempt {
 	readonly error?: string;
 	/** Why the run stopped on this attempt, which scored nothing; a resumed run reviews the arm again. */
 	readonly stopped?: string;
+	/** Saved before its review starts and replaced once it ends, so a resumed run settles it from its store. */
+	readonly pending?: true;
 	/** For the parity arm, the tokens its lenses shared, by Melian's budget count. */
 	readonly total?: number;
 	readonly tokens: number;
@@ -368,8 +374,10 @@ export async function measureParity(
 		location: MissLocation;
 		lenses: readonly string[];
 		paths: readonly string[];
+		revision: string;
 	}[];
 	let results: ParityResults;
+	let settled: { results: ParityResults; unmeasured?: string } | undefined;
 	let policyCommit: string;
 	try {
 		out = env.MELIAN_EVAL_PARITY_OUT ?? "";
@@ -433,12 +441,14 @@ export async function measureParity(
 				refusals.push(`refused ${visibleText(miss.name)}, ${reviewers.check}: ${reviewers.refusal}`);
 				continue;
 			}
+			const { revision } = await Changeset.resolve(target.repo, target.range);
 			misses.push({
 				miss,
 				target,
 				location: await miss.locate(target.head),
 				lenses: reviewers.lenses,
-				paths: (await Changeset.resolve(target.repo, target.range)).revision.paths(),
+				paths: revision.paths(),
+				revision: Revision.key(revision),
 			});
 		}
 		if (policies.size > 1)
@@ -499,6 +509,8 @@ export async function measureParity(
 					);
 			const { stopped: _, ...kept } = earlier;
 			results = { ...kept, misses: { ...earlier.misses, ...identities } };
+			settled = await settle(results, misses, out);
+			results = settled.results;
 		} else
 			results = {
 				version: 1,
@@ -526,6 +538,7 @@ export async function measureParity(
 		return 3;
 	};
 	save();
+	if (settled?.unmeasured !== undefined) return stop(settled.unmeasured);
 	const models = await runners.models();
 	const spent = () => results.attempts.reduce((sum, attempt) => sum + attempt.tokens, 0);
 	const budgetSpent = () => results.attempts.reduce((sum, attempt) => sum + attempt.budgetTokens, 0);
@@ -576,6 +589,22 @@ export async function measureParity(
 			const storeOf = () => join(stores, attempt === 1 ? `${stem}.sqlite` : `${stem}.${attempt}.sqlite`);
 			while (existsSync(storeOf()) || results.attempts.some((each) => each.store === storeOf())) attempt += 1;
 			const store = storeOf();
+			results = {
+				...results,
+				attempts: [
+					...results.attempts,
+					{
+						...endedDuring(miss.name, arm),
+						pending: true,
+						tokens: 0,
+						cacheRead: 0,
+						budgetTokens: 0,
+						stages: [],
+						store,
+					},
+				],
+			};
+			save();
 			const mode: LiveGoldenMode = {
 				store,
 				kind: "live",
@@ -616,7 +645,7 @@ export async function measureParity(
 			results = {
 				...results,
 				attempts: [
-					...results.attempts,
+					...results.attempts.filter((each) => each.store !== store),
 					{
 						miss: miss.name,
 						arm,
@@ -654,6 +683,69 @@ export async function measureParity(
 		}
 	}
 	return results.attempts.every((attempt) => attempt.stopped !== undefined || attempt.found !== undefined) ? 0 : 1;
+}
+
+function endedDuring(
+	miss: string,
+	arm: "committed" | "parity",
+): Pick<ParityAttempt, "miss" | "arm" | "said" | "stopped"> {
+	return {
+		miss,
+		arm,
+		said: "not scored: the run ended during this review",
+		stopped: `${parityLabel(arm)} on ${miss} ended with the run, during its review`,
+	};
+}
+
+// Each attempt a run ended during counts what its store recorded, the one account of that review's spend; a store the
+// review never opened spent nothing, and one that cannot be read refuses the resume rather than count it as nothing.
+async function settle(
+	results: ParityResults,
+	misses: readonly { miss: Miss; paths: readonly string[]; revision: string }[],
+	out: string,
+): Promise<{ results: ParityResults; unmeasured?: string }> {
+	let unmeasured: string | undefined;
+	const attempts: ParityAttempt[] = [];
+	for (const attempt of results.attempts) {
+		if (attempt.pending === undefined) {
+			attempts.push(attempt);
+			continue;
+		}
+		const chosen = misses.find(({ miss }) => miss.name === attempt.miss);
+		if (chosen === undefined)
+			throw new Error(
+				`${out} holds a review of ${attempt.miss} that the run ended during; resume with ${attempt.miss} among MELIAN_EVAL_PARITY_MISSES to settle it`,
+			);
+		const { pending: _, ...kept } = attempt;
+		if (attempt.store === undefined || !existsSync(attempt.store)) {
+			attempts.push(kept);
+			continue;
+		}
+		let telemetry: StageTelemetry;
+		try {
+			const storage = await openSqliteStorage(attempt.store);
+			try {
+				telemetry = await TelemetryReader.open(storage).read(chosen.revision);
+			} finally {
+				await storage.close(backgroundContext);
+			}
+		} catch (thrown) {
+			throw new Error(
+				`Cannot read ${attempt.store}, the store of a review the run ended during, so its spend is unknown: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
+			);
+		}
+		const { stages, unmeasured: missing } = measuredSpend(telemetry, chosen.paths);
+		attempts.push({
+			...kept,
+			tokens: stages.reduce((sum, stage) => sum + stage.tokens, 0),
+			cacheRead: stages.reduce((sum, stage) => sum + stage.cacheRead, 0),
+			budgetTokens: budgeted(stages),
+			stages,
+		});
+		if (missing.length > 0)
+			unmeasured = `${attempt.stopped}, and its store did not measure usage in ${missing.join(", ")}`;
+	}
+	return { results: { ...results, attempts }, ...(unmeasured === undefined ? {} : { unmeasured }) };
 }
 
 function parityLabel(arm: "committed" | "parity"): string {

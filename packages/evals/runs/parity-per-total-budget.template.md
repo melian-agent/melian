@@ -47,4 +47,5 @@ Run totals over every attempt, stopped ones included: `<tokens>` Spend, `<budget
 
 - Today's standards judged old code, so a finding outside a miss's lines says little about how that code was reviewed.
 - The stores, which hold the head's code and the models' words, stay on the host and are not committed.
+- The run counts only what each review's telemetry recorded. A review the run ended during counts what its store recorded by then, and a turn the process died in the middle of may be missing from it.
 - `<anything else: a stop, a model answering at a level other than requested, a miss unscored>`
