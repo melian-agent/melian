@@ -6,4 +6,6 @@
 - `runChecks` reuses a finished run only while the store proves each of its checks to be that run's, so a repeat review runs the check again and decides.
 - The adjudication attach key holds the run, so a review of another run never attaches to the first run's verdict.
 
+`packages/cli/test/review-has-a-run.test.ts` checks that the CLI always hands the adjudication its run; it fails when `commands.ts` passes `checks: checks.records` instead of `checkRun: checks`.
+
 Tests: `packages/pipeline/test/stale-check-run.test.ts` holds issue #562's own sequence, the stale run sharing the review's request, a stale write after the review took its run, and a stale write after the verdict was decided and before its commit. The first failed on main at e421b5541 with `expected 'passed' not to be 'passed'` and passes at the head. `packages/pipeline/test/adjudication-v7-reopen.test.ts` resumes a version-7 task that main's code at e421b5541 recorded, under `test/fixtures/adjudication-v7-static/`.
