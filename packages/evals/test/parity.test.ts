@@ -913,7 +913,9 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			]);
 			const narrowed = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners());
 			expect(narrowed.status).toBe(3);
-			expect(results().stopped).toBe("two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES");
+			expect(results().stopped).toBe(
+				"two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES",
+			);
 			expect(narrowed.lines.at(-1)).toBe(
 				`stopped: two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES; resume with the same MELIAN_EVAL_PARITY_OUT`,
 			);
