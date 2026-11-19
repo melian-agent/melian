@@ -1182,10 +1182,10 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 		expect(await outcomeOf(historyOf(seed))).not.toBe("readerOnly");
 	});
 
+	const seeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
 	it("never lets a reader's dismissal stand where a host that held every round reopened it", {
-		timeout: 600_000,
+		timeout: 60_000 + seeds * 5_000,
 	}, async () => {
-		const seeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
 		const outcomes: Record<string, number[]> = {};
 		for (let seed = 1; seed <= seeds; seed++) {
 			const outcome = await outcomeOf(historyOf(seed)).catch((error: unknown) => {
