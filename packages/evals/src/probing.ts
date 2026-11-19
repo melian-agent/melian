@@ -301,7 +301,10 @@ export class Miss {
 			throw new Error(
 				`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule?, alternativeRules?, fix?, lines? }`,
 			);
+		const names = new Set<string>();
 		for (const { name, rule, alternativeRules, lines } of parsed) {
+			if (names.has(name)) throw new Error(`${path} names more than one miss called ${visibleText(name)}`);
+			names.add(name);
 			if (rule === undefined && lines === undefined)
 				throw new Error(`${path}: ${visibleText(name)} names no rule, so it needs lines`);
 			if (rule === undefined && alternativeRules !== undefined)

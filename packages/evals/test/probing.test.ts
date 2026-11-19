@@ -487,6 +487,10 @@ describe("Miss", () => {
 		expect(() => Miss.load(missesFile([missing]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([{ ...fields, extra: "x" }]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([]))).toThrow(/must be a JSON array of misses/);
+		expect(() => Miss.load(missesFile([fields, { ...fields, file: "g.ts" }]))).toThrow(
+			/names more than one miss called m$/,
+		);
+		expect(Miss.load(missesFile([fields, { ...fields, name: "n" }])).map(({ name }) => name)).toEqual(["m", "n"]);
 		for (const field of Object.keys(fields))
 			expect(() => Miss.load(missesFile([{ ...fields, [field]: "" }])), field).toThrow(
 				/must be a JSON array of misses/,

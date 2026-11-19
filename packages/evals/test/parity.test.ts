@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	type ChangedFile,
+	Changeset,
 	defaultConfig,
 	type Hunk,
 	Lens,
@@ -25,6 +26,7 @@ import {
 	type ParityRunners,
 	parityArmName,
 } from "../src/parity.ts";
+import { Miss } from "../src/probing.ts";
 import { GoldenRunError } from "../src/run-error.ts";
 
 let scratch: string;
@@ -128,6 +130,26 @@ describe("ParityArm", () => {
 				["b", 375],
 			]),
 		);
+	});
+
+	it("gives each scoped variant of a lens its own share, so the variants together spend no more than the total", async () => {
+		const root = await named("a", ["**"]);
+		const scoped = Lens.from({ ...root.toJSON(), scope: "pkg" });
+		const lenses = [root, scoped, await named("b", ["docs/**"])];
+		const files = [file("src/x.ts", 10, 20), file("pkg/z.ts", 5, 5), file("docs/y.md", 4, 6)];
+		const arm = new ParityArm(1000);
+		const shares = arm.shares(config, lenses, files);
+		expect(shares).toEqual(
+			new Map([
+				["a", 500],
+				["a in pkg", 250],
+				["b", 250],
+			]),
+		);
+		expect(arm.routed(config, lenses, files).lenses.map((lens) => lens.level("deep").budget.tokens)).toEqual([
+			250, 125, 125,
+		]);
+		expect(Object.keys(arm.routed(config, lenses, files).config.lenses)).toEqual(["a", "b"]);
 	});
 
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
@@ -680,6 +702,78 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(results().stopped).toMatch(
 			/^committed on one met a provider's usage limit in correctness@1@deep: You have hit your usage limit\.$/,
 		);
+	});
+	it("records the parity arm as not run when the committed arm's lenses spent nothing", async () => {
+		const offTop = committedStages.slice(1);
+		const using = runners([offTop]);
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using)).status).toBe(1);
+		expect(using.range).toHaveBeenCalledTimes(1);
+		expect(results().attempts[1]).toEqual({
+			miss: "one",
+			arm: "parity",
+			said: "not run: the committed arm's lenses spent nothing",
+			tokens: 0,
+			cacheRead: 0,
+			budgetTokens: 0,
+			stages: [],
+		});
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const one = runners([[lensStage({ usage: usage({ model: 41 }, 40) }), ...offTop]]);
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, one);
+		expect((vi.mocked(one.range).mock.calls[1]![1].probing as ParityArm).total).toBe(1);
+	});
+
+	it("exits 0 on a resumed run that scored every miss, whatever attempts an earlier stop left", async () => {
+		const judge = vi.spyOn(Miss.prototype, "judge").mockResolvedValue({ said: "found", found: true });
+		try {
+			const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
+			expect((await measure(env, runners([[limited], committedStages]))).status).toBe(3);
+			expect((await measure(env, runners())).status).toBe(0);
+			judge.mockResolvedValueOnce({ said: "no score: unadjudicated" });
+			rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+			expect((await measure(env, runners())).status).toBe(1);
+		} finally {
+			judge.mockRestore();
+		}
+	});
+
+	it("runs the parity arm when the committed review ran and only its judging failed", async () => {
+		const judge = vi.spyOn(Miss.prototype, "judge").mockRejectedValueOnce(new Error("no clone"));
+		try {
+			const using = runners();
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using)).status).toBe(1);
+			expect(using.range).toHaveBeenCalledTimes(2);
+			expect(results().attempts.map(({ arm, said, total }) => [arm, said, total])).toEqual([
+				["committed", "no score: no clone", undefined],
+				["parity", expect.any(String), 60],
+			]);
+		} finally {
+			judge.mockRestore();
+		}
+	});
+
+	it("resolves a miss's changed paths before its reviews, so nothing that can fail sits between a review and its save", async () => {
+		const resolve = Changeset.resolve.bind(Changeset);
+		let reviewed = false;
+		const spy = vi.spyOn(Changeset, "resolve").mockImplementation(async (...args) => {
+			if (reviewed) throw new Error("git failed");
+			return resolve(...args);
+		});
+		try {
+			const using = runners(undefined, {
+				range: vi.fn(async () => {
+					reviewed = true;
+					return ran(committedStages);
+				}),
+			});
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using)).status).toBe(1);
+			expect(results().attempts.map(({ arm, tokens }) => [arm, tokens])).toEqual([
+				["committed", 180],
+				["parity", 180],
+			]);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });
 

@@ -122,7 +122,8 @@ export class ParityArm implements ProbingRoute {
 						selected.includes(file.path) || (file.oldPath !== undefined && selected.includes(file.oldPath)),
 				)
 				.reduce((sum, file) => sum + changedLines(file), 0);
-			weights.set(lens.name, (weights.get(lens.name) ?? 0) + lines);
+			const key = this.keyOf(lens);
+			weights.set(key, (weights.get(key) ?? 0) + lines);
 		}
 		const all = [...weights.values()].reduce((sum, lines) => sum + lines, 0);
 		const count = weights.size;
@@ -132,6 +133,10 @@ export class ParityArm implements ProbingRoute {
 				Math.floor(this.total * (0.5 / count + (all === 0 ? 0.5 / count : (0.5 * lines) / all))),
 			]),
 		);
+	}
+
+	private keyOf(lens: Lens): string {
+		return lens.scope === "" ? lens.name : `${lens.name} in ${lens.scope}`;
 	}
 
 	routed(
@@ -146,15 +151,17 @@ export class ParityArm implements ProbingRoute {
 			lenses: {
 				...pinnedLenses.lenses,
 				...Object.fromEntries(
-					[...shares.keys()].map((name) => {
-						const own = Object.hasOwn(pinnedLenses.lenses, name) ? pinnedLenses.lenses[name] : undefined;
-						return [name, { ...own, level: { floor: "deep", ceiling: "deep" } }];
-					}),
+					[...new Set(lenses.filter((lens) => shares.has(this.keyOf(lens))).map((lens) => lens.name))].map(
+						(name) => {
+							const own = Object.hasOwn(pinnedLenses.lenses, name) ? pinnedLenses.lenses[name] : undefined;
+							return [name, { ...own, level: { floor: "deep", ceiling: "deep" } }];
+						},
+					),
 				),
 			},
 		};
 		const routedLenses = lenses.map((lens) => {
-			const share = shares.get(lens.name);
+			const share = shares.get(this.keyOf(lens));
 			if (share === undefined) return lens;
 			const base = lens.levels.deep ?? lens.levels.careful;
 			const probe = base.probe ?? (lens.probeRefusal() === undefined ? {} : undefined);
@@ -209,6 +216,8 @@ export interface ParityAttempt {
 	readonly arm: "committed" | "parity";
 	readonly said: string;
 	readonly found?: boolean;
+	/** Whether the review finished, so a failure to judge it still leaves the parity arm its total. */
+	readonly reviewed?: true;
 	readonly error?: string;
 	/** Why the run stopped on this attempt, which scored nothing; a resumed run reviews the arm again. */
 	readonly stopped?: string;
@@ -358,6 +367,7 @@ export async function measureParity(
 		target: ReviewTarget & { readonly head: string };
 		location: MissLocation;
 		lenses: readonly string[];
+		paths: readonly string[];
 	}[];
 	let results: ParityResults;
 	let policyCommit: string;
@@ -423,7 +433,13 @@ export async function measureParity(
 				refusals.push(`refused ${visibleText(miss.name)}, ${reviewers.check}: ${reviewers.refusal}`);
 				continue;
 			}
-			misses.push({ miss, target, location: await miss.locate(target.head), lenses: reviewers.lenses });
+			misses.push({
+				miss,
+				target,
+				location: await miss.locate(target.head),
+				lenses: reviewers.lenses,
+				paths: (await Changeset.resolve(target.repo, target.range)).revision.paths(),
+			});
 		}
 		if (policies.size > 1)
 			throw new Error(
@@ -515,14 +531,21 @@ export async function measureParity(
 	const budgetSpent = () => results.attempts.reduce((sum, attempt) => sum + attempt.budgetTokens, 0);
 	const finished = (name: string, arm: "committed" | "parity") =>
 		results.attempts.find((attempt) => attempt.miss === name && attempt.arm === arm && attempt.stopped === undefined);
-	for (const { miss, target, location, lenses } of misses) {
+	for (const { miss, target, location, lenses, paths } of misses) {
 		for (const arm of ["committed", "parity"] as const) {
 			if (finished(miss.name, arm) !== undefined) continue;
 			let route: ProbingRoute = new CommittedArm();
 			let total: number | undefined;
 			if (arm === "parity") {
 				const committed = finished(miss.name, "committed")!;
-				if (committed.error !== undefined) {
+				total = budgeted(committed.stages) - budgeted(committed.stages.filter(offTop));
+				const unrun =
+					committed.reviewed === undefined
+						? "not run: the committed arm had no review"
+						: total < 1
+							? "not run: the committed arm's lenses spent nothing"
+							: undefined;
+				if (unrun !== undefined) {
 					results = {
 						...results,
 						attempts: [
@@ -530,7 +553,7 @@ export async function measureParity(
 							{
 								miss: miss.name,
 								arm,
-								said: "not run: the committed arm had no review",
+								said: unrun,
 								tokens: 0,
 								cacheRead: 0,
 								budgetTokens: 0,
@@ -541,7 +564,6 @@ export async function measureParity(
 					save();
 					continue;
 				}
-				total = budgeted(committed.stages) - budgeted(committed.stages.filter(offTop));
 				route = new ParityArm(total);
 			}
 			if (spent() >= stops.run)
@@ -572,7 +594,6 @@ export async function measureParity(
 				error = thrown instanceof Error ? thrown.message : String(thrown);
 				if (thrown instanceof GoldenRunError) telemetry = thrown.telemetry;
 			}
-			const paths = (await Changeset.resolve(target.repo, target.range)).revision.paths();
 			const { stages, unmeasured } =
 				telemetry === undefined ? { stages: [], unmeasured: [] } : measuredSpend(telemetry, paths);
 			const tokens = stages.reduce((sum, stage) => sum + stage.tokens, 0);
@@ -601,6 +622,7 @@ export async function measureParity(
 						arm,
 						said: judged.said,
 						...(judged.found === undefined ? {} : { found: judged.found }),
+						...(run === undefined ? {} : { reviewed: true }),
 						...(error === undefined ? {} : { error }),
 						...(stopped === undefined ? {} : { stopped }),
 						...(total === undefined ? {} : { total }),
@@ -631,7 +653,7 @@ export async function measureParity(
 				);
 		}
 	}
-	return results.attempts.every((attempt) => attempt.found !== undefined) ? 0 : 1;
+	return results.attempts.every((attempt) => attempt.stopped !== undefined || attempt.found !== undefined) ? 0 : 1;
 }
 
 function parityLabel(arm: "committed" | "parity"): string {
