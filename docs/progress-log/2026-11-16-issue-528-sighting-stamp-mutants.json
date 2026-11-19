@@ -1,0 +1,2026 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "5a3effac401f890345523d0bd4da55b3d31771d7",
+		"head": "2473c8a77f02a67729346b80b3c29187d8d56807"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts",
+		"packages/pipeline/src/checks.ts",
+		"packages/pipeline/src/static-proof.ts",
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 4,
+			"endLine": 381,
+			"endColumn": 13,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1d36520fd1bc70567e75a6b21b753acebba0bcd01c3f02171109ceb0ead04bf5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-task-reopen.test.ts",
+					"path": [
+						"reopens a version-1 check with its input intact and no invented timing start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 4,
+			"endLine": 381,
+			"endColumn": 13,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "82ef96413017031dd08eccbbd1dd80445dcb81c7072ea6c23c2ed0c9b1f74333",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a check main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 4,
+			"endLine": 381,
+			"endColumn": 13,
+			"mutatorName": "EqualityOperator",
+			"replacement": "from > 3",
+			"status": "generated",
+			"id": "2d47c5b660881b0be94097b004561c73174f8b1bccb04f29a9a461906f2d4697",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a check main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 4,
+			"endLine": 381,
+			"endColumn": 13,
+			"mutatorName": "EqualityOperator",
+			"replacement": "from < 3",
+			"status": "generated",
+			"id": "25e1980972f63af26ac00cc81f9a9071e0eff57a2747e5853488fbe6ae6af7ad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a check main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 51,
+			"endLine": 381,
+			"endColumn": 110,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6dc1d472a5fab581c4635b4a1c07872bc35b9ee852f45f5f5277ceee9e028616",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-task-reopen.test.ts",
+					"path": [
+						"reopens a version-1 check with its input intact and no invented timing start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 381,
+			"column": 104,
+			"endLine": 381,
+			"endColumn": 108,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "19f2dac5ca465b1d5cf21bd92a4915a57ec62f709cdcca9e0c19f134fb70f96d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-task-reopen.test.ts",
+					"path": [
+						"reopens a version-1 check with its input intact and no invented timing start"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 6,
+			"endLine": 531,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "50efbd7be16a1497e82274c2fbabf609790788f87b0ebbf8c82412c7822173ae",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a tier main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 6,
+			"endLine": 531,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b78f022bde00b44a9117a61a87cefd480c0405647af1398580f74274520c8898",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"leaves a tier from before version 2 refused, as it was"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 6,
+			"endLine": 531,
+			"endColumn": 30,
+			"mutatorName": "LogicalOperator",
+			"replacement": "from !== 2 || from !== 3",
+			"status": "generated",
+			"id": "383d3cb6b987c87dd20c027b5a2c72dcbd5a1460a80439f587d6f874f8e0313a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a tier main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 6,
+			"endLine": 531,
+			"endColumn": 16,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "49ed862073671a14ed3f28c7c8c4a502cb5ab09383a9b0d78328c63da44196b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a tier main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 6,
+			"endLine": 531,
+			"endColumn": 16,
+			"mutatorName": "EqualityOperator",
+			"replacement": "from === 2",
+			"status": "generated",
+			"id": "3bd58ccd99ed7bb174dda768756975d863b3a432b7c6ebc57291f21b0f90f92e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a tier main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 20,
+			"endLine": 531,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "33199cf73af2d75b2e8eb02a8a31ca583cdbbfe398fb93deb316681587eca0e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"a check task main stored before its input carried the run's key",
+						"runs a tier under today's version, whose checks leave their sightings without a stamp"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 20,
+			"endLine": 531,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "from === 3",
+			"status": "generated",
+			"id": "c312e1db0f800779a980ee482215f5997333ceebb9c552546cf692963119a7ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"leaves a tier from before version 2 refused, as it was"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 32,
+			"endLine": 531,
+			"endColumn": 102,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "55f4b66a3cc51fce2f3f8a97c9939aebaead1202ea0722623791b87de8a99ec1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"leaves a tier from before version 2 refused, as it was"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 531,
+			"column": 48,
+			"endLine": 531,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8fe569719f5889930bb7043c37b301a0644a9562e879cb9525e325c23504f1e7"
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 573,
+			"column": 12,
+			"endLine": 573,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce14cd21f40faf04a9729b4a2e866ecd0aa712e30df0b024de8df6aa22681663",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 573,
+			"column": 12,
+			"endLine": 573,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "20adbde0d052d00f8488e12bdfdbafd47b6632d33c4a4ce776bb0e07cd6450fd",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The child check task reads task.input.request, which is undefined whether the input omits the field or holds it as undefined; nothing else reads the input's keys."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 573,
+			"column": 12,
+			"endLine": 573,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "request !== undefined",
+			"status": "generated",
+			"id": "b63f8c7ab95725ac768817ee9cc85670c01474341d86737744c3910b5555cff6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 573,
+			"column": 41,
+			"endLine": 573,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "44ad9502f8c74f5160d4435e59814129bc8fd780bb0807378d108398018ffb4f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 805,
+			"column": 3,
+			"endLine": 805,
+			"endColumn": 23,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "runs.requests &&= {}",
+			"status": "generated",
+			"id": "a2343e5100b38abb7f468441726ce94af5a585a27df05f9aea7d68a4be842efe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 806,
+			"column": 7,
+			"endLine": 806,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9a230fe16620c104775192d797b4a7db98d4165b57c4635431162d384a8e28d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"keep the entry a repeat run under a stored key finds, and every other key's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 806,
+			"column": 7,
+			"endLine": 806,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a50659556515b0baa4833c9b3b590dae7c54f1f3f0dfbdfc7d85411fa12ee20b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 806,
+			"column": 7,
+			"endLine": 806,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "runs.requests[request] !== undefined",
+			"status": "generated",
+			"id": "482b812ed4d77b3a09c8bf97b57c1688155238d5b04c2679988e4a09e4fe839e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 854,
+			"column": 9,
+			"endLine": 854,
+			"endColumn": 86,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3a401b5de566fb4db2ff16b74ce92cd70597a4ae784558db7cc444d25958036b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/checks.ts",
+			"line": 854,
+			"column": 21,
+			"endLine": 854,
+			"endColumn": 50,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "72222e8766ca5869283e0e5a3a5177cf2723d24a1fe46040e7710fef5b3cc1ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is never left to a build that ignores it, for either task this build stores"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 143,
+			"column": 78,
+			"endLine": 148,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ed2f78bd84514da4c80e8f3db3497b846738344081c05fe8282737c74da710c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is deleted by a sighting upserted by anything but the run, and only for that check at that revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 144,
+			"column": 16,
+			"endLine": 144,
+			"endColumn": 43,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state.checkRuns[revision]",
+			"status": "generated",
+			"id": "d0594655b08036737e740170b5c2d7aac7a5e27fb58e6b3612efae6ebf8cc24c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 145,
+			"column": 5,
+			"endLine": 145,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a8956eddae70b0f5da9badbd7c437b9a884712f9cb031af62542a9cbdac907d0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is deleted by a sighting upserted by anything but the run, and only for that check at that revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 145,
+			"column": 5,
+			"endLine": 145,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "76315f4b83163aad7a29f52e84c4a4ca0d775a50d6e1649a344701e45c78dce7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 145,
+			"column": 5,
+			"endLine": 145,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stamps?.[check] !== undefined",
+			"status": "generated",
+			"id": "5cf4fba33e9adc0b582fd065dd52837a5f708269d9e1da49c6c210a69ac73ea9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 145,
+			"column": 5,
+			"endLine": 145,
+			"endColumn": 20,
+			"mutatorName": "OptionalChaining",
+			"replacement": "stamps[check]",
+			"status": "generated",
+			"id": "860a351a672280eefe260e464e59ad7ca04667358e784a3823312ffd39043e83",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 147,
+			"column": 5,
+			"endLine": 147,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8504437f059900c749004b6eb820d7ace832751663d414ba32bc28dfb87280c7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"names the latest run that replaced the check's sightings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 147,
+			"column": 5,
+			"endLine": 147,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bf08659f931b2bf336f26f0c5dc118bd9af9ffaddd88fde0b4da33bd530b3ab1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"leaves no entry for a revision once its last check's stamp is deleted"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 147,
+			"column": 5,
+			"endLine": 147,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "Object.keys(stamps).length !== 0",
+			"status": "generated",
+			"id": "442a0af0622b75f81cee1250fd62cf9ab39f53751835d64d675e12b1367a7115",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"names the latest run that replaced the check's sightings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 151,
+			"column": 111,
+			"endLine": 153,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "86f60b7dc198a4a4b5427603284ccc93f07a97943a34905d6727ca83392e2c22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 152,
+			"column": 8,
+			"endLine": 152,
+			"endColumn": 45,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state?.checkRuns?.[revision][check]",
+			"status": "generated",
+			"id": "4779b1cd9dc9ab7af0771084a11c0f69cb08e8bcd6f53772dff8e96749048bbe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 152,
+			"column": 8,
+			"endLine": 152,
+			"endColumn": 36,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state?.checkRuns[revision]",
+			"status": "generated",
+			"id": "7cb6240f0fb55b65133f7fa08001a36328a93eb079c0ab61cc3884c01cf6a240",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 152,
+			"column": 8,
+			"endLine": 152,
+			"endColumn": 24,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state.checkRuns",
+			"status": "generated",
+			"id": "44d55228430bae640747115a36ae5390666fea577713f56632315dcff1821127",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"reads as absent from a root with no findings document"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 439,
+			"column": 1,
+			"endLine": 439,
+			"endColumn": 51,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "fb2773d71a4acde1bf67a70b7a9b9f545a07a2f0e298314767e6ceb4a2462c9b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is deleted by a sighting upserted by anything but the run, and only for that check at that revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 513,
+			"column": 1,
+			"endLine": 513,
+			"endColumn": 33,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "a96384f9036bb1062470df90cee20c940e392103b25bcaf93fff9d6b3e756f2b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is deleted by a replacement that names no run and finds nothing, and only for that check at that revision"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 534,
+			"column": 5,
+			"endLine": 534,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "75d7528f135537ca9c2695ac29ff461cfb16e39b2c0caada5536cd4e9ed2d39e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a check main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 534,
+			"column": 5,
+			"endLine": 534,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "da53bff02e5d05e50fd6f7c0f88f394f1d3ff243a341c63c68de3346e4aca02a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 534,
+			"column": 5,
+			"endLine": 534,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "request === undefined",
+			"status": "generated",
+			"id": "4f6f09a937e72218dc9c55d8c8a1dffbc2281ea722aa9ca122596466be9a82ac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the process's for a check main stored before its input carried one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 534,
+			"column": 28,
+			"endLine": 537,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d24f385bf0e82c13695a2b0922776d956827b7812e12c77329439664d6b4474b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 535,
+			"column": 2,
+			"endLine": 535,
+			"endColumn": 24,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "state.checkRuns &&= {}",
+			"status": "generated",
+			"id": "b2145b38fdfcd147c1b9141a623238e593e5a8b2568c62c2d02581db484781ef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-lang.test.ts",
+					"path": [
+						"the LANG a check's tools run with",
+						"is the one the run's key read, whatever the process holds by the time the tools run"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 536,
+			"column": 30,
+			"endLine": 536,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d0be6ed5e04b17f5cb01a924c1196bfbb6e30184b9511d6dc769f7786f77408e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-requests.test.ts",
+					"path": [
+						"the requests the checks document keeps",
+						"hold a run's whole request under its key, which every check of the run stamps"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 592,
+			"column": 10,
+			"endLine": 592,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e4556aaada48603b18b0ae5b46343031872da206d60bfcd0f19213f2ec8ac9b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is kept in a dismissal, which a later run's stamp does not change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 592,
+			"column": 10,
+			"endLine": 592,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bb96b03898253c954c177a175b78f064183c2db3235bb4946d3b22f3a7997c90",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is absent from a dismissal made while no run stands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 592,
+			"column": 10,
+			"endLine": 592,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run !== undefined",
+			"status": "generated",
+			"id": "fb45bc0eb175950066fbc3fa7367f5ef07a0903c2ffa12c1fbc43b761fea1f51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is kept in a dismissal, which a later run's stamp does not change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 592,
+			"column": 35,
+			"endLine": 592,
+			"endColumn": 42,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "985283884e11f7b80d6db52f16b3161cd6418de4f5d498d6add04d543c3bb92e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is kept in a dismissal, which a later run's stamp does not change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 649,
+			"column": 34,
+			"endLine": 649,
+			"endColumn": 66,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "c42fe261a8e90ca1bdf25b9567633757ed86c09cf1cce54c8aaee4d55552be13",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is deleted by a clear of the check's sightings for a rerun, and only for that check at that revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 6,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e94af8bafe2b8f2f24a7b9d3741b398043e8ce5bf7d6ed616c6a277027dce03d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is shared, without the run's key, beside the round a reader reads"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 6,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f1448128568359e2e926a43274f750cba97aacd808296426769b05c86e79bd62",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is refused when the stamp it kept names no request the store holds as code that stores no tool text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 6,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.startsWith(\"static.\") || proof?.asks(check, facts.sighting.run) !== true",
+			"status": "generated",
+			"id": "34f934cedfb06494d58caf63a65a38228b0cadcfb85a00cbbeba228ee01caed5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is shared, without the run's key, beside the round a reader reads"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 6,
+			"endLine": 345,
+			"endColumn": 33,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "afa28020b8d1d899e924244000c325805fd80ee0dabb7a2b0eafd94d18053947",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is refused when the stamp it kept names no request the store holds as code that stores no tool text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 23,
+			"endLine": 345,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ca23b9ba10cbcfebb8c466bd84a342c2a6a1485af6ac0335dc3dc961b0c27504"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 37,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5d15d59ce469ce921ee096edfa2a62a45ee5305f21e6ef4b541623e5e02c01b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is shared, without the run's key, beside the round a reader reads"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 37,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "EqualityOperator",
+			"replacement": "proof?.asks(check, facts.sighting.run) === true",
+			"status": "generated",
+			"id": "b7d9d74d2d36dbce620bd71d5024b6524989a06ec6fada95ed11e0fe24748ee4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is shared, without the run's key, beside the round a reader reads"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 37,
+			"endLine": 345,
+			"endColumn": 48,
+			"mutatorName": "OptionalChaining",
+			"replacement": "proof.asks",
+			"status": "generated",
+			"id": "f07e658377a9870481534408ec8fe41bb6722d06e220c1d001d05f5e9b19dfbb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is refused when the stamp it kept names no request the store holds as code that stores no tool text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 345,
+			"column": 80,
+			"endLine": 345,
+			"endColumn": 84,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f4c7c8936f5dff1999e0c9fe8e8f99912483462c568143c79178f32acbab8d4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a dismissal of a static finding whose sighting its run stamped",
+						"is shared, without the run's key, beside the round a reader reads"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 17,
+			"endLine": 3100,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "f4fae5bcb7b0e737e897f5f71064bf69d040bb7be9ae1f024b037aa08892056b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 36,
+			"endLine": 3100,
+			"endColumn": 106,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c65b198395b4fb36e93a72bee4d96260e30d7086f821884be1f81c9b7f5c2aec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 36,
+			"endLine": 3100,
+			"endColumn": 106,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1b14a927c72bb6d98c57b6a0987c11a7f0cfab3f9a530da819a6b07d5b2b274c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 36,
+			"endLine": 3100,
+			"endColumn": 106,
+			"mutatorName": "LogicalOperator",
+			"replacement": "run !== undefined || proof.proves(state, reviewed, check, run.request)",
+			"status": "generated",
+			"id": "6369f73699fdd17176bbef7d9dd6103c05a43677487b2780c78a450d64deb52f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 36,
+			"endLine": 3100,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "68e09bd1d1f21b1797967051135f35129ef4920f46e6146c6661d1a905fce87a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3100,
+			"column": 36,
+			"endLine": 3100,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run === undefined",
+			"status": "generated",
+			"id": "2f51bbc864f629b3a97236fad5783bfb5cd9a98f752648e282f6ce81a9f08d94",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 14,
+			"column": 69,
+			"endLine": 16,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f1acdc3b58756600376f6d41dfe256664ebd1297d46f58e292b123089bf63c2b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 19,
+			"column": 117,
+			"endLine": 22,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4c6ad2d6b1858206ecc492ff08a308badcd2976cffc36f46c4c6ba7b40a78d90",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 21,
+			"column": 41,
+			"endLine": 21,
+			"endColumn": 65,
+			"mutatorName": "LogicalOperator",
+			"replacement": "document?.requests && {}",
+			"status": "generated",
+			"id": "7e2eba5e037847344f8cf03626cc475b740d33aea8b2ce118b1a0ede6524ebb0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 21,
+			"column": 41,
+			"endLine": 21,
+			"endColumn": 59,
+			"mutatorName": "OptionalChaining",
+			"replacement": "document.requests",
+			"status": "generated",
+			"id": "82afc59aa9c244f5d230b1ee4bf7ba997752509df008359b62e6b4cbaf623fd8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static-proof.test.ts",
+					"path": [
+						"the proof the checks document's requests give",
+						"proves nothing for a root whose checks document was never written"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 28,
+			"column": 101,
+			"endLine": 30,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "14cae4bc56dd15b2a830e52a569a94fc04a3d5a8d587224c70bf9fc12a2edbfb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 29,
+			"column": 9,
+			"endLine": 29,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d70d687e81d2d1b6d81191bc270f55da68dd4b1f5d6d0c40a12a5e47dab12f08",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 29,
+			"column": 9,
+			"endLine": 29,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1167b5be65f63000443309d6751883459c35d5a782d93e571537d1dcd595d73d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 29,
+			"column": 9,
+			"endLine": 29,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "stampOf(state, revision, check) === request || this.asks(check, request)",
+			"status": "generated",
+			"id": "66f0e9c71be3e860ec440efbd30dd5c4f3f0178304d132032161e4c29f449e00",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 29,
+			"column": 9,
+			"endLine": 29,
+			"endColumn": 52,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "343a6118332b24f634af54b66ddd3ca11b8dc6977367500a37a48880f721cc10",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 29,
+			"column": 9,
+			"endLine": 29,
+			"endColumn": 52,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stampOf(state, revision, check) !== request",
+			"status": "generated",
+			"id": "809fcb6278393ac5d1d72993315ad0aee0ff1e06d41c90065e3fb2e62903e6ef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 33,
+			"column": 59,
+			"endLine": 43,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "8e481e0d5c22a830b7bfd607f6692ffd2529b203533045cfcb2e28bae6914d85",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 6,
+			"endLine": 34,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "70cd46501aea056f460a9995d1a3657080b1c9290d6f36a6b58b5cb7d588fd7d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 6,
+			"endLine": 34,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "93911e1234f85b3c8517e58fd79fedb81118342330c7c08abe1078eafd688017",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Past the guard, a key the store lacks reads its value as undefined or an Object.prototype member: KeyedRequest.of refuses each, so asks returns false from the catch, or the value hashes to another key, so the key comparison returns false."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 6,
+			"endLine": 34,
+			"endColumn": 70,
+			"mutatorName": "LogicalOperator",
+			"replacement": "request === undefined && !Object.hasOwn(this.#requests, request)",
+			"status": "generated",
+			"id": "0a831dee5a708124d3fcb2bd26c700a9f915f618d505d8b92a02181b5a26ebbf",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Past the guard, a key the store lacks reads its value as undefined or an Object.prototype member: KeyedRequest.of refuses each, so asks returns false from the catch, or the value hashes to another key, so the key comparison returns false."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 6,
+			"endLine": 34,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5a02995e9f551922e03e9dfa67bcb2be378baaabc39091eae1e83fbbcb965045",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Past the guard, a key the store lacks reads its value as undefined or an Object.prototype member: KeyedRequest.of refuses each, so asks returns false from the catch, or the value hashes to another key, so the key comparison returns false."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 6,
+			"endLine": 34,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "request !== undefined",
+			"status": "generated",
+			"id": "ef9f8da71994b8b64c0feb839a3ee8df5629d09ff48347513fed6c4bd54740f3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 31,
+			"endLine": 34,
+			"endColumn": 70,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "Object.hasOwn(this.#requests, request)",
+			"status": "generated",
+			"id": "638be86d147fae8a851f400dfb42a92411f548a208d25fcc19e8e0480ea22831",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 34,
+			"column": 79,
+			"endLine": 34,
+			"endColumn": 84,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "09f1afe624a765ab567c7850dcdbb085be36148d5cd6be18bef341ba08b54fe0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/check-stamp-reopen.test.ts",
+					"path": [
+						"reads what version-4 checks and version-11 findings wrote after an SQLite reopen, and proves no run by them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 36,
+			"column": 6,
+			"endLine": 38,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "630ba06d1e1b33c25c988fddb67dd3ca1ed3ccc255bb4a51667e1aef1849e80b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 37,
+			"column": 30,
+			"endLine": 37,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85a01f8cc2997ea41f6123089208e06e82c5d1ef2069597fac10c6826ed520ac"
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 38,
+			"column": 10,
+			"endLine": 41,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a517a984d268cfa65c6c24e37a92eb32d1f88b978433afe8bd9134c46d562a1c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static-proof.test.ts",
+					"path": [
+						"the proof the checks document's requests give",
+						"proves a request stored under its key, and nothing for one canonical JSON refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 40,
+			"column": 10,
+			"endLine": 40,
+			"endColumn": 15,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f330d129e4c962d1b3bfe063a269eea373c3c28970dabf480560d0ac71bb7300",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static-proof.test.ts",
+					"path": [
+						"the proof the checks document's requests give",
+						"proves a request stored under its key, and nothing for one canonical JSON refuses"
+					]
+				}
+			},
+			"survivorClasses": [
+				"negative-test"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 42,
+			"column": 9,
+			"endLine": 42,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f8212a2a7127fee655350d9aeed4737777162cd5f8ef8cc452b39a54f1315371",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from a run whose stored request was edited after it was keyed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 42,
+			"column": 9,
+			"endLine": 42,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "cbe522bc11f791afe455ed8b6d4c25ad03426af6a67b991ce2343a44e1dbdcde",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 42,
+			"column": 9,
+			"endLine": 42,
+			"endColumn": 69,
+			"mutatorName": "LogicalOperator",
+			"replacement": "rehashed.key === request || writesFixedText(rehashed, check)",
+			"status": "generated",
+			"id": "ec0153fa1d6e788e2e859b5956de314a43fa7fc9a00a39f17fb58ac1d01c137e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from a run of a build whose Biome check stored its text"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 42,
+			"column": 9,
+			"endLine": 42,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "38b290a60d4864737363f7828585d2121b9e10b50064bd8998adad17a7936425",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from a run whose stored request was edited after it was keyed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/static-proof.ts",
+			"line": 42,
+			"column": 9,
+			"endLine": 42,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "rehashed.key !== request",
+			"status": "generated",
+			"id": "6fd6ef9a9f6886e9e333f8b982efeeac4c19a88f001ead9ea9afb4534ab047a1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are shared when that run's terminal commit wrote them all"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 93,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -147,12 +147,13 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #493 changed the shared
-// evidence wording on purpose, for a probe that ended with no record of how and one that exited 125, so these values moved.
+// that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
+// by adding the fresh failover wording. Issue #493 changed the shared evidence wording on purpose, for a probe that
+// ended with no record of how and one that exited 125, so these values moved again.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
 		expect(verifierVersion).toBe("c458134278f8c3ab");
-		expect(verificationRequest(sample).key).toBe("3fd4e7e3989d48157fa7a7d4027588f3ff738ccf74773b3fe335cf075d0518d8");
+		expect(verificationRequest(sample).key).toBe("6ef060aa45f5df9171eb9dcc6512678d5d5d033b94eeeb4f92609de75a3e1b82");
 	});
 });
 

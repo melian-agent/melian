@@ -49,7 +49,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, TaskId } from "../src/harness.ts";
-import { continuePrompt } from "../src/lens-request.ts";
+import { handoverWording } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import type * as Probing from "../src/probing.ts";
@@ -1611,7 +1611,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 		expect(await reader.proberRecord(prober!)).toEqual({
 			plan: [1, 2, 3, 4].map(spread),
+			// The record is the audit trail, so it keeps a skip whose attack was later probed, which the stage counts as probed.
 			skips: [
+				{ attack: 2, reason: "it needs the network" },
 				{ attack: 3, reason: "its output passes the limit" },
 				{ attack: 4, reason: "it needs another machine" },
 			],
@@ -2998,7 +3000,41 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		expect(record((await run).verdict).status).toBe("ran");
 		expect(seen).toEqual(["first", "second", "second"]);
-		expect(textOf(requests[prober]![1]!.at(-1)!)).toContain(
+		const handover = textOf(requests[prober]![1]!.at(-1)!);
+		expect(handover).toContain("failed before it started");
+		expect(handover).not.toMatch(/already recorded|take over|continue/i);
+	});
+
+	it("tells a prober's next model to continue when the model before it answered an attack", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const limited = on(fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" }));
+		const provider = fake.ref("planning").provider;
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [on(call("skip_attack", { attack: 1, reason: "r" })), limited, on(fauxAssistantMessage("Done."))],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		expect(record((await run).verdict).status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second"]);
+		expect(textOf(requests[prober]![2]!.at(-1)!)).toContain(
 			"The model reviewing this change failed, and you take over.",
 		);
 	});
@@ -4209,7 +4245,7 @@ describe("the turns a lens run is sent", () => {
 			[
 				...runs.flatMap((each) => [each.instructions, each.prompt, each.probe?.instructions ?? ""]),
 				injectionPolicy(input.revision.nonce),
-				continuePrompt,
+				...Object.values(handoverWording),
 			].flatMap(linesOf),
 		);
 		for (const section of ["instructions", injectionPolicySection.key])

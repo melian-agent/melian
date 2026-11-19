@@ -169,7 +169,7 @@ export type ProbeStage = {
 };
 
 /**
- * A prober's own record: the plan it was given, each attack it skipped with the model's reason, and each probe's
+ * A prober's own record: the plan it was given, each attack it skipped with the model's reason, one it probed later too, and each probe's
  * script, files and output. Model and head text, so it is never telemetry; a caller that keeps it keeps it local.
  */
 export type ProberRecord = {
@@ -549,7 +549,7 @@ export class TelemetryReader {
 		const probes = Object.entries(probed.probes ?? {});
 		return {
 			plan: structuredClone(probed.plan),
-			skips: unprobedSkips(probed.skips, probes).map(([attack, reason]) => ({ attack, reason })),
+			skips: Object.entries(probed.skips ?? {}).map(([attack, reason]) => ({ attack: Number(attack), reason })),
 			probes: probes.map(([id, { attack, script, files, result }]) => ({
 				id,
 				attack,
@@ -976,10 +976,10 @@ export class TelemetryError extends Error {
 }
 
 // Integer keys list in ascending order. An attack skipped and then probed conclusively was probed.
-function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): [number, string][] {
-	return Object.entries(skips ?? {})
-		.map(([attack, reason]): [number, string] => [Number(attack), reason])
-		.filter(([attack]) => !probes.some(([, probe]) => probe.attack === attack && probeConclusive(probe.result)));
+function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): number[] {
+	return Object.keys(skips ?? {})
+		.map(Number)
+		.filter((attack) => !probes.some(([, probe]) => probe.attack === attack && probeConclusive(probe.result)));
 }
 
 // A prober's stage: its probes and how each ended, the size of the plan it was given, and the attacks it skipped.
@@ -993,7 +993,7 @@ function proberStage(
 		milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
 		limit,
 		attacks: probed.plan!.length,
-		skipped: unprobedSkips(probed.skips, probes).map(([attack]) => attack),
+		skipped: unprobedSkips(probed.skips, probes),
 		runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
 			id: probeId,
 			attack,

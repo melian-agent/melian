@@ -30,14 +30,14 @@ const keyOf = (...candidates: ReturnType<typeof cutCandidate>[]) =>
 	verificationRequest(cutRequest(candidates), cutReruns(candidates));
 
 describe("verificationRequest's cut of probe evidence", () => {
-	// Issue #357: keys main computed at 10cc833a, before cuts, for these requests. A verification stored by main under
-	// one of them attached here until issue #493 changed the shared evidence wording on purpose, for a probe that ended
-	// with no record of how and one that exited 125, so a verification stored before it is asked once more. A request whose
+	// Issue #357: keys main computed at 10cc833a, before cuts, for these requests, moved once by issue #488's fresh
+	// failover wording. Issue #493 then changed the shared evidence wording on purpose, for a probe that ended with no
+	// record of how and one that exited 125, so a verification stored before it is asked once more. A request whose
 	// evidence fits also holds the sandbox release its probe environment names.
 	it("keys a request with no probe evidence, and one whose evidence fits with the sandbox release its probe environment names", () => {
-		expect(keyOf(plain).key).toBe("10b570ea2aafa7b96fe47eaed09332fce1ede0508c8f3b4707ed05d64a487cbd");
-		expect(keyOf(fitting).key).toBe("44ea7c46abfbc8c69e2b94ac1bf0df6a953f49018639ef014b6035caa49ecd01");
-		expect(keyOf(plain, fitting).key).toBe("cfc39ee5c36d4dc924dcbfade2fd20fc61ac5d88b120d3e608d9ea69468aa808");
+		expect(keyOf(plain).key).toBe("9b509e9cd8c5d16c340532510c2f29e2da580ca68b8a8a04340d802b5b1daab8");
+		expect(keyOf(fitting).key).toBe("1f54f199998d2bbab842bc8a7c7dc49bad3bb228294013f188c3c1f4a0f10228");
+		expect(keyOf(plain, fitting).key).toBe("5b12635600ff21aaeb4d6cec1803c15602df01bc1549f269f9d9576fb2df3247");
 		expect(keyOf(plain, fitting).request).not.toHaveProperty("cuts");
 	});
 
