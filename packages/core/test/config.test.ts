@@ -130,7 +130,13 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	});
 
 	it("lists no instruction files by default, and takes the root policy's list anchored at the root", async () => {
-		expect((await load("src/index.ts")).config.guardrails["policy-change-review"].instructions).toEqual([]);
+		expect((await load("src/index.ts")).config.guardrails["policy-change-review"]).toEqual({
+			enabled: true,
+			severity: "P2",
+			analyserSeverity: "P1",
+			files: [],
+			instructions: [],
+		});
 		writeFiles(repo, {
 			"melian.yaml": lines(
 				"guardrails:",

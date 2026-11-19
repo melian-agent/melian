@@ -998,6 +998,59 @@ describe("instruction files", () => {
 		expect(byId(verdict, refuted.id).properties.decidedBy).not.toHaveProperty("trustFloor");
 	});
 
+	it("reports through the notice a finding two lenses co-reported under the injection rule", () => {
+		const listed = notice(brief);
+		const flagged = injection();
+		const beside = injection({ source: { check: "lens.correctness", version: "1" } });
+		const verdict = decide([listed, flagged, beside]);
+		expect(verdict.findings.silent.map((each) => each.id)).toEqual([flagged.id]);
+		expect(byId(verdict, flagged.id).properties.decidedBy?.replacedBy).toEqual([listed.id]);
+	});
+
+	it("reports a co-reported finding whole when one of its reports holds a second location", () => {
+		const listed = notice(brief);
+		const stored = injection({ source: { check: "lens.correctness", version: "1" } }).toJSON();
+		const located = Finding.from({ ...stored, locations: [stored.locations[0]!, stored.locations[0]!] });
+		const verdict = decide([listed, injection(), located]);
+		expect(verdict.findings.silent).toEqual([]);
+		expect(verdict.findings.block).toHaveLength(1);
+	});
+
+	it("names every notice that reports a finding, in order of ID", () => {
+		const other = "prompts/f.md";
+		const listed = notice(brief);
+		const second = notice(other);
+		expect(second.id < listed.id).toBe(true);
+		const flagged = injection({ evidence: [...evidence(brief), ...evidence(other)] });
+		const verdict = decide([listed, second, flagged]);
+		expect(byId(verdict, flagged.id).properties.decidedBy?.replacedBy).toEqual([second.id, listed.id]);
+	});
+
+	it("reports through the notice a finding whose trigger in the listed file carries no proof", () => {
+		const listed = notice(brief);
+		const flagged = injection({ trigger: { file: brief, index: 0 } });
+		expect(decide([listed, flagged]).findings.silent.map((each) => each.id)).toEqual([flagged.id]);
+	});
+
+	it("leaves a finding alone beside a marked guardrails finding under another rule", () => {
+		const stored = notice(brief).toJSON();
+		const other = Finding.from({ ...stored, ruleId: "guardrail/forbidden-paths" });
+		const flagged = injection();
+		expect(decide([other, flagged]).findings.block.map((each) => each.id)).toEqual([flagged.id]);
+	});
+
+	it("refuses a stored finding whose replacedBy names no notice", () => {
+		const listed = notice(brief);
+		const flagged = injection();
+		const kept = byId(decide([listed, flagged]), flagged.id).toJSON();
+		expect(Finding.parse(kept)).toEqual(Finding.from(kept));
+		const empty = {
+			...kept,
+			properties: { ...kept.properties, decidedBy: { ...kept.properties.decidedBy!, replacedBy: [] } },
+		};
+		expect(() => Finding.parse(empty)).toThrow(expect.objectContaining({ code: "invalidFinding" }));
+	});
+
 	it("says which notice reports a replaced finding", () => {
 		const listed = notice(brief);
 		const flagged = injection();
