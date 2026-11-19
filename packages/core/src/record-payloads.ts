@@ -441,13 +441,26 @@ export type LegacyAccountPayload = Static<typeof legacyAccountPayloadSchema>;
 function shape(schema: TSchema, payload: RecordJson): string | undefined {
 	const [error] = Value.Errors(schema, payload);
 	if (error === undefined) return undefined;
-	// A key the schema does not name, an unknown field's or a map's, is the record's own text, so the path masks it.
-	const named = (segment: string) =>
-		/^\d+$/.test(segment) || `${error.schemaPath}/`.includes(`/properties/${segment}/`);
+	// The path keeps a segment only where the schema's own path names it: a property it defines, or an index into an
+	// array it defines. Any other segment, an unknown field's or a map's key however it is spelt, is the record's text.
+	const known = error.schemaPath.split("/").slice(1);
+	let at = 0;
 	const where = error.instancePath
 		.split("/")
 		.slice(1)
-		.map((segment) => (named(segment) ? segment : "*"))
+		.map((segment) => {
+			while (["anyOf", "allOf", "oneOf"].includes(known[at] ?? "")) at += 2;
+			if (known[at] === "properties" && known[at + 1] === segment) {
+				at += 2;
+				return segment;
+			}
+			if (known[at] === "items" && /^\d+$/.test(segment)) {
+				at += 1;
+				return segment;
+			}
+			at = known[at] === "patternProperties" ? at + 2 : known.length;
+			return "*";
+		})
 		.join("/");
 	return `does not match its schema at ${error.instancePath === "" ? "(top level)" : `/${where}`}: ${error.message}`;
 }

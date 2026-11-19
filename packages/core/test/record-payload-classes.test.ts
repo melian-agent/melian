@@ -369,6 +369,17 @@ describe("a shared record's classed fields", () => {
 			expect(check("telemetry", { ...payload, [key]: 1 })).toBe("does not match its schema at /*: schema is false");
 	});
 
+	// An index is kept only where the schema has an array, so a key spelt in digits is the record's and is masked.
+	it("masks an unknown key spelt in digits, wherever it sits", () => {
+		const { payload } = samples.telemetry;
+		const key = "9876543210987654321098765432109876543210";
+		expect(check("telemetry", { ...payload, [key]: 1 })).toBe("does not match its schema at /*: schema is false");
+		const stages = [{ ...structuredClone(payload.stages[0]), [key]: 1 }];
+		expect(check("telemetry", { ...payload, stages })).toBe(
+			"does not match its schema at /stages/0/*: schema is false",
+		);
+	});
+
 	// The pattern takes its length from the one `versioned` cuts a lens's hash to, so every lens Melian ships fits it.
 	it("accepts every built-in lens's version", async () => {
 		const lenses = await Lens.builtins();
