@@ -74,7 +74,7 @@ it("reads what version-3 checks and version-8 verdicts wrote after an SQLite reo
 		(await tx.doc(VerdictDocument, second.root.id)).walkthroughNotes = { [recorded.revision]: "written again" };
 	}, context);
 	await expect(second.harness.snapshot(legacy("melian.checks", 3), second.root.id, context)).rejects.toThrow(
-		/newer version 4 than 3/,
+		/newer version 5 than 3/,
 	);
 	await expect(second.harness.snapshot(legacy("melian.verdicts", 8), second.root.id, context)).rejects.toThrow(
 		/newer version 15 than 8/,
