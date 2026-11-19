@@ -40,6 +40,7 @@ import {
 	type ReviewModels,
 	readFindings,
 	reviewChangeset,
+	runStaticTool,
 	type StageTelemetry,
 	type Storage,
 	TelemetryReader,
@@ -474,6 +475,53 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	}
 }
 
+// What the CLI's static.enola check and its caller context both take: the range's merge base and head, judged under
+// the trusted policy commit's Enola policy, with the host's environment to fetch the pinned executable.
+async function enolaInput(target: ReviewTarget, changeset: Changeset) {
+	const policyCommit = target.policy ?? target.base;
+	const { config } = await loadConfig(target.repo, { kind: "revision", commit: policyCommit }, ".");
+	return {
+		env: createNodeExecutionEnv(target.repo),
+		repoRoot: target.repo,
+		environment: process.env,
+		base: changeset.revision.base,
+		policyCommit,
+		commit: changeset.revision.head,
+		tool: "enola" as const,
+		settings: { ...config.static.enola, enabled: true },
+	};
+}
+
+/**
+ * Builds and caches Enola's graph of the range's head with the call the CLI's `static.enola` check makes, so a review
+ * of the range opens its callers as the CLI's does, and returns the head's snapshot ID. Enola reads the head's own
+ * configuration, so it builds only for a head the target's writer trust vouches for, and throws otherwise, or when
+ * Enola could not build the graph.
+ */
+export async function buildGraph(target: ReviewTarget, run: typeof runStaticTool = runStaticTool): Promise<string> {
+	if (!target.writer.trusted)
+		throw new Error(
+			"Enola reads the head's own configuration, so it builds a graph only of a head MELIAN_EVAL_PROBE_TRUST vouches for",
+		);
+	const changeset = await Changeset.resolve(target.repo, target.range);
+	const built = await run(await enolaInput(target, changeset), backgroundContext);
+	if (built.status === "skipped") throw new Error(`Enola skipped the head: ${built.reason}`);
+	const snapshot = built.snapshots?.find((each) => each.commit === changeset.revision.head);
+	if (snapshot === undefined) throw new Error("Enola ran but recorded no snapshot of the head");
+	return snapshot.snapshotId;
+}
+
+/** Whether Enola's graph of the range's head is already cached, so a review could open its callers without a build. */
+export async function graphCached(target: ReviewTarget): Promise<boolean> {
+	const changeset = await Changeset.resolve(target.repo, target.range);
+	const callers = await CallerContext.open(
+		await enolaInput(target, changeset),
+		changeset.revision.files,
+		backgroundContext,
+	);
+	return callers.coverageSource() !== undefined;
+}
+
 // Opens Enola's graph of the head over the files the tier's lenses select, as the CLI does, whatever the base's policy
 // says of Enola. A graph that cannot be read fails the review: scoring it would measure the arm without its graph.
 async function graphOf(
@@ -496,16 +544,7 @@ async function graphOf(
 		).flatMap((selection) => selection.files),
 	);
 	const callers = await CallerContext.open(
-		{
-			env: createNodeExecutionEnv(target.repo),
-			repoRoot: target.repo,
-			environment: process.env,
-			base: changeset.revision.base,
-			policyCommit: target.policy ?? target.base,
-			commit: changeset.revision.head,
-			tool: "enola",
-			settings: { ...config.static.enola, enabled: true },
-		},
+		await enolaInput(target, changeset),
 		changeset.revision.files.filter(
 			(file) => selected.has(file.path) || (file.oldPath !== undefined && selected.has(file.oldPath)),
 		),

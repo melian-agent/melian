@@ -299,6 +299,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 	});
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
+	const snapshot = `sha256:${"e".repeat(64)}`;
 	const committedStages = [
 		lensStage(),
 		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
@@ -314,6 +315,8 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			availability: vi.fn(async () => ({ available: true }) as const),
 			models: vi.fn(async () => createFakeModels({ models: [{ id: "x" }] }).review),
 			range: vi.fn(async () => ran(stages[Math.min(call++, stages.length - 1)]!)),
+			graph: vi.fn(async () => snapshot),
+			graphCached: vi.fn(async () => false),
 			commit: () => "c".repeat(40),
 			...fields,
 		} satisfies ParityRunners;
@@ -472,6 +475,97 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("builds Enola's graph of each miss's head once, before its reviews, and records its snapshot in each attempt", async () => {
+		const using = runners();
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one,two" }, using);
+		expect(vi.mocked(using.graph).mock.calls.map(([target]) => target.range)).toEqual([
+			`${policy}...${head}`,
+			`${policy}...${head}`,
+		]);
+		expect(vi.mocked(using.graph).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(using.range).mock.invocationCallOrder[0]!,
+		);
+		expect(results().attempts.map(({ miss, arm, graph }) => [miss, arm, graph])).toEqual([
+			["one", "committed", snapshot],
+			["one", "parity", snapshot],
+			["two", "committed", snapshot],
+			["two", "parity", snapshot],
+		]);
+		expect(using.graphCached).not.toHaveBeenCalled();
+	});
+
+	it("leaves a miss unscored, never reviewed without callers, when its graph cannot be built", async () => {
+		const using = runners(undefined, {
+			graph: vi.fn(async () => {
+				throw new Error("Enola generate exited 2");
+			}),
+		});
+		const lines: string[] = [];
+		let saved: ParityResults["attempts"] = [];
+		const status = await measureParity(
+			{ ...env, MELIAN_EVAL_PARITY_MISSES: "two" },
+			using,
+			(line) => {
+				if (lines.length === 0) saved = results().attempts;
+				lines.push(line);
+			},
+			() => {},
+		);
+		expect(status).toBe(1);
+		expect(using.range).not.toHaveBeenCalled();
+		const said =
+			"no score: Enola's graph of the head could not be built, and a review without its callers is not today's Melian: Enola generate exited 2";
+		expect(lines[0]).toBe(`committed two: ${said}`);
+		expect(saved.map(({ miss, arm, said }) => [miss, arm, said])).toEqual([["two", "committed", said]]);
+		expect(results().attempts).toEqual([
+			{
+				miss: "two",
+				arm: "committed",
+				said,
+				error: "Enola generate exited 2",
+				tokens: 0,
+				cacheRead: 0,
+				budgetTokens: 0,
+				stages: [],
+			},
+			{
+				miss: "two",
+				arm: "parity",
+				said: "not run: the committed arm had no review",
+				tokens: 0,
+				cacheRead: 0,
+				budgetTokens: 0,
+				stages: [],
+			},
+		]);
+		expect(existsSync(`${env.MELIAN_EVAL_PARITY_OUT}.stores`)).toBe(false);
+	});
+
+	it("keeps a miss whose graph could not be built unscored on resume, as it keeps a failed review", async () => {
+		const failing = runners(undefined, {
+			graph: vi.fn(async () => {
+				throw new Error("Enola generate exited 2");
+			}),
+		});
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, failing);
+		const again = runners();
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, again)).status).toBe(1);
+		expect(again.graph).not.toHaveBeenCalled();
+		expect(again.range).not.toHaveBeenCalled();
+	});
+
+	it("says in a dry run whether each scorable miss's graph is cached, and builds none", async () => {
+		const using = runners(undefined, { graphCached: vi.fn(async () => true) });
+		const { status, lines } = await measure(
+			{ ...env, MELIAN_EVAL_PARITY_MISSES: "one", MELIAN_EVAL_PARITY_DRY: "1" },
+			using,
+		);
+		expect(status).toBe(0);
+		expect(lines[1]).toBe("    Enola's graph of one's head is cached");
+		expect(vi.mocked(using.graphCached).mock.calls.map(([target]) => target.range)).toEqual([`${policy}...${head}`]);
+		expect(using.graph).not.toHaveBeenCalled();
+	});
+
 	it("records what a lens its share ended had left: covered files it never saw, and attacks its prober never ran", async () => {
 		const cut = [
 			lensStage({
@@ -594,7 +688,12 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		const listed = await measure({ ...env, MELIAN_EVAL_MISSES: mixed, MELIAN_EVAL_PARITY_DRY: "1" }, dry);
 		expect(listed).toEqual({
 			status: 0,
-			lines: [expect.stringMatching(/^scorable one: \S/), ...refused, `1 of 4 misses can be scored under ${policy}`],
+			lines: [
+				expect.stringMatching(/^scorable one: \S/),
+				"    Enola's graph of one's head needs building before its reviews",
+				...refused,
+				`1 of 4 misses can be scored under ${policy}`,
+			],
 			errors: [],
 		});
 		for (const each of [using, dry]) {
@@ -708,6 +807,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 				budgetTokens: 0,
 				stages: [],
 				store: `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.sqlite`,
+				graph: snapshot,
 			},
 			{
 				miss: "one",
@@ -892,6 +992,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			cacheRead: 0,
 			budgetTokens: 0,
 			stages: [],
+			graph: snapshot,
 		};
 
 		it("saves the attempt before its review, and settles it on resume from what its store recorded", async () => {

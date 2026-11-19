@@ -2,7 +2,7 @@ import type * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { liveModels } from "../src/credentials.ts";
-import { runRange } from "../src/goldens.ts";
+import { buildGraph, graphCached, runRange } from "../src/goldens.ts";
 import { checkoutCommit, measureParity } from "../src/parity.ts";
 
 const availability = vi.hoisted(() => vi.fn());
@@ -43,7 +43,7 @@ it("refuses to start without MELIAN_EVAL_LIVE=1, before it measures anything", a
 	expect(measureParity).not.toHaveBeenCalled();
 });
 
-it("measures with the host's probe availability, live models, the range runner and the checkout's commit", async () => {
+it("measures with the host's probe availability, live models, the range runner, Enola's graph build and the checkout's commit", async () => {
 	vi.stubEnv("MELIAN_EVAL_LIVE", "1");
 	vi.mocked(measureParity).mockResolvedValue(3);
 	vi.mocked(liveModels).mockResolvedValue(fake.review);
@@ -58,6 +58,11 @@ it("measures with the host's probe availability, live models, the range runner a
 	expect(printError).toBe(console.error);
 	expect(runners.range).toBe(runRange);
 	expect(runners.commit).toBe(checkoutCommit);
+	expect(runners.graphCached).toBe(graphCached);
+	vi.mocked(buildGraph).mockResolvedValue("sha256:graph");
+	const target = { range: "a...b" } as Parameters<typeof runners.graph>[0];
+	expect(await runners.graph(target)).toBe("sha256:graph");
+	expect(buildGraph).toHaveBeenCalledExactlyOnceWith(target);
 	expect(await runners.availability()).toEqual({ available: false, reason: "no sandbox" });
 	expect(availability).toHaveBeenCalledExactlyOnceWith();
 	expect(await runners.models()).toBe(fake.review);

@@ -2,7 +2,7 @@
 
 <!-- Copy this file to <date>-parity-per-total-budget.md and fill each placeholder. Delete these comments. -->
 
-Every earlier measurement ran the design lens with its graph tools refusing, because none opened Enola's graph, so every earlier figure understated that lens. This run opens the graph for both arms, as the CLI does. It asks whether Melian finds a review of record's misses when its lenses together spend what a committed round spends, for [issue #561](https://github.com/melian-agent/melian/issues/561), under [the method](../../../docs/guidelines/evals.md#measuring-parity-per-total-budget).
+Every earlier measurement ran the design lens with its graph tools refusing, because none opened Enola's graph, so every earlier figure understated that lens. This run builds Enola's graph of each miss's head, as the CLI's `static.enola` check does, and opens it for both arms. Each miss's snapshot ID: `<miss>: <graph>`; a miss whose graph could not be built is unscored, with Enola's reason. It asks whether Melian finds a review of record's misses when its lenses together spend what a committed round spends, for [issue #561](https://github.com/melian-agent/melian/issues/561), under [the method](../../../docs/guidelines/evals.md#measuring-parity-per-total-budget).
 
 ## What the token figures count
 

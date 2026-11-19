@@ -19,11 +19,13 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext,
+	CallerContext,
 	createMemoryStorage,
 	createRegistry,
 	openHarness,
 	openSqliteStorage,
 	StageTelemetry,
+	type StaticRun,
 	TelemetryReader,
 	TokenUsage,
 	upsertFinding,
@@ -38,9 +40,11 @@ import {
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	buildGoldenRepository,
+	buildGraph,
 	commitGoldenTree,
 	type Golden,
 	type GoldenRun,
+	graphCached,
 	loadGoldens,
 	type RangeRun,
 	runGolden,
@@ -2859,6 +2863,119 @@ describe("runRange", { timeout: 60_000 }, () => {
 });
 
 describe("an arm that needs the graph", { timeout: 60_000 }, () => {
+	const enolaLog = {
+		version: "2.1.0" as const,
+		runs: [{ tool: { driver: { name: "enola", version: "1" } }, results: [] }],
+	};
+	const snapshotOf = (commit: string, letter: string) => ({
+		commit,
+		snapshotId: `sha256:${letter.repeat(64)}`,
+		receipt: `receipt-${letter}`,
+	});
+	const targetOf = (repo: string, base: string, head: string, trust: string) =>
+		Miss.load(missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]))[0]!.target(
+			ProbeTrust.parse(trust),
+			"whole",
+			[],
+		);
+
+	it("builds the head's graph with the call the CLI's static.enola makes, and returns the head's snapshot", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			const run = vi.fn(
+				async (): Promise<StaticRun> => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.base, "b"), snapshotOf(revision.head, "h")],
+				}),
+			);
+			expect(await buildGraph(target, run)).toBe(`sha256:${"h".repeat(64)}`);
+			expect(run).toHaveBeenCalledTimes(1);
+			const [input] = run.mock.calls[0] as unknown as [Record<string, unknown>];
+			expect({ ...input, env: undefined, environment: undefined, settings: undefined }).toEqual({
+				env: undefined,
+				environment: undefined,
+				settings: undefined,
+				repoRoot: repo,
+				base: revision.base,
+				policyCommit: base,
+				commit: revision.head,
+				tool: "enola",
+			});
+			expect(input.environment).toBe(process.env);
+			expect(input.settings).toMatchObject({ enabled: true });
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses to build the graph of a head MELIAN_EVAL_PROBE_TRUST does not vouch for, before Enola runs", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const run = vi.fn(async (): Promise<StaticRun> => ({ status: "skipped", reason: "unreached" }));
+			await expect(buildGraph(targetOf(repo, base, head, base), run)).rejects.toThrow(
+				/^Enola reads the head's own configuration, so it builds a graph only of a head MELIAN_EVAL_PROBE_TRUST vouches for$/,
+			);
+			expect(run).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("fails the build when Enola skips the head or records no snapshot of it", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			await expect(
+				buildGraph(target, async () => ({ status: "skipped", reason: "Enola is not installed" })),
+			).rejects.toThrow(/^Enola skipped the head: Enola is not installed$/);
+			await expect(
+				buildGraph(target, async () => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.base, "b")],
+				})),
+			).rejects.toThrow(/^Enola ran but recorded no snapshot of the head$/);
+			await expect(buildGraph(target, async () => ({ status: "ran", log: enolaLog, notes: [] }))).rejects.toThrow(
+				/^Enola ran but recorded no snapshot of the head$/,
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("says a head's graph is cached when the callers Enola left can be read without a build", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		const open = vi.spyOn(CallerContext, "open").mockResolvedValue({
+			coverageSource: () => ({ parts: [], paths: [], root: repo }),
+		} as unknown as CallerContext);
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			expect(await graphCached(target)).toBe(true);
+			expect(open).toHaveBeenCalledTimes(1);
+			expect(open.mock.calls[0]![0]).toMatchObject({ commit: revision.head, base: revision.base, tool: "enola" });
+			expect(open.mock.calls[0]![1]).toEqual(revision.files);
+		} finally {
+			open.mockRestore();
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("says a head's graph is not cached in a repository Enola never ran in", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			expect(await graphCached(targetOf(repo, base, head, `${base},${head}`))).toBe(false);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("fails its review when Enola's graph of the head cannot be read", async () => {
 		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
 		try {

@@ -239,6 +239,8 @@ export interface ParityAttempt {
 	readonly stages: readonly ParityStage[];
 	/** The SQLite file that keeps the review's store, conversations and all, beside the results file. */
 	readonly store?: string;
+	/** The snapshot ID of Enola's graph of the head, built before the review so its lenses get callers as the CLI's do. */
+	readonly graph?: string;
 }
 
 /** What a parity run has measured so far, as its results file holds it. */
@@ -271,6 +273,10 @@ export interface ParityRunners {
 	readonly availability: () => Promise<ProbeAvailability>;
 	readonly models: () => Promise<ReviewModels>;
 	readonly range: (target: ReviewTarget, mode: LiveGoldenMode) => Promise<RangeRun>;
+	/** Builds and caches Enola's graph of the target's head, returning its snapshot ID. */
+	readonly graph: (target: ReviewTarget) => Promise<string>;
+	/** Whether the target's graph is already cached, for the dry run. */
+	readonly graphCached: (target: ReviewTarget) => Promise<boolean>;
 	readonly commit: () => string;
 }
 
@@ -482,7 +488,16 @@ export async function measureParity(
 		policyCommit = [...policies][0] ?? "";
 		const counted = `${misses.length} of ${chosen.length} misses can be scored under ${policyCommit || visibleText(policyName)}`;
 		if (env.MELIAN_EVAL_PARITY_DRY === "1") {
-			for (const { miss, lenses } of misses) print(visibleText(`scorable ${miss.name}: ${lenses.join(", ")}`));
+			for (const { miss, lenses, target } of misses) {
+				print(visibleText(`scorable ${miss.name}: ${lenses.join(", ")}`));
+				print(
+					visibleText(
+						(await runners.graphCached(target))
+							? `    Enola's graph of ${miss.name}'s head is cached`
+							: `    Enola's graph of ${miss.name}'s head needs building before its reviews`,
+					),
+				);
+			}
 			for (const refusal of refusals) print(visibleText(refusal));
 			print(visibleText(counted));
 			return 0;
@@ -568,6 +583,8 @@ export async function measureParity(
 	const budgetSpent = () => results.attempts.reduce((sum, attempt) => sum + attempt.budgetTokens, 0);
 	const finished = (name: string, arm: "committed" | "parity") =>
 		results.attempts.find((attempt) => attempt.miss === name && attempt.arm === arm && attempt.stopped === undefined);
+	// One build per miss serves both arms, which review the same head.
+	const graphs = new Map<string, string>();
 	for (const { miss, target, location, lenses, paths } of misses) {
 		for (const arm of ["committed", "parity"] as const) {
 			if (finished(miss.name, arm) !== undefined) continue;
@@ -605,6 +622,34 @@ export async function measureParity(
 			}
 			if (spent() >= stops.run)
 				return stop(`the run's ${spent()} tokens reached MELIAN_EVAL_PARITY_STOP_RUN, ${stops.run}`);
+			let graph = graphs.get(miss.name);
+			if (graph === undefined) {
+				try {
+					graph = await runners.graph(target);
+				} catch (thrown) {
+					const error = thrown instanceof Error ? thrown.message : String(thrown);
+					results = {
+						...results,
+						attempts: [
+							...results.attempts,
+							{
+								miss: miss.name,
+								arm,
+								said: `no score: Enola's graph of the head could not be built, and a review without its callers is not today's Melian: ${error}`,
+								error,
+								tokens: 0,
+								cacheRead: 0,
+								budgetTokens: 0,
+								stages: [],
+							},
+						],
+					};
+					save();
+					print(visibleText(`${parityLabel(arm)} ${miss.name}: ${results.attempts.at(-1)!.said}`));
+					continue;
+				}
+				graphs.set(miss.name, graph);
+			}
 			// A review a stop cut keeps its store too, so a resumed review takes the next free name.
 			const stores = `${out}.stores`;
 			mkdirSync(stores, { recursive: true });
@@ -625,6 +670,7 @@ export async function measureParity(
 						budgetTokens: 0,
 						stages: [],
 						store,
+						graph,
 					},
 				],
 			};
@@ -684,6 +730,7 @@ export async function measureParity(
 						budgetTokens,
 						stages,
 						store,
+						graph,
 					},
 				],
 			};

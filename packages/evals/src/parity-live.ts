@@ -9,7 +9,7 @@
  */
 import { Probe } from "@melian-agent/pipeline";
 import { liveModels } from "./credentials.ts";
-import { runRange } from "./goldens.ts";
+import { buildGraph, graphCached, runRange } from "./goldens.ts";
 import { checkoutCommit, measureParity } from "./parity.ts";
 
 if (process.env.MELIAN_EVAL_LIVE !== "1") {
@@ -24,6 +24,8 @@ process.exit(
 			availability: () => Probe.availability(),
 			models: () => liveModels(process.cwd()),
 			range: runRange,
+			graph: (target) => buildGraph(target),
+			graphCached,
 			commit: checkoutCommit,
 		},
 		console.log,
