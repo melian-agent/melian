@@ -140,6 +140,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		});
 		if (format.status !== 0) process.exit(format.status ?? 1);
 	} else {
+		// Not a top-level import: the first --write in a fresh repository runs before this file exists.
 		const { moduleHashes, producerModules } = await import(join(root, recordedFile));
 		const found = differences({ moduleHashes, producerModules }, computed);
 		for (const line of found) console.log(line);
