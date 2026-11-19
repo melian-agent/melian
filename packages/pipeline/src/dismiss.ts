@@ -4,10 +4,12 @@ import {
 	type AdjudicationResult,
 	AdjudicationTask,
 	type AdjudicationTaskInput,
+	adjudicationKey,
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -170,8 +172,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			);
 			if (report === own) replaced = before;
 		}
-		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
-		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
+		// The review's own input with the findings version the dismissal moved to, so a later review that computes the same
+		// input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
@@ -180,8 +182,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			checks: previous.checks.map(withLegacyCaveats),
 			repoRoot: checkout,
 			findingsVersion,
+			code: codeVersion("adjudication"),
 		};
-		const key = JSON.stringify(input);
+		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = found.members
 			.filter((other) => other.id !== own && dismissed.includes(other.id))
