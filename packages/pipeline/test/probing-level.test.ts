@@ -733,6 +733,24 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record.error).toBe("the planner recorded no attack plan");
 	});
 
+	it("fails a lens whose planner's budget ended before it recorded a plan, and names the budget", async () => {
+		const reads = round([
+			["read_file", { path: "src/load.ts" }],
+			["read_file", { path: "src/load.ts" }],
+		]);
+		const { run } = await review(
+			{ planner: [reads, fauxAssistantMessage("Out of reads.")], prober: [] },
+			{ lens: probingWith({}, { tools: 1 }) },
+		);
+		const error = await failure(run);
+		expect(error.code).toBe("lensFailed");
+		const failed = error.verdict!.notRun.find(({ name }) => name === "lens.trust-boundary")!;
+		expect(failed.status).toBe("failed");
+		expect(failed.error).toMatch(
+			/^its tool call budget of 1 ran out after 1 tool call and [0-9,]+ tokens?, before the planner recorded an attack plan$/,
+		);
+	});
+
 	it("runs a level that cannot probe here without probes, as it ran before, and says why", async () => {
 		const { run, requests } = await withoutProbes({
 			writer: { trusted: false, detail: "octocat has read permission" },
