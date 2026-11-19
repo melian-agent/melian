@@ -1203,7 +1203,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 describe("melian dismiss", { timeout: 60_000 }, () => {
 	const reason = "The manager is always set for users in this report.";
 	const unshared =
-		"The dismissal is not shared until a review exports it, and its record will then supersede no shared dismissal; pass --records to share it now.";
+		"The dismissal is not shared: no record names the rounds the store held as it was made, so no review exports it. Dismiss it again with --records to share it.";
 
 	// A reviewed golden whose one blocking finding is the null dereference, and that finding's ID. The range names its
 	// branch, so another worktree, where HEAD names something else, names the same changeset.

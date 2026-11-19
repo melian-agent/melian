@@ -51,7 +51,7 @@ Commands:
                          alone; a report merged only through a hunk stays live, and the ID of a merged report
                          dismisses that report alone. --records writes the dismissal's record to the store now,
                          superseding the dismissals of the finding that stand there, when the base's policy sets
-                         trust.writers: true; without it, the record waits for a review and supersedes nothing.
+                         trust.writers: true; without it, the dismissal is never shared.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
   compare <range|#pr> [--from <source>]... [--round <id|unattributed>]

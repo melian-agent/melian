@@ -431,6 +431,7 @@ async function dismissedAndReviewedAgain(reported: object = changedReturn) {
 		id,
 		dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" },
 		repoRoot: repo,
+		records: { store, changeset: first.changeset.id },
 	});
 	return { reviewed: await review(store, { contracts: [reports(reported), quiet, quiet] }), id };
 }
@@ -777,8 +778,9 @@ describe("the dismissal records a reader applies", () => {
 			});
 		const first = roundAt("0", "1", [], []);
 		const second = roundAt("1", "2", [elsewhere], [first]);
-		// The read round written again to follow `before`, with the dismissal and `shared` beside it, and its ID.
-		const after = (before: SharedRecord[], shared: SharedRecord[]) => {
+		// The read round written again to follow `before`, with the dismissal and `shared` beside it, and its ID. The
+		// dismissal names `held` as its frontier, when given, as though its writer held those rounds, and none for `null`.
+		const after = (before: SharedRecord[], shared: SharedRecord[], held?: SharedRecord[] | null) => {
 			const parsed = changed.records.map((each) => SharedRecord.parseEnvelope(each));
 			const current = parsed.find((each) => each.id === changed.round)!;
 			const manifest = current.manifest()!;
@@ -791,12 +793,19 @@ describe("the dismissal records a reader applies", () => {
 				before.map((each) => each.id),
 			);
 			const kept = parsed.filter((each) => each !== current && each.kind !== "dismissal");
-			const records = [...kept, followed, ...shared].map((each) => each.toJSON()).concat([dismissal]);
+			const { frontier: _, ...unbounded } = dismissal.payload as DismissalJson & { frontier?: string[] };
+			const payload = held ? { ...unbounded, frontier: held.map((each) => each.id).sort() } : unbounded;
+			const made =
+				held === undefined
+					? dismissal
+					: SharedRecord.parseEnvelope({ ...dismissal, payload: payload as unknown as RecordJson }).toJSON();
+			const records = [...kept, followed, ...shared].map((each) => each.toJSON()).concat([made]);
 			return [records, followed.id] as const;
 		};
-		const readAfter = (before: SharedRecord[], shared: SharedRecord[]) => read(reviewed, ...after(before, shared));
-		const handedAfter = (before: SharedRecord[], shared: SharedRecord[]) =>
-			RecordedRound.of(...after(before, shared), everyRecordCounts).contents(
+		const readAfter = (before: SharedRecord[], shared: SharedRecord[], held?: SharedRecord[] | null) =>
+			read(reviewed, ...after(before, shared, held));
+		const handedAfter = (before: SharedRecord[], shared: SharedRecord[], held?: SharedRecord[] | null) =>
+			RecordedRound.of(...after(before, shared, held), everyRecordCounts).contents(
 				reviewed.changeset.revision,
 			) as RecordedRoundContents;
 		return { id, proof, elsewhere, first, second, roundAt, roundOn, citingAt, readAfter, handedAfter };
@@ -853,25 +862,45 @@ describe("the dismissal records a reader applies", () => {
 			chain.proof.filter(({ file }) => file === "src/b.ts"),
 		);
 		const atY = chain.roundOn(base, y, [kept], [atX]);
-		const atZ = await chain.readAfter([atY], [atX, atY, kept]);
+		const atZ = await chain.readAfter([atY], [atX, atY, kept], [atX]);
 		expect([atZ.status, atZ.blocking]).toEqual(["findings", true]);
 		expect(standingOf(atZ)).toEqual([[chain.id, "new", undefined]]);
 	});
 
+	it("reopens a dismissal once a round after it at the dismissal's own revision cited a hunk the revision lacks", async () => {
+		const { id, proof, first, roundAt, citingAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		const cited = citingAt(revisionOf("0", "1"), [...proof, { file: "src/b.ts", hash: "0".repeat(64) }]);
+		const again = roundAt("0", "1", [cited], [first]);
+		const later = await readAfter([again], [first, again, cited]);
+		expect([later.status, later.blocking]).toEqual(["findings", true]);
+		expect(standingOf(later)).toEqual([[id, "new", undefined]]);
+	});
+
 	it("remembers no hunk a record no round names cited", async () => {
 		const { id, elsewhere, first, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
-		expect(standingOf(await readAfter([first], [first, elsewhere]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([first], [first, elsewhere], [first]))).toEqual(dismissedOf(id));
 	});
 
-	it("remembers no hunk a round before the dismissal cited, so a dismissal made again after it holds", async () => {
+	it("remembers no hunk a round its writer held cited, so a dismissal made again after it holds", async () => {
 		const { id, elsewhere, first, second, roundAt, readAfter } = await citedAcross("lens", revisionOf("2", "3"));
 		const third = roundAt("2", "3", [], [second]);
-		expect(standingOf(await readAfter([third], [first, second, third, elsewhere]))).toEqual(dismissedOf(id));
+		const shared = [first, second, third, elsewhere];
+		expect(standingOf(await readAfter([third], shared, [second]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([third], shared, [first]))).toEqual([[id, "new", undefined]]);
 	});
 
-	it("remembers nothing for a dismissal made at the revision the round read", async () => {
+	it("remembers nothing for a dismissal whose writer held the round the read round follows", async () => {
 		const { id, elsewhere, first, second, readAfter } = await citedAcross("lens");
-		expect(standingOf(await readAfter([second], [first, second, elsewhere]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([second], [first, second, elsewhere], [second]))).toEqual(dismissedOf(id));
+	});
+
+	// A build before the frontier wrote no record of the rounds it held, so its record counts as no dismissal.
+	it("applies no dismissal whose record names no frontier", async () => {
+		const { id, first, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		expect(standingOf(await readAfter([first], [first], [first]))).toEqual(dismissedOf(id));
+		const unbounded = await readAfter([first], [first], null);
+		expect([unbounded.status, unbounded.blocking]).toEqual(["findings", true]);
+		expect(standingOf(unbounded)).toEqual([[id, "new", undefined]]);
 	});
 
 	it.each([
@@ -885,27 +914,41 @@ describe("the dismissal records a reader applies", () => {
 		expect(chain.handedAfter([chain.second], shared(chain)).dismissals).toEqual([]);
 	});
 
-	it("applies no dismissal past a chain that ends before it reaches a round of the dismissal's revision", async () => {
-		const { id, roundAt, readAfter, handedAfter } = await citedAcross("lens", revisionOf("0", "1"));
+	it("applies no dismissal past a chain that ends before it reaches a round its writer held", async () => {
+		const { id, first, roundAt, readAfter, handedAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		const severed = roundAt("1", "2", [], []);
-		expect(standingOf(await readAfter([severed], [severed]))).toEqual([[id, "new", undefined]]);
-		expect(handedAfter([severed], [severed]).dismissals).toEqual([]);
+		expect(standingOf(await readAfter([severed], [first, severed], [first]))).toEqual([[id, "new", undefined]]);
+		expect(handedAfter([severed], [first, severed], [first]).dismissals).toEqual([]);
 	});
 
-	it("applies no dismissal past a fork one of whose branches ends before the dismissal's revision", async () => {
+	it("applies no dismissal past a fork one of whose branches ends before it reaches a round its writer held", async () => {
 		const { id, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		const quiet = roundAt("1", "3", [], [first]);
 		const severed = roundAt("4", "5", [], []);
-		expect(standingOf(await readAfter([quiet], [first, quiet]))).toEqual(dismissedOf(id));
-		expect(standingOf(await readAfter([quiet, severed], [first, quiet, severed]))).toEqual([[id, "new", undefined]]);
+		expect(standingOf(await readAfter([quiet], [first, quiet], [first]))).toEqual(dismissedOf(id));
+		const forked = await readAfter([quiet, severed], [first, quiet, severed], [first]);
+		expect(standingOf(forked)).toEqual([[id, "new", undefined]]);
+	});
+
+	// A round names no round of its own revision, so a chain that ends there, at the revision of every round the
+	// writer held, was not cut, and its rounds count as since the dismissal.
+	it("tests a chain that ends at the revision of every round its writer held, as one since the dismissal", async () => {
+		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		const quiet = roundAt("0", "1", [], []);
+		const cited = roundAt("0", "1", [elsewhere], []);
+		expect(standingOf(await readAfter([quiet], [first, quiet], [first]))).toEqual(dismissedOf(id));
+		const reopened = await readAfter([cited], [first, cited, elsewhere], [first]);
+		expect(standingOf(reopened)).toEqual([[id, "new", undefined]]);
+		const fresh = await readAfter([quiet], [quiet], []);
+		expect(standingOf(fresh)).toEqual(dismissedOf(id));
 	});
 
 	it("remembers what either branch of a fork cited, and only that", async () => {
 		const { id, elsewhere, first, second, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		const quiet = roundAt("1", "3", [], [first]);
 		const shared = [first, second, quiet, elsewhere];
-		expect(standingOf(await readAfter([quiet], shared))).toEqual(dismissedOf(id));
-		expect(standingOf(await readAfter([quiet, second], shared))).toEqual([[id, "new", undefined]]);
+		expect(standingOf(await readAfter([quiet], shared, [first]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([quiet, second], shared, [first]))).toEqual([[id, "new", undefined]]);
 	});
 
 	it("applies no dismissal past a chain that names a record that is not a round", async () => {

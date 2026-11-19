@@ -262,17 +262,20 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 }
 
 // The set's dismissal records of `round`'s changeset that no other supersedes, in ID order. A dismissal record names
-// no round, so every round of the changeset reads it. Superseding only removes a dismissal, so it can only make a round
-// stricter. Each carries every proving hunk a sighting of its finding cites in the records of the rounds since it was
-// made, so a hunk one of them cited and the revision has since changed reopens it, as the host's memory does. A
-// dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live.
+// no round to apply to, so every round of the changeset reads it. Superseding only removes a dismissal, so it can only
+// make a round stricter. Each carries every proving hunk a sighting of its finding cites in the records of the rounds
+// since it was made, so a hunk one of them cited and the revision has since changed reopens it, as the host's memory
+// does. A dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live, and so does
+// one whose record names no frontier: no record written before the field held one, and no shared store holds such a
+// record yet.
 function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecord[] {
 	return set
 		.unsuperseded()
 		.filter((record) => record.kind === "dismissal" && record.changeset === round.changeset)
 		.flatMap((record) => {
-			const { by, reason, at, trigger, sighting } = record.payload as DismissalPayload;
-			const since = roundsSince(set, round, sighting.revision);
+			const { by, reason, at, trigger, sighting, frontier } = record.payload as DismissalPayload;
+			if (frontier === undefined) return [];
+			const since = roundsSince(set, round, frontier);
 			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
 			const cited = citedProof(since.flatMap((each) => sightingsOf(set, each))).get(key) ?? [];
@@ -280,29 +283,41 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): SharedDismissalRecor
 		});
 }
 
-// The rounds before `round` back along each round's `before`, stopping at those of `revision`, which it leaves out:
-// the rounds a dismissal made at `revision` has seen since, short of `round` itself, whose sightings are the ones
-// tested, as the host tests a sighting against what it held before it. `undefined` when any branch of the chain ends before a
-// round of `revision`, names a round of the changeset the set does not hold, or names a round that names a record the
-// set does not hold, since what the rounds past that point cited is unknown.
-function roundsSince(set: RecordSet, round: SharedRecord, revision: string): SharedRecord[] | undefined {
+// The rounds a dismissal whose writer held `frontier` has seen since, short of `round` itself, whose sightings are the
+// ones tested, as the host tests a sighting against what it held before it: every round back along each round's
+// `before` from `round` that is neither in `frontier` nor an ancestor of one there, whatever its revision. `undefined`
+// when a branch of the chain names a round of the changeset the set does not hold, or a round that names a record the
+// set does not hold, since what the rounds past that point cited is unknown. `undefined` too when a branch ends, at a
+// round that follows none, short of `frontier` while the writer held a round of another revision: a round names every
+// round of another revision its store held, so the chain was cut there. A round names none of its own revision, so a
+// branch may end short of `frontier` at the revision of every round the writer held.
+function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
 	const rounds = new Map(
 		set
 			.records()
 			.filter((record) => record.kind === "round" && record.changeset === round.changeset)
 			.map((record) => [record.id, record]),
 	);
+	const held = new Set(frontier);
+	for (const pending = [...frontier]; pending.length > 0; )
+		for (const id of rounds.get(pending.pop()!)?.manifest()?.before ?? [])
+			if (!held.has(id)) {
+				held.add(id);
+				pending.push(id);
+			}
+	if (held.has(round.id)) return [];
 	const since: SharedRecord[] = [];
 	const seen = new Set<string>();
 	const next = [round];
 	for (let each = next.pop(); each !== undefined; each = next.pop()) {
-		if (seen.has(each.id) || each.revision === revision) continue;
+		if (seen.has(each.id)) continue;
 		seen.add(each.id);
 		if (set.missing(each).length > 0) return undefined;
 		if (each !== round) since.push(each);
 		const { before } = each.manifest()!;
-		if (before.length === 0) return undefined;
+		if (before.length === 0 && [...held].some((id) => rounds.get(id)?.revision !== each.revision)) return undefined;
 		for (const id of before) {
+			if (held.has(id)) continue;
 			const earlier = rounds.get(id);
 			if (earlier === undefined) return undefined;
 			next.push(earlier);

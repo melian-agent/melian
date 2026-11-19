@@ -45,6 +45,7 @@ export {
 	type PublishErrorCode,
 	ReviewError,
 	type ReviewErrorCode,
+	type UnsharedCode,
 } from "./errors.ts";
 export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {

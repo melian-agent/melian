@@ -229,12 +229,24 @@ function pushElsewhere(name: string): void {
 }
 
 // Reviews the first head, where the lens reports the dereference, and the maintainer dismisses it.
-async function dismissedRoot(reported = nullDeref): Promise<string> {
+// The root's dismissal reaches `store` when one is given, as `melian dismiss --records` writes it.
+async function dismissedRoot(reported = nullDeref, store?: MemoryRecordStore): Promise<string> {
 	script([reported]);
 	const first = await review();
 	const [finding] = first.verdict.attention();
 	expect(finding?.properties.severity).toBe("P1");
-	await recordDismissal({ harness, revision: await revision(), id: finding!.id, dismissal, repoRoot: repo });
+	const records =
+		store === undefined
+			? {}
+			: { records: { store, changeset: (await Changeset.resolve(repo, "main...feature")).id } };
+	await recordDismissal({
+		harness,
+		revision: await revision(),
+		id: finding!.id,
+		dismissal,
+		repoRoot: repo,
+		...records,
+	});
 	return finding!.id;
 }
 
@@ -1065,10 +1077,10 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	it("names each root by the ID of the dismissal record a round exports for it", async () => {
-		const root = await dismissedRoot();
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const root = await dismissedRoot(nullDeref, store);
 		pushElsewhere("other");
 		script([restatement]);
-		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		await reviewChangeset({
 			harness,
@@ -1128,7 +1140,7 @@ describe("a dismissal carrying to a restatement", () => {
 	const foreignDismissal = async (changeset: Changeset, root: string) => {
 		const state = (await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context))!;
 		const { base, head } = changeset.revision;
-		const own = ReviewRecords.of(changeset.id, { base, head }).dismissalOf(state, root, [])!.toJSON();
+		const own = ReviewRecords.of(changeset.id, { base, head }).madeOf(state, root, [])!.toJSON();
 		const payload = { ...(own.payload as object), by: "Another host", reason: "Accepted elsewhere." };
 		return SharedRecord.parse({ ...own, payload }, reviewPayloads);
 	};
@@ -1160,12 +1172,12 @@ describe("a dismissal carrying to a restatement", () => {
 	});
 
 	it("leaves a dismissal imported after the review listed its store out of what the review names and supersedes", async () => {
-		const root = await dismissedRoot();
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const root = await dismissedRoot(nullDeref, store);
 		pushElsewhere("other");
 		script([restatement]);
 		const changeset = await Changeset.resolve(repo, "main...feature");
 		const imported = await foreignDismissal(changeset, root);
-		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const list = store.list.bind(store);
 		let listed = 0;
 		vi.spyOn(store, "list").mockImplementation(async (id) => {

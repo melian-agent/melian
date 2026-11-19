@@ -231,6 +231,7 @@ const samples: [string, RecordJson][] = [
 			sighting: { revision, finding: finding("lens.security", "abc@careful") },
 			head,
 			rounds: [dismissalRecord],
+			frontier: ["1".repeat(64), dismissalRecord],
 			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "p" }] },
 		},
 	],
@@ -301,6 +302,7 @@ const bounds: readonly [string, string, RecordJson][] = [
 	["lens", "level", "loud"],
 	["lens", "outcome/escalation/carried/0", "0123456789abcdeg"],
 	["dismissal", "rounds/0", "c".repeat(63)],
+	["dismissal", "frontier/0", "1".repeat(63)],
 	["dismissal", "sighting/revision", `${"a".repeat(40)}.${head}`],
 	["dismissal", "head", "x"],
 	["account", "records/0", "1".repeat(63)],
@@ -337,7 +339,10 @@ describe("review payload checks", () => {
 
 	it.each(
 		samples.flatMap(([kind, payload]) =>
-			fields(payload).map((path) => [kind, path.join("/"), payload, path] as const),
+			fields(payload)
+				// A dismissal an earlier build wrote names no frontier; the test below accepts one.
+				.filter((path) => kind !== "dismissal" || path.join("/") !== "frontier")
+				.map((path) => [kind, path.join("/"), payload, path] as const),
 		),
 	)("refuses a %s payload without %s, case %#", (kind, _name, payload, path) => {
 		expect(check(kind, without(payload, path))).toMatch(/schema/);
@@ -531,6 +536,20 @@ describe("review payload checks", () => {
 		expect(check("dismissal", { ...payload, head: "c".repeat(40) })).toBe(
 			"names a head that is not its sighting's revision's",
 		);
+	});
+
+	it("accepts a dismissal an earlier build wrote, which names no frontier", () => {
+		const sample = samples.find(([kind]) => kind === "dismissal")?.[1] as Record<string, RecordJson>;
+		const { frontier: _, ...payload } = sample;
+		expect(check("dismissal", payload)).toBeUndefined();
+	});
+
+	it.each([
+		["out of order", [dismissalRecord, "1".repeat(64)]],
+		["twice", [dismissalRecord, dismissalRecord]],
+	])("refuses a dismissal that lists its frontier %s", (_, frontier) => {
+		const payload = samples.find(([kind]) => kind === "dismissal")?.[1] as Record<string, RecordJson>;
+		expect(check("dismissal", { ...payload, frontier })).toBe("lists its frontier out of order, or one twice");
 	});
 
 	it("refuses a dismissal whose sighting is not a finding", () => {

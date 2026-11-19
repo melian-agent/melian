@@ -83,6 +83,8 @@ export type DismissalFacts = {
 	readonly severity: Severity;
 	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
 	readonly rounds: readonly string[];
+	// The rounds of the changeset the writer's store held as the dismissal was made, which only `made` knows.
+	readonly frontier?: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
 };
 
@@ -350,13 +352,38 @@ export class ReviewRecords {
 	}
 
 	/**
-	 * The record of the dismissal of `id`, a finding `state` holds, as `melian dismiss` stored it, so every round builds the same
-	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
-	 * version 11 lacks and every reopen drops.
+	 * The record of the dismissal of `id`, a finding `state` holds, that `melian dismiss` wrote to the store and `held`
+	 * holds, so every round shares the same bytes; `undefined` for a finding with no frozen sighting, which a dismissal
+	 * stored before findings document version 11 lacks and every reopen drops. It throws `DismissError`
+	 * `madeWithoutStore` when `held` holds no such record: only the writer, as it dismissed, could name the rounds its
+	 * store held then.
 	 */
 	dismissalOf(state: FindingsState, id: string, held: readonly RecordEnvelope[]): SharedRecord | undefined {
 		const facts = ReviewRecords.#dismissalFacts(state, id);
 		return facts === undefined ? undefined : this.dismissal(facts, held);
+	}
+
+	/** The record `held` holds of the dismissal `facts` describe, as for `dismissalOf`. */
+	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[]): SharedRecord {
+		const copy = this.#heldCopy(this.#dismissalEnvelope(facts), held);
+		if (copy !== undefined) return copy;
+		throw new DismissError(
+			"madeWithoutStore",
+			`The dismissal of ${facts.finding} was made with no record store, so no record names the rounds its host held then, and it is not shared.`,
+			{ revision: facts.sighting.revision, finding: facts.finding },
+		);
+	}
+
+	/**
+	 * What tells the dismissal of `id`, a finding `state` holds, from any other: the ID of the record `held` holds of
+	 * it, or for a dismissal made with no store, the ID its record would have with no frontier and no supersedes.
+	 * `undefined` as for `dismissalOf`.
+	 */
+	dismissalIdentity(state: FindingsState, id: string, held: readonly RecordEnvelope[]): string | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		if (facts === undefined) return undefined;
+		const envelope = this.#dismissalEnvelope(facts);
+		return this.#heldCopy(envelope, held)?.id ?? ReviewRecords.#bare(envelope);
 	}
 
 	/** The record `made` writes for the dismissal of `id` that `state` holds, or `undefined` as for `dismissalOf`. */
@@ -386,22 +413,17 @@ export class ReviewRecords {
 	}
 
 	/**
-	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
-	 * sighting, since a later round exports a dismissal made at an earlier head. The record `held` already holds for this
-	 * dismissal, as `made` wrote it, or else one that supersedes nothing: an export never rebuilds what a record says it
-	 * supersedes, so a host that kept a dismissal another host replaced cannot set it standing again.
-	 */
-	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[] = []): SharedRecord {
-		const envelope = this.#dismissalEnvelope(facts);
-		return this.#heldCopy(envelope, held) ?? SharedRecord.parse(envelope, reviewPayloads);
-	}
-
-	/**
-	 * The record of a dismissal `melian dismiss` has just made, written once: it supersedes each dismissal of its finding
-	 * that stands in `listing`, the records the writer's store holds as the dismissal is made.
+	 * The record of a dismissal `melian dismiss` has just made, written once, keyed by the finding's ID; it carries no
+	 * revision, by rule 5, and names the head of its own sighting. `listing` holds the records the writer's store holds
+	 * as the dismissal is made: the record names every round of the changeset there as its frontier, and supersedes each
+	 * dismissal of its finding that stands there. The record `listing` already holds for this dismissal is returned as
+	 * it is, so a dismissal made again writes nothing new.
 	 */
 	made(facts: DismissalFacts, listing: readonly RecordEnvelope[]): SharedRecord {
-		const envelope = this.#dismissalEnvelope(facts);
+		const frontier = listing
+			.filter((each) => each.kind === "round" && each.changeset === this.changeset)
+			.map((each) => SharedRecord.parseEnvelope(each).id);
+		const envelope = this.#dismissalEnvelope({ ...facts, frontier });
 		const copy = this.#heldCopy(envelope, listing);
 		if (copy !== undefined) return copy;
 		const own = SharedRecord.parse(envelope, reviewPayloads).id;
@@ -418,15 +440,24 @@ export class ReviewRecords {
 		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(standing)].sort() }, reviewPayloads);
 	}
 
-	// A record in `held` that is this dismissal, whatever its writer's listing let it supersede.
+	// A record in `held` that is this dismissal, whatever its writer's listing let it supersede or name as its frontier.
 	#heldCopy(envelope: RecordEnvelope, held: readonly RecordEnvelope[]): SharedRecord | undefined {
-		const own = SharedRecord.parse(envelope, reviewPayloads).id;
-		const copy = held.find((each) => {
-			if (each.kind !== "dismissal" || each.changeset !== this.changeset || each.key !== envelope.key) return false;
-			const { supersedes: _, ...bare } = each;
-			return SharedRecord.parseEnvelope(bare).id === own;
-		});
+		const own = ReviewRecords.#bare(envelope);
+		const copy = held.find(
+			(each) =>
+				each.kind === "dismissal" &&
+				each.changeset === this.changeset &&
+				each.key === envelope.key &&
+				ReviewRecords.#bare(each) === own,
+		);
 		return copy === undefined ? undefined : SharedRecord.parse(copy, reviewPayloads);
+	}
+
+	// The ID of a dismissal record with no `supersedes` and no frontier: what two records of one dismissal share.
+	static #bare(envelope: RecordEnvelope): string {
+		const { supersedes: _, payload, ...rest } = envelope;
+		const { frontier: __, ...kept } = payload as { frontier?: unknown };
+		return SharedRecord.parseEnvelope({ ...rest, payload: kept as RecordJson }).id;
 	}
 
 	#dismissalEnvelope(facts: DismissalFacts): RecordEnvelope {
@@ -453,6 +484,7 @@ export class ReviewRecords {
 			},
 			head: Revision.parseKey(facts.sighting.revision)!.head,
 			rounds: [...new Set(facts.rounds)].sort(),
+			...(facts.frontier === undefined ? {} : { frontier: [...new Set(facts.frontier)].sort() }),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
 		return {

@@ -109,17 +109,20 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			resolutionPolicy: null,
 		};
 		expect(bytes(records.account(account))).not.toContain(token);
-		const dismissal = records.dismissal({
-			finding: finding.properties.id,
-			by: "writer",
-			reason: "fine",
-			at: "2026-11-16T00:00:00.000Z",
-			severity: "P2",
-			// A static finding's dismissal is not shared at all, so a guardrail's carries the version here.
-			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
-			rounds: [],
-			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
-		});
+		const dismissal = records.made(
+			{
+				finding: finding.properties.id,
+				by: "writer",
+				reason: "fine",
+				at: "2026-11-16T00:00:00.000Z",
+				severity: "P2",
+				// A static finding's dismissal is not shared at all, so a guardrail's carries the version here.
+				sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
+				rounds: [],
+				trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
+			},
+			[],
+		);
 		expect(bytes(dismissal)).not.toContain(token);
 	});
 

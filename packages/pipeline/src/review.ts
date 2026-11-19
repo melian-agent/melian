@@ -90,7 +90,7 @@ import {
 	readRecordedDecision,
 } from "./decisions.ts";
 import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
-import { DismissError, ReviewError } from "./errors.ts";
+import { DismissError, ReviewError, type UnsharedCode } from "./errors.ts";
 import {
 	clearSightings,
 	clearVerifications,
@@ -1489,7 +1489,7 @@ export interface Review {
 }
 
 /** A dismissal a review's record export left out: the finding's ID and the {@link DismissError} code that refused it. */
-export type UnsharedDismissal = { readonly finding: string; readonly code: "unprovenRun" };
+export type UnsharedDismissal = { readonly finding: string; readonly code: UnsharedCode };
 
 // Why a conversation's request ended without finishing: the model's own message where it gave one.
 function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
@@ -3309,7 +3309,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const record = records.dismissalOf(state!, id, held);
 				if (record !== undefined && !stored.has(record.id)) dismissals.push(record);
 			} catch (error) {
-				if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
+				if (!(error instanceof DismissError) || (error.code !== "unprovenRun" && error.code !== "madeWithoutStore"))
+					throw error;
 				unshared.push({ finding: id, code: error.code });
 			}
 		}

@@ -1,11 +1,13 @@
 import { copyFileSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Changeset, defaultConfig, Lens, MemoryRecordStore, reviewPayloads, SharedRecord } from "@melian-agent/core";
+import { Changeset, defaultConfig, Lens, MemoryRecordStore, reviewPayloads } from "@melian-agent/core";
 import { afterEach, expect, it } from "vitest";
+import { FindingsDocument } from "../src/findings.ts";
 import { backgroundContext as context, openHarness, openSqliteStorage, type TaskId } from "../src/harness.ts";
 import { createReviewRegistry, reviewChangeset } from "../src/review.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import {
 	createFakeModels,
 	fauxAssistantMessage,
@@ -130,10 +132,18 @@ it("reopens a verification main showed a dismissed root, attaches nothing to it,
 		expect(after.verification!.input).not.toBe(recorded.verification.input);
 		const fresh = (await harness.getTask(after.verification!.task as unknown as TaskId<unknown>, context))!
 			.input as unknown as VerificationInput;
-		const exported = (await store.list(changeset.id)).filter(({ kind }) => kind === "dismissal");
-		expect(exported.map(({ key }) => key)).toEqual([recorded.dismissed]);
+		// main dismissed with no record store, so the dismissal is not shared, and the request names what it would hold.
+		expect((await store.list(changeset.id)).filter(({ kind }) => kind === "dismissal")).toEqual([]);
+		expect(again.unshared).toEqual([{ finding: recorded.dismissed, code: "madeWithoutStore" }]);
+		const state = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const identity = ReviewRecords.of(changeset.id, changeset.revision).dismissalIdentity(
+			state,
+			recorded.dismissed,
+			[],
+		);
+		expect(identity).toMatch(/^[0-9a-f]{64}$/);
 		expect(fresh.candidates.map((each) => each.dismissed?.map(({ id, record }) => [id, record]))).toEqual([
-			[[recorded.dismissed, SharedRecord.parseEnvelope(exported[0]!).id]],
+			[[recorded.dismissed, identity]],
 		]);
 	} finally {
 		await harness.close(context);

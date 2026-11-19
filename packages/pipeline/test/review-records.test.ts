@@ -1,6 +1,7 @@
 import {
 	everyRecordCounts,
 	Finding,
+	type RecordEnvelope,
 	RecordError,
 	RecordSet,
 	reviewPayloads,
@@ -99,35 +100,85 @@ describe("ReviewRecords", () => {
 	it("writes a dismissal with no revision, its rounds sorted once each", () => {
 		const sighting = finding("lens.security", "abc@careful", "one");
 		const rounds = ["2".repeat(64), "1".repeat(64), "2".repeat(64)];
-		const record = records().dismissal({
-			finding: sighting.properties.id,
-			by: "maintainer",
-			reason: "Accepted",
-			at: "2026-11-15T00:00:00.000Z",
-			severity: "P1",
-			sighting: { revision: `${base}..${head}`, finding: sighting },
-			rounds,
-			trigger: { hash: "h", proof: [] },
-		});
+		const record = records().made(
+			{
+				finding: sighting.properties.id,
+				by: "maintainer",
+				reason: "Accepted",
+				at: "2026-11-15T00:00:00.000Z",
+				severity: "P1",
+				sighting: { revision: `${base}..${head}`, finding: sighting },
+				rounds,
+				trigger: { hash: "h", proof: [] },
+			},
+			[],
+		);
 		const json = record.toJSON();
 		expect(json.revision).toBeUndefined();
 		expect(json.key).toBe(sighting.properties.id);
 		expect((json.payload as { rounds: string[] }).rounds).toEqual(["1".repeat(64), "2".repeat(64)]);
 	});
 
-	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
+	it("names as its frontier every round of its changeset the listing holds, in ID order, and no other record", () => {
 		const sighting = finding("lens.security", "abc@careful", "one");
-		const earlier = "e".repeat(40);
-		const record = records().dismissal({
+		const facts: DismissalFacts = {
 			finding: sighting.properties.id,
 			by: "maintainer",
 			reason: "Accepted",
 			at: "2026-11-15T00:00:00.000Z",
 			severity: "P1",
-			sighting: { revision: `${base}..${earlier}`, finding: sighting },
+			sighting: { revision: `${base}..${head}`, finding: sighting },
 			rounds: [],
 			trigger: { hash: "h", proof: [] },
-		});
+		};
+		const roundAt = (to: string, of = changeset) =>
+			ReviewRecords.of(of, { base, head: to.repeat(40) }).round([], undefined, [], []);
+		const later = roundAt("e");
+		const earlier = roundAt("d");
+		const elsewhere = roundAt("e", "f".repeat(64));
+		const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
+		const listing = [later, elsewhere, lens, earlier].map((each) => each.toJSON());
+		const frontierOf = (record: { toJSON(): RecordEnvelope }) =>
+			(record.toJSON().payload as { frontier?: string[] }).frontier;
+		expect(frontierOf(records().made(facts, listing))).toEqual([earlier.id, later.id].sort());
+		expect(frontierOf(records().made(facts, []))).toEqual([]);
+	});
+
+	it("finds the record a store holds of a dismissal made again, whatever rounds its writer held", () => {
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const facts: DismissalFacts = {
+			finding: sighting.properties.id,
+			by: "maintainer",
+			reason: "Accepted",
+			at: "2026-11-15T00:00:00.000Z",
+			severity: "P1",
+			sighting: { revision: `${base}..${head}`, finding: sighting },
+			rounds: [],
+			trigger: { hash: "h", proof: [] },
+		};
+		const held = records().made(facts, []);
+		const round = ReviewRecords.of(changeset, { base, head: "e".repeat(40) }).round([], undefined, [], []);
+		const listing = [held.toJSON(), round.toJSON()];
+		expect(records().made(facts, listing).toJSON()).toEqual(held.toJSON());
+		expect(records().dismissal(facts, listing).toJSON()).toEqual(held.toJSON());
+	});
+
+	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const earlier = "e".repeat(40);
+		const record = records().made(
+			{
+				finding: sighting.properties.id,
+				by: "maintainer",
+				reason: "Accepted",
+				at: "2026-11-15T00:00:00.000Z",
+				severity: "P1",
+				sighting: { revision: `${base}..${earlier}`, finding: sighting },
+				rounds: [],
+				trigger: { hash: "h", proof: [] },
+			},
+			[],
+		);
 		expect((record.toJSON().payload as { head: string }).head).toBe(earlier);
 	});
 
@@ -145,10 +196,10 @@ describe("ReviewRecords", () => {
 		});
 		const other = finding("lens.security", "abc@careful", "two");
 		// Built inside each test, so a mutant that throws while building it fails that test, never the file.
-		const firstRecord = () => records().dismissal(facts("Accepted once"));
+		const firstRecord = () => records().made(facts("Accepted once"), []);
 
 		it("writes no record keyed by one finding whose sighting is of another", () => {
-			expect(() => records().dismissal({ ...facts("Accepted once"), finding: other.properties.id })).toThrow(
+			expect(() => records().made({ ...facts("Accepted once"), finding: other.properties.id }, [])).toThrow(
 				`a dismissal of ${other.properties.id} holds a sighting of ${sighting.properties.id}`,
 			);
 		});
@@ -179,18 +230,17 @@ describe("ReviewRecords", () => {
 			expect(exported.toJSON().supersedes).toEqual([earlier.id]);
 		});
 
-		it("exports a dismissal with no record as superseding nothing, whatever other dismissals of its finding stand", () => {
+		it("shares no dismissal the store holds no record of, whatever other dismissals of its finding stand", () => {
 			const earlier = firstRecord();
-			const alone = records().dismissal(facts("Accepted again"));
-			const exported = records().dismissal(facts("Accepted again"), [earlier.toJSON()]);
-			expect(exported.toJSON()).toEqual(alone.toJSON());
-			expect(alone.toJSON().supersedes).toBeUndefined();
+			expect(() => records().dismissal(facts("Accepted again"), [earlier.toJSON()])).toThrow(
+				expect.objectContaining({ code: "madeWithoutStore", finding: sighting.properties.id }),
+			);
 		});
 
 		it("names every standing dismissal of its finding the listing holds, and changes its key with them", () => {
 			const earlier = firstRecord();
-			const alone = records().dismissal(facts("Accepted again"));
-			const second = records().dismissal({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" });
+			const alone = records().made(facts("Accepted again"), []);
+			const second = records().made({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" }, []);
 			// Descending, with a repeat, so only a sorted list of distinct IDs passes.
 			const listing = [earlier, second].sort((a, b) => (a.id < b.id ? 1 : -1));
 			const record = records().made(
@@ -204,11 +254,14 @@ describe("ReviewRecords", () => {
 
 		it("supersedes a standing dismissal that a record of another slot names as superseded", () => {
 			const earlier = firstRecord();
-			const elsewhere = records().dismissal({
-				...facts("Accepted"),
-				finding: other.properties.id,
-				sighting: { revision: `${base}..${head}`, finding: other },
-			});
+			const elsewhere = records().made(
+				{
+					...facts("Accepted"),
+					finding: other.properties.id,
+					sighting: { revision: `${base}..${head}`, finding: other },
+				},
+				[],
+			);
 			// Core ignores a supersedes edge across slots, so `earlier` still stands beside this record.
 			const naming = SharedRecord.parse({ ...elsewhere.toJSON(), supersedes: [earlier.id] }, reviewPayloads);
 			const made = records().made({ ...facts("Accepted twice"), at: "2026-11-15T00:00:01.000Z" }, [
@@ -231,13 +284,16 @@ describe("ReviewRecords", () => {
 		});
 
 		it("supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding", () => {
-			const alone = records().dismissal(facts("Accepted again"));
-			const otherFinding = records().dismissal({
-				...facts("Accepted"),
-				finding: other.properties.id,
-				sighting: { revision: `${base}..${head}`, finding: other },
-			});
-			const otherChangeset = ReviewRecords.of("e".repeat(64), { base, head }).dismissal(facts("Accepted once"));
+			const alone = records().made(facts("Accepted again"), []);
+			const otherFinding = records().made(
+				{
+					...facts("Accepted"),
+					finding: other.properties.id,
+					sighting: { revision: `${base}..${head}`, finding: other },
+				},
+				[],
+			);
+			const otherChangeset = ReviewRecords.of("e".repeat(64), { base, head }).made(facts("Accepted once"), []);
 			const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
 			const keyed = SharedRecord.parse({ ...lens.toJSON(), key: sighting.properties.id } as never, reviewPayloads);
 			const record = records().made(facts("Accepted again"), [
@@ -259,7 +315,7 @@ describe("ReviewRecords", () => {
 
 		it("never supersedes itself, nor rewrites its own record a listing already holds", () => {
 			const earlier = firstRecord();
-			const alone = records().dismissal(facts("Accepted again"));
+			const alone = records().made(facts("Accepted again"), []);
 			const made = records().made(facts("Accepted again"), [earlier.toJSON()]);
 			expect(records().made(facts("Accepted again"), [alone.toJSON()]).id).toBe(alone.id);
 			const again = records().made(facts("Accepted again"), [made.toJSON(), earlier.toJSON()]);
@@ -278,19 +334,23 @@ describe("ReviewRecords", () => {
 			severity: "code",
 			sighting: "content",
 			rounds: "id",
+			frontier: "id",
 			trigger: "id",
 		};
 		const sighting = finding("lens.security", "abc@careful", "one");
-		const record = records().dismissal({
-			finding: sighting.properties.id,
-			by: "writer-name-7c1d",
-			reason: "writer-reason-7c1d",
-			at: "2026-11-15T00:00:00.000Z",
-			severity: "P1",
-			sighting: { revision: `${base}..${head}`, finding: sighting },
-			rounds: [],
-			trigger: { hash: "h", proof: [{ file: "src/a.ts", hash: "f" }] },
-		});
+		const record = records().made(
+			{
+				finding: sighting.properties.id,
+				by: "writer-name-7c1d",
+				reason: "writer-reason-7c1d",
+				at: "2026-11-15T00:00:00.000Z",
+				severity: "P1",
+				sighting: { revision: `${base}..${head}`, finding: sighting },
+				rounds: [],
+				trigger: { hash: "h", proof: [{ file: "src/a.ts", hash: "f" }] },
+			},
+			[],
+		);
 		const { by, reason, ...rest } = record.toJSON().payload as Record<string, unknown>;
 		expect([by, reason]).toEqual(["writer-name-7c1d", "writer-reason-7c1d"]);
 		expect(JSON.stringify(rest)).not.toContain("7c1d");

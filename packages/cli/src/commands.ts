@@ -1005,7 +1005,7 @@ export async function dismiss(
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
 		if (store === undefined)
 			io.stdout(
-				"The dismissal is not shared until a review exports it, and its record will then supersede no shared dismissal; pass --records to share it now.\n",
+				"The dismissal is not shared: no record names the rounds the store held as it was made, so no review exports it. Dismiss it again with --records to share it.\n",
 			);
 		for (const { finding: report, code } of unshared)
 			io.stderr(`melian: the dismissal of ${report} is not shared with the records (${code})\n`);

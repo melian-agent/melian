@@ -8,6 +8,7 @@ import {
 	MemoryRecordStore,
 	type RecordEnvelope,
 	RecordError,
+	type RecordJson,
 	RecordSet,
 	Revision,
 	reviewPayloads,
@@ -167,7 +168,12 @@ async function review(
 		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
 		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),
 	});
-	return { changeset, verdict: result.verdict, stored: (await store?.list(changeset.id)) ?? [] };
+	return {
+		changeset,
+		verdict: result.verdict,
+		unshared: result.unshared,
+		stored: (await store?.list(changeset.id)) ?? [],
+	};
 }
 
 const roundOf = (stored: RecordEnvelope[]) =>
@@ -457,18 +463,38 @@ describe("a review that names a record store", () => {
 const dismissal = { by: "Maintainer", reason: "a is meant to be 2 now.", at: "2026-11-16T00:00:00Z" };
 const dismissalsOf = (stored: RecordEnvelope[]) => stored.filter(({ kind }) => kind === "dismissal");
 
-async function dismissedReview(store: MemoryRecordStore) {
+// A review, and its finding dismissed as `melian dismiss --records` dismisses it, into `store`, or with no store when
+// `shared` is false.
+async function dismissedReview(store: MemoryRecordStore, shared = true) {
 	const first = await review(store);
 	const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
-	await recordDismissal({ harness: harness!, repoRoot: repo, revision: first.changeset.revision, id, dismissal });
+	const records = shared ? { records: { store, changeset: first.changeset.id } } : {};
+	await recordDismissal({
+		harness: harness!,
+		repoRoot: repo,
+		revision: first.changeset.revision,
+		id,
+		dismissal,
+		...records,
+	});
 	return { first, id };
 }
 
 describe("a review that names a record store after a dismissal", () => {
-	it("exports the dismissal as melian dismiss stored it, at the head it was made at", async () => {
+	it("shares no dismissal made with no store, and names it as unshared", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store, false);
+		const later = await review(store);
+		expect(dismissalsOf(later.stored)).toEqual([]);
+		expect(later.unshared).toEqual([{ finding: id, code: "madeWithoutStore" }]);
+	});
+
+	it("shares the dismissal as melian dismiss stored it, at the head it was made at, naming the rounds its store held", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		expect(dismissalsOf(first.stored)).toEqual([]);
+		const held = (await store.list(first.changeset.id)).filter(({ kind }) => kind === "round");
+		expect(held).toHaveLength(1);
 
 		const { stored } = await review(store);
 		const root = (await harness!.root(context)).id;
@@ -497,6 +523,7 @@ describe("a review that names a record store after a dismissal", () => {
 					},
 					head,
 					rounds: [],
+					frontier: held.map((each) => SharedRecord.parseEnvelope(each).id),
 					trigger: {
 						hash: lifecycle.dismissedTrigger!.hash,
 						proof: JSON.parse(JSON.stringify(lifecycle.dismissedTrigger!.proof)),
@@ -579,8 +606,12 @@ describe("a review that names a record store after a dismissal", () => {
 		// An earlier build built the record at export, superseding every dismissal of the finding its listing held.
 		const root = (await harness!.root(context)).id;
 		const state = (await harness!.snapshot(FindingsDocument, root, context))!;
-		const bare = ReviewRecords.of(first.changeset.id, first.changeset.revision).dismissalOf(state, id, [])!.toJSON();
-		const earlier = SharedRecord.parse({ ...bare, supersedes: [once!.id] }, reviewPayloads);
+		const made = ReviewRecords.of(first.changeset.id, first.changeset.revision).madeOf(state, id, [])!.toJSON();
+		const { frontier: _, ...unbounded } = made.payload as { frontier?: string[] };
+		const earlier = SharedRecord.parse(
+			{ ...made, payload: unbounded as RecordJson, supersedes: [once!.id] },
+			reviewPayloads,
+		);
 		await store.add([earlier.toJSON()]);
 
 		const add = vi.spyOn(store, "add");
@@ -591,7 +622,7 @@ describe("a review that names a record store after a dismissal", () => {
 		expect(standing.map(({ id }) => id)).toEqual([earlier.id]);
 	});
 
-	it("exports a dismissal made again with no store as superseding nothing, so both dismissals stand", async () => {
+	it("shares no dismissal made again with no store, so the record of the one it replaced stands alone", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
@@ -605,13 +636,9 @@ describe("a review that names a record store after a dismissal", () => {
 		});
 		expect(dismissalsOf(await store.list(first.changeset.id))).toHaveLength(1);
 
-		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
-		const exported = stored.find((each) => each.id !== once!.id)!;
-		expect(stored).toHaveLength(2);
-		expect(exported.toJSON().supersedes).toBeUndefined();
-		expect((exported.toJSON().payload as { reason: string }).reason).toBe(again.reason);
-		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
-		expect(standing.map(({ id }) => id).sort()).toEqual([once!.id, exported.id].sort());
+		const later = await review(store);
+		expect(dismissalsOf(later.stored).map((each) => SharedRecord.parseEnvelope(each).id)).toEqual([once!.id]);
+		expect(later.unshared).toEqual([{ finding: id, code: "madeWithoutStore" }]);
 		expect(made.unshared).toEqual([]);
 	});
 

@@ -98,7 +98,7 @@ export class ReviewError extends Error {
 	/** The review's long-log warning for the decision index, for a review that failed after giving a reviewer the index. */
 	readonly decisionIndexWarning?: string;
 	/** Each dismissal the review's record export left out, for a review that failed after it exported its round. */
-	readonly unshared: readonly { readonly finding: string; readonly code: "unprovenRun" }[];
+	readonly unshared: readonly { readonly finding: string; readonly code: UnsharedCode }[];
 
 	constructor(
 		code: ReviewErrorCode,
@@ -109,7 +109,7 @@ export class ReviewError extends Error {
 			findings?: readonly Finding[];
 			verdict?: Verdict;
 			decisionIndexWarning?: string;
-			unshared?: readonly { readonly finding: string; readonly code: "unprovenRun" }[];
+			unshared?: readonly { readonly finding: string; readonly code: UnsharedCode }[];
 			cause?: unknown;
 		},
 	) {
@@ -132,14 +132,19 @@ export type DismissErrorCode =
 	| "notInstalled"
 	| "adjudicationFailed"
 	| "unprovenRun"
+	| "madeWithoutStore"
 	| "storeFailed";
+
+/** Why a dismissal has no shared record: one of the {@link DismissErrorCode} values an export reports and goes on. */
+export type UnsharedCode = "unprovenRun" | "madeWithoutStore";
 
 /**
  * A dismissal could not be recorded: `notReviewed` when no verdict is stored for the revision, `unknownFinding` when the
  * verdict holds no finding with the ID, and `notInstalled` when the harness cannot adjudicate. `adjudicationFailed`
  * means the dismissal was recorded but the verdict was not decided again; the next review of the revision decides it.
  * `unprovenRun` means a static finding's dismissal cannot be exported, since its sighting does not show that the run
- * which wrote it stored none of its tool's text. `storeFailed` means the record store given failed, so nothing was
+ * which wrote it stored none of its tool's text. `madeWithoutStore` means a dismissal was made with no record store, so
+ * no record names the rounds its host held then, and none is shared; `melian dismiss --records` shares it. `storeFailed` means the record store given failed, so nothing was
  * recorded, on the host or in the store. `revision` is the revision's key and `finding` the ID.
  */
 export class DismissError extends Error {
