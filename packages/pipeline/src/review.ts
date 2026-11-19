@@ -68,15 +68,7 @@ import {
 import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
 import { ChangeLenses } from "./change-lenses.ts";
-import { writesFixedText } from "./check-request.ts";
-import {
-	type CheckRun,
-	type CheckRunRecord,
-	checksExtensionFor,
-	ranInThisProcess,
-	runChecks,
-	type WriterTrust,
-} from "./checks.ts";
+import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -193,6 +185,7 @@ import {
 import { inManifestOrder, ReviewRecords } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
+import { StaticProof } from "./static-proof.ts";
 import { exportedWalkthrough, SummaryTask, summarizeExtension } from "./summarize.ts";
 import { triageRequest } from "./triage-request.ts";
 import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
@@ -3210,19 +3203,36 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const sighted = (source: FindingSource) =>
 			state === undefined ? [] : producerSightings(state, reviewed, source);
 		const request = run?.request ?? null;
-		// A static sighting is shared only from a run this process made, whose own request asks for check code that
-		// stores no tool text. A run handed in from elsewhere is not tied to the sightings, so it proves nothing.
-		const proven = (check: string) =>
-			run !== undefined && ranInThisProcess(run) && run.asked !== undefined && writesFixedText(run.asked, check);
-		const exported = checks.flatMap((check) => {
-			if (check.name.startsWith("lens.") || check.name.startsWith("decisions.")) return [];
+		// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
+		// under a stored request that asks for check code that stores no tool text. A run handed in proves nothing alone.
+		// The stamp names the check task that wrote them, which must be the one the run's own task recorded. A request that did
+		// not key everything its run read vouches for no result to another host, whatever its task.
+		const proof = await StaticProof.read(harness, root, context, run?.identity);
+		const unshared = (check: string): "withheld" | "unkeyed" | undefined =>
+			run === undefined || !proof.proves(state, reviewed, check, run.request)
+				? "withheld"
+				: proof.keyedFully(run.request)
+					? undefined
+					: "unkeyed";
+		const exported = checks.flatMap((handed) => {
+			if (handed.name.startsWith("lens.") || handed.name.startsWith("decisions.")) return [];
+			// A static check is exported as the run stored it: a caller's record beside a genuine run is not its word.
+			const stored = handed.name.startsWith("static.") ? proof.recorded(handed.name) : undefined;
+			const check = stored ?? handed;
 			if (!["ran", "provisional", "skipped", "failed"].includes(check.status)) return [];
 			const counted = check.status === "ran" || check.status === "provisional";
 			const sightings = counted
 				? sighted({ check: check.name, ...(check.version === undefined ? {} : { version: check.version }) })
 				: [];
-			if (check.name.startsWith("static.") && sightings.length > 0 && !proven(check.name)) {
-				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason: "withheld", error: "" };
+			// An empty result needs the proof too: a stale run that found nothing replaces the sightings and stamps its own key.
+			const reason =
+				check.name.startsWith("static.") && counted
+					? stored === undefined
+						? "withheld"
+						: unshared(check.name)
+					: undefined;
+			if (reason !== undefined) {
+				const withheld: CheckRunRecord = { name: check.name, status: "failed", reason, error: "" };
 				return [{ name: check.name, record: records.check(request, withheld, []) }];
 			}
 			// A host's record may leave out the count and the notes a run writes; its sightings and none stand for them.

@@ -1,0 +1,191 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "89449306c05d43b5f1f1817d8bf5eac27c7b1514",
+		"head": "80ed5f65a7ac28edad0905b693a55f15992f2f3b"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8cdcee292844ec82e88cf977a8411cb9c00c87337ccf2747534df7a099c9b546",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d0e476239438777db944a016f6fe0d3bb9e3332f9a9262eb75120b451823e587",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 73,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.name.startsWith(\"static.\") && counted || !proven(check.name)",
+			"status": "generated",
+			"id": "37a83418df10864ae42716943794950ea37970eab9d472d2d78ec7cd29d8df94",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cae2b4be46bef1edfe58c9e5f4307ff190773fc6775730fad8b4747e9b753088",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.name.startsWith(\"static.\") || counted",
+			"status": "generated",
+			"id": "a0a07556419e4c42bd16ac4408a3ab9003a7a80c1a96043e9fda40d4c031aa71",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 7,
+			"endLine": 3176,
+			"endColumn": 39,
+			"mutatorName": "MethodExpression",
+			"replacement": "check.name.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "30adb521a7ded078b6f195b83b58a8c8d5cc441d79a25400546028c28f401c5b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-planted-sighting.test.ts",
+					"path": [
+						"a static check's sightings, beside the run a host made of the same revision",
+						"are withheld when a sighting an older build stored sits beside them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 29,
+			"endLine": 3176,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2f3b23f41afe939ae33ae731ac5e478f0860d8dcd6d0b32b15ade1861dc06920"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3176,
+			"column": 54,
+			"endLine": 3176,
+			"endColumn": 73,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "proven(check.name)",
+			"status": "generated",
+			"id": "79fa6ffa7c33e779e06371d08fa87e7ac8d1623c801db114a634215fb46c091d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}
