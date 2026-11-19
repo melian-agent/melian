@@ -1,1 +1,3 @@
 * text=auto
+# The code-hash gate hashes TypeScript as checked out, so every platform checks it out with LF.
+*.ts text eol=lf

@@ -1,0 +1,3 @@
+# Lens token budgets raised, 2026-11-18
+
+Every lens under `.melian/lenses/` that set 600,000 tokens now sets 3,000,000, the design lens 10,000,000, and each quick level 1,000,000 where it had 100,000, by the maintainer's ruling of 2026-11-18 in the coordinator session. [The decision](../decisions/2026-11-18-lens-budgets-fit-the-requests-a-review-makes.md) says why: a request is about 230,000 tokens, most of it standards, so a lens ended after a few requests, and three pull requests read not reviewed that day. `AGENTS.md` names the new budget. No code changed, and no file here guards trust or durability.

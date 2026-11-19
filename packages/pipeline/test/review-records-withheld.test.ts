@@ -115,7 +115,7 @@ describe("an exported record holds no text a tool, a provider or the head wrote"
 			reason: "fine",
 			at: "2026-11-16T00:00:00.000Z",
 			severity: "P2",
-			// A static finding's dismissal is not shared at all, so a guardrail's carries the version here.
+			// A static finding's dismissal is shared only with its run's proof, so a guardrail's carries the version here.
 			sighting: { revision: `${"a".repeat(40)}..${"b".repeat(40)}`, finding: sighting(token, "guardrails") },
 			rounds: [],
 			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "f" }] },
