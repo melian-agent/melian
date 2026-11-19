@@ -535,6 +535,21 @@ describe("review payload checks", () => {
 		expect(check("verification", { ...payload, check: null })).toBeUndefined();
 	});
 
+	// A version 1 lens task resumes with no level, so a source names the bare lens version or that version at a level.
+	it("takes a lens source's version bare or at a level, and refuses any other", () => {
+		const payload = samples.find(([kind]) => kind === "account")?.[1] as Record<string, RecordJson>;
+		const naming = (version: string) =>
+			check("account", { ...payload, producers: [{ check: "lens.security", version, ids: null }] });
+		const refusal = "names a version at /producers/0/version that is not one Melian writes";
+		expect(naming(lensVersion)).toBeUndefined();
+		expect(naming(`${lensVersion}@careful`)).toBeUndefined();
+		expect(naming(`${lensVersion}@loud`)).toBe(refusal);
+		expect(naming(`${lensVersion}@careful@careful`)).toBe(refusal);
+		expect(naming(`${lensVersion}@`)).toBe(refusal);
+		expect(naming("0123456789a")).toBe(refusal);
+		expect(naming("0123456789a@careful")).toBe(refusal);
+	});
+
 	it("refuses a verification that matches a claim against a dismissal it does not name", () => {
 		const payload = samples.find(([kind]) => kind === "verification")?.[1] as Record<string, RecordJson>;
 		expect(check("verification", { ...payload, dismissals: [] })).toBe(
