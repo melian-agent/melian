@@ -121,7 +121,9 @@ function sourceVersion(check: string, version: string): boolean {
 	if (!check.startsWith("lens.")) return checkVersion(check, version);
 	const [hash, level, ...rest] = version.split("@");
 	return (
-		rest.length === 0 && lensVersion.test(hash ?? "") && (level === undefined || scrutinyLevels.includes(level as never))
+		rest.length === 0 &&
+		lensVersion.test(hash ?? "") &&
+		(level === undefined || scrutinyLevels.includes(level as never))
 	);
 }
 

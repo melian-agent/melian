@@ -388,33 +388,38 @@ describe("a shared record's classed fields", () => {
 		const triggered = (trigger: RecordJson) =>
 			check("lens", at(samples.lens.payload, "outcome", { ...done, escalation: { ...escalation, trigger } }));
 		const answers = [{ question: "security", distribution: { [key]: -1 }, chosen: "careful" }];
-		const decision = { questionSet: { name: "triage", version: "1" }, decider: "llm", calibrated: false, model: null };
+		const decision = {
+			questionSet: { name: "triage", version: "1" },
+			decider: "llm",
+			calibrated: false,
+			model: null,
+		};
 		const proof = { file: "src/run.ts", hash: hash("1") };
 		const wrong = "does not match its schema at";
-		expect.soft(triggered({ kind: "severity", severity: "PX" })).toBe(
-			`${wrong} /outcome/escalation/trigger/severity: must be equal to constant`,
-		);
-		expect.soft(triggered({ kind: "severity", severity: "P1", [key]: 1 })).toBe(
-			`${wrong} /outcome/escalation/trigger/*: schema is false`,
-		);
+		expect
+			.soft(triggered({ kind: "severity", severity: "PX" }))
+			.toBe(`${wrong} /outcome/escalation/trigger/severity: must be equal to constant`);
+		expect
+			.soft(triggered({ kind: "severity", severity: "P1", [key]: 1 }))
+			.toBe(`${wrong} /outcome/escalation/trigger/*: schema is false`);
 		const usage = { models: [1], tokens: 0, costMicros: 0 };
-		expect.soft(check("lens", at(samples.lens.payload, "outcome", { ...done, usage }))).toBe(
-			`${wrong} /outcome/usage/models/0: must be string`,
-		);
-		expect.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers }))).toBe(
-			`${wrong} /decision/answers/0/distribution/*: must be >= 0`,
-		);
+		expect
+			.soft(check("lens", at(samples.lens.payload, "outcome", { ...done, usage })))
+			.toBe(`${wrong} /outcome/usage/models/0: must be string`);
+		expect
+			.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers })))
+			.toBe(`${wrong} /decision/answers/0/distribution/*: must be >= 0`);
 		// A key spelt as the map's own pattern is still the record's.
 		const pattern = [{ ...answers[0], distribution: { "^.*$": -1 } }];
-		expect.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers: pattern }))).toBe(
-			`${wrong} /decision/answers/0/distribution/*: must be >= 0`,
-		);
-		expect.soft(check("dismissal", at(samples.dismissal.payload, "trigger/proof/0", { ...proof, [key]: 1 }))).toBe(
-			`${wrong} /trigger/proof/0/*: schema is false`,
-		);
-		expect.soft(check("verification", at(samples.verification.payload, "check/status", "x"))).toBe(
-			`${wrong} /check/status: must be equal to constant`,
-		);
+		expect
+			.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers: pattern })))
+			.toBe(`${wrong} /decision/answers/0/distribution/*: must be >= 0`);
+		expect
+			.soft(check("dismissal", at(samples.dismissal.payload, "trigger/proof/0", { ...proof, [key]: 1 })))
+			.toBe(`${wrong} /trigger/proof/0/*: schema is false`);
+		expect
+			.soft(check("verification", at(samples.verification.payload, "check/status", "x")))
+			.toBe(`${wrong} /check/status: must be equal to constant`);
 	});
 
 	// The pattern takes its length from the one `versioned` cuts a lens's hash to, so every lens Melian ships fits it.

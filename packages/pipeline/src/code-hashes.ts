@@ -84,7 +84,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
-	"packages/core/src/record-payloads.ts": "4a5ac4d9fabe83a4d9e6c845b7eef4d26a3018fe74bffe02cea2fb5c79f77809",
+	"packages/core/src/record-payloads.ts": "b6b3459f64e2cfa45f848b2852f1b3d84a5ee4d4d1292dcd15f0d98276142395",
 
 	"packages/core/src/record-store.ts": "4c86098bd02ce1931f3f1fe9793aad3b5373cb8982373af4ae8c8be895c4ae57",
 
