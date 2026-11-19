@@ -1,0 +1,9 @@
+{
+  "commit": "a69fac993",
+  "changeset": "range-8fb67dfe2bac6ead",
+  "key": "8b854d1174e8a1a7e798ad08b28d5a8edf5eb8ca..8aa3e8756e25bd8e8feb1fbfe7a187941e63c32b",
+  "adjudication": {
+    "task": 9,
+    "input": "{\"root\":1,\"repoRoot\":\"/tmp/melian-review-O8k6EH\",\"base\":\"8b854d1174e8a1a7e798ad08b28d5a8edf5eb8ca\",\"head\":\"8aa3e8756e25bd8e8feb1fbfe7a187941e63c32b\",\"config\":{\"resolution\":{\"P0\":\"block\",\"P1\":\"block\",\"P2\":\"acknowledge\",\"P3\":\"advisory\",\"nit\":\"silent\",\"preExisting\":{\"P0\":\"advisory\",\"P1\":\"advisory\",\"P2\":\"advisory\",\"P3\":\"advisory\",\"nit\":\"advisory\"}},\"ruleAliases\":{}},\"manifest\":[\"static.mutation\"],\"checks\":[{\"name\":\"static.mutation\",\"status\":\"ran\"}],\"findingsVersion\":0,\"allowSkip\":[],\"producers\":[{\"check\":\"static.mutation\"}],\"provenance\":{\"verifierVersion\":\"a19ab2f7fcb43ecc\",\"kind\":\"range\",\"policy\":\"config\",\"manifest\":[\"static.mutation\"],\"lenses\":[]},\"verificationRan\":true,\"files\":[]}"
+  }
+}
