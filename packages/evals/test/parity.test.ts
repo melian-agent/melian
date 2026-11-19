@@ -403,6 +403,8 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			name: "melian.lens",
 			subject: "correctness@1@deep",
 			outcome: "completed",
+			models: ["model"],
+			effort: { requested: [], reported: [] },
 			tokens: 100,
 			cacheRead: 40,
 			budgetTokens: 60,
@@ -415,7 +417,12 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		const whole = [
 			lensStage(),
 			lensStage({ id: "t", name: "melian.triage", subject: "triage", usage: usage({ model: 35 }, 20) }),
-			lensStage({ id: "c", name: "melian.verification.candidate", subject: "claim", usage: usage({ model: 50 }, 30) }),
+			lensStage({
+				id: "c",
+				name: "melian.verification.candidate",
+				subject: "claim",
+				usage: usage({ model: 50 }, 30),
+			}),
 			lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
 			lensStage({ id: "w", name: "melian.walkthrough", subject: "walkthrough", usage: usage({ model: 12 }, 7) }),
 			lensStage({ id: "p", role: "prober", usage: usage({ model: 50 }, 20) }),
@@ -426,6 +433,42 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(lines.filter((line) => line.startsWith("    by"))).toEqual([
 			"    by Melian's budget count: lenses 60, probers 30, triage 15, verification 40, walkthrough 5; the lenses' spend is the parity arm's total",
 			"    by Melian's budget count: lenses 60, probers 30, triage 15, verification 40, walkthrough 5",
+		]);
+	});
+
+	it("records each stage's model and the effort it asked for and the provider reported", async () => {
+		const answered = new TokenUsage();
+		const counted = {
+			input: 50,
+			output: 10,
+			cacheRead: 30,
+			cacheWrite: 10,
+			totalTokens: 100,
+			cost: usage({}, 0).total.cost,
+		};
+		answered.add("openai-codex/gpt-5.6-sol", counted, {
+			requested: "high",
+			source: "observed",
+			sent: [],
+			providerReported: "medium",
+		});
+		answered.add("openai-codex/gpt-5.6-sol", counted, { requested: "high", source: "observed", sent: [] });
+		answered.add("openai-codex/gpt-5.6-sol", counted, {
+			requested: "high",
+			source: "observed",
+			sent: [],
+			providerReported: "high",
+		});
+		const using = runners([
+			[
+				lensStage({ usage: answered.toJSON() }),
+				lensStage({ id: "t", name: "melian.triage", usage: usage({ model: 10 }, 0) }),
+			],
+		]);
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using);
+		expect(results().attempts[0]!.stages.map(({ models, effort }) => ({ models, effort }))).toEqual([
+			{ models: ["openai-codex/gpt-5.6-sol"], effort: { requested: ["high"], reported: ["medium", "high"] } },
+			{ models: ["model"], effort: { requested: [], reported: [] } },
 		]);
 	});
 

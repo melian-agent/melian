@@ -198,6 +198,10 @@ export interface ParityStage {
 	readonly subject: string;
 	readonly role?: "planner" | "prober";
 	readonly outcome: string;
+	/** The models that answered it; more than one means a model failed over, which stops the run. */
+	readonly models: readonly string[];
+	/** The reasoning effort its requests asked for, and what the provider reported, each value once in request order. */
+	readonly effort: { readonly requested: readonly string[]; readonly reported: readonly string[] };
 	/** Every response's input, output, cache reads and cache writes, as a round's Spend line counts. */
 	readonly tokens: number;
 	readonly cacheRead: number;
@@ -305,6 +309,7 @@ function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): Pa
 							!stage.shown?.includes(path) &&
 							!stage.read?.some((read) => read.path === path),
 					);
+		const requests = stage.usage?.requests ?? [];
 		const probes = stage.probes;
 		const openAttacks =
 			stage.ended === undefined || probes === undefined
@@ -315,6 +320,11 @@ function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): Pa
 			subject: stage.subject,
 			...(stage.role === undefined ? {} : { role: stage.role }),
 			outcome: stage.outcome,
+			models: Object.keys(stage.usage?.models ?? {}),
+			effort: {
+				requested: [...new Set(requests.map(({ reasoning }) => reasoning.requested))],
+				reported: [...new Set(requests.flatMap(({ reasoning }) => reasoning.providerReported ?? []))],
+			},
 			tokens,
 			cacheRead,
 			budgetTokens,
