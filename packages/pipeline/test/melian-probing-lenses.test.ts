@@ -99,7 +99,7 @@ describe("Melian's own trust-boundary lenses", { timeout: 60_000 }, () => {
 			reads: "functions",
 			verify: true,
 			probe: { prober: "medium" },
-			budget: { findings: 12, tokens: 600_000, tools: 90 },
+			budget: { findings: 12, tokens: 3_000_000, tools: 90 },
 		});
 		expect(prober.level("careful").probe).toBeUndefined();
 		expect(prober.rules).toEqual(reader.rules);
