@@ -902,6 +902,28 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect((vi.mocked(one.range).mock.calls[1]![1].probing as ParityArm).total).toBe(1);
 	});
 
+	it("keeps a run stopped when a narrowed resume finishes its misses and leaves another the results file names", async () => {
+		const judge = vi.spyOn(Miss.prototype, "judge").mockResolvedValue({ said: "found", found: true });
+		try {
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "540" }, runners())).status).toBe(3);
+			expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
+				["one", "committed"],
+				["one", "parity"],
+				["two", "committed"],
+			]);
+			const narrowed = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners());
+			expect(narrowed.status).toBe(3);
+			expect(results().stopped).toBe("two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES");
+			expect(narrowed.lines.at(-1)).toBe(
+				`stopped: two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES; resume with the same MELIAN_EVAL_PARITY_OUT`,
+			);
+			expect((await measure(env, runners())).status).toBe(0);
+			expect(results().stopped).toBeUndefined();
+		} finally {
+			judge.mockRestore();
+		}
+	});
+
 	it("exits 0 on a resumed run that scored every miss, whatever attempts an earlier stop left", async () => {
 		const judge = vi.spyOn(Miss.prototype, "judge").mockResolvedValue({ said: "found", found: true });
 		try {

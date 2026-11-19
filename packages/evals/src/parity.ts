@@ -758,6 +758,11 @@ export async function measureParity(
 				);
 		}
 	}
+	const unfinished = Object.keys(results.misses).find((name) =>
+		(["committed", "parity"] as const).some((arm) => finished(name, arm) === undefined),
+	);
+	if (unfinished !== undefined)
+		return stop(`${unfinished} is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES`);
 	return results.attempts.every((attempt) => attempt.stopped !== undefined || attempt.found !== undefined) ? 0 : 1;
 }
 
