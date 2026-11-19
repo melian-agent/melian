@@ -8,6 +8,8 @@ import {
 	defaultConfig,
 	everyRecordCounts,
 	Finding,
+	findingId,
+	fingerprintKey,
 	Lens,
 	type LensPayload,
 	type MelianConfig,
@@ -864,6 +866,46 @@ describe("the dismissal records a reader applies", () => {
 		const reopened = await readAfter([first], [first]);
 		expect([reopened.status, reopened.blocking]).toEqual(["findings", true]);
 		expect(standingOf(reopened)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("tests a dismissal against no other finding's sightings in a round since it", async () => {
+		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		// The round since sights only another finding, citing a hunk its revision lacks, which would reopen this one.
+		type Sighting = {
+			ruleId: string;
+			properties: { id: string; occurrence?: number; discriminator?: string };
+			partialFingerprints: Record<string, string>;
+			locations: { physicalLocation: { region: { snippet?: { text: string } } } }[];
+		};
+		const payload = elsewhere.payload as { sightings: Sighting[] };
+		const renamed = (each: Sighting): Sighting => {
+			const rule = "another-rule";
+			const { occurrence, discriminator } = each.properties;
+			const snippet = each.locations[0]!.physicalLocation.region.snippet?.text ?? "";
+			const other = findingId({ file: "src/a.ts", rule, snippet, occurrence, discriminator });
+			return {
+				...each,
+				ruleId: rule,
+				properties: { ...each.properties, id: other },
+				partialFingerprints: { ...each.partialFingerprints, [fingerprintKey]: other },
+			};
+		};
+		const other = SharedRecord.parseEnvelope({
+			...elsewhere.toJSON(),
+			payload: { ...payload, sightings: payload.sightings.map(renamed) } as unknown as RecordJson,
+		});
+		const since = roundAt("1", "2", [other], [first]);
+		const read = await readAfter([since], [first, since, other], [first]);
+		expect(standingOf(read).filter(([each]) => each === id)).toEqual(dismissedOf(id));
+	});
+
+	it("tests no round its writer held before its frontier, though a later round names it beside the frontier", async () => {
+		const { id, elsewhere, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		// The writer held `earlier`, whose sighting would reopen the finding, through `frontier`, which follows it.
+		const earlier = roundAt("1", "2", [elsewhere], []);
+		const frontier = roundAt("2", "3", [], [earlier]);
+		const read = await readAfter([earlier, frontier], [earlier, frontier, elsewhere], [frontier]);
+		expect(standingOf(read)).toEqual(dismissedOf(id));
 	});
 
 	// The reader cannot yet see that Y lacked h, since no record holds Y's hunks; the fix waits on the maintainer.

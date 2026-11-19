@@ -41,6 +41,7 @@ import {
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
+import { DismissError } from "../src/errors.ts";
 import { dismissFinding, FindingsDocument } from "../src/findings.ts";
 import { type ConversationId, StorageRejected, type Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
@@ -678,6 +679,28 @@ describe("a review that names a record store after a dismissal", () => {
 
 		expect(made.unshared).toEqual([]);
 		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+	});
+});
+
+describe("a review that names a record store, when building a dismissal's record fails", () => {
+	it.each([
+		["an error of no dismissal", () => new Error("the store's record is malformed")],
+		[
+			"a dismissal error that is no reason to leave the record unshared",
+			() => new DismissError("notInstalled", "no dismissal task", { revision: "r", finding: "f" }),
+		],
+	])("fails the review on %s", async (_, made) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const thrown = made();
+		const spy = vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw thrown;
+		});
+		try {
+			await expect(review(store)).rejects.toBe(thrown);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });
 

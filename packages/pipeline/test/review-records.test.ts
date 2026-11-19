@@ -9,6 +9,7 @@ import {
 	type StoredFinding,
 } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
+import type { FindingsState } from "../src/findings.ts";
 import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 
 const base = "a".repeat(40);
@@ -161,6 +162,14 @@ describe("ReviewRecords", () => {
 		const listing = [held.toJSON(), round.toJSON()];
 		expect(records().made(facts, listing).toJSON()).toEqual(held.toJSON());
 		expect(records().dismissal(facts, listing).toJSON()).toEqual(held.toJSON());
+	});
+
+	it("gives no dismissal identity for a finding whose state froze no dismissed sighting", () => {
+		const state = {
+			items: { undismissed: { lifecycle: { status: "new" } } },
+			revisions: [],
+		} as unknown as FindingsState;
+		expect(records().dismissalIdentity(state, "undismissed", [])).toBeUndefined();
 	});
 
 	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
