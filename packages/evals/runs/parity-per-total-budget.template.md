@@ -11,6 +11,7 @@ Every earlier measurement ran the design lens with its graph tools refusing, bec
 - Codex's "tokens used" is input less cached input, plus output.
 - The Agent tool's figure for a review of record was unverified before this measurement, and is now known not to be a sum.
 - Every parity lens runs at `high` thinking, so part of each share goes on reasoning.
+- The parity total is what the committed arm's lens conversations spent by the budget count, a probing lens's planner included. Its probers, triage, verification and walkthrough are left out of it; the run prints each one's spend beside the total after every review, and the results table gives them below.
 
 Melian's yardstick is [the review of record on pull request #552](https://github.com/melian-agent/melian/pull/552#issuecomment-6965864283): 52 tool uses in 23 minutes, about 8.03 million tokens summed from its transcript with cache reads, beside Codex's 114,858 printed tokens, about 1.6 million with cache reads. These are the Spend kind, so compare them with the Spend columns below, not the budget count.
 
@@ -28,6 +29,12 @@ Melian's yardstick is [the review of record on pull request #552](https://github
 | Miss | Committed arm | Spend (cache reads) | Budget count | Parity total | Parity arm | Spend (cache reads) | Budget count |
 |---|---|---|---|---|---|---|---|
 | `<miss>` | `<found by …, or missed, or unscored>` | `<tokens> (<cache reads>)` | `<budgetTokens>` | `<total>` | `<said>` | `<tokens> (<cache reads>)` | `<budgetTokens>` |
+
+The committed arm's whole review by the budget count, from the line the run printed after it:
+
+| Miss | Lenses (the parity total) | Probers | Triage | Verification | Walkthrough |
+|---|---|---|---|---|---|
+| `<miss>` | `<lenses>` | `<probers>` | `<triage>` | `<verification>` | `<walkthrough>` |
 
 Run totals over every attempt, stopped ones included: `<tokens>` Spend, `<budgetTokens>` by the budget count. Stopped attempts: `<miss, arm and stopped reason for each, or none>`.
 

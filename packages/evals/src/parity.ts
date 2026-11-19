@@ -349,8 +349,22 @@ function stopCause(
 	return undefined;
 }
 
-const offTop = (stage: ParityStage) => stage.name === "melian.verification" || stage.role === "prober";
+// The yardstick: what the committed arm's lens conversations spent, planners included. Probers, triage, verification
+// and the walkthrough are left out, so the parity arm's lenses and probers together never spend more than this.
+const lensSpend = (stage: ParityStage) => stage.name === "melian.lens" && stage.role !== "prober";
 const budgeted = (stages: readonly ParityStage[]) => stages.reduce((sum, stage) => sum + stage.budgetTokens, 0);
+
+// What each kind of stage spent by Melian's budget count, so a reader sees the whole review beside the lenses' total.
+function stageSpend(stages: readonly ParityStage[]): string {
+	const kinds: [string, (stage: ParityStage) => boolean][] = [
+		["lenses", lensSpend],
+		["probers", (stage) => stage.role === "prober"],
+		["triage", (stage) => stage.name === "melian.triage"],
+		["verification", (stage) => stage.name.startsWith("melian.verification")],
+		["walkthrough", (stage) => stage.name === "melian.walkthrough"],
+	];
+	return kinds.map(([kind, of]) => `${kind} ${budgeted(stages.filter(of))}`).join(", ");
+}
 
 /**
  * Runs the committed arm and then the parity arm on each miss, the parity arm's lenses sharing what the committed arm's
@@ -551,7 +565,7 @@ export async function measureParity(
 			let total: number | undefined;
 			if (arm === "parity") {
 				const committed = finished(miss.name, "committed")!;
-				total = budgeted(committed.stages) - budgeted(committed.stages.filter(offTop));
+				total = budgeted(committed.stages.filter(lensSpend));
 				const unrun =
 					committed.reviewed === undefined
 						? "not run: the committed arm had no review"
@@ -668,6 +682,11 @@ export async function measureParity(
 			print(
 				visibleText(
 					`${parityLabel(arm)} ${miss.name}: ${judged.said}; ${tokens} tokens, ${cacheRead} of them cache reads, ${budgetTokens} by Melian's budget count; run so far ${spent()} tokens, ${budgetSpent()} by Melian's budget count`,
+				),
+			);
+			print(
+				visibleText(
+					`    by Melian's budget count: ${stageSpend(stages)}${arm === "committed" ? "; the lenses' spend is the parity arm's total" : ""}`,
 				),
 			);
 			for (const stage of stages.filter((each) => each.ended !== undefined))

@@ -382,7 +382,10 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(lines[0]).toBe(
 			"committed two: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds src/scan.ts; 180 tokens, 70 of them cache reads, 110 by Melian's budget count; run so far 180 tokens, 110 by Melian's budget count",
 		);
-		expect(lines[1]).toMatch(
+		expect(lines[1]).toBe(
+			"    by Melian's budget count: lenses 60, probers 30, triage 0, verification 20, walkthrough 0; the lenses' spend is the parity arm's total",
+		);
+		expect(lines[2]).toMatch(
 			/^Parity per total budget two: .*; run so far 360 tokens, 220 by Melian's budget count$/,
 		);
 		const written = results();
@@ -406,6 +409,24 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			tools: 7,
 			minutes: 2,
 		});
+	});
+
+	it("gives the parity arm only what the committed arm's lenses spent, never triage, verification or the walkthrough", async () => {
+		const whole = [
+			lensStage(),
+			lensStage({ id: "t", name: "melian.triage", subject: "triage", usage: usage({ model: 35 }, 20) }),
+			lensStage({ id: "c", name: "melian.verification.candidate", subject: "claim", usage: usage({ model: 50 }, 30) }),
+			lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
+			lensStage({ id: "w", name: "melian.walkthrough", subject: "walkthrough", usage: usage({ model: 12 }, 7) }),
+			lensStage({ id: "p", role: "prober", usage: usage({ model: 50 }, 20) }),
+		];
+		const using = runners([whole]);
+		const { lines } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using);
+		expect((vi.mocked(using.range).mock.calls[1]![1].probing as ParityArm).total).toBe(60);
+		expect(lines.filter((line) => line.startsWith("    by"))).toEqual([
+			"    by Melian's budget count: lenses 60, probers 30, triage 15, verification 40, walkthrough 5; the lenses' spend is the parity arm's total",
+			"    by Melian's budget count: lenses 60, probers 30, triage 15, verification 40, walkthrough 5",
+		]);
 	});
 
 	it("records what a lens its share ended had left: covered files it never saw, and attacks its prober never ran", async () => {
