@@ -380,6 +380,38 @@ describe("a shared record's classed fields", () => {
 		);
 	});
 
+	// The walk follows the schema through a union, an array and a map, and masks only what the schema does not name.
+	it("names each segment the schema names through a union, an array or a map", () => {
+		const key = "98765";
+		const done = { status: "done", model: null, budgetEnded: null, capped: null, escalation: null, usage: null };
+		const escalation = { to: null, carried: [], kept: [], refuted: [] };
+		const triggered = (trigger: RecordJson) =>
+			check("lens", at(samples.lens.payload, "outcome", { ...done, escalation: { ...escalation, trigger } }));
+		const answers = [{ question: "security", distribution: { [key]: -1 }, chosen: "careful" }];
+		const decision = { questionSet: { name: "triage", version: "1" }, decider: "llm", calibrated: false, model: null };
+		const proof = { file: "src/run.ts", hash: hash("1") };
+		const wrong = "does not match its schema at";
+		expect.soft(triggered({ kind: "severity", severity: "PX" })).toBe(
+			`${wrong} /outcome/escalation/trigger/severity: must be equal to constant`,
+		);
+		expect.soft(triggered({ kind: "severity", severity: "P1", [key]: 1 })).toBe(
+			`${wrong} /outcome/escalation/trigger/*: schema is false`,
+		);
+		const usage = { models: [1], tokens: 0, costMicros: 0 };
+		expect.soft(check("lens", at(samples.lens.payload, "outcome", { ...done, usage }))).toBe(
+			`${wrong} /outcome/usage/models/0: must be string`,
+		);
+		expect.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers }))).toBe(
+			`${wrong} /decision/answers/0/distribution/*: must be >= 0`,
+		);
+		expect.soft(check("dismissal", at(samples.dismissal.payload, "trigger/proof/0", { ...proof, [key]: 1 }))).toBe(
+			`${wrong} /trigger/proof/0/*: schema is false`,
+		);
+		expect.soft(check("verification", at(samples.verification.payload, "check/status", "x"))).toBe(
+			`${wrong} /check/status: must be equal to constant`,
+		);
+	});
+
 	// The pattern takes its length from the one `versioned` cuts a lens's hash to, so every lens Melian ships fits it.
 	it("accepts every built-in lens's version", async () => {
 		const lenses = await Lens.builtins();
