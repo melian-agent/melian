@@ -10,6 +10,7 @@ import {
 	RecordError,
 	type RecordJson,
 	RecordSet,
+	type RepositorySource,
 	Revision,
 	reviewPayloads,
 	SharedRecord,
@@ -102,7 +103,7 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: CheckRun } = {},
+	run: { readonly checkRun?: CheckRun; readonly policy?: RepositorySource } = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
@@ -125,8 +126,8 @@ async function review(
 			? fauxAssistantMessage(fauxToolCall("report_finding", changedReturn), { stopReason: "toolUse" })
 			: fauxAssistantMessage("No findings.");
 	scriptConversations(fake, [
-		{ match: correctness, replies: [answer, answer] },
-		{ match: contracts, replies: [answer, answer, answer, answer, answer, answer] },
+		{ match: correctness, replies: Array.from({ length: 8 }, () => answer) },
+		{ match: contracts, replies: Array.from({ length: 8 }, () => answer) },
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -165,6 +166,7 @@ async function review(
 					},
 				}),
 		...(store === undefined ? {} : { records: store }),
+		...(run.policy === undefined ? {} : { policy: run.policy }),
 		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
 		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),
 	});
@@ -1003,5 +1005,156 @@ describe("a review that names a record store and writes a walkthrough", () => {
 
 		expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
 		expect(Date.now() - began).toBeLessThan(30_000);
+	});
+});
+
+describe("a dismissal shared across hosts that each hold some of its rounds", () => {
+	// Each host keeps its own findings and holds only the rounds it ran; every host shares one record store and one
+	// repository. The oracle runs every round and every dismissal in order, as a host that held them all would.
+	const worktree: RepositorySource = { kind: "worktree" };
+	type Host = { harness: Harness | undefined; latest?: Awaited<ReturnType<typeof review>> };
+	type Step = { readonly kind: "commit-a" | "commit-other" | "review" | "dismiss"; readonly host: number };
+
+	const random = (seed: number) => () => {
+		seed = (seed + 0x6d2b79f5) | 0;
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+
+	function historyOf(seed: number): Step[] {
+		const next = random(seed);
+		const hosts = 2 + Math.floor(next() * 2);
+		const pick = () => Math.floor(next() * hosts);
+		// Every history opens with a review and a dismissal on host 0, and ends with a review the reader reads.
+		const steps: Step[] = [
+			{ kind: "review", host: 0 },
+			{ kind: "dismiss", host: 0 },
+		];
+		const kinds = ["commit-a", "commit-other", "review", "review", "dismiss"] as const;
+		for (let length = 3 + Math.floor(next() * 5); length > 0; length--) {
+			steps.push({ kind: kinds[Math.floor(next() * kinds.length)]!, host: pick() });
+		}
+		steps.push({ kind: "review", host: pick() });
+		return steps;
+	}
+
+	const findingOf = (reviewed: Awaited<ReturnType<typeof review>>) =>
+		reviewed.verdict.all().find(({ ruleId }) => ruleId === "changed-return")?.id;
+
+	async function statusOn(on: Harness, id: string) {
+		const root = (await on.root(context)).id;
+		return (await on.snapshot(FindingsDocument, root, context))!.items[id]?.lifecycle.status;
+	}
+
+	// Runs one review on `host`, whose harness the shared `review` helper opens and keeps.
+	async function reviewOn(host: Host, store: MemoryRecordStore | undefined) {
+		harness = host.harness;
+		try {
+			host.latest = await review(store, checks, undefined, undefined, { policy: worktree });
+		} finally {
+			host.harness = harness;
+			harness = undefined;
+		}
+		return host.latest;
+	}
+
+	// Dismisses as `melian dismiss` does, at the revision `as` last reviewed, which `host` reviewed too.
+	async function dismissOn(host: Host, as: Host, store: MemoryRecordStore | undefined, at: string) {
+		const latest = as.latest!;
+		const id = findingOf(latest);
+		if (id === undefined) return;
+		await recordDismissal({
+			harness: host.harness!,
+			repoRoot: repo,
+			revision: latest.changeset.revision,
+			id,
+			dismissal: { ...dismissal, at },
+			...(store === undefined ? {} : { records: { store, changeset: latest.changeset.id } }),
+		});
+	}
+
+	// What a reader of the last round makes of the finding, and what the oracle's own lifecycle makes of it.
+	async function outcomeOf(steps: readonly Step[]) {
+		// The finding sits on line 1; line 2 shares its hunk, so an edit there reopens it and keeps its ID.
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;") },
+			{ "src/a.ts": lines("export const a = 2;", "export const k = 0;") },
+		);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const hosts: Host[] = [0, 1, 2].map(() => ({ harness: undefined }));
+		const oracle: Host = { harness: undefined };
+		let edits = 0;
+		let k = 0;
+		try {
+			for (const [index, step] of steps.entries()) {
+				const host = hosts[step.host]!;
+				// Each edit toggles the line beside the finding, in its hunk, so one reopens it and the next restores the text it
+				// was dismissed over.
+				if (step.kind === "commit-a") {
+					k = 1 - k;
+					commit(repo, { "src/a.ts": lines("export const a = 2;", `export const k = ${k};`) });
+				}
+				if (step.kind === "commit-other") commit(repo, { "src/b.ts": lines(`export const b = ${edits++};`) });
+				if (step.kind === "review") {
+					await reviewOn(host, store);
+					await reviewOn(oracle, undefined);
+				}
+				if (step.kind === "dismiss" && host.latest !== undefined) {
+					const at = new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString().replace(".000", "");
+					await dismissOn(host, host, store, at);
+					await dismissOn(oracle, host, undefined, at);
+				}
+			}
+			const last = oracle.latest!;
+			const id = findingOf(last);
+			if (id === undefined) return "absent" as const;
+			const held = await store.list(last.changeset.id);
+			const round = held
+				.filter(({ kind, revision }) => kind === "round" && revision === Revision.key(last.changeset.revision))
+				.map((each) => SharedRecord.parseEnvelope(each).id)
+				.at(-1)!;
+			// The reader reads the round as `melian findings --records` does, under the policy the review read.
+			const read = await RecordedRound.of(held, round, everyRecordCounts).verdict({
+				revision: last.changeset.revision,
+				config: defaultConfig,
+				repoRoot: repo,
+				policy: worktree,
+			});
+			// The round reads not reviewed for its skipped checks alone; a refusal of its records is the reader's own.
+			const refused = read.notRun.find(({ name }) => name === "records");
+			if (refused !== undefined) throw new Error(`the reader refused the round: ${refused.reason}`);
+			const reader = read.dismissed.some(({ properties }) => properties.id === id);
+			const host = (await statusOn(oracle.harness!, id)) === "dismissed";
+			return reader && host ? "both" : reader ? "readerOnly" : host ? "hostOnly" : "neither";
+		} finally {
+			for (const each of [...hosts, oracle]) await each.harness?.close(context);
+		}
+	}
+	// Seeds that once found a defect, each kept as a named case. Seed 9 let a reader that skipped each round's own
+	// revision dismiss the finding: dismissed on host 0, reopened by an edit beside it in a round on host 1, then
+	// restored and read in a later round there.
+	const kept: readonly { readonly seed: number; readonly why: string }[] = [
+		{ seed: 9, why: "a round on another host reopened the dismissal, and a later one restored the text" },
+	];
+
+	it.each(kept)("keeps seed $seed: $why", async ({ seed }) => {
+		expect(await outcomeOf(historyOf(seed))).not.toBe("readerOnly");
+	});
+
+	it("never lets a reader's dismissal stand where a host that held every round reopened it", {
+		timeout: 600_000,
+	}, async () => {
+		const seeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
+		const outcomes: Record<string, number[]> = {};
+		for (let seed = 1; seed <= seeds; seed++) {
+			const outcome = await outcomeOf(historyOf(seed));
+			outcomes[outcome] = [...(outcomes[outcome] ?? []), seed];
+		}
+		process.stderr.write(`property seeds: ${JSON.stringify(outcomes)}\n`);
+		expect(outcomes.readerOnly).toBeUndefined();
+		expect(outcomes.both?.length ?? 0).toBeGreaterThan(0);
+		expect(outcomes.neither?.length ?? 0).toBeGreaterThan(0);
 	});
 });
