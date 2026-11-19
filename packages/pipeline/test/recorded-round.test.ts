@@ -27,16 +27,20 @@ import {
 	type CheckRunRecord,
 	backgroundContext as context,
 	createMemoryStorage,
+	createRegistry,
 	createReviewRegistry,
 	decisionExtension,
+	dismissFinding,
 	type Harness,
 	type Message,
 	openHarness,
 	RecordedRound,
 	type RecordedRoundContents,
 	ReviewError,
+	readFindings,
 	recordDismissal,
 	reviewChangeset,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -927,6 +931,102 @@ describe("the dismissal records a reader applies", () => {
 		const read = await chain.readAfter([retarget], [atStart, retarget, onOther], [atStart]);
 		expect(standingOf(read).map(([id, status]) => [id, status])).toEqual([[chain.id, standing]]);
 	});
+
+	// The host's own lifecycle, over the same sightings at the same revisions, decides whether the finding still stands
+	// dismissed once the read round sights it: the finding dismissed at `dismissedAt`, then each sighting in turn.
+	async function hostStands(
+		id: string,
+		dismissedAt: { revision: string; sighting: StoredFinding; hunks: readonly { file: string; hash: string }[] },
+		after: readonly { revision: string; sighting: StoredFinding; hunks: readonly { file: string; hash: string }[] }[],
+	): Promise<boolean> {
+		const fake = createFakeModels();
+		const harness = await openHarness(createMemoryStorage(), { models: fake.models, registry: createRegistry() });
+		try {
+			const root = await harness.root(context, { agent: { model: fake.ref() } });
+			const upsert = (seen: typeof dismissedAt) =>
+				root.commit(
+					(tx) => upsertFinding(tx, root.id, Finding.parse(seen.sighting), seen.revision, seen.hunks),
+					context,
+				);
+			await upsert(dismissedAt);
+			await root.commit(
+				(tx) =>
+					dismissFinding(
+						tx,
+						root.id,
+						id,
+						{ by: "maintainer", reason: "Accepted.", at: "2026-11-20T00:00:00Z" },
+						dismissedAt.revision,
+					),
+				context,
+			);
+			for (const seen of after) await upsert(seen);
+			const last = after.at(-1)?.revision ?? dismissedAt.revision;
+			const read = await readFindings(harness, root.id, last, context);
+			return read.find((each) => each.id === id)?.properties.status === "dismissed";
+		} finally {
+			await harness.close(context);
+		}
+	}
+
+	// A seeded generator, so a failing history can be replayed from the seed the test prints.
+	const random = (seed: number) => () => {
+		seed = (seed + 0x6d2b79f5) | 0;
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+
+	it("never lets a dismissal stand over a random history where the host's own lifecycle reopened it", async () => {
+		const outcomes = { both: 0, neither: 0, hostOnly: 0 };
+		for (let seed = 1; seed <= 24; seed++) {
+			await harness?.close(context);
+			harness = undefined;
+			const next = random(seed);
+			const pick = <T>(values: readonly T[]) => values[Math.floor(next() * values.length)]!;
+			const { base, head, other } = retargeted("src/a.ts", "export const a = 2;");
+			const chain = await citedAcross("lens", `${base}..${head}`);
+			const sightingOf = (record: SharedRecord) => (record.payload as { sightings: StoredFinding[] }).sightings[0]!;
+			const atStart = chain.roundOn(base, head, [], []);
+			const shared: SharedRecord[] = [atStart];
+			const host: { revision: string; sighting: StoredFinding; hunks: { file: string; hash: string }[] }[] = [];
+			let previous = atStart;
+			for (let round = 0, rounds = 1 + Math.floor(next() * 3); round < rounds; round++) {
+				const from = pick([base, base, other]);
+				gitIn(repo, "checkout", "--quiet", "--detach", from);
+				for (const file of ["src/a.ts", "src/b.ts"])
+					writeFileSync(join(repo, file), lines(`export const ${file[4]} = ${pick([1, 2, 3])};`));
+				gitIn(repo, "commit", "--quiet", "--allow-empty", "--all", "-m", `round ${round}`);
+				const to = gitIn(repo, "rev-parse", "HEAD");
+				gitIn(repo, "checkout", "--quiet", "feature");
+				const revision = (await Changeset.resolve(repo, { mode: "twoDot", base: from, head: to })).revision;
+				const hunks = reviewFiles(revision.files).flatMap((file) => file.hunks.map(provingHunk));
+				const cited = hunks.filter(() => next() < 0.6);
+				const key = Revision.key(revision);
+				const read: SharedRecord[] = [];
+				if (cited.length > 0) {
+					const record = chain.citingAt(key, cited);
+					read.push(record);
+					shared.push(record);
+					host.push({ revision: key, sighting: sightingOf(record), hunks });
+				}
+				previous = chain.roundOn(from, to, read, [previous]);
+				shared.push(previous);
+			}
+			const readRound = chain.citingAt(`${base}..${head}`, chain.proof);
+			const readerStands = standingOf(await chain.readAfter([previous], shared, [atStart]))[0]?.[1] === "dismissed";
+			const hostHolds = await hostStands(
+				chain.id,
+				{ revision: `${base}..${head}`, sighting: sightingOf(readRound), hunks: chain.proof },
+				[...host, { revision: `${base}..${head}`, sighting: sightingOf(readRound), hunks: chain.proof }],
+			);
+			expect({ seed, readerStands: readerStands && !hostHolds }).toEqual({ seed, readerStands: false });
+			outcomes[readerStands ? "both" : hostHolds ? "hostOnly" : "neither"]++;
+		}
+		// Each outcome the histories reach is one the property was tested on, so neither kind of history is missing.
+		expect(outcomes.both).toBeGreaterThan(0);
+		expect(outcomes.neither).toBeGreaterThan(0);
+	}, 120_000);
 
 	it("refuses a round whose chain holds a revision the checkout lacks a commit of, and names it", async () => {
 		const chain = await citedAcross("lens", revisionOf("0", "1"));

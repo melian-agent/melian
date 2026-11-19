@@ -9,3 +9,5 @@ The coordinator chose this design, the builder's option (a), on 2026-11-20, afte
 The test of a round since the dismissal at a revision that lacked an accepted hunk was `it.fails` before the change, failing with `expected [ 'passed', false ] to deeply equal [ 'findings', true ]`. It is `it` now and passes. With the since-round test forced to hold, it and the retarget test that takes `src/a.ts` fail.
 
 The tests that build rounds at made-up commits now build real ones, since the reader resolves every revision it needs.
+
+A property test checks the reader against the host's own lifecycle over 24 seeded random histories, with each revision read from git. The reader never keeps a dismissal the host reopened, and on these histories the two agree every time: five keep it and nineteen reopen it. With the since-round test forced to hold, seed 2 fails.
