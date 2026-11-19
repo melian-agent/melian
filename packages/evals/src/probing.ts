@@ -7,6 +7,7 @@ import {
 	type Finding,
 	type FindingEvidence,
 	type FindingSource,
+	gitEnvironment,
 	Lens,
 	type LensLevels,
 	type LensTier,
@@ -522,6 +523,7 @@ export class Miss {
 	private commit(name: string): string {
 		return execFileSync("git", ["-C", this.repo, "rev-parse", "--verify", "--end-of-options", `${name}^{commit}`], {
 			encoding: "utf8",
+			env: gitEnvironment(),
 			// Unpiped, git's stderr reaches the terminal raw, and a misses file's path can carry escapes.
 			stdio: ["ignore", "pipe", "pipe"],
 		}).trim();

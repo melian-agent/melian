@@ -448,6 +448,7 @@ export {
 	type GitResult,
 	git,
 	gitFailure,
+	gitEnvironment,
 	gitOutput,
 	gitOutputBytes,
 	stderrLimit,

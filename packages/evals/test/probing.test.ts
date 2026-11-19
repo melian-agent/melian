@@ -595,6 +595,34 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 		}
 	});
 
+	it("resolves a miss's commits in its own repository, whatever repository GIT_DIR and GIT_WORK_TREE name", () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		const other = mkdtempSync(join(scratch, "other-"));
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			git(other, "init", "-q");
+			writeFileSync(join(other, "x"), "x\n");
+			git(other, "add", "x");
+			git(other, "-c", "user.name=o", "-c", "user.email=o@example.com", "commit", "-q", "-m", "other");
+			git(other, "branch", "feature");
+			const elsewhere = git(other, "rev-parse", "feature");
+			vi.stubEnv("GIT_DIR", join(other, ".git"));
+			vi.stubEnv("GIT_WORK_TREE", other);
+			const miss = Miss.load(missesFile([{ ...fields, repo, base, head: "feature" }]))[0]!;
+			expect(miss.headCommit()).toBe(head);
+			expect(miss.target(ProbeTrust.parse(elsewhere), "whole", [], "feature")).toMatchObject({
+				repo,
+				base,
+				head,
+				policy: head,
+				writer: { trusted: false, detail: `this invocation does not vouch for ${base} and ${head}` },
+			});
+		} finally {
+			vi.unstubAllEnvs();
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("finds a miss only at its file, under its rule, in a trust-boundary sighting the verdict leaves unrefuted", async () => {
 		const reviewed = await runGolden(lost, { kind: "scripted", probes: "unconfined" });
 		const finding = reviewed.findings[0]!;

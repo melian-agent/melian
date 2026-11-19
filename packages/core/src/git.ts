@@ -62,7 +62,11 @@ const repositoryLocalVariables = [
 	"GIT_COMMON_DIR",
 ];
 
-function gitEnvironment(): NodeJS.ProcessEnv {
+/**
+ * The environment Melian runs git in: this process's, without the repository-local variables a hook sets, so a command
+ * reads the repository its `cwd` or `-C` names, and with replacement objects off, as {@link withoutReplacements} says.
+ */
+export function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 	for (const name of repositoryLocalVariables) delete env[name];
 	return withoutReplacements(env);
