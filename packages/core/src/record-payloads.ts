@@ -443,22 +443,24 @@ function shape(schema: TSchema, payload: RecordJson): string | undefined {
 	if (error === undefined) return undefined;
 	// The path keeps a segment only where the schema's own path names it: a property it defines, or an index into an
 	// array it defines. Any other segment, an unknown field's or a map's key however it is spelt, is the record's text.
+	// Melian's record schemas use `anyOf` for their unions and no other combinator.
 	const known = error.schemaPath.split("/").slice(1);
 	let at = 0;
 	const where = error.instancePath
 		.split("/")
 		.slice(1)
 		.map((segment) => {
-			while (["anyOf", "allOf", "oneOf"].includes(known[at] ?? "")) at += 2;
+			while (known[at] === "anyOf") at += 2;
 			if (known[at] === "properties" && known[at + 1] === segment) {
 				at += 2;
 				return segment;
 			}
-			if (known[at] === "items" && /^\d+$/.test(segment)) {
+			if (known[at] === "items") {
 				at += 1;
 				return segment;
 			}
-			at = known[at] === "patternProperties" ? at + 2 : known.length;
+			// Past a segment the schema does not name, every segment is the record's.
+			at = known.length;
 			return "*";
 		})
 		.join("/");

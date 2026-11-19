@@ -404,6 +404,11 @@ describe("a shared record's classed fields", () => {
 		expect.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers }))).toBe(
 			`${wrong} /decision/answers/0/distribution/*: must be >= 0`,
 		);
+		// A key spelt as the map's own pattern is still the record's.
+		const pattern = [{ ...answers[0], distribution: { "^.*$": -1 } }];
+		expect.soft(check("triage", at(samples.triage.payload, "decision", { ...decision, answers: pattern }))).toBe(
+			`${wrong} /decision/answers/0/distribution/*: must be >= 0`,
+		);
 		expect.soft(check("dismissal", at(samples.dismissal.payload, "trigger/proof/0", { ...proof, [key]: 1 }))).toBe(
 			`${wrong} /trigger/proof/0/*: schema is false`,
 		);
