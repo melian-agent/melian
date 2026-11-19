@@ -112,7 +112,7 @@ export class ProbingCombination implements ProbingRoute {
 	): { config: MelianConfig; lenses: readonly Lens[] } {
 		const tier = config.stages["pull-request"] ?? "full";
 		const runs = checksOfTier(config, tier);
-		const paths = files.map((file) => file.path);
+		const paths = files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path]));
 		for (const name of this.lenses) {
 			// `Lens.load` returns one lens of a name for each folder that defines it, and every one is rewritten below.
 			const variants = lenses.filter((each) => each.name === name);

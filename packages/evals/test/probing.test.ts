@@ -392,6 +392,11 @@ describe("ProbingCombination", () => {
 			route: { model: "a/plan", thinking: "high" },
 		});
 		expect(() => pair.routed(config, loaded, [{ ...changed[0]!, path: "docs/a.md" }])).not.toThrow();
+		const renamed = [{ ...changed[0]!, status: "renamed" as const, oldPath: "src/a.ts", path: "docs/a.ts" }];
+		const fromSrc = { ...config, lenses: { ...config.lenses, correctness: { paths: ["src/**"] } } };
+		expect(() => pair.routed(fromSrc, loaded, renamed)).not.toThrow();
+		const toDocs = { ...config, lenses: { ...config.lenses, correctness: { paths: ["docs/**"] } } };
+		expect(() => pair.routed(toDocs, loaded, renamed)).not.toThrow();
 	});
 
 	it("drops every probe for the level without probes, and leaves the tiers as they were", async () => {
