@@ -457,6 +457,35 @@ describe("the findings document", () => {
 			});
 		});
 
+		it("keeps live a dismissal reopened at a revision that lacked an accepted hunk, though a later revision holds it", async () => {
+			const affected = (proof: { file: string; hash: string }[]) =>
+				Finding.create({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof },
+				});
+			const h = { file: "src/lib.ts", hash: snippetHash("+export const run = eval;") };
+			const g = { file: "src/util.ts", hash: snippetHash("+export const parse = JSON.parse;") };
+			const atX = affected([h, g]);
+			await root.commit((tx) => upsertFinding(tx, root.id, atX, "x", [h, g]), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, atX.properties.id, dismissal), context);
+			expect((await lifecycle(harness, atX.properties.id))?.dismissedTrigger?.proof).toEqual([h, g]);
+			await root.commit((tx) => upsertFinding(tx, root.id, affected([g]), "y", [g]), context);
+			expect((await lifecycle(harness, atX.properties.id))?.status).toBe("new");
+			await root.commit((tx) => upsertFinding(tx, root.id, affected([h, g]), "z", [h, g]), context);
+			expect((await lifecycle(harness, atX.properties.id))?.status).toBe("new");
+		});
+
 		it("reopens a dismissal the host's accumulated proof no longer holds, as a reader of the shared dismissal does", async () => {
 			const lib = snippetHash("+export const run = eval;");
 			const util = snippetHash("+export const parse = JSON.parse;");

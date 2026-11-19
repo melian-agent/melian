@@ -760,6 +760,21 @@ describe("the dismissal records a reader applies", () => {
 				[],
 				before.map((each) => each.id),
 			);
+		// A round of the revision `base..head`, named by commit, that reads `read` after `before`.
+		const roundOn = (base: string, head: string, read: SharedRecord[], before: SharedRecord[]) =>
+			ReviewRecords.of(reviewed.changeset.id, { base, head }).round(
+				read,
+				undefined,
+				[],
+				before.map((each) => each.id),
+			);
+		// A copy of the round's lens record at `revision` whose sightings cite `cited`.
+		const citingAt = (revision: string, cited: readonly { file: string; hash: string }[]) =>
+			SharedRecord.parseEnvelope({
+				...lens.toJSON(),
+				revision,
+				payload: { ...(lens.payload as object), sightings: citing(cited) } as unknown as RecordJson,
+			});
 		const first = roundAt("0", "1", [], []);
 		const second = roundAt("1", "2", [elsewhere], [first]);
 		// The read round written again to follow `before`, with the dismissal and `shared` beside it, and its ID.
@@ -784,7 +799,7 @@ describe("the dismissal records a reader applies", () => {
 			RecordedRound.of(...after(before, shared), everyRecordCounts).contents(
 				reviewed.changeset.revision,
 			) as RecordedRoundContents;
-		return { id, elsewhere, first, second, roundAt, readAfter, handedAfter };
+		return { id, proof, elsewhere, first, second, roundAt, roundOn, citingAt, readAfter, handedAfter };
 	}
 
 	type Chain = Awaited<ReturnType<typeof citedAcross>>;
@@ -810,6 +825,37 @@ describe("the dismissal records a reader applies", () => {
 		const reopened = await readAfter([first], [first]);
 		expect([reopened.status, reopened.blocking]).toEqual(["findings", true]);
 		expect(standingOf(reopened)).toEqual([[id, "new", undefined]]);
+	});
+
+	// The reader cannot yet see that Y lacked h, since no record holds Y's hunks; the fix waits on the maintainer.
+	it.fails("reopens a dismissal a round since met at a revision that lacked a hunk it accepted, as the host does", async () => {
+		// X changes both files and the dismissal accepts both hunks. Y reverts src/a.ts, so the host reopens the finding
+		// when Y's sighting cites src/b.ts alone, and it stays live at Z, which changes both files again.
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;"), "src/b.ts": lines("export const b = 1;") },
+			{ "src/a.ts": lines("export const a = 2;"), "src/b.ts": lines("export const b = 2;") },
+		);
+		const base = gitIn(repo, "rev-parse", "main");
+		const z = gitIn(repo, "rev-parse", "feature");
+		gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", "x");
+		const x = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "reset", "--quiet", "--hard", z);
+		writeFileSync(join(repo, "src/a.ts"), lines("export const a = 1;"));
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "y");
+		const y = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "reset", "--quiet", "--hard", z);
+		const chain = await citedAcross("lens", `${base}..${x}`);
+		expect(chain.proof.map(({ file }) => file).sort()).toEqual(["src/a.ts", "src/b.ts"]);
+		const atX = chain.roundOn(base, x, [], []);
+		const kept = chain.citingAt(
+			`${base}..${y}`,
+			chain.proof.filter(({ file }) => file === "src/b.ts"),
+		);
+		const atY = chain.roundOn(base, y, [kept], [atX]);
+		const atZ = await chain.readAfter([atY], [atX, atY, kept]);
+		expect([atZ.status, atZ.blocking]).toEqual(["findings", true]);
+		expect(standingOf(atZ)).toEqual([[chain.id, "new", undefined]]);
 	});
 
 	it("remembers no hunk a record no round names cited", async () => {
