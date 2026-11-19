@@ -1038,6 +1038,11 @@ describe("the dismissal records a reader applies", () => {
 		const reason = read.notRun.find(({ name }) => name === "records")?.reason;
 		expect(reason).toContain(`${missing} does not name a commit`);
 		expect(reason).toContain("shallow clone");
+		expect(reason).toContain("dismiss the finding again with --records");
+		// Dismissed again, its writer holds the round, so the reader never needs that round's revision.
+		expect(standingOf(await chain.readAfter([since], [chain.first, since, absent], [chain.first, since]))).toEqual(
+			dismissedOf(chain.id),
+		);
 		// The round since sights nothing of the finding, so nothing needs its revision, and the dismissal stands.
 		const silent = chain.roundOn(side("1"), missing, [], [chain.first]);
 		expect(standingOf(await chain.readAfter([silent], [chain.first, silent], [chain.first]))).toEqual(

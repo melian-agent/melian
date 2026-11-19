@@ -404,7 +404,7 @@ async function hunksAt(
 	} catch (error) {
 		if (!(error instanceof ChangesetError)) throw error;
 		return {
-			refused: `follows round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need`,
+			refused: `follows round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need. Fetch it, such as with git fetch --unshallow, or dismiss the finding again with --records, so its chain starts after this round`,
 		};
 	}
 	const hunks = hunksOf(resolved.revision.files);
