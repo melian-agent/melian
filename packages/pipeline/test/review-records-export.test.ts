@@ -435,7 +435,8 @@ describe("a review that names a record store", () => {
 		commit(repo, { "src/b.ts": lines("export const b = 1;") });
 		const second = await review(store);
 		const two = roundOf(second.stored, Revision.key(second.changeset.revision));
-		await harness?.close(context);
+		const hostB = () => harness;
+		await hostB()?.close(context);
 		harness = hostA;
 		commit(repo, { "src/c.ts": lines("export const c = 1;") });
 		const third = await review(store);
