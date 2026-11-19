@@ -187,9 +187,11 @@ export interface ParityStage {
 	readonly subject: string;
 	readonly role?: "planner" | "prober";
 	readonly outcome: string;
-	/** Every response's input, output, cache reads and cache writes, as Melian's spend counts. */
+	/** Every response's input, output, cache reads and cache writes, as a round's Spend line counts. */
 	readonly tokens: number;
 	readonly cacheRead: number;
+	/** Input, cache writes and output, cache reads left out, as Melian's budgets count. */
+	readonly budgetTokens: number;
 	readonly tools?: number;
 	readonly minutes?: number;
 	readonly limit?: number;
@@ -201,17 +203,20 @@ export interface ParityStage {
 	readonly error?: string;
 }
 
-/** One arm's review of one miss. */
-export interface ParityReview {
+/** One arm's attempt to review one miss. Every attempt is saved, so the run's spend is always their sum. */
+export interface ParityAttempt {
 	readonly miss: string;
 	readonly arm: "committed" | "parity";
 	readonly said: string;
 	readonly found?: boolean;
 	readonly error?: string;
-	/** For the parity arm, the tokens, cache reads left out, its lenses shared. */
+	/** Why the run stopped on this attempt, which scored nothing; a resumed run reviews the arm again. */
+	readonly stopped?: string;
+	/** For the parity arm, the tokens its lenses shared, by Melian's budget count. */
 	readonly total?: number;
 	readonly tokens: number;
 	readonly cacheRead: number;
+	readonly budgetTokens: number;
 	readonly stages: readonly ParityStage[];
 	/** The SQLite file that keeps the review's store, conversations and all, beside the results file. */
 	readonly store?: string;
@@ -228,7 +233,7 @@ export interface ParityResults {
 	readonly verifier?: string;
 	/** What each miss named when the run first reviewed it, so a resume refuses a miss that has since changed. */
 	readonly misses: Readonly<Record<string, ParityMiss>>;
-	readonly reviews: readonly ParityReview[];
+	readonly attempts: readonly ParityAttempt[];
 	readonly stopped?: string;
 }
 
@@ -257,10 +262,25 @@ function tokensInt(env: NodeJS.ProcessEnv, name: string): number {
 	return value;
 }
 
-function measuredStages(run: Pick<RangeRun, "telemetry">, paths: readonly string[]): ParityStage[] {
-	return run.telemetry.stages.map((stage: Stage) => {
+// The one reader of a review's spend. A model stage whose usage the telemetry did not measure, by the pipeline's own
+// rule, leaves the review unmeasured, never counted as nothing.
+function measuredSpend(
+	telemetry: StageTelemetry,
+	paths: readonly string[],
+): { stages: ParityStage[]; unmeasured: string[] } {
+	const unmeasured = telemetry
+		.runDetails()
+		.stages.filter((row) => row.usageIncomplete === true)
+		.map((row) => row.name);
+	return { stages: measuredStages(telemetry, paths), unmeasured };
+}
+
+function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): ParityStage[] {
+	return telemetry.stages.map((stage: Stage) => {
 		const tokens = stage.usage?.total.totalTokens ?? 0;
 		const cacheRead = stage.usage?.total.cacheRead ?? 0;
+		const total = stage.usage?.total;
+		const budgetTokens = total === undefined ? 0 : total.input + total.cacheWrite + total.output;
 		const unread =
 			stage.ended === undefined || stage.coverage === undefined || stage.role === "prober"
 				? undefined
@@ -282,6 +302,7 @@ function measuredStages(run: Pick<RangeRun, "telemetry">, paths: readonly string
 			outcome: stage.outcome,
 			tokens,
 			cacheRead,
+			budgetTokens,
 			...(stage.tools === undefined ? {} : { tools: stage.tools }),
 			...(stage.durationMs === undefined ? {} : { minutes: stage.durationMs / 60_000 }),
 			...(stage.limits?.tokens === undefined ? {} : { limit: stage.limits.tokens }),
@@ -314,8 +335,7 @@ function stopCause(
 }
 
 const offTop = (stage: ParityStage) => stage.name === "melian.verification" || stage.role === "prober";
-const uncached = (stages: readonly ParityStage[]) =>
-	stages.reduce((sum, stage) => sum + stage.tokens - stage.cacheRead, 0);
+const budgeted = (stages: readonly ParityStage[]) => stages.reduce((sum, stage) => sum + stage.budgetTokens, 0);
 
 /**
  * Runs the committed arm and then the parity arm on each miss, the parity arm's lenses sharing what the committed arm's
@@ -455,7 +475,7 @@ export async function measureParity(
 				);
 			for (const { miss } of misses)
 				if (
-					earlier.reviews.some((review) => review.miss === miss.name) &&
+					earlier.attempts.some((attempt) => attempt.miss === miss.name) &&
 					JSON.stringify(earlier.misses[miss.name]) !== JSON.stringify(identities[miss.name])
 				)
 					throw new Error(
@@ -471,7 +491,7 @@ export async function measureParity(
 				policyCommit,
 				...(verifier === undefined ? {} : { verifier }),
 				misses: identities,
-				reviews: [],
+				attempts: [],
 			};
 	} catch (error) {
 		printError(visibleText(error instanceof Error ? error.message : String(error)));
@@ -491,28 +511,29 @@ export async function measureParity(
 	};
 	save();
 	const models = await runners.models();
-	let spent = results.reviews.reduce((sum, review) => sum + review.tokens, 0);
-	let uncachedSpent = results.reviews.reduce((sum, review) => sum + review.tokens - review.cacheRead, 0);
+	const spent = () => results.attempts.reduce((sum, attempt) => sum + attempt.tokens, 0);
+	const budgetSpent = () => results.attempts.reduce((sum, attempt) => sum + attempt.budgetTokens, 0);
+	const finished = (name: string, arm: "committed" | "parity") =>
+		results.attempts.find((attempt) => attempt.miss === name && attempt.arm === arm && attempt.stopped === undefined);
 	for (const { miss, target, location, lenses } of misses) {
 		for (const arm of ["committed", "parity"] as const) {
-			if (results.reviews.some((review) => review.miss === miss.name && review.arm === arm)) continue;
+			if (finished(miss.name, arm) !== undefined) continue;
 			let route: ProbingRoute = new CommittedArm();
 			let total: number | undefined;
 			if (arm === "parity") {
-				const committed = results.reviews.find(
-					(review) => review.miss === miss.name && review.arm === "committed",
-				)!;
+				const committed = finished(miss.name, "committed")!;
 				if (committed.error !== undefined) {
 					results = {
 						...results,
-						reviews: [
-							...results.reviews,
+						attempts: [
+							...results.attempts,
 							{
 								miss: miss.name,
 								arm,
 								said: "not run: the committed arm had no review",
 								tokens: 0,
 								cacheRead: 0,
+								budgetTokens: 0,
 								stages: [],
 							},
 						],
@@ -520,18 +541,18 @@ export async function measureParity(
 					save();
 					continue;
 				}
-				total = uncached(committed.stages) - uncached(committed.stages.filter(offTop));
+				total = budgeted(committed.stages) - budgeted(committed.stages.filter(offTop));
 				route = new ParityArm(total);
 			}
-			if (spent >= stops.run)
-				return stop(`the run's ${spent} tokens reached MELIAN_EVAL_PARITY_STOP_RUN, ${stops.run}`);
+			if (spent() >= stops.run)
+				return stop(`the run's ${spent()} tokens reached MELIAN_EVAL_PARITY_STOP_RUN, ${stops.run}`);
 			// A review a stop cut keeps its store too, so a resumed review takes the next free name.
 			const stores = `${out}.stores`;
 			mkdirSync(stores, { recursive: true });
 			const stem = `${miss.name.replace(/[^A-Za-z0-9._-]/g, "_")}-${arm}`;
 			let attempt = 1;
 			const storeOf = () => join(stores, attempt === 1 ? `${stem}.sqlite` : `${stem}.${attempt}.sqlite`);
-			while (existsSync(storeOf())) attempt += 1;
+			while (existsSync(storeOf()) || results.attempts.some((each) => each.store === storeOf())) attempt += 1;
 			const store = storeOf();
 			const mode: LiveGoldenMode = {
 				store,
@@ -552,16 +573,18 @@ export async function measureParity(
 				if (thrown instanceof GoldenRunError) telemetry = thrown.telemetry;
 			}
 			const paths = (await Changeset.resolve(target.repo, target.range)).revision.paths();
-			const stages = telemetry === undefined ? [] : measuredStages({ telemetry }, paths);
+			const { stages, unmeasured } =
+				telemetry === undefined ? { stages: [], unmeasured: [] } : measuredSpend(telemetry, paths);
 			const tokens = stages.reduce((sum, stage) => sum + stage.tokens, 0);
 			const cacheRead = stages.reduce((sum, stage) => sum + stage.cacheRead, 0);
-			const cause = stopCause(run, telemetry, error);
-			if (cause !== undefined) {
-				spent += tokens;
-				return stop(`${parityLabel(arm)} on ${miss.name} met ${cause}`);
-			}
-			let judged: { said: string; found?: boolean } = { said: `no score: ${error}` };
-			if (run !== undefined) {
+			const budgetTokens = budgeted(stages);
+			const cause =
+				stopCause(run, telemetry, error) ??
+				(unmeasured.length === 0 ? undefined : `usage its telemetry did not measure, in ${unmeasured.join(", ")}`);
+			const stopped = cause === undefined ? undefined : `${parityLabel(arm)} on ${miss.name} met ${cause}`;
+			let judged: { said: string; found?: boolean } =
+				stopped === undefined ? { said: `no score: ${error}` } : { said: "not scored: the run stopped" };
+			if (run !== undefined && stopped === undefined) {
 				try {
 					judged = await miss.judge(run, miss.match(run, location, "whole"), target, location, lenses);
 				} catch (thrown) {
@@ -571,28 +594,29 @@ export async function measureParity(
 			}
 			results = {
 				...results,
-				reviews: [
-					...results.reviews,
+				attempts: [
+					...results.attempts,
 					{
 						miss: miss.name,
 						arm,
 						said: judged.said,
 						...(judged.found === undefined ? {} : { found: judged.found }),
 						...(error === undefined ? {} : { error }),
+						...(stopped === undefined ? {} : { stopped }),
 						...(total === undefined ? {} : { total }),
 						tokens,
 						cacheRead,
+						budgetTokens,
 						stages,
 						store,
 					},
 				],
 			};
+			if (stopped !== undefined) return stop(stopped);
 			save();
-			spent += tokens;
-			uncachedSpent += tokens - cacheRead;
 			print(
 				visibleText(
-					`${parityLabel(arm)} ${miss.name}: ${judged.said}; ${tokens} tokens, ${cacheRead} of them cache reads; run so far ${spent} tokens, ${uncachedSpent} without cache reads`,
+					`${parityLabel(arm)} ${miss.name}: ${judged.said}; ${tokens} tokens, ${cacheRead} of them cache reads, ${budgetTokens} by Melian's budget count; run so far ${spent()} tokens, ${budgetSpent()} by Melian's budget count`,
 				),
 			);
 			for (const stage of stages.filter((each) => each.ended !== undefined))
@@ -607,7 +631,7 @@ export async function measureParity(
 				);
 		}
 	}
-	return results.reviews.every((review) => review.found !== undefined) ? 0 : 1;
+	return results.attempts.every((attempt) => attempt.found !== undefined) ? 0 : 1;
 }
 
 function parityLabel(arm: "committed" | "parity"): string {

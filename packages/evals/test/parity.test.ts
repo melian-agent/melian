@@ -190,7 +190,7 @@ function usage(models: Record<string, number>, cacheRead = 4) {
 		Object.fromEntries(
 			Object.entries(models).map(([model, total]) => [
 				model,
-				{ input: total - cacheRead, output: 0, cacheRead, cacheWrite: 0, totalTokens: total, cost },
+				{ input: total - cacheRead - 20, output: 10, cacheRead, cacheWrite: 10, totalTokens: total, cost },
 			]),
 		),
 	).toJSON();
@@ -343,26 +343,29 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(arms.map((arm) => arm?.constructor)).toEqual([CommittedArm, ParityArm]);
 		expect((arms[1] as ParityArm).total).toBe(60);
 		expect(lines[0]).toBe(
-			"committed two: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds src/scan.ts; 180 tokens, 70 of them cache reads; run so far 180 tokens, 110 without cache reads",
+			"committed two: unadjudicated, no score: the review shows no completed trust-boundary run whose scope holds src/scan.ts; 180 tokens, 70 of them cache reads, 110 by Melian's budget count; run so far 180 tokens, 110 by Melian's budget count",
 		);
-		expect(lines[1]).toMatch(/^Parity per total budget two: .*; run so far 360 tokens, 220 without cache reads$/);
+		expect(lines[1]).toMatch(
+			/^Parity per total budget two: .*; run so far 360 tokens, 220 by Melian's budget count$/,
+		);
 		const written = results();
 		expect(written).toMatchObject({ version: 1, arm: parityArmName, commit: "c".repeat(40), policyCommit: policy });
 		expect(vi.mocked(using.range).mock.calls.map(([target]) => target.policy)).toEqual([policy, policy]);
 		expect(written.stopped).toBeUndefined();
-		expect(written.reviews.map(({ miss, arm, total, store }) => [miss, arm, total, store])).toEqual([
+		expect(written.attempts.map(({ miss, arm, total, store }) => [miss, arm, total, store])).toEqual([
 			["two", "committed", undefined, `${env.MELIAN_EVAL_PARITY_OUT}.stores/two-committed.sqlite`],
 			["two", "parity", 60, `${env.MELIAN_EVAL_PARITY_OUT}.stores/two-parity.sqlite`],
 		]);
 		expect(vi.mocked(using.range).mock.calls.map(([, mode]) => mode.store)).toEqual(
-			written.reviews.map(({ store }) => store),
+			written.attempts.map(({ store }) => store),
 		);
-		expect(written.reviews[0]!.stages[0]).toEqual({
+		expect(written.attempts[0]!.stages[0]).toEqual({
 			name: "melian.lens",
 			subject: "correctness@1@deep",
 			outcome: "completed",
 			tokens: 100,
 			cacheRead: 40,
+			budgetTokens: 60,
 			tools: 7,
 			minutes: 2,
 		});
@@ -385,7 +388,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			} as Partial<StageFields>),
 		];
 		const { lines } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners([cut]));
-		const [stage, prober] = results().reviews[0]!.stages;
+		const [stage, prober] = results().attempts[0]!.stages;
 		expect(stage).toMatchObject({ ended: "tokens", limit: 50, unread: ["src/scan.ts"] });
 		expect(stage).not.toHaveProperty("openAttacks");
 		expect(prober).toMatchObject({ role: "prober", ended: "tokens", openAttacks: 1 });
@@ -397,7 +400,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 	it("resumes from its results file, skipping what it finished, and refuses one another commit measured", async () => {
 		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
 		expect(results().stopped).toMatch(/the run's 360 tokens reached MELIAN_EVAL_PARITY_STOP_RUN, 200/);
-		expect(results().reviews.map(({ miss, arm }) => [miss, arm])).toEqual([
+		expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
 			["one", "committed"],
 			["one", "parity"],
 		]);
@@ -412,7 +415,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		]);
 		expect(resumed.range).toHaveBeenCalledTimes(2);
 		expect(results().stopped).toBeUndefined();
-		expect(results().reviews.map(({ miss, arm }) => [miss, arm])).toEqual([
+		expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
 			["one", "committed"],
 			["one", "parity"],
 			["two", "committed"],
@@ -523,7 +526,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		const review = await measure({ ...env, MELIAN_EVAL_PARITY_STOP_REVIEW: "179" }, runners());
 		expect(review.status).toBe(3);
 		expect(results().stopped).toBe("committed on one spent 180 tokens, past MELIAN_EVAL_PARITY_STOP_REVIEW, 179");
-		expect(results().reviews).toHaveLength(1);
+		expect(results().attempts).toHaveLength(1);
 		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
 		expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_REVIEW: "180" }, runners())).status).toBe(1);
 		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
@@ -560,7 +563,15 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			const { status, lines } = await measure(env, runners([stages]));
 			expect(status).toBe(3);
 			expect(results().stopped).toMatch(reason);
-			expect(results().reviews).toEqual([]);
+			expect(results().attempts).toEqual([
+				expect.objectContaining({
+					miss: "one",
+					arm: "committed",
+					said: "not scored: the run stopped",
+					stopped: results().stopped,
+					tokens: 100,
+				}),
+			]);
 			expect(lines.at(-1)).toMatch(/^stopped: .*; resume with the same MELIAN_EVAL_PARITY_OUT$/);
 			rmSync(env.MELIAN_EVAL_PARITY_OUT!);
 		}
@@ -571,6 +582,13 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		});
 		expect((await measure(env, thrown)).status).toBe(3);
 		expect(results().stopped).toMatch(/^committed on one met a provider's usage limit: 429/);
+		expect(results().attempts).toEqual([
+			expect.objectContaining({
+				stopped: results().stopped,
+				error: "429 rate_limit_error: quota exceeded",
+				tokens: 0,
+			}),
+		]);
 		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
 		const other = runners(undefined, {
 			range: vi.fn(async () => {
@@ -578,7 +596,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			}),
 		});
 		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, other)).status).toBe(1);
-		expect(results().reviews).toEqual([
+		expect(results().attempts).toEqual([
 			{
 				miss: "one",
 				arm: "committed",
@@ -586,6 +604,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 				error: "the clone vanished",
 				tokens: 0,
 				cacheRead: 0,
+				budgetTokens: 0,
 				stages: [],
 				store: `${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.sqlite`,
 			},
@@ -595,10 +614,46 @@ describe("measureParity", { timeout: 60_000 }, () => {
 				said: "not run: the committed arm had no review",
 				tokens: 0,
 				cacheRead: 0,
+				budgetTokens: 0,
 				stages: [],
 			},
 		]);
 	});
+	it("keeps a stopped attempt's spend on resume, and reviews its arm again", async () => {
+		const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
+		expect((await measure(env, runners([[limited], committedStages]))).status).toBe(3);
+		const resumed = runners();
+		const { status, lines } = await measure(env, resumed);
+		expect(status).toBe(1);
+		expect(lines[0]).toMatch(/; run so far 280 tokens, 170 by Melian's budget count$/);
+		expect(vi.mocked(resumed.range).mock.calls.map(([, mode]) => mode.store)[0]).toBe(
+			`${env.MELIAN_EVAL_PARITY_OUT}.stores/one-committed.2.sqlite`,
+		);
+		expect((vi.mocked(resumed.range).mock.calls[1]![1].probing as ParityArm).total).toBe(60);
+		expect(results().attempts.map(({ miss, arm, stopped }) => [miss, arm, stopped !== undefined])).toEqual([
+			["one", "committed", true],
+			["one", "committed", false],
+			["one", "parity", false],
+			["two", "committed", false],
+			["two", "parity", false],
+		]);
+	});
+
+	it("stops, scoring nothing, on a review whose telemetry did not measure a model stage's usage", async () => {
+		for (const stage of [lensStage({ usage: undefined }), lensStage({ usageIncomplete: 1 })]) {
+			const using = runners([[stage]]);
+			expect((await measure(env, using)).status).toBe(3);
+			expect(using.range).toHaveBeenCalledTimes(1);
+			expect(results().stopped).toBe(
+				"committed on one met usage its telemetry did not measure, in lens correctness",
+			);
+			expect(results().attempts).toEqual([
+				expect.objectContaining({ said: "not scored: the run stopped", stopped: results().stopped }),
+			]);
+			rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		}
+	});
+
 	it("counts what a failed review's stages spent, and stops on a usage limit one of them met", async () => {
 		const failing = (stages: readonly StageFields[]) =>
 			runners(undefined, {
@@ -610,7 +665,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 				}),
 			});
 		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, failing([lensStage()]))).status).toBe(1);
-		expect(results().reviews[0]).toMatchObject({
+		expect(results().attempts[0]).toMatchObject({
 			miss: "one",
 			arm: "committed",
 			said: "no score: the verifier failed",
