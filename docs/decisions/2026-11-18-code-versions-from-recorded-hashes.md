@@ -42,6 +42,8 @@ Two pull requests that each add a new module into the same gap in path order sti
 
 A change to an installed package that decides a verdict, such as a Pi Durable release, does not move the code version. The lockfile pins those packages, and keying the whole install would decide every head again on any reinstall. Any change to a reached module moves it, a comment or a test-only export included, which decides stored heads again needlessly; that costs no model call.
 
+The code version hashes source alone, so a change to compiler configuration, the TypeScript version or an installed dependency leaves it where it was. Two facts bound the compiler's part. In a checkout, Node runs the source with its types stripped, so no compiler is on the run path. The published build compiles the same source under the TypeScript release the root `package.json` pins exactly. [Issue #470](https://github.com/melian-agent/melian/issues/470) takes up keying installed packages, starting with those that build a lens's model request.
+
 ## What follows
 
 [Issue #437](https://github.com/melian-agent/melian/issues/437) adds the checks, the verifier, the walkthrough and the decider as producers in the same file and gate test, and replaces the checks' hand-raised numbers. Adjudication's task version stays: it versions the task's stored shape, which a migration still needs, and version 8 is the shape that carries `code`.
