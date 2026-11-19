@@ -1,6 +1,6 @@
 # Lenses get only the standards they cite
 
-Status: the maintainer ruled on 2026-11-18, in the coordinator session, that seven of Melian's own lenses stop receiving the repository standards, that `conventions` keeps them, and that `design` loses them only if the live goldens hold. [Issue #580](https://github.com/melian-agent/melian/issues/580) records the ruling and the measurements.
+Status: the maintainer ruled on 2026-11-18, in the coordinator session, that seven of Melian's own lenses stop receiving the repository standards, that `conventions` keeps them, and that `design` loses them only if the live goldens hold. On 2026-11-20, in the coordinator session, the maintainer ruled that Melian's own `standard` tier adds `lens.conventions`. [Issue #580](https://github.com/melian-agent/melian/issues/580) records the ruling and the measurements.
 
 ## Problem
 
@@ -13,6 +13,8 @@ The seven lenses rarely use the text. Across 301 round comments on 82 pull reque
 ## Rule
 
 `contracts`, `correctness`, `durability`, `removed-behaviour`, `tests`, `trust-boundary` and `trust-boundary-probes` set `standards: false` in `.melian/lenses/`. `conventions` keeps the standards. The full tier runs `conventions` over every path those seven cover, so a breach of a standard still has a lens to report it; the seven were told already that such a breach is `conventions`'s.
+
+Melian's built-in `standard` tier, which the `pre-push` and `comment` stages run, is `fast` plus `lens.correctness` alone. With `correctness` reading no standards, it would check none. So Melian's own `melian.yaml` defines `standard` as `fast`, `lens.correctness` and `lens.conventions`, by the maintainer's ruling of 2026-11-20, in the coordinator session, [recorded on the issue](https://github.com/melian-agent/melian/issues/580). Those stages run one more lens, and its findings can block them as they do in full rounds. A test in `packages/core/test/lens.test.ts` fails when a tier of Melian's root `melian.yaml` that runs a lens runs none that reads the standards.
 
 The change applies to Melian's own repository. A repository with its own lenses keeps the built-in default, `standards: true`.
 

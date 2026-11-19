@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	checksOfTier,
 	defaultConfig,
 	Lens,
 	LensError,
@@ -329,6 +330,24 @@ describe("built-in lenses", () => {
 			);
 		});
 		expect(unexcluded).toEqual([]);
+	});
+
+	// Seven of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
+	it("runs a lens that reads the standards in every tier of Melian's root melian.yaml that runs a lens", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const reading = Object.fromEntries(
+			Object.keys(config.tiers).map((tier) => {
+				const named = checksOfTier(config, tier)
+					.filter((check) => check.startsWith("lens."))
+					.map((check) => lenses.find((lens) => lens.name === check.slice(5)));
+				return [tier, named.length === 0 ? "no lens" : named.filter((lens) => lens?.standards).map((lens) => lens?.name)];
+			}),
+		);
+		expect(reading).toEqual({ fast: "no lens", standard: ["conventions"], full: ["conventions", "design"] });
 	});
 
 	it("shows no lens in Melian's root tier a mutation inventory, and still shows it the progress-log entry beside it", async () => {
