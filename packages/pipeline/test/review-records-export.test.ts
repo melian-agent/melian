@@ -127,8 +127,8 @@ async function review(
 			? fauxAssistantMessage(fauxToolCall("report_finding", changedReturn), { stopReason: "toolUse" })
 			: fauxAssistantMessage("No findings.");
 	scriptConversations(fake, [
-		{ match: correctness, replies: Array.from({ length: 8 }, () => answer) },
-		{ match: contracts, replies: Array.from({ length: 8 }, () => answer) },
+		{ match: correctness, replies: Array.from({ length: 32 }, () => answer) },
+		{ match: contracts, replies: Array.from({ length: 32 }, () => answer) },
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -704,6 +704,22 @@ describe("a review that names a record store, when building a dismissal's record
 	});
 });
 
+describe("a review that names a record store, when a dismissal's run is unproven", () => {
+	it("names the dismissal unshared, and finishes the review", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store);
+		const spy = vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw new DismissError("unprovenRun", "the run is unproven", { revision: "r", finding: id });
+		});
+		try {
+			const later = await review(store);
+			expect(later.unshared).toEqual([{ finding: id, code: "unprovenRun" }]);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+});
+
 describe("a dismissal shared across hosts", () => {
 	it("still counts in a round a third host, with no history of the changeset, exports after a second", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
@@ -1172,7 +1188,9 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 		const seeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
 		const outcomes: Record<string, number[]> = {};
 		for (let seed = 1; seed <= seeds; seed++) {
-			const outcome = await outcomeOf(historyOf(seed));
+			const outcome = await outcomeOf(historyOf(seed)).catch((error: unknown) => {
+				throw new Error(`seed ${seed} failed`, { cause: error });
+			});
 			outcomes[outcome] = [...(outcomes[outcome] ?? []), seed];
 		}
 		process.stderr.write(`property seeds: ${JSON.stringify(outcomes)}\n`);
