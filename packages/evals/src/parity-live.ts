@@ -7,7 +7,7 @@
  *
  * @module
  */
-import { Probe } from "@melian-agent/pipeline";
+import { Probe, probingHost } from "@melian-agent/pipeline";
 import { liveModels } from "./credentials.ts";
 import { buildGraph, graphCached, runRange } from "./goldens.ts";
 import { checkoutCommit, measureParity } from "./parity.ts";
@@ -27,6 +27,7 @@ process.exit(
 			graph: (target) => buildGraph(target),
 			graphCached,
 			commit: checkoutCommit,
+			host: () => probingHost(Probe.sandbox),
 		},
 		console.log,
 		console.error,

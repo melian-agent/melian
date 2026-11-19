@@ -308,6 +308,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 	const snapshot = `sha256:${"e".repeat(64)}`;
+	const probeHost = { platform: "linux", sandbox: "runtime", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" } as const;
 	const committedStages = [
 		lensStage(),
 		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
@@ -326,6 +327,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			graph: vi.fn(async () => snapshot),
 			graphCached: vi.fn(async () => false),
 			commit: () => "c".repeat(40),
+			host: () => probeHost,
 			...fields,
 		} satisfies ParityRunners;
 	}
@@ -400,7 +402,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			/^Parity per total budget two: .*; run so far 360 tokens, 220 by Melian's budget count$/,
 		);
 		const written = results();
-		expect(written).toMatchObject({ version: 1, arm: parityArmName, commit: "c".repeat(40), policyCommit: policy });
+		expect(written).toMatchObject({ version: 2, arm: parityArmName, commit: "c".repeat(40), policyCommit: policy });
 		expect(vi.mocked(using.range).mock.calls.map(([target]) => target.policy)).toEqual([policy, policy]);
 		expect(written.stopped).toBeUndefined();
 		expect(written.attempts.map(({ miss, arm, total, store }) => [miss, arm, total, store])).toEqual([
@@ -638,6 +640,37 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			],
 		});
 		expect(elsewhere.models).not.toHaveBeenCalled();
+	});
+
+	it("refuses to resume on another probe host, whichever of its fields changed", async () => {
+		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
+		expect(results()).toMatchObject({ version: 2, host: probeHost });
+		const others = [
+			{ platform: "darwin" },
+			{ sandbox: "unconfined" },
+			{ sandboxVersion: "0.0.2" },
+			{ arch: "arm64" },
+			{ node: "22.0.0" },
+		] as const;
+		for (const other of others) {
+			const elsewhere = runners(undefined, { host: () => ({ ...probeHost, ...other }) });
+			expect(await measure(env, elsewhere), JSON.stringify(other)).toMatchObject({
+				status: 2,
+				errors: [
+					`${env.MELIAN_EVAL_PARITY_OUT} probed on ${JSON.stringify(probeHost)}, not this host's ${JSON.stringify({ ...probeHost, ...other })}; resume on that host or name a new file`,
+				],
+			});
+			expect(elsewhere.models).not.toHaveBeenCalled();
+		}
+		expect((await measure(env, runners())).status).toBe(1);
+		const { host: _, ...older } = results();
+		writeFileSync(env.MELIAN_EVAL_PARITY_OUT!, JSON.stringify({ ...older, version: 1 }));
+		const old = runners();
+		expect(await measure(env, old)).toMatchObject({
+			status: 2,
+			errors: [`${env.MELIAN_EVAL_PARITY_OUT} is not a results file of this measurement`],
+		});
+		expect(old.models).not.toHaveBeenCalled();
 	});
 
 	it("refuses to resume when a miss it reviewed now names other lines, or the verifier changed", async () => {

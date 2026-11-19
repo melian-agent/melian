@@ -21,6 +21,7 @@ import {
 	isProviderLimit,
 	openSqliteStorage,
 	type ProbeAvailability,
+	type ProbingHost,
 	type ReviewModels,
 	type Stage,
 	type StageTelemetry,
@@ -246,9 +247,11 @@ export interface ParityAttempt {
 
 /** What a parity run has measured so far, as its results file holds it. */
 export interface ParityResults {
-	readonly version: 1;
+	readonly version: 2;
 	readonly arm: typeof parityArmName;
 	readonly commit: string;
+	/** The host every probe ran on, which a probe's answer depends on, so a resume elsewhere would mix two hosts. */
+	readonly host: ProbingHost;
 	/** The commit whose policy, standards and lenses reviewed every miss, in both arms. */
 	readonly policyCommit: string;
 	/** The verifier's model, when MELIAN_EVAL_VERIFIER_MODEL named one. */
@@ -279,6 +282,8 @@ export interface ParityRunners {
 	/** Whether the target's graph is already cached, for the dry run. */
 	readonly graphCached: (target: ReviewTarget) => Promise<boolean>;
 	readonly commit: () => string;
+	/** The host this process's probes run on. */
+	readonly host: () => ProbingHost;
 }
 
 function tokensInt(env: NodeJS.ProcessEnv, name: string): number {
@@ -510,6 +515,7 @@ export async function measureParity(
 		const availability = await runners.availability();
 		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
 		const commit = runners.commit();
+		const host = runners.host();
 		const identities = Object.fromEntries(
 			misses.map(({ miss, target }) => [
 				miss.name,
@@ -525,11 +531,15 @@ export async function measureParity(
 		);
 		if (existsSync(out)) {
 			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
-			if (earlier.version !== 1 || earlier.arm !== parityArmName)
+			if (earlier.version !== 2 || earlier.arm !== parityArmName)
 				throw new Error(`${out} is not a results file of this measurement`);
 			if (earlier.commit !== commit)
 				throw new Error(
 					`${out} was measured at ${earlier.commit}, not this checkout's ${commit}; resume from that commit or name a new file`,
+				);
+			if (JSON.stringify(earlier.host) !== JSON.stringify(host))
+				throw new Error(
+					`${out} probed on ${JSON.stringify(earlier.host)}, not this host's ${JSON.stringify(host)}; resume on that host or name a new file`,
 				);
 			if (earlier.policyCommit !== policyCommit)
 				throw new Error(
@@ -553,9 +563,10 @@ export async function measureParity(
 			results = settled.results;
 		} else
 			results = {
-				version: 1,
+				version: 2,
 				arm: parityArmName,
 				commit,
+				host,
 				policyCommit,
 				...(verifier === undefined ? {} : { verifier }),
 				misses: identities,

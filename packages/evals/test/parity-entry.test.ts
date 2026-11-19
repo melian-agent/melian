@@ -6,9 +6,10 @@ import { buildGraph, graphCached, runRange } from "../src/goldens.ts";
 import { checkoutCommit, measureParity } from "../src/parity.ts";
 
 const availability = vi.hoisted(() => vi.fn());
+const sandbox = vi.hoisted(() => ({ platform: "darwin", kind: "entry-sandbox" }));
 vi.mock("@melian-agent/pipeline", async (original) => ({
 	...(await original<typeof pipeline>()),
-	Probe: { availability },
+	Probe: { availability, sandbox },
 }));
 vi.mock("../src/credentials.ts", () => ({ liveModels: vi.fn() }));
 vi.mock("../src/parity.ts", () => ({ measureParity: vi.fn(), checkoutCommit: vi.fn() }));
@@ -43,7 +44,7 @@ it("refuses to start without MELIAN_EVAL_LIVE=1, before it measures anything", a
 	expect(measureParity).not.toHaveBeenCalled();
 });
 
-it("measures with the host's probe availability, live models, the range runner, Enola's graph build and the checkout's commit", async () => {
+it("measures with the host's probe availability, live models, the range runner, Enola's graph build, the checkout's commit and the probe host", async () => {
 	vi.stubEnv("MELIAN_EVAL_LIVE", "1");
 	vi.mocked(measureParity).mockResolvedValue(3);
 	vi.mocked(liveModels).mockResolvedValue(fake.review);
@@ -67,4 +68,11 @@ it("measures with the host's probe availability, live models, the range runner, 
 	expect(availability).toHaveBeenCalledExactlyOnceWith();
 	expect(await runners.models()).toBe(fake.review);
 	expect(liveModels).toHaveBeenCalledExactlyOnceWith(process.cwd());
+	expect(runners.host()).toEqual({
+		platform: "darwin",
+		sandbox: "entry-sandbox",
+		sandboxVersion: expect.stringMatching(/^\d+\.\d+\.\d+/),
+		arch: process.arch,
+		node: process.versions.node,
+	});
 });
