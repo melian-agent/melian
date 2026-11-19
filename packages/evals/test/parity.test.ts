@@ -167,6 +167,14 @@ describe("ParityArm", () => {
 		expect(Object.keys(arm.routed(config, lenses, files).config.lenses)).toEqual(["a", "b"]);
 	});
 
+	it("leaves a configured lens with no route on its tier's route, which carries the high thinking", async () => {
+		const lenses = [await named("a", ["src/**"]), await named("b", ["**"])];
+		const withPaths: MelianConfig = { ...config, lenses: { ...config.lenses, b: { paths: ["**"] } } };
+		const routed = new ParityArm(1000).routed(withPaths, lenses, [file("src/x.ts", 0, 3)]);
+		expect(routed.config.lenses.b).toEqual({ paths: ["**"], level: { floor: "deep", ceiling: "deep" } });
+		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", thinking: "high" });
+	});
+
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
 		const builtins = await Lens.builtins();
 		const graphed = Lens.from({

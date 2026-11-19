@@ -49,9 +49,10 @@ export const parityFindings = 16;
 
 const modelTiers = ["light", "medium", "heavy"] as const;
 
-// A route with no fallbacks, so a lens at its provider's limit fails rather than answering on another model.
+// A route with no fallbacks, so a lens at its provider's limit fails rather than answering on another model. No route
+// stays none: a lens route of thinking alone has no model, and core reads it in place of the tier's.
 function pinned(route: ModelRoute | undefined, thinking?: "high"): ModelRoute | undefined {
-	if (route === undefined) return thinking === undefined ? undefined : { thinking };
+	if (route === undefined) return undefined;
 	const { fallbacks: _, ...rest } = route;
 	return thinking === undefined ? rest : { ...rest, thinking };
 }
