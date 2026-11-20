@@ -11,6 +11,7 @@ import {
 } from "@melian-agent/core";
 import { PullRequestRoundsReader, parseGitHubRemote } from "@melian-agent/github";
 import {
+	byMinting,
 	CompareHarness,
 	backgroundContext as context,
 	PullRequestRoundHistory,
@@ -194,7 +195,13 @@ export class PullRequestComparison {
 			throw new CliError(`no membership snapshot; run melian compare "#${this.number}" first`);
 		if (snapshot !== undefined) {
 			const positions = new Map(
-				[...ids, ...[...owned].filter((id) => !ids.has(id)).sort()].map((id, index) => [id, index]),
+				[
+					...ids,
+					...this.stores.candidates
+						.filter(({ id }) => owned.has(id) && !ids.has(id))
+						.sort(byMinting)
+						.map(({ id }) => id),
+				].map((id, index) => [id, index]),
 			);
 			entries.sort((a, b) => (positions.get(a.round!) ?? -1) - (positions.get(b.round!) ?? -1));
 		}

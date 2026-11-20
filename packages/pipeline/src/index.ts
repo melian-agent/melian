@@ -142,6 +142,7 @@ export {
 	type SandboxRuntime,
 } from "./probe.ts";
 export {
+	byMinting,
 	MembershipReader,
 	PullRequestRoundHistory,
 	type PullRequestRoundMember,
