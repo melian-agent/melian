@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	type AccountPayload,
@@ -113,6 +113,10 @@ type Scenario = {
 	readonly standards?: (changeset: Changeset) => Promise<Standards>;
 	// Triage's answer for contracts, so it can run at quick and escalate.
 	readonly triage?: RecordedDecider;
+	// The severity at which triage escalates a quick run's finding, P2 by default.
+	readonly escalateAt?: "P0" | "P1" | "P2";
+	// The review's settings for its lenses, as a root `melian.yaml` would give them.
+	readonly lensSettings?: MelianConfig["lenses"];
 	// Where the review reads per-path policy, the working tree by default; with `null`, `config` applies to every path.
 	readonly policy?: RepositorySource | null;
 };
@@ -125,11 +129,12 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 	const config: MelianConfig = {
 		...defaultConfig,
 		tiers: twoLensTiers,
+		lenses: scenario.lensSettings ?? defaultConfig.lenses,
 		models: {
 			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
 			...(scenario.triage === undefined ? {} : { medium: { model: `${heavy.provider}/${heavy.modelId}` } }),
 		},
-		...(scenario.triage === undefined ? {} : { triage: { escalateAt: "P2" as const } }),
+		...(scenario.triage === undefined ? {} : { triage: { escalateAt: scenario.escalateAt ?? "P2" } }),
 	};
 	const registry = createReviewRegistry();
 	if (scenario.triage !== undefined) registry.install(decisionExtension(scenario.triage));
@@ -496,6 +501,245 @@ describe("a round read with the dismissals shared beside it", () => {
 		const verdict = await read(reviewed, stale);
 		expect([verdict.status, verdict.blocking]).toEqual(["findings", true]);
 		expect(standingOf(verdict)).toEqual([[id, "new", undefined]]);
+	});
+});
+
+// A P1 the maintainer dismissed after a first review, beside a P2 of another lens that the second review's verifier
+// confirms, so the second round runs the verifier for one finding and never for the dismissed one.
+async function dismissedBesideAVerifiedFinding(shared: boolean) {
+	rmSync(repo, { recursive: true, force: true });
+	repo = baseAndHead(
+		{ "src/a.ts": lines("export const a = 1;"), "src/b.ts": lines("export const b = 1;") },
+		{ "src/a.ts": lines("export const a = 2;"), "src/b.ts": lines("export const b = 2;") },
+	);
+	const confirms = (messages: readonly Message[]) =>
+		messages.some((message) => message.role === "toolResult")
+			? fauxAssistantMessage("Done.")
+			: fauxAssistantMessage(
+					fauxToolCall("report_verdict", {
+						claim: "c1",
+						answers: { code: "yes", guard: "no", base: "no" },
+						verdict: "confirmed",
+						reason: "Traced.",
+					}),
+					{ stopReason: "toolUse" },
+				);
+	const scenario: Scenario = {
+		contracts: [reports(blocks), quiet, quiet],
+		correctness: [
+			reports({
+				...changedReturn,
+				file: "src/b.ts",
+				rule: "wrong-result",
+				explanation: { what: "The total is off by one.", why: "This change counts from 2.", fix: "Count from 1." },
+				failureScenario: "A sum over b returns one more than its callers expect.",
+				evidence: [{ file: "src/b.ts", line: 1, role: "cause" }],
+			}),
+			quiet,
+			quiet,
+		],
+		verifier: [confirms, confirms, confirms, confirms, confirms, confirms],
+	};
+	const store = exported();
+	const first = await review(store, scenario);
+	const { id } = first.verdict.findings.block[0]!.properties;
+	await recordDismissal({
+		harness: harness!,
+		revision: first.changeset.revision,
+		id,
+		dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" },
+		repoRoot: repo,
+		...(shared ? { records: { store, changeset: first.changeset.id } } : {}),
+	});
+	return { reviewed: await review(store, scenario), id };
+}
+
+// Each live finding's ID, status and resolution, so a test can tell a blocking finding from one capped at advisory.
+const resolutions = (verdict: Verdict) =>
+	Object.entries(verdict.findings)
+		.flatMap(([resolution, findings]) =>
+			findings.map(({ properties }) => [properties.id, properties.status, resolution]),
+		)
+		.sort();
+
+describe("a dismissed finding the host's verifier never judged, beside one it did", () => {
+	it("blocks on the reader when the dismissal was made with no store, as the host would were it live", async () => {
+		const { reviewed, id } = await dismissedBesideAVerifiedFinding(false);
+		expect(reviewed.verdict.ran?.map(({ name }) => name)).toContain("verifier");
+		expect(reviewed.stored.filter(isDismissal)).toEqual([]);
+		const verdict = await read(reviewed);
+		expect(resolutions(verdict)).toContainEqual([id, "new", "block"]);
+		expect(verdict.blocking).toBe(true);
+	});
+
+	it("blocks on the reader when the shared dismissal no longer holds there, as the host would were it live", async () => {
+		const { reviewed, id } = await dismissedBesideAVerifiedFinding(true);
+		expect(reviewed.verdict.ran?.map(({ name }) => name)).toContain("verifier");
+		const stale = reviewed.stored.map((envelope) => {
+			if (!isDismissal(envelope)) return envelope;
+			const payload = envelope.payload as { trigger: { hash: string; proof: unknown[] } };
+			return SharedRecord.parseEnvelope({
+				...envelope,
+				payload: { ...payload, trigger: { ...payload.trigger, hash: "f".repeat(64) } },
+			}).toJSON();
+		});
+		expect(stale.filter(isDismissal)).toHaveLength(1);
+		const verdict = await read(reviewed, stale);
+		expect(resolutions(verdict)).toContainEqual([id, "new", "block"]);
+		expect(verdict.blocking).toBe(true);
+	});
+});
+
+// A round whose contracts lens ran at quick, which does not verify, and kept its P2 finding there: triage escalates only
+// at P1, so no verifying level reported it and the verifier was never asked about it.
+async function reportedAtQuick(extra: Scenario = {}) {
+	const triage = new RecordedDecider({
+		triage: {
+			version: "1",
+			answers: { contracts: { distribution: { quick: 1 } }, correctness: { distribution: { careful: 1 } } },
+		},
+	});
+	return review(exported(), { triage, escalateAt: "P1", contracts: [reports(changedReturn), quiet], ...extra });
+}
+
+describe("a lens finding the verifier was never asked about", () => {
+	it("is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify", async () => {
+		const reviewed = await reportedAtQuick();
+		expect(reviewed.verdict.ran).toContainEqual(expect.objectContaining({ name: "lens.contracts", level: "quick" }));
+		expect(resolutions(await read(reviewed))).toEqual([[expect.any(String), "new", "advisory"]]);
+		expectSharedVerdict((await read(reviewed)).toJSON(), reviewed.verdict.toJSON());
+	});
+
+	it("is capped as on the host when the root's settings tune the lens to another version", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("lenses:", "  contracts:", '    paths: ["src/**"]'));
+		const reviewed = await reportedAtQuick({ lensSettings: { contracts: { paths: ["src/**"] } } });
+		const [reported] = reviewed.verdict.findings.advisory;
+		const [loaded] = (await Lens.load(repo, worktree, ["."])).filter(({ name }) => name === "contracts");
+		expect(reported?.properties.source.version).not.toBe(`${loaded!.version}@quick`);
+		const verdict = await read(reviewed);
+		expect(resolutions(verdict)).toEqual([[reported!.properties.id, "new", "advisory"]]);
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
+	});
+
+	it("is not capped when a level that verifies reported it beside one that does not", async () => {
+		const scenario: Scenario = { contracts: [reports(blocks), quiet, quiet], verifier: [] };
+		const store = exported();
+		const first = await review(store, scenario);
+		const [{ properties }] = first.verdict.findings.advisory as [Finding];
+		await recordDismissal({
+			harness: harness!,
+			revision: first.changeset.revision,
+			id: properties.id,
+			dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-16T00:00:00.000Z" },
+			repoRoot: repo,
+		});
+		const reviewed = await review(store, scenario);
+		const records = reviewed.stored.map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ id }) => id === roundOf(reviewed.stored))!;
+		const lens = sighting(records, round);
+		const payload = lens.payload as { sightings: StoredFinding[] };
+		// An escalated run keeps its quick run's sighting of a finding the next level neither restated nor refuted, as a
+		// producer that counts only the findings it names. Here that quick run sighted what the verifying level did.
+		const [seen] = payload.sightings;
+		const [hash] = seen!.properties.source.version!.split("@");
+		const source = { ...seen!.properties.source, version: `${hash}@quick` };
+		const quick = SharedRecord.parseEnvelope({
+			...lens.toJSON(),
+			payload: {
+				...payload,
+				level: "quick",
+				check: null,
+				sightings: [{ ...seen!, properties: { ...seen!.properties, source } }],
+			} as unknown as RecordJson,
+		});
+		const account = namedOf(records, round, "account");
+		const counted = account.payload as AccountPayload;
+		const producers = [...counted.producers, { ...source, ids: [properties.id] }];
+		const order = ({ check, version }: { check: string; version: string | null }) => `${check}@${version ?? ""}`;
+		const next = { ...counted, producers: producers.sort((x, y) => (order(x) < order(y) ? -1 : 1)) };
+		// The policy's fingerprint covers what each report's source resolves through, so a round with another source
+		// names the fingerprint the reader computes for it, as the host would have.
+		const withQuick = (resolutionPolicy: string | null) => {
+			const held = { ...next, resolutionPolicy, records: [...next.records, quick.id].sort() };
+			const nextAccount = SharedRecord.parseEnvelope({
+				...account.toJSON(),
+				key: accountKey(account.revision ?? null, held),
+				payload: held,
+			});
+			const changed = renamed(
+				reviewed,
+				[...records.filter((each) => each !== account), nextAccount, quick],
+				round,
+				(read) => [...read.map((each) => (each === account ? nextAccount : each)), quick],
+				[...records, nextAccount, quick],
+			);
+			return read(reviewed, changed.records, changed.round);
+		};
+		const refused = await withQuick(counted.resolutionPolicy);
+		const [, reads] = /this checkout's reads (\S+)$/.exec(refused.notRun[0]?.reason ?? "") ?? [];
+		const verdict = await withQuick(reads!);
+		expect(Object.values(verdict.findings).flat()[0]?.properties.reportedBy).toEqual([
+			seen!.properties.source,
+			source,
+		]);
+		expect(resolutions(verdict)).toEqual([[properties.id, "new", "block"]]);
+	});
+
+	it("reads as the host did when a lens at the policy does not load and no finding came from a lens", async () => {
+		const reviewed = await review(exported(), { contracts: [quiet, quiet] });
+		expect(reviewed.verdict.status).toBe("passed");
+		mkdirSync(join(repo, ".melian/lenses/contracts"), { recursive: true });
+		writeFileSync(
+			join(repo, ".melian/lenses/contracts/LENS.md"),
+			lines("---", "name: contracts", "bogus: 1", "---", "x"),
+		);
+		expectSharedVerdict((await read(reviewed)).toJSON(), reviewed.verdict.toJSON());
+	});
+
+	it("fails when the policy's lenses cannot be read for any reason but a lens file's own", async () => {
+		const reviewed = await review(exported(), { contracts: [quiet, quiet] });
+		const spy = vi.spyOn(Lens, "everywhere").mockRejectedValue(new Error("the policy commit is unreadable"));
+		try {
+			await expect(read(reviewed)).rejects.toThrow("the policy commit is unreadable");
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it("is not capped when the policy holds no lens of the version that reported it", async () => {
+		const reviewed = await reportedAtQuick();
+		const builtin = readFileSync(new URL("../../core/lenses/contracts/LENS.md", import.meta.url), "utf8");
+		mkdirSync(join(repo, ".melian/lenses/contracts"), { recursive: true });
+		writeFileSync(
+			join(repo, ".melian/lenses/contracts/LENS.md"),
+			builtin.replace("Changed signatures", "Altered signatures"),
+		);
+		const verdict = await read(reviewed);
+		expect(verdict.status).toBe("findings");
+		expect(resolutions(verdict)).toEqual([[expect.any(String), "new", "acknowledge"]]);
+	});
+
+	it("is not capped when the lens of its version declares no level of the name its record gives", async () => {
+		const reviewed = await reportedAtQuick();
+		const load = Lens.load.bind(Lens);
+		const copies: string[] = [];
+		const spy = vi.spyOn(Lens, "load").mockImplementation(async (...args) =>
+			(await load(...args)).map((lens) => {
+				if (lens.name !== "contracts") return lens;
+				const { quick: _, ...declared } = lens.levels;
+				const copy: Lens = Object.assign(Object.create(Object.getPrototypeOf(lens)), lens, { levels: declared });
+				copies.push(copy.version);
+				return copy;
+			}),
+		);
+		try {
+			const verdict = await read(reviewed);
+			const [reported] = reviewed.verdict.findings.advisory;
+			expect(copies).toContain(reported?.properties.source.version?.split("@")[0]);
+			expect(resolutions(verdict)).toEqual([[expect.any(String), "new", "acknowledge"]]);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 });
 

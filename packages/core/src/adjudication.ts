@@ -195,16 +195,19 @@ export class Defect {
 	 * `pre-existing` finding and an `affected` one without proof, read the merged defect's cause and evidence, so one
 	 * report's severity and another's proof combine and a merge never lowers what blocks. The defect takes the strictest
 	 * result, the speaker's on a tie, and the floors then apply to the defect ({@link Finding.floored}). So the answer
-	 * does not depend on which report speaks. With `unverified`, a lens report no verifier judged is capped at
-	 * `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
+	 * does not depend on which report speaks. With `unverified`, or for each report `unverified` answers true for, given the report and the defect's speaker, a lens
+	 * report no verifier judged is capped at `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
 	 * out. With only refuted reports and a protected minimum, ordinary resolution starts at silent.
 	 */
-	decision(policyFor: ConfigFor, unverified: boolean): FindingDecision {
+	decision(policyFor: ConfigFor, unverified: boolean | ((report: Finding, defect: Finding) => boolean)): FindingDecision {
 		// A report a verifier refuted asks for nothing beside one that stands.
 		const standing = this.reports.filter((report) => !report.refuted());
 		const strictest = (standing.length === 0 ? this.reports : standing)
 			.map((report) =>
-				report.decision(policyFor(report.properties.path, report.ruleId), { unverified, defect: this.speaker }),
+				report.decision(policyFor(report.properties.path, report.ruleId), {
+					unverified: typeof unverified === "function" ? unverified(report, this.speaker) : unverified,
+					defect: this.speaker,
+				}),
 			)
 			.reduce((kept, each) =>
 				resolutionOrder.indexOf(each.resolution) < resolutionOrder.indexOf(kept.resolution) ||
@@ -994,8 +997,11 @@ export interface AdjudicationInput {
 	readonly config: PolicyAt | ConfigFor;
 	/** Names of checks whose skip still lets a review pass, such as a tool with no files in its language to check. */
 	readonly allowSkip?: readonly string[];
-	/** Apply the unverified advisory cap only to reviews that ran the verifier step. */
-	readonly verificationRan?: boolean;
+	/**
+	 * Apply the unverified advisory cap only to reviews that ran the verifier step, or, given a function, only to the lens
+	 * reports it answers true for.
+	 */
+	readonly verificationRan?: boolean | ((report: Finding, defect: Finding) => boolean);
 	/** The IDs of findings an earlier revision of the changeset sighted, so an important one reads as carried. */
 	readonly seenBefore?: readonly string[];
 	/** The revision the findings are of, whose hunks let lens reports one hunk caused merge; without it, snippets alone. */
@@ -1007,7 +1013,7 @@ export class Adjudication {
 	readonly findings: readonly Finding[];
 	readonly manifest: Manifest;
 	readonly #configFor: ConfigFor;
-	readonly #verificationRan: boolean;
+	readonly #verificationRan: boolean | ((report: Finding, defect: Finding) => boolean);
 	readonly #seenBefore: ReadonlySet<string>;
 	readonly #revision: Revision | undefined;
 
