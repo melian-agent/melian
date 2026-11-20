@@ -1082,6 +1082,66 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("writes the miss it can place beside misses on a deleted file, a symlink and a binary file, and names each of those", () => {
+		const { repo, files, env } = checkout();
+		git(repo, "rm", "--quiet", "src/org-chart.ts");
+		symlinkSync("user.ts", join(repo, "src", "link.ts"));
+		writeFileSync(join(repo, "src", "blob.bin"), "a\0b\n");
+		git(repo, "add", "src/link.ts", "src/blob.bin");
+		git(repo, "commit", "--quiet", "-m", "delete a file, add a symlink and a binary file");
+		expect(melian(repo, ["review", range], env).status).toBe(0);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Placed", body: "b" },
+					{ file: "src/org-chart.ts", line: 1, title: "Deleted", body: "b" },
+					{ file: "src/link.ts", line: 1, title: "Symlink", body: "b" },
+					{ file: "src/blob.bin", line: 1, title: "Binary", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { base: string; head: string; external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [placed, deleted, link, binary] = ["Placed", "Deleted", "Symlink", "Binary"].map(idOf);
+		for (const id of [placed, deleted, link, binary])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${deleted} src/org-chart.ts does not exist at ${stored.head}.`,
+				`Not exported: ${changeset}-${link} src/link.ts is a symbolic link at ${stored.head}.`,
+				`Not exported: ${changeset}-${binary} src/blob.bin is binary at ${stored.head}.`,
+			].sort(),
+		);
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${placed}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [2, 2],
+			},
+		]);
+	});
+
 	it("names a miss on the line a lens's read of a long file cuts, and writes the line before it", () => {
 		const { repo, files, env } = checkout();
 		writeFileSync(join(repo, "src", "long.txt"), `x\n${"a".repeat(9 * 1024 * 1024)}`);
