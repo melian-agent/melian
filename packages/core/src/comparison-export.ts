@@ -73,11 +73,10 @@ export class ComparisonExport {
 	 */
 	misses(repo: string): MissesExport {
 		const latest = new Map<string, { readonly entry: ComparisonEntry; readonly miss: ComparisonMiss }>();
-		for (const entry of this.entries)
-			for (const miss of entry.comparison.misses()) {
-				latest.delete(miss.id);
-				latest.set(miss.id, { entry, miss });
-			}
+		for (const entry of this.entries) {
+			for (const group of entry.comparison.groups()) for (const finding of group.external) latest.delete(finding.id);
+			for (const miss of entry.comparison.misses()) latest.set(miss.id, { entry, miss });
+		}
 		const cases: MissCase[] = [];
 		const skipped: { readonly name: string; readonly reason: string }[] = [];
 		for (const { entry, miss } of latest.values()) {

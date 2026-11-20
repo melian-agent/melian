@@ -1857,6 +1857,23 @@ describe("Comparison misses", () => {
 		]);
 	});
 
+	it("exports no miss a later round matched", () => {
+		const missed = external();
+		const first = compared({ externals: [missed], findings: [] });
+		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [missed], findings: [melian()] });
+		second.adjudicate(missed.id, { ...by, verdict: "valid" });
+		expect(second.misses()).toEqual([]);
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone");
+		expect(exported).toEqual({ cases: [], skipped: [] });
+	});
+
 	it("exports each miss as a case of the measurement tool, keeping a finding compared again from its last round", () => {
 		const missed = external({ line: 90 });
 		const skipped = external({ file: undefined, line: undefined });
