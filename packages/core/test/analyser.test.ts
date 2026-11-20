@@ -190,4 +190,13 @@ describe("npm scripts", () => {
 			'It removes the npm script "a\\"\\nb".',
 		]);
 	});
+
+	it("reads package.json as npm does, so a comma before a closing bracket inside a string stays", () => {
+		expect(switchOffs("package.json", manifest({ check: "echo ,}" }), manifest({ check: "echo }" }), [])).toEqual([
+			'It changes the npm script "check".',
+		]);
+		expect(switchOffs("package.json", manifest({ "check,]": "x" }), manifest({}), [])).toEqual([
+			'It removes the npm script "check,]".',
+		]);
+	});
 });

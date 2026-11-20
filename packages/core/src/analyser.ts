@@ -133,8 +133,18 @@ export function switchOffs(
 		);
 		if (ignored.length > 0) found.push(`It makes Biome ignore ${ignored.join(", ")}, which this change touches.`);
 	}
-	if (posix.basename(path.toLowerCase()) === "package.json") found.push(...scriptChanges(before, after));
+	if (posix.basename(path.toLowerCase()) === "package.json")
+		found.push(...scriptChanges(strictJson(base), strictJson(head)));
 	return found;
+}
+
+// npm reads package.json with JSON.parse; `parseJsonc` would also drop a comma before a bracket inside a string.
+function strictJson(text: string | undefined): unknown {
+	try {
+		return text === undefined ? undefined : JSON.parse(text);
+	} catch {
+		return undefined;
+	}
 }
 
 // Every script counts: npm runs `pre` and `post` scripts and lifecycle scripts no caller names, so no reading of the
