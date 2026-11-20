@@ -287,6 +287,16 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(await artefact(...written, ...past), writer))).code).toBe("tooManyExtras");
 	});
 
+	it("refuses another round's telemetry the round names, which would pass the bound uncounted", async () => {
+		const biome = check();
+		const made = account([biome]);
+		const otherRound = records().round([biome, check("static.tsc")], undefined, [], []);
+		const other = records().telemetry(otherRound, { durationMs: 5, stages: [] });
+		const round = records().round([biome, made, other], undefined, [], []);
+		const found = await refusal(RelayBatch.read(await artefact(biome, made, other, round), writer));
+		expect([found.code, found.file]).toEqual(["otherTelemetry", `${other.id}.json`]);
+	});
+
 	it("counts triage records the round names against the same bound", async () => {
 		const biome = check();
 		const made = account([biome]);

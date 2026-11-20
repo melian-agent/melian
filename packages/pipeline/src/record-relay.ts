@@ -50,6 +50,7 @@ export type RelayRefusalCode =
 	| "unnamedRecord"
 	| "tooManyExtras"
 	| "triageCount"
+	| "otherTelemetry"
 	| "accountCount"
 	| "tierAccount"
 	| "otherCheck"
@@ -74,6 +75,7 @@ const says: Record<RelayRefusalCode, string> = {
 	unnamedRecord: "is a record the batch's round does not name, and no triage, telemetry or early lens copy of it",
 	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage, telemetry and early lens records`,
 	triageCount: "is a second triage decision, and a review decides triage once a round",
+	otherTelemetry: "is another round's telemetry, and a round names no telemetry",
 	accountCount: "is a round that reads no account, or more than one",
 	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
 	otherCheck: "names a check the base's tier does not give",
@@ -220,6 +222,8 @@ export class RelayBatch {
 			if (record === round) continue;
 			if (!extra(record)) {
 				if (!read.has(record.id)) throw new RelayRefusal("unnamedRecord", record.path);
+				// Telemetry is written after its round, so a round that names some names another round's, uncounted.
+				if (record.kind === "telemetry") throw new RelayRefusal("otherTelemetry", record.path);
 				continue;
 			}
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
