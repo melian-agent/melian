@@ -16,14 +16,15 @@ The macOS tests run in `test (macos, 24)`, beside the Linux jobs. That job needs
 - the files that hold a test Linux skips, run whole;
 - `probing-level.test.ts`, run with `--tags-filter=macos`, so only the tests that carry the Vitest tag `macos` run.
 
-`check (macos, 24)` keeps its name and becomes a short Ubuntu job. It waits for both, and runs `scripts/compare-platform-reports.mjs` over the Node 24 Linux report and the two macOS reports. It fails unless the macOS test job succeeded and all six of these hold:
+`check (macos, 24)` keeps its name and becomes a short Ubuntu job. It waits for both, and runs `scripts/compare-platform-reports.mjs` over the Node 24 Linux report and the two macOS reports. It fails unless the macOS test job succeeded and all seven of these hold:
 
-1. Every test Linux skipped passed on macOS. A test missing from the macOS reports has not passed. The list's `allowed` entry excuses one test, which needs root on both runners.
+1. Every test Linux skipped passed on macOS. A test missing from the macOS reports has not passed. The list's `allowed` entry excuses one test, which needs root on both runners. It names that test by its file, its ancestor titles and its title, as the reports do.
 2. Each named suite ran on macOS, and every one of its tests passed. Each tagged file has at least one test that the Linux report shows carrying the tag, and each of those tests passed on macOS.
 3. No test macOS ran failed. A test that the tag filter left out, which Vitest reports as skipped, is not counted.
 4. The Linux report shows at least one skipped test. A report with none is broken, not complete.
 5. Every file Linux skipped a test in is on the list. A file that is missing fails the run, and the message names the file to add.
 6. Each macOS report says its run succeeded. A failed hook or an unhandled error fails a run whose every test passed, and the test statuses alone would not show it. Codex's adversarial review found the gap.
+7. No report holds two tests of one name. A test is its file, its ancestor titles as a list, and its title, compared as that structure and never as a joined string, since a title may hold ` > `. Vitest's report gives two tests of one name nothing else to tell them apart by. Example: a test declared `it.skip` only on Linux beside a cross-platform test of the same title would let one macOS pass answer for both. So the run fails, names the test, and compares neither copy. Melian's round found both cases.
 
 The comparison runs the head's own copy of the script and the list, so a pull request can change the rules that judge it. `guardrails.policy-change-review` in `melian.yaml` names both files, and its notice is what makes a person read a change to either.
 

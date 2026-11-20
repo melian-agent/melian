@@ -9,12 +9,14 @@ import { visibleText } from "../packages/core/src/render.ts";
 
 const fileOf = (name) => name.replace(/^.*?\/((packages|scripts)\/)/, "$1");
 
+// A test is its file, its ancestor titles and its title, compared as that structure, since any title may hold " > ".
+const keyOf = (file, ancestorTitles, title) => JSON.stringify([file, ancestorTitles, title]);
+
 const testsOf = (report) =>
 	report.testResults.flatMap((entry) => {
 		const file = fileOf(entry.name);
 		return entry.assertionResults.map((test) => ({
-			// A title may hold " > ", so tests match by key and are named by id.
-			key: JSON.stringify([file, ...test.ancestorTitles, test.title]),
+			key: keyOf(file, test.ancestorTitles, test.title),
 			id: [file, ...test.ancestorTitles, test.title].join(" > "),
 			file,
 			status: test.status,
@@ -22,26 +24,27 @@ const testsOf = (report) =>
 		}));
 	});
 
-// Two tests can share a name; the name passed only if every test under it passed.
-const statusById = (tests) => {
-	const statuses = new Map();
-	for (const { key, status } of tests) {
-		const known = statuses.get(key);
-		if (known === undefined || known === "passed") statuses.set(key, status);
+// Vitest's report gives two tests of one name nothing else to tell them apart by, so neither is compared.
+const duplicates = (tests) => {
+	const seen = new Set();
+	const repeated = new Map();
+	for (const test of tests) {
+		if (seen.has(test.key)) repeated.set(test.key, test.id);
+		seen.add(test.key);
 	}
-	return statuses;
+	return repeated;
 };
 
 /**
- * Checks six things, and returns what it counted and every way they failed:
- * every macOS run succeeded; the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
+ * Checks seven things, and returns what it counted and every way they failed:
+ * no report holds two tests of one name; every macOS run succeeded; the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
  * on macOS; each named suite ran whole, and each tagged file's tagged tests passed; and no test macOS ran failed.
  */
 export function compare({ linux, mac, list }) {
 	const linuxTests = testsOf(linux);
 	const macTests = mac.flatMap(testsOf);
-	const macStatus = statusById(macTests);
-	const allowed = new Set(Object.keys(list.allowed));
+	const macStatus = new Map(macTests.map((test) => [test.key, test.status]));
+	const allowed = new Set(list.allowed.map((test) => keyOf(test.file, test.ancestorTitles, test.title)));
 	const listed = new Set([...list.suites, ...list.tagged, ...list.skipped]);
 	const tagged = new Set(list.tagged);
 	const taggedIds = new Set(
@@ -50,7 +53,17 @@ export function compare({ linux, mac, list }) {
 	const skipped = linuxTests.filter((test) => test.status !== "passed");
 	const skippedFiles = [...new Set(skipped.map((test) => test.file))].sort();
 	const lines = [`Linux skipped tests in: ${skippedFiles.join(", ")}`];
-	const errors = [];
+	const linuxRepeated = duplicates(linuxTests);
+	const macRepeated = duplicates(macTests);
+	const repeated = new Set([...linuxRepeated.keys(), ...macRepeated.keys()]);
+	const errors = [
+		...[...linuxRepeated.values()].map(
+			(id) => `the Linux report holds two tests named ${id}, which cannot be told apart: rename one`,
+		),
+		...[...macRepeated.values()].map(
+			(id) => `the macOS reports hold two tests named ${id}, which cannot be told apart: rename one`,
+		),
+	];
 
 	for (const report of mac) {
 		// A hook or an unhandled error fails a run whose every test passed.
@@ -68,9 +81,9 @@ export function compare({ linux, mac, list }) {
 				`Linux skipped a test in ${file}, which scripts/macos-tests.json does not list: add it to skipped`,
 			);
 	}
-	for (const { key, id } of skipped) {
+	for (const { key, id } of skipped.filter((test) => !repeated.has(test.key))) {
 		const status = macStatus.get(key);
-		if (status !== "passed" && !allowed.has(id))
+		if (status !== "passed" && !allowed.has(key))
 			errors.push(`skipped on Linux, not passed on macOS: ${id}: ${status ?? "missing"}`);
 	}
 	for (const suite of list.suites) {
@@ -81,7 +94,9 @@ export function compare({ linux, mac, list }) {
 			errors.push(`named suite did not run whole on macOS: ${counted}`);
 	}
 	for (const file of list.tagged) {
-		const keys = linuxTests.filter((test) => test.file === file && taggedIds.has(test.key)).map((test) => test.key);
+		const keys = linuxTests
+			.filter((test) => test.file === file && taggedIds.has(test.key) && !repeated.has(test.key))
+			.map((test) => test.key);
 		const counted = `${file}: ${keys.filter((key) => macStatus.get(key) === "passed").length} of ${keys.length} tests tagged ${list.tag} passed`;
 		lines.push(counted);
 		if (keys.length === 0 || keys.some((key) => macStatus.get(key) !== "passed"))
@@ -90,7 +105,7 @@ export function compare({ linux, mac, list }) {
 	for (const test of macTests) {
 		// The tag filter reports each test it left out as skipped.
 		const filteredOut = tagged.has(test.file) && !taggedIds.has(test.key) && test.status === "skipped";
-		if (test.status !== "passed" && !allowed.has(test.id) && !filteredOut)
+		if (test.status !== "passed" && !allowed.has(test.key) && !filteredOut && !repeated.has(test.key))
 			errors.push(`did not pass on macOS: ${test.id}: ${test.status}`);
 	}
 	if (errors.length === 0)

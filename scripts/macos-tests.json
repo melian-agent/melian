@@ -14,7 +14,12 @@
 		"packages/core/test/worktree-spelling.test.ts",
 		"packages/pipeline/test/probe-links-independent.test.ts"
 	],
-	"allowed": {
-		"packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown": "Only root can give a file to another user, and neither runner is root."
-	}
+	"allowed": [
+		{
+			"file": "packages/core/test/secrets.test.ts",
+			"ancestorTitles": ["loadSecrets"],
+			"title": "refuses a command in a file another user owns, advising chown",
+			"reason": "Only root can give a file to another user, and neither runner is root."
+		}
+	]
 }

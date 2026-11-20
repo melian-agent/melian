@@ -37,7 +37,14 @@ const list = {
 	tag: "macos",
 	tagged: [tagged],
 	skipped: [gated, "packages/core/test/secrets.test.ts"],
-	allowed: { [allowedId]: "only root can give a file to another user" },
+	allowed: [
+		{
+			file: "packages/core/test/secrets.test.ts",
+			ancestorTitles: ["loadSecrets"],
+			title: "refuses a command in a file another user owns",
+			reason: "only root can give a file to another user",
+		},
+	],
 };
 
 // Linux skips one test of the gated file and the whole sandbox suite, and runs every test of the tagged file.
@@ -148,22 +155,21 @@ describe("compare", () => {
 	});
 
 	it("allows only the allowed test to pass on neither", () => {
-		const unlisted = { ...list, allowed: {} };
+		const unlisted = { ...list, allowed: [] };
 		expect(compare({ linux: linux(), mac: [macWhole(), macTagged()], list: unlisted }).errors).toEqual([
 			`skipped on Linux, not passed on macOS: ${allowedId}: skipped`,
 			`did not pass on macOS: ${allowedId}: skipped`,
 		]);
 	});
 
-	it("counts a test that passed under one of two identical names and failed under the other as not passed", () => {
+	it("refuses two macOS tests of one name, one passed and the later failed", () => {
 		const mac = report(...rows(macWhole()), {
 			file: gated,
 			title: "spells the path as the disk does",
 			status: "failed",
 		});
 		expect(compare({ linux: linux(), mac: [mac, macTagged()], list }).errors).toEqual([
-			`skipped on Linux, not passed on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
-			`did not pass on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
+			`the macOS reports hold two tests named ${gated} > a suite > spells the path as the disk does, which cannot be told apart: rename one`,
 		]);
 	});
 
@@ -272,7 +278,7 @@ describe("compare", () => {
 		]);
 	});
 
-	it("counts a test that failed under one of two identical names and passed under the later one as not passed", () => {
+	it("refuses two macOS tests of one name, one failed and the later passed", () => {
 		const whole = drop(macWhole(), gated, "spells the path as the disk does");
 		const mac = report(
 			{ file: gated, title: "spells the path as the disk does", status: "failed" },
@@ -280,8 +286,7 @@ describe("compare", () => {
 			...rows(whole),
 		);
 		expect(compare({ linux: linux(), mac: [mac, macTagged()], list }).errors).toEqual([
-			`skipped on Linux, not passed on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
-			`did not pass on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
+			`the macOS reports hold two tests named ${gated} > a suite > spells the path as the disk does, which cannot be told apart: rename one`,
 		]);
 	});
 
@@ -324,7 +329,7 @@ describe("compare", () => {
 		const { lines } = compare({
 			linux: nested,
 			mac: [{ testResults: [] }],
-			list: { suites: [], tag: "macos", tagged: [], skipped: ["scripts/codex-sandboxed.test.mjs"], allowed: {} },
+			list: { suites: [], tag: "macos", tagged: [], skipped: ["scripts/codex-sandboxed.test.mjs"], allowed: [] },
 		});
 		expect(lines[0]).toBe("Linux skipped tests in: scripts/codex-sandboxed.test.mjs");
 	});
@@ -367,6 +372,52 @@ describe("compare", () => {
 			list,
 		});
 		expect(errors).toEqual([`skipped on Linux, not passed on macOS: ${gated} > s > b > c: missing`]);
+	});
+});
+
+describe("how the comparison names a test", () => {
+	it("refuses a Linux report holding a platform-only skip beside a test of the same name, which one macOS pass cannot answer for both", () => {
+		const { errors } = compare({
+			linux: report(
+				...rows(linux()),
+				{ file: gated, title: "same", status: "skipped" },
+				{ file: gated, title: "same" },
+			),
+			mac: [report(...rows(macWhole()), { file: gated, title: "same" }), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([
+			`the Linux report holds two tests named ${gated} > a suite > same, which cannot be told apart: rename one`,
+		]);
+	});
+
+	it("refuses a macOS report holding two tests of one name", () => {
+		const { errors } = compare({
+			linux: linux(),
+			mac: [report(...rows(macWhole()), { file: gated, title: "runs anywhere" }), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([
+			`the macOS reports hold two tests named ${gated} > a suite > runs anywhere, which cannot be told apart: rename one`,
+		]);
+	});
+
+	it("does not let a test whose joined name matches the allowed test's take its exemption", () => {
+		const forged = {
+			file: "packages/core/test/secrets.test.ts",
+			ancestors: [],
+			title: "loadSecrets > refuses a command in a file another user owns",
+			status: "skipped",
+		};
+		const { errors } = compare({
+			linux: report(...rows(linux()), forged),
+			mac: [report(...rows(macWhole()), forged), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([
+			`skipped on Linux, not passed on macOS: ${allowedId}: skipped`,
+			`did not pass on macOS: ${allowedId}: skipped`,
+		]);
 	});
 });
 
