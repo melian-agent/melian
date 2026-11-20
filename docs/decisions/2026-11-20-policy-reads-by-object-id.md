@@ -22,6 +22,8 @@ The rule matches within one function. An argument array built in one function an
 
 A refspec without `+`, such as `refs/pull/1/head:refs/melian/pr`, is reported when its function also runs `show` or `cat-file`. Write it with `+`, or build it in a function of its own.
 
+These limits are one class: the rule reads code shapes, and code can build the same argument many ways. [Issue #596](https://github.com/melian-agent/melian/issues/596) proposes closing it at core's `git()`, which would refuse such a read unless the revision source makes it. The maintainer rules on that first.
+
 ## Proof
 
 `scripts/object-by-path.test.mjs` lints scratch files with the plugin wired as the root's `biome.json` wires it. It reports six shapes: a template naming a revision and a path, one held in a variable, a literal, an index path, `[c, p].join(":")` and an arrow function's body. It passes six others: those listed above. It checks that each grandfathered file is excluded while another source file is reported, and that each grandfathered file, with its exclusion lifted, reports exactly the reads the test records for it.
