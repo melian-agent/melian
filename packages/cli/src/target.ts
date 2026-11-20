@@ -144,7 +144,7 @@ export async function checkApproved(
 		throw new CliError(
 			`pull request #${pullRequest.number} is at head ${pullRequest.head.sha}, and its fetched refs at ${fetched.revision.head}, not the approved head ${expect.head}, so ${outcome}`,
 		);
-	if (pullRequest.base.defaultBranch === undefined || pullRequest.base.ref !== pullRequest.base.defaultBranch)
+	if (pullRequest.base.ref !== pullRequest.base.defaultBranch)
 		throw new CliError(
 			`pull request #${pullRequest.number} merges into ${pullRequest.base.ref}, not the default branch ${pullRequest.base.defaultBranch ?? "(not reported)"}, and a round reviews only a pull request into the default branch; start a new round, so ${outcome}`,
 		);

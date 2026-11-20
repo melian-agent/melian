@@ -122,6 +122,10 @@ describe("checkApproved", () => {
 		const { repo, base, head, approved } = approvedPullRequest();
 		const other = commitOn(repo, "other", { from: base });
 		await refuses(repo, other, head, approved, "other");
+		const { pullRequest, fetched } = now(repo, other, head, "other");
+		await expect(checkApproved(pullRequest, fetched, approved, outcome)).rejects.toThrow(
+			"merges into other, not the default branch main,",
+		);
 	});
 
 	it("refuses when the provider does not say which branch is the default", async () => {
@@ -189,5 +193,32 @@ describe("checkApproved", () => {
 		const head = commitOn(repo, "feature", { from: fork });
 		expect(gitIn(repo, "merge-base", tip, head)).toBe(fork);
 		await refuses(repo, tip, head, { base: older, head });
+	});
+});
+
+describe("each part of the guard decides alone", () => {
+	it.each([
+		["a character before it", (id: string) => `g${id.slice(1)}0`],
+		["a character after it", (id: string) => `${id}0`],
+	])("refuses an approved base with %s", async (_, change) => {
+		const { repo, base, head, approved } = approvedPullRequest();
+		const { pullRequest, fetched } = now(repo, base, head);
+		await expect(
+			checkApproved(pullRequest, fetched, { ...approved, base: change(approved.base) }, outcome),
+		).rejects.toThrow("must be whole commit IDs");
+	});
+
+	it("refuses when only the pull request's head moved", async () => {
+		const { repo, base, head, approved } = approvedPullRequest();
+		const { pullRequest, fetched } = now(repo, base, head);
+		const moved = { ...pullRequest, head: { ...pullRequest.head, sha: "e".repeat(40) } };
+		await expect(checkApproved(moved, fetched, approved, outcome)).rejects.toThrow("not the approved head");
+	});
+
+	it("refuses when only the fetched head differs", async () => {
+		const { repo, base, head, approved } = approvedPullRequest();
+		const { pullRequest, fetched } = now(repo, base, head);
+		const other = { ...fetched, revision: { ...fetched.revision, head: "e".repeat(40) } } as unknown as Changeset;
+		await expect(checkApproved(pullRequest, other, approved, outcome)).rejects.toThrow("not the approved head");
 	});
 });
