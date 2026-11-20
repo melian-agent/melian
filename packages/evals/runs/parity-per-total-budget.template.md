@@ -36,6 +36,8 @@ The committed arm's whole review by the budget count, from the line the run prin
 |---|---|---|---|---|---|
 | `<miss>` | `<lenses>` | `<probers>` | `<triage>` | `<verification>` | `<walkthrough>` |
 
+Parity reviews left unscored because their lenses and probers spent past the total, each with its `overrun` from the results file: `<miss, tokens past the total and the total, or none>`.
+
 Run totals over every attempt, stopped ones included: `<tokens>` Spend, `<budgetTokens>` by the budget count. Stopped attempts: `<miss, arm and stopped reason for each, or none>`.
 
 ## Lenses their share ended

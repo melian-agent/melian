@@ -43,11 +43,6 @@ export const parityArmName = "Parity per total budget";
 export const graphGuidance =
 	"To test an assumption against the code that relies on it, ask Enola's graph of the head before you grep. `graph_definitions` finds where a name is declared and gives its full name. `graph_references` lists what calls, constructs, names, imports or implements that declaration, and `graph_impact` lists what reaches it through calls, up to three levels away. `graph_callees` lists what it calls. The graph holds only the edges Enola resolved: a method called through an instance is often missing, so an empty answer proves nothing, and `search` finds the rest. Confirm each caller with `read_file` before citing it.";
 
-/** The design lens's committed tool-call ceiling, which every lens of the parity arm gets so its token share binds. */
-export const parityToolCeiling = 400;
-/** The design lens's committed findings budget, below which no lens of the parity arm goes. */
-export const parityFindings = 16;
-
 const modelTiers = ["light", "medium", "heavy"] as const;
 
 // A route with no fallbacks, so a lens at its provider's limit fails rather than answering on another model. A route
@@ -100,11 +95,13 @@ export class CommittedArm implements ProbingRoute {
  * The parity arm: every lens the review's tier runs gets the graph tools and their guidance, `high` thinking on its
  * route, and one level in place of its own, declared as both `careful` and `deep` and never `quick`, so whichever level
  * triage picks, the floor raises it to, or escalation reaches runs the same settings once: its `deep` level, which
- * probes wherever core allows, with a findings budget of at least {@link parityFindings} and
- * {@link parityToolCeiling} tool calls. Tokens are what bind: `total` is shared between the lenses, half equally and
+ * probes wherever core allows, with at least the policy commit's design lens's findings budget and its tool-call
+ * ceiling, so the token share binds. Tokens are what bind: `total` is shared between the lenses, half equally and
  * half by the changed lines of the files each selects, and a lens that probes splits its share between its planner
- * and its prober, since each conversation spends against its level's budget. A lens its share ends counts, with its
- * findings so far. Every route is held to its first model, as the committed arm's is.
+ * and its prober, since each conversation spends against its level's budget. A share is a soft limit: the request that
+ * crosses it finishes, and a lens its share ends counts, with its findings so far, so a review whose lenses and probers
+ * spent past `total` goes unscored. Every route is held to its first model, as the committed arm's is. Throws when the
+ * lenses hold no design lens at the root.
  */
 export class ParityArm implements ProbingRoute {
 	readonly graph = true as const;
@@ -155,6 +152,12 @@ export class ParityArm implements ProbingRoute {
 		lenses: readonly Lens[],
 		files: readonly ChangedFile[],
 	): { config: MelianConfig; lenses: readonly Lens[] } {
+		const design = lenses.find((lens) => lens.name === "design" && lens.scope === "");
+		if (design === undefined)
+			throw new Error(
+				"The parity arm gives every lens the design lens's tool ceiling and findings budget, and the policy commit loads no design lens at its root",
+			);
+		const ceiling = (design.levels.deep ?? design.levels.careful).budget;
 		const shares = this.shares(config, lenses, files);
 		const routedConfig = pinnedConfig(config, "high");
 		const routedLenses = lenses.map((lens) => {
@@ -165,9 +168,9 @@ export class ParityArm implements ProbingRoute {
 			const parity: LensLevel = {
 				...base,
 				budget: {
-					findings: Math.max(base.budget.findings, parityFindings),
+					findings: Math.max(base.budget.findings, ceiling.findings),
 					tokens: probe === undefined ? share : Math.floor(share / 2),
-					tools: parityToolCeiling,
+					tools: ceiling.tools,
 					ended: "count",
 				},
 				...(probe === undefined ? {} : { probe }),
@@ -232,6 +235,8 @@ export interface ParityAttempt {
 	readonly pending?: true;
 	/** For the parity arm, the tokens its lenses shared, by Melian's budget count. */
 	readonly total?: number;
+	/** For a parity review its lenses and probers spent past `total`, by how many tokens, which leaves it unscored. */
+	readonly overrun?: number;
 	readonly tokens: number;
 	readonly cacheRead: number;
 	readonly budgetTokens: number;
@@ -726,9 +731,16 @@ export async function measureParity(
 				stopCause(run, telemetry, error) ??
 				(unmeasured.length === 0 ? undefined : `usage its telemetry did not measure, in ${unmeasured.join(", ")}`);
 			const stopped = cause === undefined ? undefined : `${parityLabel(arm)} on ${miss.name} met ${cause}`;
+			// A share is a soft limit, so what keeps the arm within its total is this sum of what was recorded.
+			const lensTokens = budgeted(stages.filter((stage) => stage.name === "melian.lens"));
+			const overrun = total !== undefined && lensTokens > total ? lensTokens - total : undefined;
 			let judged: { said: string; found?: boolean } =
 				stopped === undefined ? { said: `no score: ${error}` } : { said: "not scored: the run stopped" };
-			if (run !== undefined && stopped === undefined) {
+			if (run !== undefined && stopped === undefined && overrun !== undefined)
+				judged = {
+					said: `not scored: its lenses and probers spent ${lensTokens} tokens by Melian's budget count, ${overrun} past its total of ${total}, since a share is a soft limit and the request that crosses it finishes`,
+				};
+			else if (run !== undefined && stopped === undefined) {
 				try {
 					judged = await miss.judge(run, miss.match(run, location, "whole"), target, location, lenses);
 				} catch (thrown) {
@@ -749,6 +761,7 @@ export async function measureParity(
 						...(error === undefined ? {} : { error }),
 						...(stopped === undefined ? {} : { stopped }),
 						...(total === undefined ? {} : { total }),
+						...(overrun === undefined ? {} : { overrun }),
 						tokens,
 						cacheRead,
 						budgetTokens,
@@ -863,8 +876,18 @@ function parityLabel(arm: "committed" | "parity"): string {
  * files the run reads and writes, lies inside it, since writing them would leave such changes.
  */
 export function checkoutCommit(directory: string, artefacts: readonly string[]): string {
-	const git = (...args: string[]) =>
-		execFileSync("git", ["-C", directory, ...args], { encoding: "utf8", env: gitEnvironment() });
+	// Git's stderr is captured, not inherited, so a directory's control bytes reach the terminal only escaped.
+	const git = (...args: string[]) => {
+		try {
+			return execFileSync("git", ["-C", directory, ...args], {
+				encoding: "utf8",
+				env: gitEnvironment(),
+				stdio: ["ignore", "pipe", "pipe"],
+			});
+		} catch (thrown) {
+			throw new Error(visibleText(thrown instanceof Error ? thrown.message : String(thrown)));
+		}
+	};
 	const root = git("rev-parse", "--show-toplevel").trim();
 	for (const artefact of artefacts) {
 		const path = resolve(artefact);

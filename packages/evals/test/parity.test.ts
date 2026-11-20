@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -78,6 +78,17 @@ async function named(name: string, paths: readonly string[], from = "correctness
 	return Lens.from({ ...lens.toJSON(), name, paths: [...paths], probesAs: from });
 }
 
+// The design lens as Melian's repository commits it, whose ceiling and findings budget the parity arm gives every lens.
+async function designLens(findings = 16, tools = 400, deep?: number): Promise<Lens> {
+	const builtin = (await Lens.builtins()).find((each) => each.name === "design")!;
+	const careful = builtin.level("careful");
+	const level = (ceiling: number) => ({ ...careful, budget: { ...careful.budget, findings, tools: ceiling } });
+	return Lens.from({
+		...builtin.toJSON(),
+		levels: deep === undefined ? { careful: level(tools) } : { careful: level(tools), deep: level(deep) },
+	});
+}
+
 describe("CommittedArm", () => {
 	it("holds every route to its first model and leaves the lenses and the rest of the policy alone", async () => {
 		const lenses = [await named("a", ["src/**"])];
@@ -155,7 +166,7 @@ describe("ParityArm", () => {
 	it("gives each scoped variant of a lens its own share, so the variants together spend no more than the total", async () => {
 		const root = await named("a", ["**"]);
 		const scoped = Lens.from({ ...root.toJSON(), scope: "pkg" });
-		const lenses = [root, scoped, await named("b", ["docs/**"])];
+		const lenses = [root, scoped, await named("b", ["docs/**"]), await designLens()];
 		const files = [file("src/x.ts", 10, 20), file("pkg/z.ts", 5, 5), file("docs/y.md", 4, 6)];
 		const arm = new ParityArm(1000);
 		const shares = arm.shares(config, lenses, files);
@@ -166,16 +177,19 @@ describe("ParityArm", () => {
 				["b", 250],
 			]),
 		);
-		expect(arm.routed(config, lenses, files).lenses.map((lens) => lens.level("deep").budget.tokens)).toEqual([
-			250, 125, 125,
-		]);
+		expect(
+			arm
+				.routed(config, lenses, files)
+				.lenses.slice(0, 3)
+				.map((lens) => lens.level("deep").budget.tokens),
+		).toEqual([250, 125, 125]);
 		expect(arm.routed(config, lenses, files).config.lenses).toEqual({
 			a: { route: { model: "r/route", thinking: "high" } },
 		});
 	});
 
 	it("leaves a configured lens with no route on its tier's route, which carries the high thinking", async () => {
-		const lenses = [await named("a", ["src/**"]), await named("b", ["**"])];
+		const lenses = [await named("a", ["src/**"]), await named("b", ["**"]), await designLens()];
 		const withPaths: MelianConfig = { ...config, lenses: { ...config.lenses, b: { paths: ["**"] } } };
 		const routed = new ParityArm(1000).routed(withPaths, lenses, [file("src/x.ts", 0, 3)]);
 		expect(routed.config.lenses.b).toEqual({ paths: ["**"] });
@@ -188,7 +202,11 @@ describe("ParityArm", () => {
 			...config,
 			models: { ...config.models, heavy: { accept }, light: { thinking: "low" } },
 		};
-		const routed = new ParityArm(1000).routed(accepting, [await named("a", ["src/**"])], [file("src/x.ts", 0, 3)]);
+		const routed = new ParityArm(1000).routed(
+			accepting,
+			[await named("a", ["src/**"]), await designLens()],
+			[file("src/x.ts", 0, 3)],
+		);
 		expect(routed.config.models.heavy).toStrictEqual({ accept, model: "h/heavy", thinking: "high" });
 		expect(routed.config.models.light).toStrictEqual({ thinking: "high" });
 		expect(routed.config.models.verifier).toStrictEqual({ model: "v/verify" });
@@ -199,9 +217,27 @@ describe("ParityArm", () => {
 			...(await named("a", ["src/**"])).toJSON(),
 			tools: ["read_file", "graph_definitions"],
 		});
-		const [routed] = new ParityArm(1000).routed(config, [partial], [file("src/x.ts", 0, 3)]).lenses;
+		const [routed] = new ParityArm(1000).routed(
+			config,
+			[partial, await designLens()],
+			[file("src/x.ts", 0, 3)],
+		).lenses;
 		expect(routed!.tools).toEqual(["read_file", ...lensGraphToolNames]);
 		expect(routed!.instructions).toBe(`${partial.instructions}\n\n${graphGuidance}`);
+	});
+
+	it("gives every lens of the tier the loaded design lens's tool ceiling and findings budget, and refuses without one", async () => {
+		const a = await named("a", ["src/**"]);
+		const files = [file("src/x.ts", 0, 3)];
+		const [routed] = new ParityArm(1000).routed(config, [a, await designLens(20, 600)], files).lenses;
+		expect(routed!.level("deep").budget).toEqual({ ...routed!.level("deep").budget, findings: 20, tools: 600 });
+		const [deep] = new ParityArm(1000).routed(config, [a, await designLens(20, 600, 700)], files).lenses;
+		expect(deep!.level("deep").budget.tools).toBe(700);
+		const scoped = Lens.from({ ...(await designLens()).toJSON(), scope: "pkg" });
+		for (const lenses of [[a], [a, scoped]])
+			expect(() => new ParityArm(1000).routed(config, lenses, files)).toThrow(
+				"The parity arm gives every lens the design lens's tool ceiling and findings budget, and the policy commit loads no design lens at its root",
+			);
 	});
 
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
@@ -216,7 +252,7 @@ describe("ParityArm", () => {
 		expect(unprobing.length).toBeGreaterThan(0);
 		const a = await named("a", ["src/**"], probing[0]);
 		const off = await named("off", ["**"]);
-		const lenses = [a, graphed, off];
+		const lenses = [a, graphed, off, await designLens()];
 		const files = [file("src/x.ts", 0, 3), file("docs/y.md", 0, 1)];
 		const arm = new ParityArm(1000);
 		const shares = arm.shares(config, lenses, files);
@@ -248,7 +284,7 @@ describe("ParityArm", () => {
 		expect(a.levels.quick).toBeDefined();
 		expect(routedA!.levels).toEqual({ careful: parity, deep: parity });
 		const unprobed = await named("b", ["**"], unprobing[0]);
-		const [, again] = arm.routed(config, [a, unprobed], files).lenses;
+		const [, again] = arm.routed(config, [a, unprobed, await designLens()], files).lenses;
 		expect(again!.level("deep").probe).toBeUndefined();
 		expect(again!.level("deep").budget.tokens).toBe(arm.shares(config, [a, unprobed], files).get("b"));
 	});
@@ -416,13 +452,15 @@ describe("the arms through a real review", { timeout: 120_000 }, () => {
 		const arm = new ParityArm(1_000_000);
 		const { given, stages } = await reviewThrough(arm, ["correctness", "trust-boundary"]);
 		const shares = arm.shares(given.config, given.lenses, given.files);
+		const design = given.lenses.find((lens) => lens.name === "design" && lens.scope === "")!;
+		const ceiling = (design.levels.deep ?? design.levels.careful).budget.tools;
 		expect(stages.length).toBeGreaterThan(0);
 		for (const stage of stages) {
 			const lens = given.lenses.find((each) => each.name === nameOf(stage.subject))!;
 			const share = shares.get(lens.name)!;
 			const probes = lens.probeRefusal() === undefined;
 			expect(levelOf(stage.subject)).not.toBe("quick");
-			expect(stage.limits).toEqual({ tokens: probes ? Math.floor(share / 2) : share, tools: 400 });
+			expect(stage.limits).toEqual({ tokens: probes ? Math.floor(share / 2) : share, tools: ceiling });
 			expect(new Set(stage.usage!.requests!.map(({ reasoning }) => reasoning.requested))).toEqual(new Set(["high"]));
 		}
 		// A planner that plans no attacks spawns no prober, so a planner stage is what shows a lens's level probes.
@@ -492,6 +530,11 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		lensStage(),
 		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
 		lensStage({ id: "p", role: "prober", usage: usage({ model: 50 }, 20) }),
+	];
+	// The same Spend as the committed stages, with no prober, so a parity review spends its lenses' total and scores.
+	const withinTotal = [
+		lensStage(),
+		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 80 }, 10) }),
 	];
 
 	function runners(
@@ -836,6 +879,37 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			],
 		});
 		expect(elsewhere.models).not.toHaveBeenCalled();
+	});
+
+	it("leaves unscored a parity review whose lenses and probers spent one request past its total, and scores one at it", async () => {
+		const verifier = lensStage({
+			id: "v",
+			name: "melian.verification",
+			subject: "verifier",
+			usage: usage({ model: 70 }, 0),
+		});
+		const planner = lensStage({ role: "planner", usage: usage({ model: 70 }, 40) });
+		const prober = (total: number) => lensStage({ id: "p", role: "prober", usage: usage({ model: total }, 40) });
+		const using = runners([
+			[lensStage(), verifier],
+			[planner, prober(70), verifier],
+			[lensStage(), verifier],
+			[planner, prober(71), verifier],
+		]);
+		const { status, lines } = await measure(env, using);
+		expect(status).toBe(1);
+		const parity = results().attempts.filter((attempt) => attempt.arm === "parity");
+		expect(parity.map(({ total, budgetTokens }) => [total, budgetTokens])).toEqual([
+			[60, 130],
+			[60, 131],
+		]);
+		expect(parity[0]!.said).toMatch(/^unadjudicated/);
+		expect(parity[0]).not.toHaveProperty("overrun");
+		const over =
+			"not scored: its lenses and probers spent 61 tokens by Melian's budget count, 1 past its total of 60, since a share is a soft limit and the request that crosses it finishes";
+		expect(parity[1]).toMatchObject({ said: over, overrun: 1 });
+		expect(parity[1]).not.toHaveProperty("found");
+		expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^Parity per total budget two: ${over};`)));
 	});
 
 	it("refuses to save through a file or link planted at its temporary path, and leaves the link's target alone", async () => {
@@ -1262,13 +1336,13 @@ describe("measureParity", { timeout: 60_000 }, () => {
 	it("keeps a run stopped when a narrowed resume finishes its misses and leaves another the results file names", async () => {
 		const judge = vi.spyOn(Miss.prototype, "judge").mockResolvedValue({ said: "found", found: true });
 		try {
-			expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "540" }, runners())).status).toBe(3);
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "540" }, runners([withinTotal]))).status).toBe(3);
 			expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
 				["one", "committed"],
 				["one", "parity"],
 				["two", "committed"],
 			]);
-			const narrowed = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners());
+			const narrowed = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners([withinTotal]));
 			expect(narrowed.status).toBe(3);
 			expect(results().stopped).toBe(
 				"two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES",
@@ -1276,7 +1350,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			expect(narrowed.lines.at(-1)).toBe(
 				`stopped: two is not yet reviewed in both arms; resume with it in MELIAN_EVAL_PARITY_MISSES; resume with the same MELIAN_EVAL_PARITY_OUT`,
 			);
-			expect((await measure(env, runners())).status).toBe(0);
+			expect((await measure(env, runners([withinTotal]))).status).toBe(0);
 			expect(results().stopped).toBeUndefined();
 		} finally {
 			judge.mockRestore();
@@ -1287,11 +1361,11 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		const judge = vi.spyOn(Miss.prototype, "judge").mockResolvedValue({ said: "found", found: true });
 		try {
 			const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
-			expect((await measure(env, runners([[limited], committedStages]))).status).toBe(3);
-			expect((await measure(env, runners())).status).toBe(0);
+			expect((await measure(env, runners([[limited], withinTotal]))).status).toBe(3);
+			expect((await measure(env, runners([withinTotal]))).status).toBe(0);
 			judge.mockResolvedValueOnce({ said: "no score: unadjudicated" });
 			rmSync(env.MELIAN_EVAL_PARITY_OUT!);
-			expect((await measure(env, runners())).status).toBe(1);
+			expect((await measure(env, runners([withinTotal]))).status).toBe(1);
 		} finally {
 			judge.mockRestore();
 		}
@@ -1555,5 +1629,24 @@ describe("checkoutCommit", () => {
 			rmSync(repo, { recursive: true, force: true });
 			rmSync(other, { recursive: true, force: true });
 		}
+	});
+
+	// Git's own stderr goes to this process's unless captured, so the check runs checkoutCommit in a child it reads.
+	it("escapes the control bytes of a directory git cannot enter, in its error and on stderr", () => {
+		const missing = join(scratch, "gone\u001b[31m");
+		const parity = join(import.meta.dirname, "..", "src", "parity.ts");
+		const child = spawnSync(
+			process.execPath,
+			[
+				"--conditions=@melian-agent/source",
+				"--no-warnings",
+				"--input-type=module",
+				"-e",
+				`import { checkoutCommit } from ${JSON.stringify(parity)}; try { checkoutCommit(${JSON.stringify(missing)}, []); } catch (error) { process.stdout.write(error.message); }`,
+			],
+			{ encoding: "utf8", timeout: 60_000 },
+		);
+		expect(child.stdout).toContain(join(scratch, "gone\\u001b[31m"));
+		expect(`${child.stdout}${child.stderr}`).not.toContain("\u001b");
 	});
 });
