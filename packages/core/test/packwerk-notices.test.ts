@@ -119,6 +119,20 @@ describe("packwerkNotices", () => {
 		]);
 	});
 
+	it("notices a head that renames a Packwerk file to a path Enola did not read", async () => {
+		const { input, findings } = await notices(
+			packages,
+			{ "docs/saved.yml": enforcing },
+			{ remove: ["packs/a/package.yml"] },
+		);
+		expect(input.revision.files.map(({ path, oldPath }) => [path, oldPath])).toEqual([
+			["docs/saved.yml", "packs/a/package.yml"],
+		]);
+		expect(findings.map((finding) => [finding.properties.path, finding.properties.severity])).toEqual([
+			["packs/a/package.yml", "P2"],
+		]);
+	});
+
 	it("notices a head that moves package_paths", async () => {
 		const { findings } = await notices(packages, {
 			"packwerk.yml": lines('include: ["**/*.rb"]', 'package_paths: ["components/*"]'),
