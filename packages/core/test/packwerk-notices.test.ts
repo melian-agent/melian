@@ -223,6 +223,23 @@ describe("packwerkNotices", () => {
 		expect(await resolveAt(merged, "packs/a/package.yml", input.revision.base)).toBe("block");
 	});
 
+	it("keeps Enola's claim when a legacy guardrails sighting with no guardrail match speaks for the merged finding", async () => {
+		const policy = lines(
+			"resolution:",
+			"  checks:",
+			"    static.enola: { P2: block }",
+			"    guardrails: { P2: silent }",
+		);
+		const head = { "packs/a/package.yml": lines("enforce_dependencies: false") };
+		const { findings, input } = await notices({ ...packages, "melian.yaml": policy }, head);
+		const { guardrail: _, ...properties } = findings[0]!.toJSON().properties;
+		const merged = Finding.from({
+			...findings[0]!.toJSON(),
+			properties: { ...properties, source: { check: "guardrails" }, reportedBy: [{ check: "guardrails" }, enola] },
+		});
+		expect(await resolveAt(merged, "packs/a/package.yml", input.revision.base)).toBe("block");
+	});
+
 	it("lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's", async () => {
 		const policy = lines(
 			"resolution:",

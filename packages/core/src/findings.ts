@@ -1893,7 +1893,7 @@ export class Finding {
 			);
 		// A guardrail notice another check raised, as Enola's Packwerk notice is, resolves under both, the stricter standing.
 		if (guardrail === undefined)
-			return source.check === "guardrails" ? [{ check: "guardrails", group: this.ruleId, severity }] : own;
+			return source.check === "guardrails" ? [...own, { check: "guardrails", group: this.ruleId, severity }] : own;
 		const whole = { check: "guardrails", group: this.ruleId, severity };
 		if ("rules" in guardrail)
 			return [...own, ...guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }))];
