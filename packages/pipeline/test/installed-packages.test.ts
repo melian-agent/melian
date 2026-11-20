@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -285,6 +285,17 @@ describe("Install.read", () => {
 			["node_modules/pi", "release", "pi", "1.1.0"],
 			["node_modules/sdk", "release", "sdk", "2.0.0"],
 			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+		]);
+	});
+
+	it("keys a node_modules that is itself a link, and walks it where it really is", () => {
+		renameSync(join(scratch, "node_modules"), join(scratch, "modules"));
+		symlinkSync(join(scratch, "modules"), join(scratch, "node_modules"));
+		expect(read().entries).toEqual([
+			["modules/pi", "release", "pi", "1.1.0"],
+			["modules/sdk", "release", "sdk", "2.0.0"],
+			["modules/unrelated", "release", "unrelated", "1.0.0"],
+			["node_modules", "links", "modules"],
 		]);
 	});
 

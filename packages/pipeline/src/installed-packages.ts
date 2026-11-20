@@ -75,6 +75,7 @@ class Walk {
 	readonly #entries = new Map<string, InstallEntry>();
 	readonly #outside: string[] = [];
 	readonly #entered = new Set<string>();
+	readonly #followed = new Set<string>();
 	readonly #queue: [string, Mode][] = [];
 
 	constructor(root: string, limit: number) {
@@ -123,6 +124,9 @@ class Walk {
 	// A link is keyed where it sits, with the real place it reaches, and never walked through: what it reaches is walked
 	// where it really is, with every node_modules Node searches from there.
 	#follow(path: string, mode: Mode) {
+		// A node_modules that is itself a link is queued again from its own target's ancestors.
+		if (this.#followed.has(path)) return;
+		this.#followed.add(path);
 		let target: string | undefined;
 		try {
 			target = realpathSync(path);
