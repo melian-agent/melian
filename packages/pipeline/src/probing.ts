@@ -9,6 +9,7 @@ import {
 } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { defineDoc } from "./harness.ts";
+import { installedVersion } from "./installed-version.ts";
 import {
 	type CleanupOutcome,
 	Probe,
@@ -41,7 +42,7 @@ export const probingWording = Object.freeze({
 		"Attacks {attacks} have neither a probe nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
 	plannerHeading: "## Your role at this level: the attack planner",
 	plannerRole:
-		"This level runs probes. You plan; another reviewer, the prober, receives your plan alone, writes a probe for each attack and runs it against the head. You write no probe and run nothing. At this level you report no finding but an injection attempt: the prober reports what its probes show.",
+		"This level runs probes. You plan; another reviewer, the prober, receives your plan alone, writes a probe for each attack and runs it against the head. You write no probe and run nothing. At this level you report no finding but an injection attempt: the prober reports what its probes show. A probe runs the head's own code at every step of an attack's route that can run in its sandbox, and stands in only for what cannot exist there, such as a CI runner, an upload service, the network or a real login. Plan each attack that way, and name the stand-ins it needs.",
 	plannerAnswer: "When the plan is recorded, answer with one line saying how many attacks you planned.",
 	decisionsAtBase:
 		"## Decisions at base\nThe repository's decisions, its maintainers' rulings, as the base holds them. Read the ones an attack touches with read_file and revision base.",
@@ -57,7 +58,7 @@ export const probingWording = Object.freeze({
 	second: "second",
 	seconds: "seconds",
 	probesAnswer:
-		"Answer every attack with at least one probe, and add probes for anything one shows. When no probe here can show an attack, as when it needs the network, a credential, another machine or a race no probe can win, record it skipped with skip_attack and the reason. Stop when every attack has an answer.",
+		"Answer every attack with at least one probe, and add probes for anything one shows. Run the head's own code at every step of the attack's route that can run here, and stand in only for what cannot exist in the sandbox, such as a CI runner, an upload service, the network or a real login. Print which steps ran and which were stood in for, and say the same in a finding's failure scenario. When no probe can show an attack even with those stand-ins, as when it needs another machine or a race no probe can win, record it skipped with skip_attack and the reason. Stop when every attack has an answer.",
 	findingsHeading: "## Findings",
 	carriedHeading: "## Findings a quicker look reported",
 	carried:
@@ -267,17 +268,44 @@ export type ProbingEnvironment = {
 };
 
 /**
- * The host a probe's result holds on: the sandbox's platform and kind, and the CPU architecture and version of the Node
- * that runs it. A probing run's key holds it whole, so a run on another host, or under another Node, runs again.
+ * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, and the CPU
+ * architecture and version of the Node that runs it. A probing run's key holds it whole, so a run on another host, under
+ * another Node, or under another release of the sandbox, runs again.
  */
-export type ProbingHost = { platform: ProbeSandbox["platform"]; sandbox: string; arch: string; node: string };
+export type ProbingHost = {
+	platform: ProbeSandbox["platform"];
+	sandbox: string;
+	sandboxVersion: string;
+	arch: string;
+	node: string;
+};
+
+// sandbox-runtime confines every probe a review runs; a test's own sandbox reports the installed release too.
+const sandboxVersion = installedVersion("@anthropic-ai/sandbox-runtime", import.meta.url);
 
 /** The host a probe runs on under `sandbox`. */
 export function probingHost(sandbox: ProbeSandbox): ProbingHost {
 	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
-	// it confines. Case folding is left out: a finished probing run is never reused, so nothing matches on it.
+	// it confines. Case folding is left out: a review reuses a probing run only from its own store, on its own host.
 	const { arch, node } = hostFacts();
-	return { platform: sandbox.platform, sandbox: sandbox.kind, arch, node };
+	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node };
+}
+
+/** The probes a prober's conversation tried, by the ID each run_probe call took, and the result of each that ran. */
+export type ProbesTried = {
+	readonly attempts?: readonly string[];
+	readonly probes?: Readonly<Record<string, { readonly result: StoredProbeResult }>>;
+};
+
+/**
+ * Whether every probe a prober tried ended conclusively, by {@link probeConclusive}: one the sandbox refused left no
+ * result, and one that timed out, was cut or was ended by a signal says nothing.
+ */
+export function probesConclusive(tried: ProbesTried | undefined): boolean {
+	return (tried?.attempts ?? []).every((id) => {
+		const probe = tried?.probes?.[id];
+		return probe !== undefined && probeConclusive(probe.result);
+	});
 }
 
 /** Whether a probe showed its attack's defect: it ran to its end and exited non-zero. A timeout or a signal shows nothing. */
@@ -768,7 +796,7 @@ export function probeEvidenceRenderings(): string {
 			writer: { trusted: true, by: "reviewer" },
 			trustWriters: true,
 			read: ["node_modules"],
-			host: { platform: "linux", sandbox: "unconfined", arch: "x64", node: "24.0.0" },
+			host: { platform: "linux", sandbox: "unconfined", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" },
 		},
 		plan: [attack, { ...attack, target: "second" }],
 		probe: {

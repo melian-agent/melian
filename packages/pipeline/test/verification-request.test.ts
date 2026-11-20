@@ -147,11 +147,12 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe is asked under the key, and the verifier's version, it had then.
+// that rests on a probe is asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
+// by adding the fresh failover wording; removing it gives main's key again.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
 		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
-		expect(verificationRequest(sample).key).toBe("04364f1f6900da045e954f73d88effad517136b83cbe312329af2947b7bc3708");
+		expect(verificationRequest(sample).key).toBe("8d0e0e49c81894f030455545826a9a4aaa55b1396e36325b06736a2b15395e87");
 	});
 });
 
@@ -188,7 +189,7 @@ const claimProbe: ClaimProbe = {
 		writer: { trusted: true, by: "reviewer" },
 		trustWriters: true,
 		read: [],
-		host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.0.0" },
+		host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.0.0" },
 	},
 };
 

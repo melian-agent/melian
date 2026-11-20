@@ -1,5 +1,6 @@
 import {
 	type AccountPayload,
+	type CheckErrorCode,
 	type CheckPayload,
 	type CheckRecord,
 	canonicalJson,
@@ -26,8 +27,12 @@ import {
 	type Walkthrough,
 	type WalkthroughPayload,
 } from "@melian-agent/core";
+import { valid } from "semver";
+import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
+import { DismissError } from "./errors.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
+import type { StaticProof } from "./static-proof.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
 
@@ -75,13 +80,59 @@ export type DismissalFacts = {
 	readonly reason: string;
 	readonly at: string;
 	readonly severity: Severity;
-	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
+	// `run` is the request key the sighting's check run stamped when it was dismissed, which no payload carries.
+	readonly sighting: { readonly revision: string; readonly finding: StoredFinding; readonly run?: string };
 	readonly rounds: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
 };
 
 const micros = (dollars: number): number => Math.round(dollars * 1_000_000);
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
+
+/** What an exported record says in place of text a tool, a provider or the head's code may have written. */
+export const withheld = "Melian shares none of this text, which the reviewing host's store and terminal hold";
+
+// The codes a record may carry as they are: a check error's, a task outcome's, and the account's own.
+const codes: ReadonlySet<string> = new Set([
+	...([
+		"unknownCheck",
+		"unknownTier",
+		"tierCycle",
+		"unknownConversation",
+		"notCompleted",
+		"noEnvironment",
+		"worktreeFailed",
+		"toolMissing",
+		"toolFailed",
+		"timeout",
+		"aborted",
+		"nothingToCheck",
+		"outputTooLarge",
+		"invalidOutput",
+		"unreadable",
+		"tooLarge",
+	] satisfies CheckErrorCode[]),
+	"failed",
+	"orphaned",
+	"faulted",
+	"no record",
+	"unexpected",
+	"withheld",
+	"unkeyed",
+]);
+const shared = (text: string): string => (codes.has(text) ? text : withheld);
+// A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
+// form of at most 64 characters, or Melian's `unavailable`, leaves the machine. A lens's version is Melian's own.
+const toolVersion = (version: string | undefined): string | null =>
+	version === undefined
+		? null
+		: version === "unavailable" || (version.length <= 64 && valid(version) === version)
+			? version
+			: withheld;
+const sharedVersion = ({ check, version }: FindingSource): string | null =>
+	check.startsWith("lens.") ? orNull(version) : toolVersion(version);
+const caveat = (text: string): string =>
+	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? text : withheld;
 const byId = (a: StoredFinding, b: StoredFinding): number =>
 	a.properties.id < b.properties.id ? -1 : a.properties.id > b.properties.id ? 1 : 0;
 
@@ -112,8 +163,12 @@ export class ReviewRecords {
 	 * A check's record, keyed by the check run's full request key, this revision and the check's name: one tier run
 	 * writes one record per check, and two revisions never share one.
 	 */
-	check(run: string, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
-		const key = KeyedRequest.of("check.record", { run, base: this.base, head: this.head, name: result.name }).key;
+	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
+		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
+		if (result.status === "ran" && result.snapshots?.some((each) => !hashed(each))) {
+			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
+			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
+		}
 		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
 	}
 
@@ -150,11 +205,16 @@ export class ReviewRecords {
 				.sort((a, b) => compare(claimOrder(a), claimOrder(b)))
 				.map(({ id, source, verification }) => ({
 					id,
-					source: { check: source.check, version: source.version ?? null },
+					source: { check: source.check, version: sharedVersion(source) },
 					verification,
 				})),
 			dismissals: [...facts.dismissals].sort((a, b) => compare(a.finding, b.finding)),
-			outcomes: [...facts.outcomes].sort((a, b) => compare(a.candidate, b.candidate)),
+			outcomes: [...facts.outcomes]
+				.sort((a, b) => compare(a.candidate, b.candidate))
+				.map(({ candidate, outcome }) => ({
+					candidate,
+					outcome: "reason" in outcome ? { ...outcome, reason: shared(outcome.reason) } : outcome,
+				})),
 			check: facts.check === undefined ? null : (decided(facts.check) as DecidedCheck),
 		};
 		return this.#record("verification", key, payload);
@@ -197,7 +257,7 @@ export class ReviewRecords {
 								chosen,
 							})),
 						},
-			failure: orNull(entry.failure),
+			failure: entry.failure === undefined ? null : shared(entry.failure),
 			inputCut: entry.inputCut === true,
 		};
 		return this.#record("triage", key, payload);
@@ -215,8 +275,9 @@ export class ReviewRecords {
 
 	/**
 	 * How a round accounts for its tier: the tier's checks, the check and lens records it counts, the record it made for
-	 * each check no record holds, the skips it allows, and the producers whose findings count. Its key is a request of
-	 * the revision and the IDs of the records it counts, so the round that names it names what it counted.
+	 * each check no record holds, the skips it allows, the producers whose findings count, and the fingerprint of the
+	 * resolution policy it decided under. Its key is a request of the revision, the IDs of the records it counts and that
+	 * fingerprint, so the round that names it names what it counted and the policy it counted under.
 	 */
 	account(facts: {
 		readonly checks: readonly string[];
@@ -224,22 +285,27 @@ export class ReviewRecords {
 		readonly filled: readonly (CheckRecord & { readonly status: "skipped" | "failed" })[];
 		readonly allowSkip: readonly string[];
 		readonly producers: readonly (FindingSource & { readonly ids?: readonly string[] })[];
+		readonly resolutionPolicy: string | null;
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
-		const producers = [
-			...new Map(
-				facts.producers.map((producer) => {
-					const version = orNull(producer.version);
-					const ids = producer.ids === undefined ? null : [...new Set(producer.ids)].sort(compare);
-					return [`${producer.check}@${version ?? ""}`, { check: producer.check, version, ids }] as const;
-				}),
-			).values(),
-		].sort(
+		// Two versions withheld alike name one producer, whose findings are both producers' findings.
+		const united = new Map<string, { check: string; version: string | null; ids: string[] | null }>();
+		for (const producer of facts.producers) {
+			const version = sharedVersion(producer);
+			const key = `${producer.check}@${version ?? ""}`;
+			const earlier = united.get(key);
+			const ids =
+				producer.ids === undefined || earlier?.ids === null
+					? null
+					: [...new Set([...(earlier?.ids ?? []), ...producer.ids])].sort(compare);
+			united.set(key, { check: producer.check, version, ids });
+		}
+		const producers = [...united.values()].sort(
 			(a, b) =>
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
 		const payload: AccountPayload = {
-			v: 1,
+			v: 2,
 			checks: [...new Set(facts.checks)],
 			records,
 			// Two records alike in every field fill one entry, since an account names each once.
@@ -255,8 +321,9 @@ export class ReviewRecords {
 				.map(([, entry]) => entry),
 			allowSkip: [...new Set(facts.allowSkip)].sort(compare),
 			producers,
+			resolutionPolicy: facts.resolutionPolicy,
 		};
-		const key = KeyedRequest.of("account", { revision: this.revision, records }).key;
+		const key = accountKey(this.revision, payload);
 		return this.#record("account", key, payload);
 	}
 
@@ -283,15 +350,28 @@ export class ReviewRecords {
 		return this.#record("round", key, manifest);
 	}
 
-	/** A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. */
-	dismissal(facts: DismissalFacts): SharedRecord {
+	/**
+	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. A static finding's is shared
+	 * only when `proof` shows the run its sighting was stamped with stored none of its tool's text.
+	 */
+	dismissal(facts: DismissalFacts, proof?: StaticProof): SharedRecord {
+		const { check } = facts.sighting.finding.properties.source;
+		if (check.startsWith("static.") && proof?.asks(check, facts.sighting.run) !== true)
+			throw new DismissError(
+				"unprovenRun",
+				`The dismissed ${check} finding carries no proof that the run which sighted it stored none of its tool's text, so its dismissal is not shared.`,
+				{ revision: facts.sighting.revision, finding: facts.finding },
+			);
 		const payload: DismissalPayload = {
 			v: 1,
 			by: facts.by,
 			reason: facts.reason,
 			at: facts.at,
 			severity: facts.severity,
-			sighting: { revision: facts.sighting.revision, finding: facts.sighting.finding as unknown as RecordJson },
+			sighting: {
+				revision: facts.sighting.revision,
+				finding: shareable(sighting(facts.sighting.finding)) as unknown as RecordJson,
+			},
 			head: this.head,
 			rounds: [...new Set(facts.rounds)].sort(),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
@@ -308,6 +388,17 @@ export class ReviewRecords {
 			reviewPayloads,
 		);
 	}
+}
+
+/**
+ * An account's key: a request of its revision, the IDs of the records it counts, and the fingerprint of the policy it
+ * decided under. The rest of its payload follows from those records and that policy.
+ */
+export function accountKey(
+	revision: string | null,
+	{ records, resolutionPolicy }: Pick<AccountPayload, "records" | "resolutionPolicy">,
+): string {
+	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
 }
 
 /**
@@ -347,14 +438,64 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].sort(byId) as unknown as RecordJson[];
+	return [...sightings].map((finding) => shareable(sighting(finding))).sort(byId) as unknown as RecordJson[];
+}
+
+// A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome
+// and tsc are rewritten too: a build from before issue #281 stored their text, and the label cannot say which build wrote it.
+function sighting(finding: StoredFinding): StoredFinding {
+	const { check } = finding.properties.source;
+	if (!check.startsWith("static.")) return finding;
+	const what = `${check} reports ${finding.ruleId} here. ${withheld}.`;
+	return {
+		...finding,
+		message: { ...finding.message, text: what },
+		properties: { ...finding.properties, explanation: { what, whyHere: withheld, whatToDo: withheld } },
+	};
+}
+
+// Melian checks only these three fields of Enola's receipt; the rest is Enola's text.
+function receipt(text: string): string {
+	let parsed: { format_version?: unknown; snapshot_id?: unknown; enola_version?: unknown };
+	try {
+		parsed = JSON.parse(text);
+	} catch {
+		return withheld;
+	}
+	const { format_version, snapshot_id, enola_version } = parsed ?? {};
+	if (
+		format_version !== 1 ||
+		typeof snapshot_id !== "string" ||
+		!/^sha256:[a-f0-9]{64}$/.test(snapshot_id) ||
+		typeof enola_version !== "string" ||
+		!/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)
+	)
+		return withheld;
+	return JSON.stringify({ format_version, snapshot_id, enola_version });
+}
+
+// Melian computes each of a snapshot's identities as a SHA-256 hash, so anything else in one is text it did not write.
+function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
+	const ids = [cacheKey, coverage?.graph, coverage?.review, coverage?.test].filter((id) => id !== undefined);
+	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
+}
+
+function shareable(finding: StoredFinding): StoredFinding {
+	const { source } = finding.properties;
+	const version = sharedVersion(source);
+	return version === orNull(source.version)
+		? finding
+		: {
+				...finding,
+				properties: { ...finding.properties, source: { check: source.check, version: version ?? undefined } },
+			};
 }
 
 function snapshot(each: EnolaSnapshot): RecordJson {
 	return {
 		commit: each.commit,
 		snapshotId: each.snapshotId,
-		receipt: each.receipt,
+		receipt: receipt(each.receipt),
 		cacheKey: orNull(each.cacheKey),
 		coverage:
 			each.coverage === undefined
@@ -373,24 +514,29 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "ran",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
-				notes: [...result.notes],
+				notes: [],
 				snapshots: result.snapshots === undefined ? null : (result.snapshots.map(snapshot) as never),
 			};
 		case "provisional":
 			return {
 				name: result.name,
 				status: "provisional",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
-				notes: [...result.notes],
-				reason: result.reason,
+				notes: [],
+				reason: shared(result.reason),
 			};
 		case "skipped":
-			return { name: result.name, status: "skipped", reason: result.reason, cause: orNull(result.cause) };
+			return { name: result.name, status: "skipped", reason: shared(result.reason), cause: orNull(result.cause) };
 		case "failed":
-			return { name: result.name, status: "failed", reason: result.reason, error: result.error };
+			return {
+				name: result.name,
+				status: "failed",
+				reason: codes.has(result.reason) ? result.reason : "unexpected",
+				error: withheld,
+			};
 	}
 }
 
@@ -399,8 +545,8 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 	return {
 		name: record.name,
 		status: record.status,
-		reason: orNull(record.reason),
-		error: orNull(record.error),
+		reason: record.reason === undefined ? null : shared(record.reason),
+		error: record.error === undefined ? null : shared(record.error),
 		version: orNull(record.version),
 		level: orNull(record.level),
 		budgetEnded:
@@ -412,7 +558,7 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 						tokens: budgetEnded.tokens,
 						tools: budgetEnded.tools,
 					},
-		caveats: record.caveats === undefined ? null : [...record.caveats],
+		caveats: record.caveats === undefined ? null : record.caveats.map(caveat),
 		coverage:
 			coverage === undefined
 				? null
@@ -432,9 +578,9 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 }
 
 function lensOutcome(outcome: LensRunOutcome): LensPayload["outcome"] {
-	if (outcome.status === "unanswered") return { status: "unanswered", reason: outcome.reason };
+	if (outcome.status === "unanswered") return { status: "unanswered", reason: shared(outcome.reason) };
 	if (outcome.status === "exhausted")
-		return { status: "exhausted", tried: [...outcome.tried], reason: outcome.reason };
+		return { status: "exhausted", tried: [...outcome.tried], reason: shared(outcome.reason) };
 	const { budgetEnded, escalation, usage } = outcome;
 	return {
 		status: "done",

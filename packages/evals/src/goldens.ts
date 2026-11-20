@@ -13,6 +13,7 @@ import {
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
 	type Finding,
+	type FindingSource,
 	FindingsLog,
 	Lens,
 	type LensTier,
@@ -31,6 +32,7 @@ import {
 	configsFor,
 	createMemoryStorage,
 	openReviewHarness,
+	type ProberRecord,
 	type ReviewModels,
 	readFindings,
 	reviewChangeset,
@@ -62,7 +64,8 @@ export const goldenEvidenceSchema = Type.Object(
 
 /**
  * The JSON Schema of one expected finding: Martian's golden comment (`comment`, `severity`, `category`), so Martian's
- * judge reads it unchanged, plus the fields Melian matches on (`file`, `rule`, and `source`, a check that must be among
+ * judge reads it unchanged, plus the fields Melian matches on (`file` or one of `alternativeFiles`, `rule` or one of
+ * `alternativeRules`, `lines`, the first and last line a finding must overlap, and `source`, a check that must be among
  * the finding's `reportedBy`, such as `lens.tests`) and those a scripted run checks (`cause`, `failureScenario`,
  * `evidence`).
  */
@@ -79,6 +82,8 @@ export const goldenCommentSchema = Type.Object(
 		file: text,
 		alternativeFiles: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
 		rule: text,
+		alternativeRules: Type.Optional(Type.Array(text, { minItems: 1, uniqueItems: true })),
+		lines: Type.Optional(Type.Tuple([Type.Integer({ minimum: 1 }), Type.Integer({ minimum: 1 })])),
 		source: Type.Optional(text),
 		cause: causeSchema,
 		failureScenario: text,
@@ -338,13 +343,13 @@ export interface ReviewTarget {
 		config: MelianConfig,
 		lenses: readonly Lens[],
 	) => { config: MelianConfig; lenses: readonly Lens[] };
-	/** A check whose own sightings at the head the run also returns, unmerged with any other check's. */
-	readonly sightingsOf?: string;
 }
 
 /** A range's review: the findings, the terminal rendering an author would see, and what each lens ran on. */
 export interface RangeRun {
 	readonly telemetry: StageTelemetry;
+	/** Each prober stage's record, by stage ID: model and head text that telemetry leaves out, for a local results file. */
+	readonly probers: Readonly<Record<string, ProberRecord>>;
 	readonly findings: readonly Finding[];
 	readonly rendered: string;
 	/** In a scripted run, each scripted call whose result lacked its `expectToolResult`, described. */
@@ -357,10 +362,10 @@ export interface RangeRun {
 	/** The tier each lens that ran was routed by, by check name. A lens on its own route has none. */
 	readonly tiers: Readonly<Record<string, LensTier>>;
 	/**
-	 * The target's `sightingsOf` check's findings at the head as it reported them: its own lines, message and failure
-	 * scenario, before the verdict merged them with another check's. Absent when the target names no check.
+	 * Each lens check's findings at the head as it reported them, a read for each level: its own lines, message and
+	 * failure scenario, before the verdict merged them with another check's.
 	 */
-	readonly sightings?: readonly Finding[];
+	readonly sightings: readonly Finding[];
 	/** The review's verdict. Its {@link Verdict.all} holds every claim it adjudicated, refuted and dismissed ones too. */
 	readonly verdict: Verdict;
 }
@@ -406,6 +411,20 @@ async function guardrailFindings(
 }
 
 // One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
+async function detached(
+	storage: ReturnType<typeof createMemoryStorage>,
+	revision: string,
+): Promise<{ telemetry: StageTelemetry; probers: Record<string, ProberRecord> }> {
+	const reader = TelemetryReader.open(storage);
+	const telemetry = await reader.read(revision);
+	const probers: Record<string, ProberRecord> = {};
+	for (const stage of telemetry.stages) {
+		const record = await reader.proberRecord(stage);
+		if (record !== undefined) probers[stage.id] = record;
+	}
+	return { telemetry, probers };
+}
+
 export async function sightingsAt(
 	reader: Parameters<typeof readFindings>[0],
 	root: Parameters<typeof readFindings>[1],
@@ -522,30 +541,26 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			...Object.values(reviewed.verdict.findings).flat(),
 			...(golden === undefined ? [] : await guardrailFindings(golden, repo, changeset, source)),
 		];
-		const sightingsOf = target.sightingsOf;
-		const sightings =
-			sightingsOf === undefined
-				? {}
-				: {
-						sightings: await sightingsAt(
-							reviewHarness.harness,
-							(await reviewHarness.harness.root(backgroundContext)).id,
-							Revision.key(changeset.revision),
-							sightingsOf,
-						),
-					};
+		const root = (await reviewHarness.harness.root(backgroundContext)).id;
+		const lensChecks = (reviewed.verdict.ran ?? [])
+			.map(({ name }) => name)
+			.filter((name) => name.startsWith("lens."));
+		const sightings = await Promise.all(
+			lensChecks.map((check) => sightingsAt(reviewHarness.harness, root, Revision.key(changeset.revision), check)),
+		);
 		return {
 			findings,
-			...sightings,
+			sightings: sightings.flat(),
 			rendered: FindingsLog.of(findings).render(),
 			toolMismatches,
 			notes: reviewed.verdict.lensNotes(),
 			tiers: tiersRun(reviewed.verdict.ran ?? [], lenses, config),
 			verdict: reviewed.verdict,
-			telemetry: await TelemetryReader.open(storage).read(Revision.key(changeset.revision)),
+			...(await detached(storage, Revision.key(changeset.revision))),
 		};
 	} catch (error) {
-		throw new GoldenRunError(error, await TelemetryReader.open(storage).read(Revision.key(changeset.revision)));
+		const { telemetry, probers } = await detached(storage, Revision.key(changeset.revision));
+		throw new GoldenRunError(error, telemetry, probers);
 	} finally {
 		await reviewHarness.close(backgroundContext);
 	}
@@ -574,10 +589,14 @@ function tiersRun(
  * expected finding's cause, failure scenario, and evidence locations, described. A scripted run plays back the
  * golden's replies, so they must agree exactly; a live model's wording never would, and live runs do not check them.
  */
-export function scriptedMismatches(golden: Golden, findings: readonly Finding[]): string[] {
+export function scriptedMismatches(
+	golden: Golden,
+	findings: readonly Finding[],
+	sightings?: readonly Finding[],
+): string[] {
 	return golden.expected.comments.flatMap((comment) => {
 		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
-		const found = findings.find((each) => answers(comment, each));
+		const found = findings.find((each) => answers(comment, each, sightings));
 		if (found === undefined) return [`${name}: not reported`];
 		const claim = found.properties.otherClaims?.find((claim) => matchesClaim(comment, claim));
 		const { cause } = found.properties;
@@ -608,8 +627,8 @@ export function scriptedMismatches(golden: Golden, findings: readonly Finding[])
 }
 
 /**
- * How well one review matched its golden. A finding matches an expected one with the same file and rule, reported by
- * the expected one's `source` when it names one.
+ * How well one review matched its golden. A finding matches an expected one at its file or an alternative, under its
+ * rule or an alternative, overlapping its `lines` when it names them, and reported by its `source` when it names one.
  */
 export interface GoldenScore {
 	readonly golden: string;
@@ -625,24 +644,69 @@ export interface GoldenScore {
 	readonly recall: number;
 }
 
-// What a match reads of an expected finding, so a probing miss matches as a golden's comment does.
-type ExpectedClaim = Pick<GoldenComment, "file" | "alternativeFiles" | "rule" | "source">;
+// What a match reads of an expected finding.
+type ExpectedClaim = Pick<
+	GoldenComment,
+	"file" | "alternativeFiles" | "rule" | "alternativeRules" | "lines" | "source"
+>;
+
+function namesRule(comment: ExpectedClaim, rule: string): boolean {
+	return rule === comment.rule || (comment.alternativeRules ?? []).includes(rule);
+}
 
 function matchesClaim(comment: ExpectedClaim, claim: MemberClaim): boolean {
 	return (
 		claim.verification?.verdict !== "refuted" &&
-		claim.ruleId === comment.rule &&
+		namesRule(comment, claim.ruleId) &&
 		(comment.source === undefined || claim.source.check === comment.source)
 	);
 }
 
-// Match a merged defect through the claim that supplied the expected rule and source.
-export function answers(comment: ExpectedClaim, finding: Finding): boolean {
+function within(comment: ExpectedClaim, file: string, start: number, end: number): boolean {
+	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(file)) return false;
+	return comment.lines === undefined || (comment.lines[0] <= end && start <= comment.lines[1]);
+}
+
+// A claim's place is where its own check reported it: a merged finding keeps only its speaker's lines and some of the
+// members' evidence, and each place it still holds can belong to another member. A claim of a check that keeps no
+// sightings, such as a guardrail, is the finding itself.
+function sightedWithin(comment: ExpectedClaim, finding: Finding, sightings: readonly Finding[] | undefined): boolean {
+	if (sightings === undefined)
+		throw new Error(`an expected ${comment.rule} at lines ${comment.lines!.join("-")} needs the review's sightings`);
+	const { reportedBy, source, otherClaims = [], verification } = finding.properties;
+	const key = (id: string, each: FindingSource) => JSON.stringify([id, each.check, each.version]);
+	const claims = new Map(otherClaims.map((claim) => [key(claim.id, claim.source), claim]));
+	for (const each of reportedBy ?? [source])
+		if (!claims.has(key(finding.id, each)))
+			claims.set(key(finding.id, each), {
+				id: finding.id,
+				ruleId: finding.ruleId,
+				source: each,
+				severity: finding.original(),
+				...(verification === undefined ? {} : { verification }),
+			});
+	const sighted = new Map(sightings.map((sighting) => [key(sighting.id, sighting.properties.source), sighting]));
+	return [...claims.values()].some((claim) => {
+		if (!matchesClaim(comment, claim)) return false;
+		const sighting = claim.source.check.startsWith("lens.") ? sighted.get(key(claim.id, claim.source)) : finding;
+		if (sighting === undefined)
+			throw new Error(
+				`the verdict holds a ${claim.source.check} claim ${claim.id} from ${claim.source.version} that the lens never sighted`,
+			);
+		const path = sighting.properties.path ?? sighting.locations[0]!.physicalLocation.artifactLocation.uri;
+		return within(comment, path, ...sighting.lines());
+	});
+}
+
+// Match a merged defect through the claim that supplied the expected rule and source. An expectation with lines is
+// answered only at a claim's own sighting, which `sightings` holds.
+export function answers(comment: ExpectedClaim, finding: Finding, sightings?: readonly Finding[]): boolean {
+	if (comment.lines !== undefined) return sightedWithin(comment, finding, sightings);
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (![comment.file, ...(comment.alternativeFiles ?? [])].includes(path)) return false;
+	if (!within(comment, path, 0, 0)) return false;
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
 	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (finding.ruleId !== comment.rule) return false;
+	if (!namesRule(comment, finding.ruleId)) return false;
 	const original = otherClaims.find(
 		(claim) =>
 			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
@@ -657,26 +721,35 @@ export function answers(comment: ExpectedClaim, finding: Finding): boolean {
 }
 
 /**
- * Scores adjudicated defects against their expected file alternatives, rule and source. An expected
+ * Scores adjudicated defects against their expected file and rule alternatives, lines and source. An expected
  * finding names its `source`. Each expected finding counts as found once: a second reported finding matching the same
- * expectation is a false positive, since it is the same defect reported twice.
+ * expectation is a false positive, since it is the same defect reported twice. An expectation counts as found when any
+ * finding fits it, so no two expectations of a golden may share a file, a rule and a source, and one that names no
+ * source shares any: one broad finding would count as found for both, whatever their lines.
  */
-export function scoreGolden(golden: Golden, findings: readonly Finding[]): GoldenScore {
+export function scoreGolden(golden: Golden, findings: readonly Finding[], sightings?: readonly Finding[]): GoldenScore {
 	const expected = [
 		...new Map(
 			golden.expected.comments.map((comment) => [
-				JSON.stringify([comment.file, comment.alternativeFiles, comment.rule, comment.source]),
+				JSON.stringify([
+					comment.file,
+					comment.alternativeFiles,
+					comment.rule,
+					comment.alternativeRules,
+					comment.lines,
+					comment.source,
+				]),
 				comment,
 			]),
 		).values(),
 	];
-	const found = expected.filter((comment) => findings.some((finding) => answers(comment, finding))).length;
+	const found = expected.filter((comment) => findings.some((finding) => answers(comment, finding, sightings))).length;
 	// Pairs findings with expectations so that as many as possible count, each expectation once: with sources, a finding
 	// several lenses reported may answer more than one expectation, and the first one it fits may be another's only fit.
 	const holder: (number | undefined)[] = expected.map(() => undefined);
 	const claim = (index: number, tried: Set<number>): boolean =>
 		expected.some((comment, slot) => {
-			if (tried.has(slot) || !answers(comment, findings[index]!)) return false;
+			if (tried.has(slot) || !answers(comment, findings[index]!, sightings)) return false;
 			tried.add(slot);
 			const held = holder[slot];
 			if (held !== undefined && !claim(held, tried)) return false;

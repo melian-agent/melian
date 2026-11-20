@@ -18,7 +18,8 @@ export type UntrustedLabel =
 	| "graph"
 	| "standards"
 	| "plan"
-	| "probe";
+	| "probe"
+	| "mutants";
 
 /**
  * A fresh random nonce for one review. Quoted content cannot close a boundary it cannot name, and the head is fixed

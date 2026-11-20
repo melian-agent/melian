@@ -1,0 +1,488 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c0b8b02e8342723e313043b25d5da4dbd7e26eba",
+		"head": "cb6ee48298221a6f523b2c63d12c0f0fabad9a9b"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/store-prune.ts",
+		"packages/core/src/git.ts",
+		"packages/pipeline/src/static.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 76,
+			"column": 79,
+			"endLine": 85,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e6c336507d883ac28412aa9b1f23fa33396d2c6499428d9d8956b7e649553899",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"shows a commit's own file though refs/replace puts another commit behind its ID"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 15,
+			"endLine": 77,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/\\d+$/",
+			"status": "generated",
+			"id": "fb0170b329a2e895f7acdaddb082a7331d35d30b915fee7afe31c8661eab1ee1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs in place of a count git would refuse"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 15,
+			"endLine": 77,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^\\d+/",
+			"status": "generated",
+			"id": "09d462e4b80d2798cef3a0aaecc1e0786326aa73f92e1b8fd8f84204f8d642cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs in place of a count git would refuse"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 15,
+			"endLine": 77,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^\\d$/",
+			"status": "generated",
+			"id": "d00b1759f2c501a6383dfad636a51e63e68a159f0830432b9b676f1576c22faf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"pins core.useReplaceRefs after every setting a caller's count holds, and keeps them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 15,
+			"endLine": 77,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^\\D+$/",
+			"status": "generated",
+			"id": "fe72c56f0ec39109ba06bdd370f7b3eb21c3ae2a60740d2b9c17ec12b5214285",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 28,
+			"endLine": 77,
+			"endColumn": 54,
+			"mutatorName": "LogicalOperator",
+			"replacement": "env.GIT_CONFIG_COUNT && \"\"",
+			"status": "generated",
+			"id": "f43be61f8e286edf790e26d14a6944061cd77927f09607c34357fe284ff57d2a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 77,
+			"column": 52,
+			"endLine": 77,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "generated",
+			"id": "bb0a2a07a12e6e290cbc53f0fc278e21bd8cf8533ee997263a63058001bae729",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "an absent count reads as the default, and the mutated default fails the digit test as an empty string does, so the count is 0 either way"
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 78,
+			"column": 8,
+			"endLine": 84,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dc17384db55bd43cfb53f2226a798fdc893d106bff6112679a3db0610d50672c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/replace-objects.test.ts",
+					"path": [
+						"reads a commit's own policy though refs/replace puts a looser one behind its ID"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 80,
+			"column": 26,
+			"endLine": 80,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "c7502bfca3d7cc428980db672d5da372d083200dcda583cfc10ed4f4ca747fb1",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "git turns replacement off whenever GIT_NO_REPLACE_OBJECTS is present, whatever its value, and core.useReplaceRefs=false is pinned beside it"
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 81,
+			"column": 27,
+			"endLine": 81,
+			"endColumn": 36,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "count - 1",
+			"status": "generated",
+			"id": "bec9674c67132807d4e3561608412a9222d999c3bb1ae46ea2b48ce94ab79879",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"shows a commit's own file though refs/replace puts another commit behind its ID"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 3,
+			"endLine": 82,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "generated",
+			"id": "b2551c1ce38f1c17c63ad4eca57c78c52881db176ddee8cede4d0cc2373cb414",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 82,
+			"column": 31,
+			"endLine": 82,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "2be6f72e45496472a707de908f82e2c512cfe8d0b7a8fdea2fdfec4614a9fc21",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"shows a commit's own file though refs/replace puts another commit behind its ID"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 83,
+			"column": 3,
+			"endLine": 83,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "generated",
+			"id": "b009b3f29ecaea7022ba2ea81c1f8c0b3864318a786bd162af8ab0829d1448b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/git.ts",
+			"line": 83,
+			"column": 33,
+			"endLine": 83,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "08e231cacf013b4fbddde53cfcf6c2b2cb72a7926e4d03d9e0b99ac8ed60c296",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/repository.test.ts",
+					"path": [
+						"git",
+						"reads core.useReplaceRefs as false though the repository turns it on, and keeps the caller's own settings"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 140,
+			"column": 8,
+			"endLine": 140,
+			"endColumn": 182,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "generated",
+			"id": "e8298728a8cd518a1ba222da69ab733da7fe36ac47926851f8eff729a5ca0574",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/static.test.ts",
+					"path": [
+						"uses the created scratch path when canonicalisation fails"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"line": 140,
+			"column": 35,
+			"endLine": 140,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "generated",
+			"id": "a4640ebbcef523085f9968c252c842cbdf8e4ec081b9756ebd9900ead1ac146c",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the shell runs with only PATH, HOME, TMPDIR and LANG, so no GIT_ variable reaches it for the unset to remove"
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 22,
+			"endLine": 161,
+			"endColumn": 109,
+			"mutatorName": "MethodExpression",
+			"replacement": "Object.entries(options.env ?? process.env)",
+			"status": "generated",
+			"id": "7be873c96501179513b6853b302a3b9a79333d18ff471cc1933c8719d1968130",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"ignores git's repository variables from the caller's environment"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 37,
+			"endLine": 161,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "options.env && process.env",
+			"status": "generated",
+			"id": "66c2dd53159710c9023e4d7e5daeaf95bae47fdcc269825cf91abd245467c987",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"removes a graph older than seven days whose tree no live commit holds, with its coverage"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 72,
+			"endLine": 161,
+			"endColumn": 108,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "6c589f7ea9a1b61244ca3828e4bd666a4c41c00fa8fa466561bc8fc31e131c54",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"reads live trees with core.useReplaceRefs as false though the repository's configuration turns it on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 84,
+			"endLine": 161,
+			"endColumn": 108,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "name.startsWith(\"GIT_\")",
+			"status": "generated",
+			"id": "3afa32bbabaa3bfb6aba2bb4b0999501da99fd702c2019bf3bb6df7181e6df48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"reads live trees with core.useReplaceRefs as false though the repository's configuration turns it on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 85,
+			"endLine": 161,
+			"endColumn": 108,
+			"mutatorName": "MethodExpression",
+			"replacement": "name.endsWith(\"GIT_\")",
+			"status": "generated",
+			"id": "ba29ab29c4c1ff543bc9fc446dcaff36c9f0b4dfadd95c176f84e9a8bc6f4f4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/store-prune.test.ts",
+					"path": [
+						"ignores git's repository variables from the caller's environment"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/store-prune.ts",
+			"line": 161,
+			"column": 101,
+			"endLine": 161,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f9cb0060a46cc557ce2a80ea0a7d36e582fec9eb48f41c26c81e526258eff50f"
+		}
+	],
+	"total": 22,
+	"omitted": 0,
+	"unmutated": [
+		{
+			"file": "packages/core/src/git.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		},
+		{
+			"file": "packages/pipeline/src/static.ts",
+			"reason": "it sends process signals, and a mutant there could signal a process outside the run"
+		}
+	]
+}

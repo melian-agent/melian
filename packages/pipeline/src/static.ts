@@ -133,9 +133,11 @@ function quote(value: string): string {
 	return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-// Hooks and fsmonitor would run the revision's own programs during checkout, outside any tool's timeout.
+// Hooks and fsmonitor would run the revision's own programs during checkout, outside any tool's timeout. A ref under
+// refs/replace would check out another commit's tree under the ID, and git 2.40 and 2.41 let core.useReplaceRefs outrank
+// the variable.
 function git(repoRoot: string, args: string): string {
-	return `unset ${gitVariables.join(" ")}; git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
+	return `unset ${gitVariables.join(" ")}; GIT_NO_REPLACE_OBJECTS=1 git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.useReplaceRefs=false ${args}`;
 }
 
 // Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does

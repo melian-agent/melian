@@ -1,0 +1,1264 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "71168789553207302971dd357d05d4b6e58d2412",
+    "head": "7ff86a36222a2bf3fc151d524bf1502de4b0ef40"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/adjudication.ts",
+    "packages/pipeline/src/configurations.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 108,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "286a1cd46c513fc9ece1f260e8e582dd2266f147459959737e9657d9d6c49978",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a review stored with a fingerprint of an older computation",
+            "refuses when the policy is the working tree, which may have changed since"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 108,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "169c7fabe39d13bd1d97822f6744f74cd2b61aa15b46ef91cc4dfd3fd03a8b67",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 108,
+      "mutatorName": "LogicalOperator",
+      "replacement": "policy?.kind === \"revision\" || /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(policy.commit)",
+      "status": "generated",
+      "id": "65a99f52a9dcb13d1533079c3a3b48f81b17db8bdcbdc7ff362161b851978554",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "keeps a code finding verified when returning to an earlier dismissed revision"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 51,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "071aaee69794dc488efce6002b0f749a3144a806268d78de34e3d245c987241c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "keeps a code finding verified when returning to an earlier dismissed revision"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 51,
+      "mutatorName": "EqualityOperator",
+      "replacement": "policy?.kind !== \"revision\"",
+      "status": "generated",
+      "id": "5dadd46021f4387a6b5552c6e5e1a9f6ad351122a2d3343790ad8bb0cf1449f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 24,
+      "endLine": 270,
+      "endColumn": 36,
+      "mutatorName": "OptionalChaining",
+      "replacement": "policy.kind",
+      "status": "generated",
+      "id": "c8bf1bc0a285fc9672535d8a3e4627451bafcdab715452ad2a034f63684b45df",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "keeps a code finding verified when returning to an earlier dismissed revision"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 41,
+      "endLine": 270,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4c1774a9d183f314ff84a71b27480b0b73a3dfe6fcb08b6147a4d2521ba620d0"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/(?:[0-9a-f]{40}|[0-9a-f]{64})$/",
+      "status": "generated",
+      "id": "1b69cacf56db04fdca2c7a02fb6091c476367ddb80d5f8590505865156530379",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a review stored with a fingerprint of an older computation",
+            "refuses when the policy names a branch that a full object ID's pattern would only part match"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:[0-9a-f]{40}|[0-9a-f]{64})/",
+      "status": "generated",
+      "id": "f452bd28992b9c5df4cc4ba41e1b756ba3c4cf29a494d122c19c3f67b0d7be91",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a review stored with a fingerprint of an older computation",
+            "refuses when the policy names a branch that a full object ID's pattern would only part match"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:[0-9a-f]|[0-9a-f]{64})$/",
+      "status": "generated",
+      "id": "fba4f3277bbe1c4b9f4933f9d0278b03d8f47e666a45b23a84503c3b5ad65e05",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:[^0-9a-f]{40}|[0-9a-f]{64})$/",
+      "status": "generated",
+      "id": "5c9a9d6774242e816ad257daa2ceafaf3addfbfd8fc791a1bf9f7ef6285ead55",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:[0-9a-f]{40}|[0-9a-f])$/",
+      "status": "generated",
+      "id": "8d74f6c276625aade75d4e6600005050090a3bc4a17d0da72b9de96d3761fb3a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a review stored with a fingerprint of an older computation",
+            "refuses when the policy names a branch that a full object ID's pattern would only part match"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 270,
+      "column": 55,
+      "endLine": 270,
+      "endColumn": 88,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:[0-9a-f]{40}|[^0-9a-f]{64})$/",
+      "status": "generated",
+      "id": "3eb8846aae46561e6f3e3d3795e42a0c30ffd05c1760ec5e7b781517deec34c8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a review stored with a fingerprint of an older computation",
+            "refuses when the policy names a branch that a full object ID's pattern would only part match"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 8,
+      "endLine": 271,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1758c975ed968cf121a8887fc6f0880808dd827a8d4a10061c475331354d25c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "keeps a code finding verified when returning to an earlier dismissed revision"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 8,
+      "endLine": 271,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "593bc714857ddb3a0383698b2d1980377c51c81c58637a72b6009ac8671aae07",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 8,
+      "endLine": 271,
+      "endColumn": 64,
+      "mutatorName": "LogicalOperator",
+      "replacement": "policies !== undefined || resolutionPolicy !== undefined",
+      "status": "generated",
+      "id": "c288a6648b43a089f82fa73e88fc36d5281d2e1571265cbfdb278b755b676aba",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "decides a dismissal for a task an older Melian created, whose input names no resolution policy"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 8,
+      "endLine": 271,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1886d52ba876a7158b11fe6e9a43be8c9894a44bb7ba94068483ca4c17fa78b7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "decides a dismissal when the input names a fingerprint but no policy source to compare it with"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 8,
+      "endLine": 271,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "policies === undefined",
+      "status": "generated",
+      "id": "854dd5b558ece7230d9deeefe0e98cf8a0f8f0bc3dd3f7dbe71e5a4ed6fefc79",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 34,
+      "endLine": 271,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "145f66808e0e74ec5e8e3cc93584fa90c43a5655f10269ebebbae84b971bc5ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "decides a dismissal for a task an older Melian created, whose input names no resolution policy"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 271,
+      "column": 34,
+      "endLine": 271,
+      "endColumn": 64,
+      "mutatorName": "EqualityOperator",
+      "replacement": "resolutionPolicy === undefined",
+      "status": "generated",
+      "id": "9c8de14c76bd550c2b71b6fe51ff4b8f73985b8189fbfc6dec5b4c609cf98fb5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 273,
+      "column": 6,
+      "endLine": 273,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3d614e13b07d936cf8541c76d84b17c033a9fafc1ae8f280cc3c47a2334e9c0e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to publish a verdict a cut-short dismissal left undecided, and finishes it when dismissed again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 273,
+      "column": 6,
+      "endLine": 273,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1e0e1582b7c8a6e3121d07c6481fccdfe0b02baa696329464fae3c23443128d4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 273,
+      "column": 6,
+      "endLine": 273,
+      "endColumn": 54,
+      "mutatorName": "LogicalOperator",
+      "replacement": "fixedCommit || resolutionPolicy.startsWith(\"2:\")",
+      "status": "generated",
+      "id": "4e7fcbfe5417f96a1743a752402374f7bc3f3642951682f8bd6f3c8df67b728f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to publish a verdict a cut-short dismissal left undecided, and finishes it when dismissed again"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 273,
+      "column": 21,
+      "endLine": 273,
+      "endColumn": 54,
+      "mutatorName": "MethodExpression",
+      "replacement": "resolutionPolicy.endsWith(\"2:\")",
+      "status": "generated",
+      "id": "784708a518abd1d809dd459c3c73bf06c69767a1ab0be63974db3b1572c591f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 273,
+      "column": 49,
+      "endLine": 273,
+      "endColumn": 53,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f690efdb995c17d87c350280fc384a88575a5870478d256bbe1902003ca4c0a4"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 274,
+      "column": 9,
+      "endLine": 274,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "36f50359da93e5bd52f262ac4ad2d8665926e62855ad48c80a317548b6218308",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 274,
+      "column": 9,
+      "endLine": 274,
+      "endColumn": 38,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bb638738880a9cdc681c0bd7f09445a53d698c4a89b244910fdbf0c3c36f3518",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 274,
+      "column": 9,
+      "endLine": 274,
+      "endColumn": 38,
+      "mutatorName": "EqualityOperator",
+      "replacement": "computed === resolutionPolicy",
+      "status": "generated",
+      "id": "c4e378e070b5858e0c1c21eb6548e045b7bd0a77aaf0780cfda492a7c14d5b61",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 274,
+      "column": 40,
+      "endLine": 280,
+      "endColumn": 6,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "787213b3cfc7f5eb6c78d2634b99603e884f272d550dc961b0f779425d169a77",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 275,
+      "column": 6,
+      "endLine": 279,
+      "endColumn": 8,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "1dfce558e701da388cb734387b26fe64ff8b36a4bb139bf4e381a7ee88dad781",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 276,
+      "column": 7,
+      "endLine": 276,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "937dc5d2f147b980d11ebe11a11302250ae3233cc9d9696037a793dbc88720be"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 7,
+      "endLine": 278,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d9d1e9d64f8fed3112040eea3374efe04f0d1a3aeded3fdcf14dcce53f24170f"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 123,
+      "column": 34,
+      "endLine": 133,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4c9cfc3865f2f033efba15a698d40b85bfbd581c6d2b73615014b03fd64d5b03",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 123,
+      "column": 78,
+      "endLine": 123,
+      "endColumn": 86,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "45f14722d6aa6646567283a428fa704e3a78419b93187e295398014ef93acd90",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/configurations.test.ts",
+          "path": [
+            "configsFor",
+            "the fingerprint's lens entries",
+            "changes with the declared resolution of the variant a report carries, whatever the path defaults say"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 124,
+      "column": 2,
+      "endLine": 125,
+      "endColumn": 52,
+      "mutatorName": "MethodExpression",
+      "replacement": "reportedBy",
+      "status": "generated",
+      "id": "6d05ab92e8f5297cbdef1392d59a206b37491bd1237bc2ce47eae8254e81c1e4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/configurations.test.ts",
+          "path": [
+            "configsFor",
+            "the fingerprint's lens entries",
+            "ignores a report by a check that is no lens, and reads a finding with no reportedBy from its source"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 125,
+      "column": 11,
+      "endLine": 125,
+      "endColumn": 51,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "f5f7c28ec5812bd2ed9be25d2ee459317533bca6949452657daee0f5c93affcf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 125,
+      "column": 26,
+      "endLine": 125,
+      "endColumn": 51,
+      "mutatorName": "MethodExpression",
+      "replacement": "check.endsWith(\"lens.\")",
+      "status": "generated",
+      "id": "f9eebb4bc6955f81fb9faf0a733d5a850da786bfbf96e022992c898a3c63a96d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 125,
+      "column": 43,
+      "endLine": 125,
+      "endColumn": 50,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "98af95d4c5f4b7b37eb474f313582c2eda0ac72b3bea770c3b4926b092dee3e8"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 126,
+      "column": 32,
+      "endLine": 133,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e4e8063ac7314ae3ed631fad5694d494888a6df00e59a0ddb24e31f07fe92e22",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 127,
+      "column": 17,
+      "endLine": 127,
+      "endColumn": 44,
+      "mutatorName": "MethodExpression",
+      "replacement": "check",
+      "status": "generated",
+      "id": "c3282c715e9cf53fe2234c3000cb30a8c2bc8c6048f2535245c56e5a20b1949a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a working-tree policy that changed since the review read it",
+            "refuses when removing a budget-only override moves its findings to a nearer lens that declares a resolution"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 127,
+      "column": 29,
+      "endLine": 127,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9808e536e16e26c4e94c659bf80aa6d71e84155c9553d4476d6bfa32a6df16ff"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 128,
+      "column": 20,
+      "endLine": 128,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "793ed701da32a14dcc50db313619c9b5a453779c1bde75820fcb7b20d6f96e5a"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 130,
+      "column": 7,
+      "endLine": 130,
+      "endColumn": 54,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "e01795ef238ba60008fdd1bc3c522a9c724a069d622869ff06a37d9ff4af1cee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a working-tree policy that changed since the review read it",
+            "decides a dismissal again after a preference file that names models only, and a budget-only lens override, are removed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 131,
+      "column": 7,
+      "endLine": 131,
+      "endColumn": 70,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "328f00ee8c28c25fb62699945881751e8da07da266916eccec7c6dc29b89ff1c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a working-tree policy that changed since the review read it",
+            "decides a dismissal again after a preference file that names models only, and a budget-only lens override, are removed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 132,
+      "column": 11,
+      "endLine": 132,
+      "endColumn": 39,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0db1af925e8a7063502b65f45e14b8d70771681ca18355072cefa3e72419e3fe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 135,
+      "column": 18,
+      "endLine": 135,
+      "endColumn": 117,
+      "mutatorName": "MethodExpression",
+      "replacement": "reports.map(({\n  path,\n  name,\n  scope,\n  entry\n}) => canonical([path, name, scope ?? null, entry]))",
+      "status": "generated",
+      "id": "2f2842ae0b0c25803df50e1225e2d52d5d57adb5aa566533d80862a1c206d384",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/configurations.test.ts",
+          "path": [
+            "configsFor",
+            "the fingerprint's lens entries",
+            "does not depend on the order of the findings, though their entries differ by path"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 135,
+      "column": 30,
+      "endLine": 135,
+      "endColumn": 109,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "52679f05804b76d3c39adacb3b480db3fb1086968372df3c8a5f342d0d2f8fbd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a working-tree policy that changed since the review read it",
+            "refuses when removing a budget-only override moves its findings to a nearer lens that declares a resolution"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 135,
+      "column": 74,
+      "endLine": 135,
+      "endColumn": 108,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "b0fb0e4c766a0d217d9a5a7c1c6207211c389a59045efaed7a22d3f4ee32c3b9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "a working-tree policy that changed since the review read it",
+            "refuses when removing a budget-only override moves its findings to a nearer lens that declares a resolution"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 135,
+      "column": 87,
+      "endLine": 135,
+      "endColumn": 100,
+      "mutatorName": "LogicalOperator",
+      "replacement": "scope && null",
+      "status": "generated",
+      "id": "94d39267b9f80e8fd08f6178111565aac7c7920eb1ee5098b51162c25a25d243",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/configurations.test.ts",
+          "path": [
+            "configsFor",
+            "the fingerprint's lens entries",
+            "changes when two folder variants of one lens swap their declared resolutions, neither above the path"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 136,
+      "column": 14,
+      "endLine": 136,
+      "endColumn": 92,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "0f195c4c1cdc51945662e67cbab395f3dc79b8d6efe492d0b80e3afde9d89d83",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 136,
+      "column": 32,
+      "endLine": 136,
+      "endColumn": 92,
+      "mutatorName": "MethodExpression",
+      "replacement": "createHash(\"sha256\").update(text).digest(\"hex\")",
+      "status": "generated",
+      "id": "a602288877b6dcc38c659d5f44001476c26ed7feeea0e2530370f9093566cabb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 136,
+      "column": 43,
+      "endLine": 136,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ffc83f68b5afd52d8cf85bc901d814aaf71a9d0a2d0d7fac1e1ef8a0b336227f"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 136,
+      "column": 73,
+      "endLine": 136,
+      "endColumn": 78,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "80ddaf86abfa810c14ed7900fea7d9c21af28176cf72c4709491cac13dd1cee4"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 137,
+      "column": 21,
+      "endLine": 137,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1d88c7a565110fe8a2912538719792f58bc7d1816d1b73f18662cc8d2cf843de"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 137,
+      "column": 61,
+      "endLine": 137,
+      "endColumn": 79,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "c6436a0e5637a6596dcf059ecb97621ac28f9c62225d3f9dc41b023a57e9a20a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/dismiss.test.ts",
+          "path": [
+            "recording a dismissal",
+            "refuses to decide a dismissal under a working-tree policy that changed since the review read it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 139,
+      "column": 20,
+      "endLine": 139,
+      "endColumn": 129,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6c664299d24c8501b8e5d1e6bf5dbe6c29553b232b8dab717c0cf391207350c5"
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 139,
+      "column": 45,
+      "endLine": 139,
+      "endColumn": 125,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "19004752508b4037fcb5a398f4c590ae5d2638cc97441df72a997261d7056143",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 139,
+      "column": 54,
+      "endLine": 139,
+      "endColumn": 124,
+      "mutatorName": "MethodExpression",
+      "replacement": "reports.map(({\n  path,\n  entry\n}) => JSON.stringify([path, entry]))",
+      "status": "generated",
+      "id": "18bfcfedac29ebb9f47c7a8c8817fcd4c612003a744c9fe216eb68a62764968c",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/configurations.test.ts",
+          "path": [
+            "configsFor",
+            "the fingerprint's lens entries",
+            "keeps version 2's recipe independent of the order of the findings, as main's build wrote it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 139,
+      "column": 66,
+      "endLine": 139,
+      "endColumn": 116,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "044b8079270138c81d8096b93e2c2198feafecf59c140c8e87f04218c19f7fb8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 139,
+      "column": 102,
+      "endLine": 139,
+      "endColumn": 115,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "eeacf482808eca632f133799d5e3f5a489b610209b9dde6214c611c16ea70eac",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/configurations.ts",
+      "line": 141,
+      "column": 33,
+      "endLine": 141,
+      "endColumn": 60,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2ef9725da7086fdf2b7773e7722a2a6dd582d8297bd2e9ca52bad7566d94b54a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/caveats-reopen.test.ts",
+          "path": [
+            "keeps the published Reach caveat after dismissing a finding from main's pre-caveat review"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 61,
+  "omitted": 0,
+  "unmutated": []
+}

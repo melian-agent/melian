@@ -181,7 +181,7 @@ describe("the LANG a check's tools run with", { timeout: 120_000 }, () => {
 		});
 		expect(seen.length).toBeGreaterThan(1);
 		expect(new Set(seen)).toEqual(new Set(["C.UTF-8"]));
-		expect((await second.getTask(id, context))?.version).toBe(4);
+		expect((await second.getTask(id, context))?.version).toBe(5);
 		expect(await second.snapshot(TimingDocument, root.id, String(id), context)).toEqual({
 			startedAt: expect.any(Number),
 			endedAt: expect.any(Number),
@@ -240,7 +240,7 @@ describe("the LANG a check's tools run with", { timeout: 120_000 }, () => {
 			status: "completed",
 			result: [{ name: "static.biome", status: "ran" }],
 		});
-		expect((await second.getTask(id, context))?.version).toBe(3);
+		expect((await second.getTask(id, context))?.version).toBe(4);
 		expect(seen.length).toBeGreaterThan(1);
 		expect(new Set(seen)).toEqual(new Set(["C.UTF-8"]));
 	});
@@ -329,7 +329,7 @@ describe("the LANG a check's tools run with", { timeout: 120_000 }, () => {
 			});
 		const before = createRegistry();
 		before.install(
-			defineExtension({ name: "melian.checks", tasks: [older("melian.checks", 2), older("melian.check", 3)] }),
+			defineExtension({ name: "melian.checks", tasks: [older("melian.checks", 3), older("melian.check", 4)] }),
 		);
 		const second = await openHarness(await openSqliteStorage(path), { models: fake.models, registry: before });
 		opened.push(second);

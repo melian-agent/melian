@@ -1,6 +1,6 @@
 import { Finding, RecordError, reviewPayloads, SharedRecord, type StoredFinding } from "@melian-agent/core";
 import { describe, expect, it } from "vitest";
-import { ReviewRecords } from "../src/review-records.ts";
+import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 
 const base = "a".repeat(40);
 const head = "b".repeat(40);
@@ -107,6 +107,41 @@ describe("ReviewRecords", () => {
 		expect((json.payload as { rounds: string[] }).rounds).toEqual(["1".repeat(64), "2".repeat(64)]);
 	});
 
+	it("carries a writer's dismisser and reason as written, and nothing else a writer wrote", () => {
+		// What each field of a dismissal is, by the outside-text decision's list: a new field fails to compile until decided.
+		const classes: Record<keyof DismissalFacts, "id" | "time" | "code" | "content" | "writer"> = {
+			finding: "id",
+			by: "writer",
+			reason: "writer",
+			at: "time",
+			severity: "code",
+			sighting: "content",
+			rounds: "id",
+			trigger: "id",
+		};
+		const sighting = finding("lens.security", "abc@careful", "one");
+		const record = records().dismissal({
+			finding: sighting.properties.id,
+			by: "writer-name-7c1d",
+			reason: "writer-reason-7c1d",
+			at: "2026-11-15T00:00:00.000Z",
+			severity: "P1",
+			sighting: { revision: `${base}..${head}`, finding: sighting },
+			rounds: [],
+			trigger: { hash: "h", proof: [{ file: "src/a.ts", hash: "f" }] },
+		});
+		const { by, reason, ...rest } = record.toJSON().payload as Record<string, unknown>;
+		expect([by, reason]).toEqual(["writer-name-7c1d", "writer-reason-7c1d"]);
+		expect(JSON.stringify(rest)).not.toContain("7c1d");
+		expect(Object.keys(rest).sort()).toEqual(
+			[
+				"v",
+				"head",
+				...Object.keys(classes).filter((key) => key !== "finding" && key !== "by" && key !== "reason"),
+			].sort(),
+		);
+	});
+
 	it("names each record a round read once, in order, and keys the round by what it read", () => {
 		const lens = records().lens(lensRun, { status: "unanswered", reason: "no reply" }, []);
 		const check = records().check(
@@ -155,19 +190,20 @@ describe("ReviewRecords", () => {
 				{ check: "guardrails" },
 				{ check: "static.biome", version: "2.0.0" },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		};
 		const account = records().account(facts);
 		expect(SharedRecord.parse(account.toJSON(), reviewPayloads).id).toBe(account.id);
 		expect(account.revision).toBe(`${base}..${head}`);
 		expect(account.toJSON().payload).toEqual({
-			v: 1,
+			v: 2,
 			checks: ["static.biome", "lens.security", "decisions.triage"],
 			records: [check.id, lens.id].sort(),
 			filled: [
 				{
 					name: "decisions.triage",
 					status: "skipped",
-					reason: "no decision provider is configured",
+					reason: withheld,
 					error: null,
 					version: null,
 					level: null,
@@ -179,8 +215,8 @@ describe("ReviewRecords", () => {
 				{
 					name: "lens.design",
 					status: "failed",
-					reason: "refused",
-					error: "no route",
+					reason: withheld,
+					error: withheld,
 					version: null,
 					level: "careful",
 					budgetEnded: null,
@@ -196,11 +232,17 @@ describe("ReviewRecords", () => {
 				{ check: "lens.security", version: "abc@quick", ids: ["0123456789abcdef", "fedcba9876543210"] },
 				{ check: "static.biome", version: "2.0.0", ids: null },
 			],
+			resolutionPolicy: "2:0123456789abcdef",
 		});
 		const reordered = { ...facts, records: [check, lens], producers: [...facts.producers].reverse() };
 		expect(records().account(reordered).bytes).toBe(account.bytes);
 		expect(records().account({ ...facts, records: [check] }).key).not.toBe(account.key);
 		expect(records().account({ ...facts, allowSkip: [] }).key).toBe(account.key);
+		// Two reviews of one range under two policies count the same records, and must stay two accounts.
+		const other = records().account({ ...facts, resolutionPolicy: "2:fedcba9876543210" });
+		const none = records().account({ ...facts, resolutionPolicy: null });
+		expect(new Set([account.key, other.key, none.key]).size).toBe(3);
+		expect(none.toJSON().payload).toMatchObject({ resolutionPolicy: null });
 		const round = records().round([account, lens, check], undefined, [], []);
 		expect(round.manifest()?.read).toContainEqual({ kind: "account", key: account.key, id: account.id });
 	});

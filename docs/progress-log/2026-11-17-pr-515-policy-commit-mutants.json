@@ -1,0 +1,210 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "992c0923cfa6531ea61f1d31c800eb770a47df28",
+		"head": "22bc36a3a2c8e2e3c794a754872b7b258ca92d14"
+	},
+	"claimsIn": [
+		"scripts/round-probe-containment.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 5,
+			"endLine": 680,
+			"endColumn": 39,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "/^[0-9a-f]{40}$/.test(base ?? \"\")",
+			"status": "generated",
+			"id": "78aa959d890f779f2ee33bb8c9e8d74b7757e126d6b5acf2d6c4df2dc16d03a4",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 5,
+			"endLine": 680,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "311dd80a4bb3c481ea67137ef8a7dd5c1f3feb1c3d2c0705f06a4487ba853557",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 5,
+			"endLine": 680,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b677600d5a671570e9ceca2cdbfc61bb55b32b9823cd7e6c454d0670b1124281",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > fails, and reads no policy, when the round names none as its base",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 6,
+			"endLine": 680,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/[0-9a-f]{40}$/",
+			"status": "generated",
+			"id": "c58f74626e53e3f276fe8fef93ab415653720630ffeebdcf456aa94a5f6d40db",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > fails, and reads no policy, when the round names one past a commit's length as its base",
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 6,
+			"endLine": 680,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^[0-9a-f]{40}/",
+			"status": "generated",
+			"id": "e703719bf953bd090860894a11efa817936f6a2f26c7111e9a14cb7c366063c8",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > fails, and reads no policy, when the round names one past a commit's length as its base",
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 6,
+			"endLine": 680,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^[0-9a-f]$/",
+			"status": "generated",
+			"id": "4ada85cb4bf5b37a3f96814dea75118a77d1021b0a4168039100d6c9bf9c9731",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 6,
+			"endLine": 680,
+			"endColumn": 22,
+			"mutatorName": "Regex",
+			"replacement": "/^[^0-9a-f]{40}$/",
+			"status": "generated",
+			"id": "9c2f918f93d78d91ee2b552c9c41935708ee36373b964ced4d218b47f373e68e",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 28,
+			"endLine": 680,
+			"endColumn": 38,
+			"mutatorName": "LogicalOperator",
+			"replacement": "base && \"\"",
+			"status": "generated",
+			"id": "1b26231cfbebd8889d8ca21f944d21172aa480340644f0f336a0809b3141e9ba",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 36,
+			"endLine": 680,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6324a73aab63668766987283da2958dc4205f9795edc6a9809da191bdf269346"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 680,
+			"column": 41,
+			"endLine": 683,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f2e659ffec5c6c554a1f7a37f387b6d57fd0eae10f7954f8350f28b465f62328",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > fails, and reads no policy, when the round names none as its base",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 681,
+			"column": 2,
+			"endLine": 681,
+			"endColumn": 91,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "a03fad824da167e630222ed0023d13e96ea331e7c0d5945892545e0527b41ef7",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > fails, and reads no policy, when the round names none as its base",
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 681,
+			"column": 6,
+			"endLine": 681,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c644e52215156d5123b02fdffd89817898291ffc4a9fa7cee00a7acfaa7039f2"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 686,
+			"column": 12,
+			"endLine": 686,
+			"endColumn": 45,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c652c022c09df5d5fe1a648c8d24a5cd42e3d6eb1d72d95ea99e7d2eda36d741",
+			"claim": "killed",
+			"evidence": "scripts/round-probe-containment.test.mjs > main > hands the probe the probe.read of the base the round names, and probes the checkout's HEAD",
+			"survivorClasses": []
+		}
+	],
+	"total": 13,
+	"omitted": 0,
+	"unmutated": []
+}

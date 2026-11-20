@@ -939,14 +939,14 @@ describe("verification as each lens ends", () => {
 						args[0] === waves[1] &&
 						lensTask?.state.status === "terminal"
 					) {
-						other = reviewChangeset({ ...reviewOptions(), harness: raw, checks: [] });
+						other = reviewChangeset({ ...reviewOptions(), harness: raw, checkRun: undefined, checks: [] });
 						await other;
 					}
 					return outcome;
 				};
 			},
 		});
-		const result = await reviewChangeset({ ...reviewOptions(), harness: gated, checks: [] });
+		const result = await reviewChangeset({ ...reviewOptions(), harness: gated, checkRun: undefined, checks: [] });
 		expect(other).toBeDefined();
 		const first = await other!;
 		expect(asked.map((claims) => claims.length)).toEqual([1, 2]);

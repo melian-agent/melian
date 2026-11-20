@@ -1,0 +1,357 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "e0712b6c8ef7899c705eb435e62e61b0e26513db",
+  "head": "78945daf3d23bdccfd7b02d915fcfe06d4a88a56"
+ },
+ "claimsIn": [
+  "packages/state-git/src/owner.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+ "mutants": [
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 16,
+   "column": 13,
+   "endLine": 16,
+   "endColumn": 15,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"Stryker was here!\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "4fb99dc42d61b633cf302c33ff3f0170dffee6dfa37bb47413536236d963468a"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 17,
+   "column": 5,
+   "endLine": 17,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "313d9d8ddc6f0fb3d449b166fbb6f428bd4db6c2286fb6487809d2d304c4d74b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "keys by the host's name alone off Linux, reads no namespace, and still sweeps"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 17,
+   "column": 5,
+   "endLine": 17,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "ea34639f88bf1fac0310e780f93599a496be6b63b2fda1ee4b2bbbacfe818c77",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "keeps what a process in another pid namespace under this host's name left, and removes what this one's left"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 17,
+   "column": 5,
+   "endLine": 17,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "process.platform !== \"linux\"",
+   "status": "generated",
+   "id": "457f236580fb87222ea714cefe0fd7767e598d578b09ad2133941d770aa322ca",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "keeps what a process in another pid namespace under this host's name left, and removes what this one's left"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 17,
+   "column": 26,
+   "endLine": 17,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "2f1b5f3c96c629c939c7ffade8f511a305402436060fe903895a6f655bf50d12"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 18,
+   "column": 6,
+   "endLine": 21,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "56f46581ebc29be3cb903aec78cdf13fb39f6e0bf203e32cc96b8519075c7087",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "keeps what a process in another pid namespace under this host's name left, and removes what this one's left"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 19,
+   "column": 33,
+   "endLine": 19,
+   "endColumn": 52,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "2faa5fd3ce926fa589070f8c32d285e159c5e4217d23b3352429ffe38b7b502a"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 20,
+   "column": 11,
+   "endLine": 20,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "064c6af6d0cb6133fd019e61d04c3355774e970fd69fa35595caa03f702c822a"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 21,
+   "column": 10,
+   "endLine": 23,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a538066e76acbfa2ef3e28d55e5c78beea25be5ee9861508789dd36bea4034fb",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 24,
+   "column": 8,
+   "endLine": 24,
+   "endColumn": 87,
+   "mutatorName": "MethodExpression",
+   "replacement": "createHash(\"sha256\").update(`${hostname()}${space}`).digest(\"hex\")",
+   "status": "generated",
+   "id": "3893de8c0b734679d6cf8b33cad46d7da2f59398efbff5e762b92ad64015380b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes after the pid namespace it reads"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 24,
+   "column": 19,
+   "endLine": 24,
+   "endColumn": 27,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "11d6b88588a553ab3177d1548fa3b260dd822d365bd0176daaa00330219cade9"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 24,
+   "column": 36,
+   "endLine": 24,
+   "endColumn": 59,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "d59cf7fbc6cc48e4fd4ee2f2ad23126e919aad17d974067c3ad826b6b6425966"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 24,
+   "column": 68,
+   "endLine": 24,
+   "endColumn": 73,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "c6c54a650c9251d1e32bfcbd1a7ac484a2e0ae252c20a9d51d1ce8a6f5dc7a31"
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 42,
+   "column": 9,
+   "endLine": 42,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "df7189ecdc31c9cb015504c008693fb5699ffbdbb4ac98c3d3155df9c8465710",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 42,
+   "column": 9,
+   "endLine": 42,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "6a32940148f75b0e044af3d50ca9185c4f36e9c6c03303de3463ec1512a87ed7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes after the pid namespace it reads"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 42,
+   "column": 9,
+   "endLine": 42,
+   "endColumn": 37,
+   "mutatorName": "LogicalOperator",
+   "replacement": "listed || host !== undefined",
+   "status": "generated",
+   "id": "bdefb36263a4d26f3d0bf682be2181b5c70ea289c4a6f811fc9c591d2fdcaa82",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 42,
+   "column": 19,
+   "endLine": 42,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "ed2af0db7c0a04a0b54f5418d61bc17bfaf9c48712fd8879e4659ff4a564ed5f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes by a UUID alone, and keeps every owned leftover, when Linux will not say its pid namespace"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/state-git/src/owner.ts",
+   "line": 42,
+   "column": 19,
+   "endLine": 42,
+   "endColumn": 37,
+   "mutatorName": "EqualityOperator",
+   "replacement": "host === undefined",
+   "status": "generated",
+   "id": "4fae22c72366d3d79b9b51ab08679b23dc2838a9d5b6f2617d078dfdfc44d41a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/state-git/test/sweep.test.ts",
+     "path": [
+      "the owner's process namespace",
+      "names what it makes after the pid namespace it reads"
+     ]
+    }
+   },
+   "survivorClasses": []
+  }
+ ],
+ "total": 18,
+ "omitted": 0,
+ "unmutated": []
+}

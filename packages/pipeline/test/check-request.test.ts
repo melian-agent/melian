@@ -1,7 +1,7 @@
-import { defaultConfig, deterministicChecks } from "@melian-agent/core";
+import { defaultConfig, deterministicChecks, KeyedRequest, type RecordJson } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
-import { type CheckRequestInput, checkRequest, checkReusable } from "../src/check-request.ts";
+import { type CheckRequestInput, checkRequest, checkReusable, writesFixedText } from "../src/check-request.ts";
 
 const sample: CheckRequestInput = {
 	config: defaultConfig,
@@ -80,6 +80,22 @@ describe("checkRequest", () => {
 		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
 	});
 
+	it("keys Enola and the mutation check past the build whose findings held their tools' text", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks["static.enola"]).toBeGreaterThanOrEqual(2);
+		expect(checks["static.mutation"]).toBeGreaterThanOrEqual(2);
+	});
+
+	it("keys Enola past the build that ran a head's own recipes, so no run that build stored is reused", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks["static.enola"]).toBeGreaterThanOrEqual(3);
+	});
+
+	it("keys Enola past the build that dropped a base policy file with a newline in its name", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks["static.enola"]).toBe(5);
+	});
+
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {
 		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
 		expect(checkReusable(sample)).toBe(true);
@@ -94,5 +110,33 @@ describe("checkRequest", () => {
 	it("holds a fractional setting as its decimal text, since a request's numbers are safe integers", () => {
 		const request = checkRequest(sample).request as { config: { comparison: { retirement: { recall: unknown } } } };
 		expect(request.config.comparison.retirement.recall).toBe(String(defaultConfig.comparison.retirement.recall));
+	});
+});
+
+describe("writesFixedText", () => {
+	const asked = (request: RecordJson, producer = "check") => KeyedRequest.of<RecordJson>(producer, request);
+
+	it.each(["static.biome", "static.tsc", "static.enola", "static.mutation"])(
+		"proves %s from version 2 of its check, and not from version 1",
+		(check) => {
+			expect(writesFixedText(asked({ checks: { [check]: 2 } }), check)).toBe(true);
+			expect(writesFixedText(asked({ checks: { [check]: 3 } }), check)).toBe(true);
+			expect(writesFixedText(asked({ checks: { [check]: 1 } }), check)).toBe(false);
+		},
+	);
+
+	it.each<[string, RecordJson, string?]>([
+		["another producer's request", { checks: { "static.biome": 2 } }, "lens"],
+		["a request with no checks", {}],
+		["a request whose checks are null", { checks: null }],
+		["a request whose checks are a number", { checks: 2 }],
+		["a request that names the check's version as text", { checks: { "static.biome": "2" } }],
+		["a request that names another check", { checks: { "static.tsc": 2 } }],
+	])("proves nothing from %s", (_, request, producer) => {
+		expect(writesFixedText(asked(request, producer), "static.biome")).toBe(false);
+	});
+
+	it("proves nothing for a check that has no fixed-text version", () => {
+		expect(writesFixedText(asked({ checks: { guardrails: 9 } }), "guardrails")).toBe(false);
 	});
 });

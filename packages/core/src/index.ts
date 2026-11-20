@@ -268,6 +268,7 @@ export {
 	lensFrontMatterSchema,
 	lensGraphToolNames,
 	lensLimits,
+	lensMutationToolNames,
 	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,
@@ -388,6 +389,13 @@ export {
 	toolResultSchema,
 } from "./static.ts";
 export {
+	type AccountClaim,
+	type RoundFacts,
+	TierAccount,
+	type TierAccountRefusal,
+	type TierLenses,
+} from "./tier-account.ts";
+export {
 	type EscalationEvidence,
 	EscalationRule,
 	type EscalationTrigger,
@@ -434,8 +442,17 @@ export {
 	type EnolaReach,
 	type EnolaReference,
 } from "./enola-graph.ts";
-export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes, stderrLimit } from "./git.ts";
+export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
+export {
+	type GitOptions,
+	type GitResult,
+	git,
+	gitFailure,
+	gitOutput,
+	gitOutputBytes,
+	stderrLimit,
+	withoutReplacements,
+} from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -524,7 +541,9 @@ export {
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
+	type LegacyAccountPayload,
 	type LensPayload,
+	legacyAccountPayloadSchema,
 	lensOutcomeSchema,
 	lensPayloadSchema,
 	reviewPayloads,

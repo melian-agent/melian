@@ -1,4 +1,5 @@
 export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
+export { ChangeLenses, type CoveringLens } from "./change-lenses.ts";
 export {
 	type CheckRun,
 	type CheckRunRecord,
@@ -10,6 +11,7 @@ export {
 	runChecks,
 	type WriterTrust,
 } from "./checks.ts";
+export { codeVersion } from "./code-version.ts";
 export {
 	CompareError,
 	type CompareErrorCode,
@@ -91,12 +93,16 @@ export {
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
+	type ProbeGap,
+	type ProbeGapCause,
+	probeGapSentences,
 	type Review,
 	ReviewHarness,
 	type ReviewHarnessOptions,
 	type ReviewOptions,
 	reviewChangeset,
 } from "./review.ts";
+export { withheld } from "./review-records.ts";
 export {
 	runStaticTool,
 	type StaticRun,
@@ -154,7 +160,14 @@ export {
 	unreadableGraphAgeDays,
 } from "./store-prune.ts";
 export { summarizeReview } from "./summarize.ts";
-export { type ProbeStage, type Stage, StageTelemetry, TelemetryReader, type Untimed } from "./telemetry.ts";
+export {
+	type ProberRecord,
+	type ProbeStage,
+	type Stage,
+	StageTelemetry,
+	TelemetryReader,
+	type Untimed,
+} from "./telemetry.ts";
 export { TokenUsage, type UsageSummary } from "./token-usage.ts";
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
 export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

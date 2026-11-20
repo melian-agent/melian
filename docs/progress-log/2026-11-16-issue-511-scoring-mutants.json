@@ -1,0 +1,464 @@
+{
+ "mutants": [
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 83,
+   "column": 51,
+   "endLine": 83,
+   "endColumn": 85,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts > an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 83,
+   "column": 79,
+   "endLine": 83,
+   "endColumn": 83,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts > an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 34,
+   "endLine": 84,
+   "endColumn": 94,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts > an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 48,
+   "endLine": 84,
+   "endColumn": 62,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts > an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 84,
+   "column": 78,
+   "endLine": 84,
+   "endColumn": 92,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/golden-schema.test.ts > an expected finding's schema > takes alternative rules that are some and distinct, and lines that are two lines from 1",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 637,
+   "column": 66,
+   "endLine": 639,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 80,
+   "mutatorName": "LogicalOperator",
+   "replacement": "rule === comment.rule && (comment.alternativeRules ?? []).includes(rule)",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 8,
+   "endLine": 638,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "rule !== comment.rule",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 34,
+   "endLine": 638,
+   "endColumn": 64,
+   "mutatorName": "LogicalOperator",
+   "replacement": "comment.alternativeRules && []",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 638,
+   "column": 62,
+   "endLine": 638,
+   "endColumn": 64,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "A seeded rule matches only a finding whose rule is the literal text Stryker writes, which no lens declares; with alternativeRules unset every test's finding names a real rule.",
+   "survivorClasses": [
+    "seeded-default"
+   ],
+   "run": "not run: equivalent"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 5,
+   "endLine": 653,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines === undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 653,
+   "column": 34,
+   "endLine": 656,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "end < comment.lines[0] && comment.lines[1] < start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "end <= comment.lines[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 6,
+   "endLine": 655,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "end >= comment.lines[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines[1] <= start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 32,
+   "endLine": 655,
+   "endColumn": 56,
+   "mutatorName": "EqualityOperator",
+   "replacement": "comment.lines[1] >= start",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [
+    "numeric-bound"
+   ],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 655,
+   "column": 65,
+   "endLine": 655,
+   "endColumn": 70,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > answers an expectation with lines 10-12 only from a finding whose lines overlap them, at each bound",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "namesRule(comment, finding.ruleId)",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 5,
+   "endLine": 659,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 659,
+   "column": 49,
+   "endLine": 659,
+   "endColumn": 54,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > matches a rule the expectation names as an alternative, by a finding or a merged claim",
+   "survivorClasses": [],
+   "run": "killed at 4a087617"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 682,
+   "column": 19,
+   "endLine": 689,
+   "endColumn": 5,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/goldens.test.ts > scoreGolden > keeps two expectations apart that differ only in their lines or their alternative rules",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "run": "killed at 4a087617"
+  }
+ ],
+ "total": 32,
+ "omitted": 0,
+ "unmutated": 0,
+ "head": "4a087617a041141cb18002e84e18a5b6e6940681"
+}

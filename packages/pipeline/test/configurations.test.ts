@@ -223,6 +223,107 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			expect(await fingerprintOf(sha, [noLens])).not.toBe(alone);
 		});
 
+		it("changes when two lenses of the folder a file left swap their declared resolutions", async () => {
+			// A file moved out of services/payments/ keeps that folder's lenses, which no path default above it names.
+			const lenses = (cleanup: string, tidy: string) => ({
+				"services/payments/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${cleanup} }`),
+				"services/payments/.melian/lenses/tidy/LENS.md": lensFile("tidy", `resolution: { P2: ${tidy} }`),
+			});
+			const reports = async (sha: string) => {
+				const loaded = await Lens.everywhere(repo, { kind: "revision", commit: sha });
+				const version = (name: string) => loaded.find((lens) => lens.name === name)!.version;
+				return [
+					finding({ file: "src/ledger.ts", source: { check: "lens.cleanup", version: version("cleanup") } }),
+					finding({
+						file: "src/ledger.ts",
+						snippet: "return 1;",
+						source: { check: "lens.tidy", version: version("tidy") },
+					}),
+				];
+			};
+			const before = commit(repo, lenses("block", "advisory"));
+			const swapped = commit(repo, lenses("advisory", "block"));
+			expect(await fingerprintOf(swapped, await reports(swapped))).not.toBe(
+				await fingerprintOf(before, await reports(before)),
+			);
+		});
+
+		it("changes when two folder variants of one lens swap their declared resolutions, neither above the path", async () => {
+			const variants = (payments: string, billing: string) => ({
+				"services/payments/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${payments} }`),
+				"services/billing/.melian/lenses/cleanup/LENS.md": lensFile("cleanup", `resolution: { P2: ${billing} }`),
+			});
+			const reports = async (sha: string) =>
+				(await Lens.everywhere(repo, { kind: "revision", commit: sha }))
+					.filter((lens) => lens.name === "cleanup")
+					.map(({ version }, index) =>
+						finding({
+							file: "src/ledger.ts",
+							snippet: `return ${index};`,
+							source: { check: "lens.cleanup", version },
+						}),
+					);
+			const before = commit(repo, variants("block", "advisory"));
+			const swapped = commit(repo, variants("advisory", "block"));
+			expect(await reports(swapped)).toHaveLength(2);
+			expect(await fingerprintOf(swapped, await reports(swapped))).not.toBe(
+				await fingerprintOf(before, await reports(before)),
+			);
+		});
+
+		it("does not depend on the order of the keys a policy file writes", async () => {
+			const policy = (resolution: string, aliases: string, lens: string) => ({
+				"melian.yaml": lines("resolution:", resolution, "ruleAliases:", aliases),
+				".melian/lenses/cleanup/LENS.md": lensFile("cleanup", lens),
+			});
+			const reports = async (sha: string) => {
+				const loaded = await Lens.everywhere(repo, { kind: "revision", commit: sha });
+				const version = loaded.find((lens) => lens.name === "cleanup")!.version;
+				return [finding({ source: { check: "lens.cleanup", version } })];
+			};
+			const written = commit(
+				repo,
+				policy(
+					"  { P2: acknowledge, P3: advisory }",
+					"  { reuse: [repeat], other: [again] }",
+					"resolution: { P2: block, ceiling: acknowledge }",
+				),
+			);
+			const reordered = commit(
+				repo,
+				policy(
+					"  { P3: advisory, P2: acknowledge }",
+					"  { other: [again], reuse: [repeat] }",
+					"resolution: { ceiling: acknowledge, P2: block }",
+				),
+			);
+			expect(await fingerprintOf(reordered, await reports(reordered))).toBe(
+				await fingerprintOf(written, await reports(written)),
+			);
+		});
+
+		it("does not depend on how a rule alias lists its rules, which adjudication reads as a set", async () => {
+			const aliased = (aliases: string) => commit(repo, { "melian.yaml": lines("ruleAliases:", aliases) });
+			const written = await fingerprintOf(aliased("  { reuse: [repeat, again] }"), [finding()]);
+
+			for (const same of [
+				"  { reuse: [again, repeat] }",
+				"  { reuse: [repeat, again, repeat] }",
+				"  { reuse: { rules: [repeat, again] } }",
+				"  { reuse: { rules: [again, repeat], distinct: false } }",
+			]) {
+				expect(await fingerprintOf(aliased(same), [finding()]), same).toBe(written);
+			}
+			for (const other of [
+				"  { reuse: { rules: [repeat, again], distinct: true } }",
+				"  { reuse: [repeat] }",
+				"  { reuse: [repeat, again, other] }",
+				"  { repeat: [reuse, again] }",
+			]) {
+				expect(await fingerprintOf(aliased(other), [finding()]), other).not.toBe(written);
+			}
+		});
+
 		it("does not depend on the order of the findings, though their entries differ by path", async () => {
 			const sha = commit(repo, {
 				"docs/.melian/lenses/cleanup/LENS.md":
@@ -236,6 +337,23 @@ describe("configsFor", { timeout: 60_000 }, () => {
 			const forward = await fingerprintOf(sha, [first, second, third]);
 			expect(await fingerprintOf(sha, [third, second, first])).toBe(forward);
 			expect(await fingerprintOf(sha, [second, first, third])).toBe(forward);
+		});
+
+		it("keeps version 2's recipe independent of the order of the findings, as main's build wrote it", async () => {
+			const sha = commit(repo, {
+				"docs/.melian/lenses/cleanup/LENS.md":
+					docsLens("resolution: { P3: silent }")[".melian/lenses/cleanup/LENS.md"],
+			});
+			const source = { check: "lens.cleanup", version: await variantVersion(sha) };
+			const first = finding({ source });
+			const second = finding({ source, file: "services/payments/src/other.ts" });
+			const third = finding({ source: { check: "lens.cleanup", version: "other" }, file: "docs/guide.md" });
+			const versionTwo = async (findings: Finding[]) =>
+				(await configsFor(repo, { kind: "revision", commit: sha }, findings)).versionTwo;
+			const forward = await versionTwo([first, second, third]);
+			expect(forward).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(await versionTwo([third, second, first])).toBe(forward);
+			expect(await versionTwo([second, first, third])).toBe(forward);
 		});
 
 		it("changes when two reports swap the variants they carry between paths", async () => {
@@ -264,7 +382,7 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		it("is a fixed value for a repository with no findings", async () => {
 			const sha = commit(repo, { "melian.yaml": lines("resolution:", "  P2: acknowledge") });
 			const none = await fingerprintOf(sha, []);
-			expect(none).toMatch(/^2:[0-9a-f]{16}$/);
+			expect(none).toMatch(/^3:[0-9a-f]{16}$/);
 			expect(await fingerprintOf(sha, [])).toBe(none);
 		});
 	});
@@ -297,7 +415,7 @@ describe("configsFor", { timeout: 60_000 }, () => {
 		const findings = [finding(), finding({ file: "docs/guide.md" })];
 		const read = async (order = findings) => (await configsFor(repo, policy, order)).fingerprint;
 		const first = await read();
-		expect(first).toMatch(/^2:[0-9a-f]{16}$/);
+		expect(first).toMatch(/^3:[0-9a-f]{16}$/);
 		expect(await read()).toBe(first);
 		expect(await read([...findings].reverse())).toBe(first);
 		// Only a check entry changes: the merged table, which holds no checks, reads the same.

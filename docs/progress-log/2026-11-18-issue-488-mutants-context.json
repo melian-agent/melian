@@ -1,0 +1,205 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "5ad2ed8646456542c9d69fb14d477ab676968fcf",
+    "head": "74be8e6f694d00085541ffdfe4bbbb51737251de"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/harness.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "66cfc491c403c37d53d664eedb642317399f55a4fce8ddb3b616dba694148f7e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds no work when the only model failed before it started"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9d380397085cc3ac8135202a57f41c89558feb0c3973138998750e62064be9e9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds the work a model did after compaction has summarised it away"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 6,
+      "endLine": 141,
+      "endColumn": 67,
+      "mutatorName": "MethodExpression",
+      "replacement": "view.messages.every(message => message.role === \"assistant\")",
+      "status": "generated",
+      "id": "6adf20834925ae461e554726e4bda057ceddaf8eb9971127eedc0f3f5a05cb22",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds the work a model did after compaction has summarised it away"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 25,
+      "endLine": 141,
+      "endColumn": 66,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "d1bfe2624c6f90b948bac05f4ccc60f40f40c649877ff32bb8bcf4be8a15f380",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds the work a model did after compaction has summarised it away"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 38,
+      "endLine": 141,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ec5c272299ad46ac8d322b9db8fd29e4e19e4ab3bf4eecb9d429e644101d32a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds no work when the only model failed before it started"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 38,
+      "endLine": 141,
+      "endColumn": 66,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "36ac9e722ef31ea48a793decb2bdaa73a52d23387345ff242e45f14bb9c85333",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds the work a model did after compaction has summarised it away"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 38,
+      "endLine": 141,
+      "endColumn": 66,
+      "mutatorName": "EqualityOperator",
+      "replacement": "message.role !== \"assistant\"",
+      "status": "generated",
+      "id": "431b6d88d3b5f2c065b0fad16bc15c8417a12c9e40b404760fad6ca156b45c21",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds no work when the only model failed before it started"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 55,
+      "endLine": 141,
+      "endColumn": 66,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f404676f2f7fc1301f1c19bd7d648e63db76ec8ab90e7a4555bf64492e1d4248"
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 141,
+      "column": 76,
+      "endLine": 141,
+      "endColumn": 80,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3174fb90ecbd4928c0a2ba767d19544984622ed44ea31dd9a8ac52d40d338e5b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/holds-work.test.ts",
+          "path": [
+            "finds the work a model did after compaction has summarised it away"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 9,
+  "omitted": 0,
+  "unmutated": []
+}
