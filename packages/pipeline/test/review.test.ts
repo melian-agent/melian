@@ -41,6 +41,7 @@ import {
 	type Review,
 	ReviewError,
 	readVerdict,
+	recordDismissal,
 	reviewChangeset,
 	type TaskId,
 	upsertFinding,
@@ -55,7 +56,12 @@ import {
 	textOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AdjudicationTask, adjudicationInput } from "../src/adjudication.ts";
+
+// The deciding code's version, which a test moves to stand for a build whose adjudication code differs.
+const code = vi.hoisted(() => ({ version: "recorded" }));
+vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version }));
+
+import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { strykerNotInstalled } from "../src/mutation-static.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -327,6 +333,66 @@ describe("reviewChangeset", () => {
 		await reviewed({ unlockModels: unlock });
 		expect(unlock).toHaveBeenCalledWith(["faux", "faux"]);
 		expect(fake.provider.state.callCount).toBe(4);
+	});
+	describe("on a repeat review at the same head and inputs", () => {
+		const adjudication = async () =>
+			(await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))?.reviews[reviewedRevision()]
+				?.adjudication?.task;
+		const script = () =>
+			scriptConversations(fake, [
+				{ match: correctness, replies: [call("report_finding", nullDeref), fauxAssistantMessage("Done.")] },
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+		afterEach(() => {
+			code.version = "recorded";
+		});
+
+		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {
+			script();
+			const first = await reviewed();
+			const decided = await adjudication();
+			const calls = fake.provider.state.callCount;
+			code.version = "changed";
+
+			const repeat = await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
+			expect(fake.provider.state.callCount).toBe(calls);
+			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
+		});
+
+		it("dismisses under the dismissing build's code a review another build decided", async () => {
+			script();
+			const [finding] = (await reviewed()).verdict.findings.block;
+			code.version = "changed";
+
+			const recorded = await recordDismissal({
+				harness,
+				revision: (await Changeset.resolve(repo, "main...feature")).revision,
+				id: finding!.properties.id,
+				dismissal: { by: "Tal <tal@melian.invalid>", reason: "Checked by hand.", at: "2026-10-04T01:00:00Z" },
+				repoRoot: repo,
+			});
+
+			expect(recorded.finding.properties).toMatchObject({ id: finding!.properties.id, status: "dismissed" });
+			const stored = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
+				reviewedRevision()
+			]!.adjudication!;
+			expect(JSON.parse(stored.input).code).toBe("changed");
+		});
+
+		it("attaches to the stored decision when the build's deciding code is the same", async () => {
+			script();
+			const first = await reviewed();
+			const decided = await adjudication();
+			const calls = fake.provider.state.callCount;
+
+			const repeat = await reviewed();
+
+			expect(await adjudication()).toBe(decided);
+			expect(fake.provider.state.callCount).toBe(calls);
+			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
+		});
 	});
 	it("keeps the first call's caller notes and coverage on a repeat review whose graph cache is gone", async () => {
 		scriptConversations(fake, [
@@ -3690,6 +3756,36 @@ describe("on a repeat review after a task ended without deciding", () => {
 
 		expect((await entry())?.adjudication?.task).not.toBe(copy);
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
+	});
+
+	it("decides nothing on an adjudication task another build's code created, and says why", async () => {
+		await reviewed({ config: noLenses() });
+		const input = (await entry())!.adjudication!.input;
+		const decided = (await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task;
+		await open();
+		const root = await harness.root(context);
+		const copy = await root.commit(async (tx) => {
+			const created = await tx.createTask(AdjudicationTask, JSON.parse(input), {
+				ownership: { kind: "conversation" },
+			});
+			(await tx.doc(ReviewIndex, root.id)).reviews[revision()]!.adjudication = { task: created, input };
+			return created;
+		}, context);
+		code.version = "other";
+		try {
+			expect((await harness.waitForTask(copy, context)).state.outcome).toEqual({
+				status: "failed",
+				error: {
+					message:
+						"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+				},
+			});
+		} finally {
+			code.version = "recorded";
+		}
+		expect((await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task).toBe(
+			decided,
+		);
 	});
 
 	it.each([

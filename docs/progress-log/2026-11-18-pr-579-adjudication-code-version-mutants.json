@@ -1,0 +1,6926 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "a69fac9938c18ac6d72adeafd7bff3acda984616",
+		"head": "08b25258a98cacba9809466ee269036580a15ecf"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/code-version.ts",
+		"packages/pipeline/src/adjudication.ts",
+		"packages/pipeline/src/review.ts",
+		"scripts/code-hashes.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 228,
+			"column": 70,
+			"endLine": 230,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "367fae177178b06574f5a7ac40183bb6b68c307a1b2dca065c10d5719443bc3c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"on a repeat review at the same head and inputs",
+						"attaches to the stored decision when the build's deciding code is the same"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 229,
+			"column": 48,
+			"endLine": 229,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9682a61310700facd6e47d3eec7bbeb69e6e7ecdda9efd79dc4be3587603d5f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"on a repeat review at the same head and inputs",
+						"decides again when the build's deciding code differs, spending nothing on the lenses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 229,
+			"column": 78,
+			"endLine": 229,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "94bdda5b4fdead15bd25fb03d0b98e765a7f2ca3d8919146b4d75b8f8ba244d4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 4,
+			"column": 62,
+			"endLine": 233,
+			"endColumn": 1,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "549a86a7f72d19564d69e1fac39ad19a00446c3ab43f6358bc80f4b7ba303c9e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 5,
+			"column": 38,
+			"endLine": 5,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "004f10bd86e46e77323294053cfac56c1952be09cc9a053016a11fa5fdb660ba"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 7,
+			"column": 34,
+			"endLine": 7,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ad3eceda49c413dfb6393a38148716bc73d4e14bd51a20c553f7f3001bb03639"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 9,
+			"column": 31,
+			"endLine": 9,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "15e033917c3778a3955e94bdf7cf1e19c6e4bd660be0bed5b7bd7ffefa99db90"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 11,
+			"column": 35,
+			"endLine": 11,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ae4a554e1710bc637c9b0957d0d16d9ec282369bd0ad455a5aaae5ced8e30287"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 13,
+			"column": 32,
+			"endLine": 13,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "706e44381e48d7e810a6cff41701aefe67fdd51596b66c41fd00a092265cea3a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 15,
+			"column": 49,
+			"endLine": 15,
+			"endColumn": 115,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "50bed81663341dc5066d68a4d187340bc9a9d630aa2c9e35bf3664f9c2babab3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 17,
+			"column": 43,
+			"endLine": 17,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b431a5c4a8a0dd688c5719bf16924046e9d1bb77dc73be6e82bfb153e80f0fe9"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 19,
+			"column": 40,
+			"endLine": 19,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "884b4d42d104f88b7cbeeeb4ad45997f3975e3a37a9e4fa03c67e4d24fc10974"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 21,
+			"column": 36,
+			"endLine": 21,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5ed2ef0466e6c92eae60002cc87aa34596e6f46441b34da8d0688e4973641782"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 23,
+			"column": 32,
+			"endLine": 23,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "93e6579f474fdc109b25eda3c87cc24304a218bb49bc85864b20cecd2b12ab0c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 25,
+			"column": 44,
+			"endLine": 25,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0b0292b05c3b85c218bf0d4894a0b92e3c29d50d4a741bfe49fb58af483b0bd7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 27,
+			"column": 33,
+			"endLine": 27,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7863236f5282292696092bdcb9825ea3ce9718434de690213dc31070d2bfcc4a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 29,
+			"column": 30,
+			"endLine": 29,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "82a28e7d0dd41d631cda180cec2aa02487b1e58f8abd27392390e23ca8f4e932"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 31,
+			"column": 48,
+			"endLine": 31,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ad6013df304030e3d092a538bbedda4bd8d51aeb8f54a60e6f17e6431c03f5bc"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 33,
+			"column": 31,
+			"endLine": 33,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "801ad354d7bd079bcddd9290e76a505893d110641e4b14ff3f81117f082d259c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 35,
+			"column": 37,
+			"endLine": 35,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4ee8069c22b6b2c5eb0eca18b2fae81676570ccca2019534538c221d6b068393"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 37,
+			"column": 37,
+			"endLine": 37,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "af15e2cc62abf675871d55470ecea73e5130db6ce33b226d65de670bfde7ef76"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 39,
+			"column": 31,
+			"endLine": 39,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "620fa1d985ddf4ac27c31f35c6de3d28f170519d3ddf5786e5a05d3196a894ae"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 41,
+			"column": 32,
+			"endLine": 41,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "65048f400db45eba186e793591985fcdb9b2f298137dd7dd03690819f609d3aa"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 43,
+			"column": 34,
+			"endLine": 43,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dc77d564f3ed6fd9de6165eb9d199971044c11a35dabb93c0d528469978995e8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 45,
+			"column": 34,
+			"endLine": 45,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 47,
+			"column": 29,
+			"endLine": 47,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a395630dc26574d6c3c7dc457ec53e13a00010289d1a0755b2978740295b54f7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 49,
+			"column": 40,
+			"endLine": 49,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d96f8734749860627f6b0b362016e73ef68d6672b0370f9bb790045e332a9c5f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 51,
+			"column": 31,
+			"endLine": 51,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "afb1af0fecf50433ef3f46d8294d241976c11220aaedd1acbae932a31e514e56"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 53,
+			"column": 36,
+			"endLine": 53,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b2f9533f3e4d399b57cc6a9f13afb67f49b99ac39553987886c1b3d84fbf149"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 55,
+			"column": 30,
+			"endLine": 55,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4c662e68230160301365d01b88b3a487f29fdfd01d4a2ab8c34e1bc6c833999e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 57,
+			"column": 31,
+			"endLine": 57,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3f1aeeae7853514958e8d483fa95b6be8a5c48dc578599f2d6bb19f020b0f906"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 59,
+			"column": 31,
+			"endLine": 59,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9f07120ca738cd3655fc743471b5a3b03aa6d83fdedf5d62271ce34508398dcb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 61,
+			"column": 30,
+			"endLine": 61,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "70f3d26cb1d6edbc19473b0dc61822603c68b881e6c004d15305f2e4e9c23064"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 63,
+			"column": 34,
+			"endLine": 63,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2354d0dde4c186297dfd27d3ccb4d478c8bc8b62e5164a36149886eb61bf278a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 65,
+			"column": 32,
+			"endLine": 65,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "17d787eab5008c928a1e68a94d5cf979190330bc9a08ddf34e61c8e931b7dc80"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 67,
+			"column": 44,
+			"endLine": 67,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2ebeecc9e28fc6ce5ee429de8d5cf7b6e7ce63c17074ea23d146fba5cbadc127"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 69,
+			"column": 34,
+			"endLine": 69,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9a09b75a6b3d1989bb55ab6fd457635130f0176eceba0c5f7df1125468b322e2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 71,
+			"column": 35,
+			"endLine": 71,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "22a52dab56623df626b7df17384eead577ba996a33f306b35c07e92e05bc411f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 73,
+			"column": 31,
+			"endLine": 73,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "84d97c705f8b523515ae78e0b5585241386a1495f7f5b340f195bccd84d526c0"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 75,
+			"column": 33,
+			"endLine": 75,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "05d52bb7adc8498f643371a683f56c92c44781466d82de25122cc6171238902d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 77,
+			"column": 30,
+			"endLine": 77,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "96aded6f240707be370390d6be9446367d2b9f6e0f8631198854509f059ff3b6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 79,
+			"column": 41,
+			"endLine": 79,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6d7074ced998ffc1e63dee4ab497bfce40702f5d0e7bad3bbfbe3f6b7ae86084"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 81,
+			"column": 38,
+			"endLine": 81,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0470e5221ca5168e17ada441cdbe5c3ef153406ea99896d93f9d361f3df5778a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 83,
+			"column": 37,
+			"endLine": 83,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "82dde1c36176ed1afad3195f104e40ab6277df13eacb70ce9e6b05bbe4ead771"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 85,
+			"column": 45,
+			"endLine": 85,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "96955be893bddf2457501ba17112fc1ef8e3b3ae0c2414b48ed31781d18944ba"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 87,
+			"column": 41,
+			"endLine": 87,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "51c6163a172b8973b8b3416ab2d56a1840fb10787c34632c69a161efcb87b169"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 89,
+			"column": 38,
+			"endLine": 89,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8fc665d63e8f8f50efc6104ab323ca442463afb538a08edf348554be74859a77"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 91,
+			"column": 32,
+			"endLine": 91,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c474c8b4bb49c64b8584eaf4dc43fc914c7b36147723fd572b155a312390aca5"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 93,
+			"column": 32,
+			"endLine": 93,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d8efbd0a94eb90633424b8ec758e2ede54cd126a76625bb81d177689bb0f4259"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 95,
+			"column": 37,
+			"endLine": 95,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "aeef795831ee1291d6de9a99792078ff1ac040f303a74d1687d553349ca18b5d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 97,
+			"column": 36,
+			"endLine": 97,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4638e2b5e4323d1ceb53cc84df7d2ff8e163e951530ef9c58e4824f47c1a36ef"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 99,
+			"column": 34,
+			"endLine": 99,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5f02648ee7ff7bd0e537c1e48c3ba4de57ebdb51839e0aa0822ebafe376fc78e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 101,
+			"column": 37,
+			"endLine": 101,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "923854a8b08691ebddf845df817df2d20498ffa562404ca26f476dca1aa13cf5"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 103,
+			"column": 33,
+			"endLine": 103,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f44c16a1851cdab4250b58aa6dddde6fe8ca14183eb47feb8781fecc0dd3bfb6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 105,
+			"column": 32,
+			"endLine": 105,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "184f5908290de9f75bb8c673e1e729e73087ac80d6204e221fb13707a880218a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 107,
+			"column": 35,
+			"endLine": 107,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "37d760001678934240f30accc45454d005db0e8e49fa23daa5d6371c5217e8ac"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 109,
+			"column": 32,
+			"endLine": 109,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f8ed9dd0c2b8c933dfd177a7c63cf49ce5592926ed3a9262250a1facf659d423"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 111,
+			"column": 38,
+			"endLine": 111,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2811fee854b529b10533c749fa834f38c593e42f2f3de44b81bee539212706cf"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 113,
+			"column": 39,
+			"endLine": 113,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8eb66b1922a089a5939adfea66f4ceeca95d77948706079f4abc7ad99b3b4b11"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 115,
+			"column": 32,
+			"endLine": 115,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3e14d68980c3ae622c506d714be404250be5850d7480cdc63354386ad2a7b77a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 117,
+			"column": 38,
+			"endLine": 117,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "498fa6363057c5f345ebb01d5d8621f5e3e1953e5934dc53e5a6003d6ebf28c8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 119,
+			"column": 51,
+			"endLine": 119,
+			"endColumn": 117,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "65c8009ea2d4541a386fe1b219d1054ce0e5600ba74626af5e4a566f8c2ca1e4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 121,
+			"column": 45,
+			"endLine": 121,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "565b50658b7de41be39c855a97f9470e6eb700acfd4b91ce0ba1a9d5cf9542cb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 123,
+			"column": 46,
+			"endLine": 123,
+			"endColumn": 112,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0c042b05fac7c6a5f0334434cd90a20e134a3428fd8d6c6375f3d49346bdda56"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 125,
+			"column": 39,
+			"endLine": 125,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1d45f056a995d2c49d60c77b11e3638fde3989eb21f8107dc6059b6ff1e506b3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 127,
+			"column": 36,
+			"endLine": 127,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b5342cef4977c0d54ecac9cf1ca4b2877f8ed1e2097174ea4d0436d4904b11ce"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 129,
+			"column": 39,
+			"endLine": 129,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "73afab52c4827e77d9829ff542722268963b38560a4137b7433e33b2788e4b10"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 131,
+			"column": 39,
+			"endLine": 131,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "74ff5056194ef7d3634dc89d23abe48c0ebe9a49954ee07b28d44d4f1d2e8ce6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 133,
+			"column": 42,
+			"endLine": 133,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "68de51dc807658536b1f4fba59b1cd8d2520f3abaed60f8b3cc336b4052d07e6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 135,
+			"column": 43,
+			"endLine": 135,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "24a3237d634fc8446e6350efb3108c919d35ac34694144268be2b7ec19efecd3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 137,
+			"column": 37,
+			"endLine": 137,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4c6b9713179ad60cb8c5c563164cf4c072a50f2dc6f0d14de84ba953e82f2f12"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 139,
+			"column": 37,
+			"endLine": 139,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0be89c210dae50e9850d238eb9a51389f25a5b57ad441edbf72bb438aa1493b0"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 141,
+			"column": 43,
+			"endLine": 141,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "00bce8eb43737a456d75b37dbba8a08745552fe8a952a6b14e96d5b6501a5176"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 143,
+			"column": 36,
+			"endLine": 143,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bc45a0b925a51e2f387f593b4cca0575082ff19d6f3ff28cc5bb2c312189f373"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 145,
+			"column": 42,
+			"endLine": 145,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "271503e314e375642a36c2078d2a5972581d24441316f576a1698922012ec882"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 147,
+			"column": 37,
+			"endLine": 147,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85d6ab370d0f7ed6d9f0d374007317161a715e026b86b30a7d9d5812d6dca1fc"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 149,
+			"column": 44,
+			"endLine": 149,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9ca87a900b3bced2239ee0f7652a7817120d1948da35a6f45be8d3bf6a94aba2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 151,
+			"column": 44,
+			"endLine": 151,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "45b3365b0f94eb93b96ee50cc9b47527b2bb6f2df1973be3c215f7ba6a4b7116"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 153,
+			"column": 47,
+			"endLine": 153,
+			"endColumn": 113,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0b40260750b33930659825bff713ba38f91d4ab9ad7b2dcff5b56fbadb2bb308"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 155,
+			"column": 41,
+			"endLine": 155,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a0a9ce427e25c7bf250696cdfb1fc57afe4df3170e77273beb887313a4762bb7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 157,
+			"column": 42,
+			"endLine": 157,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e8168576775773153a3643fd07c781dcdee6f1a3da27ac44f477c89beffebb16"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 159,
+			"column": 36,
+			"endLine": 159,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e6d27e0049bdbfc430e0f9ab1aa8f954297a53c037a6140443be0ad53c8e2884"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 161,
+			"column": 38,
+			"endLine": 161,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3484180063fa5106a677db4a53e9730d73e79e61c66ca5735df04fba5f2dac74"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 163,
+			"column": 41,
+			"endLine": 163,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "901377c28d5ac59a195f6a6fc676d09a2dbc3a44d24920787fec6c46ed7ea746"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 165,
+			"column": 40,
+			"endLine": 165,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1ed1bff86e13345a871b94f2fafb28871c8f8adf367966118fdab8d3dfe6512b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 167,
+			"column": 37,
+			"endLine": 167,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5d104d89f6b7c11890b7328248ba4a1e258ffd72cc85d7a53977e14700ce3a8a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 169,
+			"column": 47,
+			"endLine": 169,
+			"endColumn": 113,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2e81ced6bbab934400a6876fce757670605d91bacb6a3ffdc9aae0a1834ae795"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 171,
+			"column": 40,
+			"endLine": 171,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b330b873e9e1b020a632cb14dae1e58786ff7b47ccecc9633fe629f1c730b50e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 173,
+			"column": 47,
+			"endLine": 173,
+			"endColumn": 113,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "396d12e6a20cd354d879947c51f4c5e744eb730df2535f1f645a81a25e4dccdb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 175,
+			"column": 36,
+			"endLine": 175,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8b86026d162d36c2147a4b8c0c5af92b261e074d8c922e2db6b3a8da5bd5dcbd"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 177,
+			"column": 44,
+			"endLine": 177,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d9bba3e0a3aaa03c939f3dfbfd240b662e8b5b97483c2fd521b12654373ea903"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 179,
+			"column": 44,
+			"endLine": 179,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d13e6399454b90820057c34fed8eb5fc2bc2391d999a9222a5978d17cef9cad2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 181,
+			"column": 50,
+			"endLine": 181,
+			"endColumn": 116,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "59748dcfad94b173a7b4fe768efe533df42a8025a1cfc43bf880609df5ce4996"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 183,
+			"column": 44,
+			"endLine": 183,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "070ad82b199198b41ff57b3b1a90da7436ffaef4931b4898c720060c3ef04eb3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 185,
+			"column": 46,
+			"endLine": 185,
+			"endColumn": 112,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "091cbfb9f968a2a5d2c4c0c5afc81ac0a0183ccde2e3350f5364a22dcbaa06f4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 187,
+			"column": 45,
+			"endLine": 187,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d2f3d95203ec3c6ecc8a8888c0593e02ed129002c298f9da4378d5dc7ae8a973"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 189,
+			"column": 45,
+			"endLine": 189,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d17dc6c6185e7a926eedf6ec88711111f0797a31762b38324da61cee3d425c9b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 191,
+			"column": 45,
+			"endLine": 191,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c945b569cd1fa1d8740aa323fe15f88c3714e0900c9171bb2b949b4a55c8fa3b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 193,
+			"column": 43,
+			"endLine": 193,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be185f2ec79f9f80dd53fe79a9d62ca2ace8e89b3148f1ba1504f32970192de1"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 195,
+			"column": 35,
+			"endLine": 195,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "63f35b0163f6ced503dc18e843692245274b48cf201228cca24fa261487d3732"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 197,
+			"column": 37,
+			"endLine": 197,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f027cb05f3885de59b655e2711570b0b5f03c9453823bf84286abfa7f9ccfd3a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 199,
+			"column": 37,
+			"endLine": 199,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2da76db096e3e3db6eeba1a184e7a56e058727ee1d67085aaccea6b0c75b3912"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 201,
+			"column": 49,
+			"endLine": 201,
+			"endColumn": 115,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ad64c6afb4e4008bd866f281b65c3151abe3a2a5743e2e268b14883902e92be1"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 203,
+			"column": 39,
+			"endLine": 203,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "57550f0d53b045acc7c2b2241fbe12a7df371004d5e6265648a63809d5eeec2a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 205,
+			"column": 45,
+			"endLine": 205,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6ffbd50356f3872aa97a2f0259131b07b6e9a15bcde13001562277e48b5857f7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 207,
+			"column": 42,
+			"endLine": 207,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "13d40697c9dd30538c84197fa633d47f3aa0fb1c2627dc60ba632cf690835b59"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 209,
+			"column": 36,
+			"endLine": 209,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c2a3caea35bd73919518d46bb89b539ede13591d1f454457a8b1e518c4f3043a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 211,
+			"column": 35,
+			"endLine": 211,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "752e15faf90f92d0ce1dc0386db7146a85bfc5fb7af8306e8f4c1f58f8e44696"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 213,
+			"column": 36,
+			"endLine": 213,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7b5f16983a38ed440eda45a9855f3269e7e42b898755d0a692d65857f571b7fe"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 215,
+			"column": 39,
+			"endLine": 215,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "18b6c4d4815fa0c3b0ad64bcef7281878a58c7601aa31d5a0ec81758e39e46c4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 217,
+			"column": 42,
+			"endLine": 217,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4996c438f8a80d1999828fd4c73c9e9dfd5740d128bdd243b19f0351b0238065"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 219,
+			"column": 41,
+			"endLine": 219,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7744585f140e0d3a35661940fcb78a4dd2999ca3d0588ae928ff8162e65c2aea"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 221,
+			"column": 41,
+			"endLine": 221,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fc8a6b50ae906340f93a3b02ab67e01e59882cdf0f2f8cb2af1cabaec977015f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 223,
+			"column": 40,
+			"endLine": 223,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1aa937ac43a9733ecd0d5994e39f2dfd0a3c8f0faf01b6c3c1ba1c0f071f15c2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 225,
+			"column": 47,
+			"endLine": 225,
+			"endColumn": 113,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b6e8f693083f4f227836cbb6ee949e06b7974cf16df3af71681d7734d7974bd"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 227,
+			"column": 39,
+			"endLine": 227,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "107d8f958a790af2107ddc6d8dd46d0cb638fc34082093217e8fb8b643381d52"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 230,
+			"column": 2,
+			"endLine": 230,
+			"endColumn": 68,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9f7e3c1c681343546113395c2ab1a7f8bb045cd23cfad508face4b20d058d533"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 232,
+			"column": 48,
+			"endLine": 232,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b511f59a6513adfeb056d53a3b7a3fe9dfb3b54ec18abf80d6237c6b30042e25"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 235,
+			"column": 76,
+			"endLine": 465,
+			"endColumn": 1,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "373011caaae31e04e5e6f51292ba475560dd6448a20c3769354245ff04530688"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 236,
+			"column": 15,
+			"endLine": 464,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4f9a9a7cfbd3a0255ef152e2752153a2f4366c40094e0d8e359cbfc9516fc041"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 237,
+			"column": 2,
+			"endLine": 237,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "04163b862638b019173c046dac785d05100ff5551b5ae40b7370357c3bd7a1e4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 239,
+			"column": 2,
+			"endLine": 239,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "91fa3d4b04f0965194396fe819afa0f01b2d463fd57a7e0c7fbf937c919dfe63"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 241,
+			"column": 2,
+			"endLine": 241,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7e2a2e4875e281eb7ba6cc62c43f0aa4d4af3cb33dd0142dcadc97b74983a189"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 243,
+			"column": 2,
+			"endLine": 243,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4b4e40dca010418392214eb564f36ed82b2fb799b3bbe70558f05949e7fed58e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 245,
+			"column": 2,
+			"endLine": 245,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ac4a6a7edc8c583a1b91fc686b00ed60afdbc474bfad37bf278a5ec87ef358b2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 247,
+			"column": 2,
+			"endLine": 247,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e1513f91dc5530c09bd313d69ce66575e83768837e4e461ca71111867b99a85b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 249,
+			"column": 2,
+			"endLine": 249,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f016e1d462db585d016448f1979bb6925e0e8f194a30629ea89578595a4a0129"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 251,
+			"column": 2,
+			"endLine": 251,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "614746ddc39c1244657a2e70eb53f083bd3f2353466d9ebd27f9f07f92530a46"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 253,
+			"column": 2,
+			"endLine": 253,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ef3090a85acefcb82499cbd84e021e22ccb4dd2c5053cbf99624d9a2f159ac1b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 255,
+			"column": 2,
+			"endLine": 255,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f36370aa905ebec7a60fa009242f3d91f960516f16a2404613ab1aa29ddb9736"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 257,
+			"column": 2,
+			"endLine": 257,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f723e9808764f8c08b19c319f0551aa7617d27e8a632fe4766ec9104e2f902bb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 259,
+			"column": 2,
+			"endLine": 259,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6d1f5b9c951aa62fea24f435c47a952f93e49e9156408a90dc422faa47caa61d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 261,
+			"column": 2,
+			"endLine": 261,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e8076a83cd78994302c268f3396ba3c3ffdccca59da58a53e61319c5a1a18b11"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 263,
+			"column": 2,
+			"endLine": 263,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "62d44cfa5a914db1040d71c34760c85ea5f0ecabed8d2541272e0d821b6864bf"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 265,
+			"column": 2,
+			"endLine": 265,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8c93f9c435b456b217796aa6eea0e5ce1b8d2718b5c9fcbc7a837c43b797cd0f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 267,
+			"column": 2,
+			"endLine": 267,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bd7b1fb29ce7eb204cdef66a48bab4b27bd6c3d8c3b39c3cdca94ea10a78db8b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 269,
+			"column": 2,
+			"endLine": 269,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "23c35618afd3e7467e1eade75c596e7cf96f1db6ed6cb2de3ee5ba63e6ac6735"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 271,
+			"column": 2,
+			"endLine": 271,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f5cdf8d0cdc8a70d765fff3ed03f47eb20f58cf1232b7d11f52e7723a9ad3ab7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 273,
+			"column": 2,
+			"endLine": 273,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "147d5baa4bce6369908910125f1708780d626243aba863bd9b27c7773140131a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 275,
+			"column": 2,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "04b3bf3a7c54b7b052102e846b9852ae5e62d020d96ac4b693264035aeb03936"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 277,
+			"column": 2,
+			"endLine": 277,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "56f78e9e4de81bbfa0b24f99fa2ee620366017a377b255ac3a5509428a5a32e1"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 279,
+			"column": 2,
+			"endLine": 279,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5504a7c93cafb29bd3d732b0288b531fc75c9799836803b18626ff696f9535c8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 281,
+			"column": 2,
+			"endLine": 281,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2f5f915911ca2736f95db71439549288bd234992c28487e87467834934f1b526"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 283,
+			"column": 2,
+			"endLine": 283,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cf419b3b0bf0cccaa580f9a7afd9dfd65af278a6877a2050042ddcac742ce198"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 285,
+			"column": 2,
+			"endLine": 285,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9cfb86173b2287242b5abd1991c6868d106bf31b1ac155eaf583e8703a118c15"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 287,
+			"column": 2,
+			"endLine": 287,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fc839646111cd1093d85ec2791acbda0b58b22aab776b55757edaa5ab0b8982e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 289,
+			"column": 2,
+			"endLine": 289,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0d27a78b96a8ecbd84b0b9713b93fed4ec343482c3d2289c593720b862bb8951"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 291,
+			"column": 2,
+			"endLine": 291,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dd14cb9321c0845a24a9d4bed017c3f576129bb04093b79479e6bfa89bad0a79"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 293,
+			"column": 2,
+			"endLine": 293,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cc5dbeef3d6ed02fdd2cdbd768299ae037183446470b37e824a31b373345f62d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 295,
+			"column": 2,
+			"endLine": 295,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e80a1e1353dcbf6b94337d1178be68f1177d911b6756a7d1b14a1cf8c89407cc"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 297,
+			"column": 2,
+			"endLine": 297,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b294e39b8d1d7a7b69f98a689e381ec5c61ba84b5e15ef6f09b3fdd0edd8c8c9"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 299,
+			"column": 2,
+			"endLine": 299,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "59791ac20590670ba01e03bc7156976d190df46a052a5ac50b2c56b5d8134f7b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 301,
+			"column": 2,
+			"endLine": 301,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fad076a846b65b3e0c44b43fbe25c731d6ab0891c52be3648a72d743a97684ff"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 303,
+			"column": 2,
+			"endLine": 303,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6dc01e335ac8e06b44ecb6d6adb4cf0b4a68121643a9cc6f5a4427a1f25b20ca"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 305,
+			"column": 2,
+			"endLine": 305,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85a38338113fed9b645cf2381a1080a2ad24f0221d6f2b9f68542f85b4d6c3a0"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 307,
+			"column": 2,
+			"endLine": 307,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be71a1487fda2df221275990ce218f9ba175bd8d316888f67c93bd0177f1044d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 309,
+			"column": 2,
+			"endLine": 309,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b42079f7d3172aeaa688697513de38f2ff2bc0b78d02f03aeb8c9beec427328b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 311,
+			"column": 2,
+			"endLine": 311,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "74f650fc4dadcce8c478137c9988b1edbebdedec915c8d7dc03d2dbf7a8a2d84"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 313,
+			"column": 2,
+			"endLine": 313,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3a19ec9c753d136061559961d685fdedaf7fed1b8e90ea6df7bed514f74d8828"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 315,
+			"column": 2,
+			"endLine": 315,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "320860f73ec3c08eb96f86f5e2739c98ea4b9c24c18c04217add6320b44037f7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 317,
+			"column": 2,
+			"endLine": 317,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e7fb0d60fac9e0c56e5ee77f5778d37b50785b00bc3d08788facf37e2561397d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 319,
+			"column": 2,
+			"endLine": 319,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a7960b7fe5990f385d26a86c4a51a7722076861d2709717eca70ad20d3497dbe"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 321,
+			"column": 2,
+			"endLine": 321,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6b99930b3b2b658ff9c5c9847de0a6927b225a734445cb07a8d780d057750e36"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 323,
+			"column": 2,
+			"endLine": 323,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8659229a277f51e28ae918d78653a388ab5f2d51d2976d358209464797a8d7ca"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 325,
+			"column": 2,
+			"endLine": 325,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2bf46c785b23aa6165ed57eca5d202781ad84c0d556264ab156024a9de413497"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 327,
+			"column": 2,
+			"endLine": 327,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "074d7da3b51122f33a0702915adb4781d21023767fa0f424180f22dd919d2c30"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 329,
+			"column": 2,
+			"endLine": 329,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e94c16fede2d1ef5d573db6da3558b126ca08b9fe964a2a4025e4dcce503ab55"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 331,
+			"column": 2,
+			"endLine": 331,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "80a0fb4e236accb8de6da7b3646c32e772b822bb8156dc63b61319a9679e37bf"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 333,
+			"column": 2,
+			"endLine": 333,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "46e773e5fbaaa840e8df082c9ffcfaae741fe1931587fcf209c53d92284f1b17"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c530707d9e6ce0337e3fe0f25e2c9848b2aef5bbe17fc1db8b36975b75343081"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 337,
+			"column": 2,
+			"endLine": 337,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0af5f57524cc4a3c0c82f381946dec91feceb57640bed8d1dd18d2e18e87ed5c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 339,
+			"column": 2,
+			"endLine": 339,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "47f2cb502ce144a1adbf66b4db365e396f3f206a391bdf129c4a799d404e09e8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 341,
+			"column": 2,
+			"endLine": 341,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5b0327bc67ce7c330a8f9ccb457211489389366560d21150dfc7846b13ae511c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 343,
+			"column": 2,
+			"endLine": 343,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cf1803c5b7ac5afc6187e654e755c50c49897a43e23ed969e0a76297703c9489"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 345,
+			"column": 2,
+			"endLine": 345,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "23d2f1c3bc6718771286b8146222ac6c5462bbf7be801139086c05a98decf945"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 347,
+			"column": 2,
+			"endLine": 347,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1ae93a38b5adf970394744b587e5d474aac9339a5dee77e9cff97bc499a7ae60"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 349,
+			"column": 2,
+			"endLine": 349,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "54ec2d07711e4f6841437e708734d07cd0fdd3a9fedfe26a3190b9e2d760b520"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 351,
+			"column": 2,
+			"endLine": 351,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "84266d8e98e0d3d2757c1e0be0b5e43a7c78c9a77bc5996e26237f2f41b304b4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 353,
+			"column": 2,
+			"endLine": 353,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "49778f402affb8b0b00ce6ad5a1c124ea17a16855e25036dddcbb3a84c799da3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 355,
+			"column": 2,
+			"endLine": 355,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c6e3d89cb2dd9f9b34e7056def0a894ee602d5318d8c473da653af20002051f6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 357,
+			"column": 2,
+			"endLine": 357,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8cfb09547b0db03ededbb6186d05fa7cd004ceed9627f5029fbf4297a0c2960f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 359,
+			"column": 2,
+			"endLine": 359,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4aab9ef0aba286e6927e31d645cfb9010ed67d143fad99b45d2c7a99d61872fd"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 361,
+			"column": 2,
+			"endLine": 361,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c87771c5290adfe2ef13dc1fa325b68ced0c4610feaa3763296d7b64a5a49299"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 363,
+			"column": 2,
+			"endLine": 363,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "30e373536815e9b92398e51d193c87b90b4e81d86835a195f050e6517eb1adad"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 365,
+			"column": 2,
+			"endLine": 365,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7b4f2f2fcafd51e1d278f3dd49873a40a094e6ae92a937b39fa83b853599b33f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 367,
+			"column": 2,
+			"endLine": 367,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "207305f91008cca38783a6a5fecbb99c5f3b8980241ff599ab424a0fc9a17b8f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 369,
+			"column": 2,
+			"endLine": 369,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9b3ff87319900750cc56acae205ac3142105a954a8e31f5c0f422a1bf393076d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 371,
+			"column": 2,
+			"endLine": 371,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ea193811af92f3f4917aa9dfab4a44a294df69d066f357ab335aed710e683619"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 373,
+			"column": 2,
+			"endLine": 373,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ef77be6cedb71e0122185738e0572521707c0dd7b824ccf9b2e196677cb9db10"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 375,
+			"column": 2,
+			"endLine": 375,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6e999c202f48f1701a49332fa345d3b39734b040bc9277d9204f06c69240db3c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 377,
+			"column": 2,
+			"endLine": 377,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ac984f1868a13b17d259ca14922031d0dee070f57ef62def5a2a3b05f265f163"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 379,
+			"column": 2,
+			"endLine": 379,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0e0f198b4c865893934ad5e3742f03cfbb2aeae61692887a03be9484d8389cea"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 381,
+			"column": 2,
+			"endLine": 381,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2422d42e2f38c50cf1add153b525d1f20caaa2ba554da6515f56c6e01bde5cdb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 383,
+			"column": 2,
+			"endLine": 383,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8728ac5ce3ae82de5dd5a45d78c59e5e2a46053675aa300cdbdc2960d28e88ed"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 385,
+			"column": 2,
+			"endLine": 385,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "34e566466facb859fe7182d3acd45aefa9cea196df0aa84feff1e741ebaeb4b1"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 387,
+			"column": 2,
+			"endLine": 387,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "41a73b5c0a5c0bc4574178984cd3ae1594a32ed52e4cce62d01a5a46a0dff2cf"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 389,
+			"column": 2,
+			"endLine": 389,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fde03f5947e39a448b016f6c2ff777e8e3c1fd6ecf334a386a7e946e62bd995e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 391,
+			"column": 2,
+			"endLine": 391,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4aadd0e22fe3ba360e390925d8b22c39e3220e72a3d42779b8b6a76792e06a90"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 393,
+			"column": 2,
+			"endLine": 393,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e2ebccdc49bb34dc0145dd3b7ebc66fc16a4b13d5231309cc6c4a0efe3d93c38"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 395,
+			"column": 2,
+			"endLine": 395,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "988e2b0a3d35e9880304a6c315b49f1f12299421dbc8ef87988d564402e8e9b8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 397,
+			"column": 2,
+			"endLine": 397,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d45104c46b5a33955f17415be088b6046aec3ae9b9e311c894ce31ac98cc69d4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 399,
+			"column": 2,
+			"endLine": 399,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ecad1e2074dd49652426db4777f952be6b73e9cf7a51466c15046623a6baf5de"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 401,
+			"column": 2,
+			"endLine": 401,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e2750fe36c9ba927e95b6e65da9454a1170978b0c680763b08a7012637d0868f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 403,
+			"column": 2,
+			"endLine": 403,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ac1ad35e86cd229161fa14a82beaac9210046071988607a72138e7c53d069fb9"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 405,
+			"column": 2,
+			"endLine": 405,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c04663a545f20abd6079cd6ff566b5b68f63a0e8d56e8b73ca650761ab3969a1"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 407,
+			"column": 2,
+			"endLine": 407,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2bd066c8c9e074597810bf9ffdcf49a6418af2df8effa06f2cec7ab3ab1431f4"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 409,
+			"column": 2,
+			"endLine": 409,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c22dd310ae08f62f626ea934c24e7ad93df0ee89cbbeef09d3bc095c1ec0820f"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 411,
+			"column": 2,
+			"endLine": 411,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6b187c0a6b55f7377d654c26369d3803b11321153e5f1238e131de09113902ab"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 413,
+			"column": 2,
+			"endLine": 413,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e2515e4597e860a6fc1142fbc7754ec1cd7430db6d1d9ff81a65687c3108510d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 415,
+			"column": 2,
+			"endLine": 415,
+			"endColumn": 43,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9d7337c49c62dd463d284308d112636a87d790d1e6b1fa227b68af9d03561ea9"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 417,
+			"column": 2,
+			"endLine": 417,
+			"endColumn": 45,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "08008f613accb153b60e75ed67df05c271233148bd3e49585892d669429d56eb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 419,
+			"column": 2,
+			"endLine": 419,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1f91390b82185f35b887d9904a152b958fce683550d8e027ac5f0cff6ad5c5b7"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 421,
+			"column": 2,
+			"endLine": 421,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6a0c6055b2ca17ff16ef73e2ca24c352b956c30fd1ba6417d9c123b9f571c5ea"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 423,
+			"column": 2,
+			"endLine": 423,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f668e44fe5c6923381ab97c71de6756dfcdd93af479fba9443c54ad2ecb6149b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 425,
+			"column": 2,
+			"endLine": 425,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5c7b01ae9f433ce92f87d55bf9e7c64aff91954ead4b39d89b27fcd7fa62402b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 427,
+			"column": 2,
+			"endLine": 427,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b3fc5d08256269165766d103c71cbc2081e39ba92e196019f9a7033e981bf1ca"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 429,
+			"column": 2,
+			"endLine": 429,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "77eb7c8ced4f983879c2b9cc045eeab3a5b4d8b58e78a713aa400aeabeba43d8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 431,
+			"column": 2,
+			"endLine": 431,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4d0aeab27255a201980a37ef21319114872198e52a8c3a81e49d06d6ee952a79"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 433,
+			"column": 2,
+			"endLine": 433,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6b3850ebe81af87c5521eb87c50be28e734f93d44aff102fecd1d0c71f9aa972"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 435,
+			"column": 2,
+			"endLine": 435,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8d447851332a255af84193223b332b27cdb5305576f9ca28ef86cdacb4b64352"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 437,
+			"column": 2,
+			"endLine": 437,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "edae222541fa125bf3f27b6d80789ec587184caa8e566855b8f86a20c8d1a1cc"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 439,
+			"column": 2,
+			"endLine": 439,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2cf09f710f41d2a382be3e296530d4054216701eac7ebb67718743b47208c617"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 441,
+			"column": 2,
+			"endLine": 441,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5a60a34f40584d10b0442055435745063b2367acf46fe96dd7ab16bed261e265"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 443,
+			"column": 2,
+			"endLine": 443,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5c3cb7c7659e87ff630581b8f061c2a01713d2ce34ac999ef0bd1a37be0d6310"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 445,
+			"column": 2,
+			"endLine": 445,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1d7e33c97c25c2894e1461b72ef8a1fb8b49f4d06785ddf116d10cedaa563dcd"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 447,
+			"column": 2,
+			"endLine": 447,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85ebd23234fe1d6e4898df73b67ae975c284331a1048bfb4f8460d111c11b701"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 449,
+			"column": 2,
+			"endLine": 449,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e62333bfe90676f13716d0c1a66b60227be57d157c5fb524372de76ee29afece"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 451,
+			"column": 2,
+			"endLine": 451,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "25000d0bf577fc999cf88b6b6e8dd8674e2b3deb0d3a73e0243b98da55885ac2"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 453,
+			"column": 2,
+			"endLine": 453,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b95fa7b8daa3f7619f9743349fa6bba04d3b707155719e167097c9198fbd2317"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 455,
+			"column": 2,
+			"endLine": 455,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cb3f2491b049023cd9c2765b325448edc56c7bf4103326db4b130f978e01f097"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 457,
+			"column": 2,
+			"endLine": 457,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7d046ccf3313184e0a43b1c70c7bcfd1f287242a1783efcfde25a405b66819e5"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 459,
+			"column": 2,
+			"endLine": 459,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4a28f7483f6edfa2eddf5cd5e644380ad55adb5e9dedf6d24b3b06b210228df3"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 461,
+			"column": 2,
+			"endLine": 461,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0b76254004641dba65c4d650eef32bb6aa2afdcf2f049c46028ba880b8df4f59"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 463,
+			"column": 2,
+			"endLine": 463,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a91ab8917f69291938313d51c0b7d6b4889aebb7b82830aabb2a68726e1a3293"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 10,
+			"column": 54,
+			"endLine": 19,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "24a69bb543116a3555e9ce535c8c39ee85b533aaeb7fcda57318c882fd7603c6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 12,
+			"column": 5,
+			"endLine": 12,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f0b00cc19c9f65b5686eee628fc75cff2bc0be6ff8329da4cd5577c8b0677d70",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 12,
+			"column": 5,
+			"endLine": 12,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "155d68eca267c5bcc6aacb0e8f9c24427efe5dae62e194650fd7065304503d3b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"refuses a producer the table does not hold, an inherited name included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 12,
+			"column": 5,
+			"endLine": 12,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "modules !== undefined",
+			"status": "generated",
+			"id": "fc8c97a81455b701f25a6e9841679b07610e2a8966608d6fe2372a04a6270080",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 12,
+			"column": 28,
+			"endLine": 12,
+			"endColumn": 96,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4f69774fd4579c26483f80dd30be0ba7b64d2fdf70439a1e434776897554d4f6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"refuses a producer the table does not hold, an inherited name included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 12,
+			"column": 44,
+			"endLine": 12,
+			"endColumn": 94,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bb66585e1f9fe269339df859c045b2e6921f286e273ac68081296aa252fc7c9e"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 13,
+			"column": 37,
+			"endLine": 17,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "acdd92395abe5719908b4d48950fb427ac7c5299a09222752de50db53988df1b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 15,
+			"column": 6,
+			"endLine": 15,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "61f8f261911dd7aa05370c89dd4418f1063b822bc77273f6ca29c975ce612fe6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 15,
+			"column": 6,
+			"endLine": 15,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "df5ee617cbedb5618c5deb12e77b2c82074728f4d35c83fa1242af9397a5d543",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"refuses a module whose hash the table does not hold, an inherited name included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 15,
+			"column": 6,
+			"endLine": 15,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "hash !== undefined",
+			"status": "generated",
+			"id": "96e01fda40ff46a1e1816a670f680a15dea91519e8d616e41d3e6558c7406bf2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"hashes each of the producer's modules as a path and its hash, one per line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 15,
+			"column": 26,
+			"endLine": 15,
+			"endColumn": 101,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d148ac525c4da35d4ede570b802578794c0d8b91357ca20a6f2aa5d729649beb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"codeVersion",
+						"refuses a module whose hash the table does not hold, an inherited name included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 15,
+			"column": 42,
+			"endLine": 15,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fb1873e66dd2af397424e450044a7b73595c1fa0d1d581f98856032d5f0abb9d"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 16,
+			"column": 9,
+			"endLine": 16,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f484d6fc794fd04d700664101428143d0c00cce2e8a6b62c756e4d5d83650ea5"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 18,
+			"column": 19,
+			"endLine": 18,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4be4d6fe56a08bbb495672cacdf5e39b06a239258f4f017ca26ffdcf8e70ede0"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 18,
+			"column": 47,
+			"endLine": 18,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eddffd0c02cda8d575f81bcc2fbbe825f26a4d3b959e43c8959a506cd03d0b7f"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 18,
+			"column": 59,
+			"endLine": 18,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5320e33dd6027fa40b897e683be11530a86567e718ce9452e7b40e2144b1e50c"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2040,
+			"column": 30,
+			"endLine": 2040,
+			"endColumn": 65,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "84925162bdfa5213f7cb30c3c8e9c1c0a6f59b5cca0466bf56db2b8df9a04620",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/adjudication-key-reopen.test.ts",
+					"path": [
+						"decides main's stored verdict again once, under a key that adds the code version to the same input"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 10,
+			"column": 35,
+			"endLine": 10,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "64515cba94f17c6ce61fc48b35e074e8cb4ed78316261431526a6444edbb6867"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 12,
+			"column": 28,
+			"endLine": 12,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "31ef2863a326c3be400909e988b2e5fc389e97b50fb4123c8267a2aead46da63"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 15,
+			"column": 25,
+			"endLine": 15,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "93d89af6c386f52950edbfc6dcb2c72b2dab802fee9191aceb9cdcfbbb3fa600",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 15,
+			"column": 41,
+			"endLine": 15,
+			"endColumn": 80,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f40283e548cc2593fe3694c344ee39bd5531db4b77b6eb4a0c7b0359d18c7cef"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 20,
+			"column": 51,
+			"endLine": 62,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "892ec3bbe52235351316026d88a1a0bae9f717cc9f1c8be250d09a2ecc631c19",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 21,
+			"column": 44,
+			"endLine": 21,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ecc27394eeab834217fc90a01169be1a63dc55b0206573ba1adb86ab3c7c266e"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 22,
+			"column": 5,
+			"endLine": 59,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fa6d667396129a9835f98e11c24aff5123dc41f915c2c623765b08f47634cb4e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 23,
+			"column": 31,
+			"endLine": 23,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "784d4e77404477aa56bcf9c5d1b8418b567232a876c49741ec1589059862bb60"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 26,
+			"column": 18,
+			"endLine": 34,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "959e22330043562429c4fb7aa3cde2d1e5c64e57cd9baf31cd20fb68808e88f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 27,
+			"column": 24,
+			"endLine": 27,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "adf57bf0cddd3cddc585279c3d95a39b3237b1be501bb72de01f7945382d5ef7"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 28,
+			"column": 21,
+			"endLine": 32,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ba7ae6b326764a64f96ff01e5097411fabfc3561b8df653679e2def2eecf6968",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 29,
+			"column": 13,
+			"endLine": 29,
+			"endColumn": 17,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "069d00ad4e0f7d66e7687fc77803d019729ce2ee2980184b7cf7fa4fe9da10cc",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "--listFilesOnly stops before emit, so noEmit false writes nothing; the run over the real repository left git status clean"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 30,
+			"column": 23,
+			"endLine": 30,
+			"endColumn": 47,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "74f796b94ef8f520e388b80d0de02092d0797d8dc51c91a973b6942110ed5458",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 30,
+			"column": 24,
+			"endLine": 30,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7c7ea9eb7f852b433db03a750c43eb673e6fc66afdb2ca021faf458592fa259b"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 31,
+			"column": 16,
+			"endLine": 31,
+			"endColumn": 51,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "25a2ec796f122b41d81c901f76891820f5d9e07b8508ff643c037e616e358586",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 31,
+			"column": 28,
+			"endLine": 31,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d7b4f37d67431ced5cf664217ad313a20a2c849052f5c8628e54aefb59e69244"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 33,
+			"column": 11,
+			"endLine": 33,
+			"endColumn": 30,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "f0c9db2c31c3b09531e34b59c2a435e6d2c1a5d0d8ad033e4a14c90ff00cd5b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 36,
+			"column": 35,
+			"endLine": 36,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8a5dd37fe06c14669bb7c2d978e116265d6f48af3d06fec6ddf301691dd89b7b"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 36,
+			"column": 61,
+			"endLine": 36,
+			"endColumn": 94,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "af37c78bb47bb883acec77763a305742d2bfaba9506229b464096e8dd5e57df9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 36,
+			"column": 62,
+			"endLine": 36,
+			"endColumn": 66,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2d5ce2735353d68e41cc273a8000d0cb5fd8f96eaa86d1aecc010f7ac65ff0bd"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 36,
+			"column": 76,
+			"endLine": 36,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0bcdc8bc3927bd0b4ea87959b952d287e3ed0176b8936240fcfeb87cd331d896"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 36,
+			"column": 96,
+			"endLine": 39,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "bfb1cd7f948c019557781a44c3108f69d2bf99d93720b6ceb69e5101266bcf7b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 37,
+			"column": 13,
+			"endLine": 37,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1208a7aaa87a21f4b878cb3520f9d511fa9d41b7e8ead17683aada7a1f05b6eb"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 38,
+			"column": 14,
+			"endLine": 38,
+			"endColumn": 30,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "64 * 1024 / 1024",
+			"status": "generated",
+			"id": "d430182c8d77870956a09063306142cfa08bab3707554db3cde6619dc3666578",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 38,
+			"column": 14,
+			"endLine": 38,
+			"endColumn": 23,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "64 / 1024",
+			"status": "generated",
+			"id": "8683878fc875746c11bfd2e3f2b1e9fa25da131f8dc5074905cf436e335dbc85",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 40,
+			"column": 6,
+			"endLine": 40,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "670dd83187861c6b17e8a0fa2f9c5a729fdbe34d387ff0d71b93628fd2959403",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 40,
+			"column": 6,
+			"endLine": 40,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9c9f9264b99608b4e6e897629206d4ec2dd2fc14d5367793f2c1ad8145b402ba",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 40,
+			"column": 6,
+			"endLine": 40,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "run.status === 0",
+			"status": "generated",
+			"id": "d80c0f4b343ea42a968ff30a8718cfd5439d620a4f57250252470a28045c4388",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 40,
+			"column": 24,
+			"endLine": 45,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0780c904a4695d606fe850bd78ef684c70c22b6e17b4f8855b7d1c810f30e013",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 41,
+			"column": 18,
+			"endLine": 41,
+			"endColumn": 102,
+			"mutatorName": "MethodExpression",
+			"replacement": "`${run.stdout}${run.stderr}`.split(\"\\n\")",
+			"status": "generated",
+			"id": "7abab7fa2600ea449315af8b0abc33486d2652c0c68444c6167e46bef97497a1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 41,
+			"column": 18,
+			"endLine": 41,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5316355714830d9936366f4eec0d6fc716a57578bad8dd4298df39d33e968731"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 41,
+			"column": 53,
+			"endLine": 41,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be789c0a095dd848232103ca518a0c094300b00e4aa382e257ed1efa897aa43e"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 41,
+			"column": 66,
+			"endLine": 41,
+			"endColumn": 101,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "25825f1b6ec639ce0b921ce049f0f13ef24ec1fbd378273d91c3918c2f5b8812",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 41,
+			"column": 90,
+			"endLine": 41,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ac438c2fe0865a444a10ff4e551f2eeadafe11af3a2b88b75caffa472ccf6537"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 4,
+			"endLine": 43,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4d369a5a5b004621dbdc80730152e0a7c3c343a7c7636582c1cf5abc822056d5"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 56,
+			"endLine": 43,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "15d98605021cbc6d5a8767ba81ff9ca3a5e04bd6774ba4aa5097b74ca7cb83aa",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 56,
+			"endLine": 43,
+			"endColumn": 97,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e617e642e18b011a91bed30003f6934608fe1c536de33eaeff070092bd7bb5ec",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 56,
+			"endLine": 43,
+			"endColumn": 97,
+			"mutatorName": "LogicalOperator",
+			"replacement": "errors.join(\"; \") && `exit ${run.status}`",
+			"status": "generated",
+			"id": "e64c0c0271f467cd5948b2fa767921c421ac60353d2d4e0ab010d751f657ae2c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses an entry TypeScript cannot list, quoting only its errors"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 68,
+			"endLine": 43,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "66fea1786f00ded8976a5bd3f66efcf5d9ac2e910cf1a65a9e4188c3e3d3b7d2"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 43,
+			"column": 77,
+			"endLine": 43,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fc0b1ecb1f0d9384b1ae50d3c9d1257f0a379d56c1c3270cc4e3878c8fc10951"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 48,
+			"column": 34,
+			"endLine": 48,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b042c919e6d4d9621d314a8b62d83ca5c40c3acaa7a87cf7328eef25137657f8"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 48,
+			"column": 41,
+			"endLine": 55,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "15bee9ef03bb8b1fc00ea225d3645095fd179de5a111890183c4a7985fa3546d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 7,
+			"endLine": 49,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4f9cd025987f4bbd8cd006c510dd6e12ec8afee2ccd09412fef86fb6f3ac0c42",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 7,
+			"endLine": 49,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e41d88f17657c5499deb57e0ca527d8a5aeba1498b249b629ed1e0692b080021",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 7,
+			"endLine": 49,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "line === \"\" && line.split(/[\\\\/]/).includes(\"node_modules\")",
+			"status": "generated",
+			"id": "5de3203bf8518f38dddcf047f671ac055e0699ccd28dc561eb2bf2de198c4c86",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 7,
+			"endLine": 49,
+			"endColumn": 18,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1fa7452a93dd218f7a10cc52d7c58ba4d7d1162a6a7e635fca0d2b325b9dee57",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 7,
+			"endLine": 49,
+			"endColumn": 18,
+			"mutatorName": "EqualityOperator",
+			"replacement": "line !== \"\"",
+			"status": "generated",
+			"id": "708947b2f2a1a298cb1997d3a1aa97a266f77498f58001d70db1c30681e5f2db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 16,
+			"endLine": 49,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9db7c208e673be39d28a6f8ba21d2886ec25bec4e7c8ea8bded1252085eb082f"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 33,
+			"endLine": 49,
+			"endColumn": 40,
+			"mutatorName": "Regex",
+			"replacement": "/[^\\\\/]/",
+			"status": "generated",
+			"id": "164c7b6bbd5eee965bf4de4473e8ab3627debc165a128bb0f38d33c596eab6f0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 49,
+			"column": 51,
+			"endLine": 49,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3451c2a5b341ca296ac2f248424d146d541f184ca25e12a9ffe6d43729a50162"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 50,
+			"column": 53,
+			"endLine": 50,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a1db8673dce3adb6aab834afe4d40074f584ed3b12af29387265ab8ad571e4d7"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 51,
+			"column": 7,
+			"endLine": 51,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bf34dad3d1d7fcc871e7c0598b5de4e507bc2b25f903266d1282e28950c08df0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 51,
+			"column": 7,
+			"endLine": 51,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0565aebb902a70160a50eb6254fd6e2f00d0ef2929d93db19903c09ff73a0448",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a module outside the repository"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 51,
+			"column": 7,
+			"endLine": 51,
+			"endColumn": 49,
+			"mutatorName": "LogicalOperator",
+			"replacement": "path.startsWith(\"../\") && isAbsolute(path)",
+			"status": "generated",
+			"id": "adc12fdcb65155efb7d3c9a8f39f4dade84b0563a08f10fa27931d4174164748",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a module outside the repository"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 51,
+			"column": 7,
+			"endLine": 51,
+			"endColumn": 29,
+			"mutatorName": "MethodExpression",
+			"replacement": "path.endsWith(\"../\")",
+			"status": "generated",
+			"id": "314ca6edba3aecb00b0237b8b9bf224594ab4c361c1735ec221297681b36ba2a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a module outside the repository"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 51,
+			"column": 23,
+			"endLine": 51,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9df10c4159eb420bcbfda256865bec7f074e751868dd518168cfbac50f9e7449"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 52,
+			"column": 4,
+			"endLine": 52,
+			"endColumn": 72,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "1099b3d7dadeb73369bfe9310033240d27d520b5b715c34f65b5201ce922fce6",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a module outside the repository"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 52,
+			"column": 20,
+			"endLine": 52,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a8b67103c5ab5306c450d2caa7d1a30263eac39b267ba3a76a13656f6422d46e"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 53,
+			"column": 7,
+			"endLine": 53,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f109d7f992afd2e3f32f2b86873c6458ae5f0cd1a1e479d63b1d4793551ecdc4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 53,
+			"column": 7,
+			"endLine": 53,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0b6382a2f819324ac7c8d9890f47be79cb32490d12ed95e334efd593943c32ec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 53,
+			"column": 7,
+			"endLine": 53,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "path !== recordedFile",
+			"status": "generated",
+			"id": "18b251449bee7e37588ae7bacde251a265d83862651fbb4417534d9e404fe58a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 54,
+			"column": 3,
+			"endLine": 54,
+			"endColumn": 21,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "e9b71cda3c602e85003af812c779e0c62ca298f9428324d9fe8008b5c576bc7b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 56,
+			"column": 6,
+			"endLine": 56,
+			"endColumn": 25,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "modules.has(entry)",
+			"status": "generated",
+			"id": "331d4b557b60489b6764cc08e1ef7f00cc1c900d66062cc40c391de111a2f1bf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 56,
+			"column": 6,
+			"endLine": 56,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "887c0df0090b69dbd16bde9727c6524c67cce91f4eab2148829b87364d0e8cab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 56,
+			"column": 6,
+			"endLine": 56,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1da8ff7851d8916b34fb87367c5cbc20d9189f51dfcb54af48716dfba33f61ea",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a listing that leaves out the entry itself"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 57,
+			"column": 3,
+			"endLine": 57,
+			"endColumn": 94,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "cf25e1cf22b9be7c3cd716c8c65c9a2c42a85dad74efa5a014f7964fda976fa9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"refuses a listing that leaves out the entry itself"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 57,
+			"column": 19,
+			"endLine": 57,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8d6a201a771585259cd0f629c9a303080db8ef9f648e1594bb3994ea6fd1c6ba"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 58,
+			"column": 9,
+			"endLine": 58,
+			"endColumn": 28,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...modules]",
+			"status": "generated",
+			"id": "265402b807b0542f2e4218b021abadf97070d0851dd6cd2b4841673af9fb39eb",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"lists the modules TypeScript reaches, and no others, by name"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 58,
+			"column": 9,
+			"endLine": 58,
+			"endColumn": 21,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "711a093a107acb978d41b2d5d74641d7533ca639840142ec1016c30be10b6635",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 59,
+			"column": 11,
+			"endLine": 61,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6ac31e4c41d6e261a5c82a9e789028d8636f08471b1e0a3740329ee4c6c1e6a4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"leaves no scratch directory behind"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 60,
+			"column": 18,
+			"endLine": 60,
+			"endColumn": 50,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "46365724d6174b91680152177ffedda771f403379f2d08c9d0b165429680c676",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 60,
+			"column": 31,
+			"endLine": 60,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "92b6ba4c41d061c2a85b7c6d686c239e3eacf88fbd7ccd4e3f6577c7ff4954ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 60,
+			"column": 44,
+			"endLine": 60,
+			"endColumn": 48,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f9a0f2c2fb79ec37baf781d9b9c5d3acd2bcaf44055b448e3c440a9110771ace",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "mkdtempSync made the scratch directory, so it exists and force never decides"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 64,
+			"column": 42,
+			"endLine": 68,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c0e069b94ba591ade2e5ff05d1b91efa7de97a8a022f6222cb2be24bee4d9398",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 65,
+			"column": 19,
+			"endLine": 65,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d3e15964aceb1bc3ffcf01ebfb7b1af1d98cab60caa054f097d165bb8c3678d4"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 67,
+			"column": 10,
+			"endLine": 67,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "63ea01db2fca78181391c280e2d41be9c213ad696783e0f67054a4131f25d8de"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 71,
+			"column": 64,
+			"endLine": 82,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fd6bd071296f89a67260fdbe5df38283fed4d2bbbcfc68f2b45041326b81107f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 74,
+			"column": 20,
+			"endLine": 74,
+			"endColumn": 47,
+			"mutatorName": "MethodExpression",
+			"replacement": "Object.keys(entries)",
+			"status": "generated",
+			"id": "d22adf67d5de3cbdb6652c68ef2474418d7885d9e46c9f52a91d8c547a7b970b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 74,
+			"column": 49,
+			"endLine": 77,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dd69c1e21981de56bd5e1607043768951371303f577320f937b2874841a699f6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 76,
+			"column": 44,
+			"endLine": 76,
+			"endColumn": 85,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "moduleHashes[path] &&= hashOf(path, repo)",
+			"status": "generated",
+			"id": "c3a246f7e77e1934de0490c3cde7794737cf7a2b420672aef3cba12f09fe8de9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 78,
+			"column": 8,
+			"endLine": 81,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b94e111857e81c9a9c09f5ff1042a763bb350d4ff6abe6d649673a6dcc6ca916",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 35,
+			"endLine": 79,
+			"endColumn": 100,
+			"mutatorName": "MethodExpression",
+			"replacement": "Object.entries(moduleHashes)",
+			"status": "generated",
+			"id": "7f78a5f6b97755c905efe1389768a2e1dc308dcfcb57eb00a23fe5eb1e700e9a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 69,
+			"endLine": 79,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "445fc3dc8a8e8fc34c1cb2fb55d7b2be72c83aae390f24a0eee187edc3bdb279",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 84,
+			"endLine": 79,
+			"endColumn": 89,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7318a38015f8c9e01fc0fb17a8b84d88c5aeb38c552248320a83cf6fcb8c47f8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 84,
+			"endLine": 79,
+			"endColumn": 89,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "28a7368a85743f9d34f157d6ded758d58180e4eaa0f8dbccf1c5ca34ee67bb40",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 84,
+			"endLine": 79,
+			"endColumn": 89,
+			"mutatorName": "EqualityOperator",
+			"replacement": "a <= b",
+			"status": "generated",
+			"id": "a1bd78ed127accb3a1977929f6e6d9e04039b9d178a810aa368576b1d5a394cd",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "moduleHashes keys are distinct, so the comparator never sees a equal to b"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 84,
+			"endLine": 79,
+			"endColumn": 89,
+			"mutatorName": "EqualityOperator",
+			"replacement": "a >= b",
+			"status": "generated",
+			"id": "411e62f5ee9bc016fd14fbcf7ce71f2c771b1b5b30741917d171ba87ae8f2b06",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 79,
+			"column": 92,
+			"endLine": 79,
+			"endColumn": 94,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"status": "generated",
+			"id": "32e23d4aa4a86c750af0cc11342360e7827f33abe30d81e488cf9e9a97d416a0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"orders producers and hashed modules by name, whatever order it reaches them in"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 85,
+			"column": 48,
+			"endLine": 108,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "188430b2a73be2e146c6d8e726810682471605c6bb254a86504aad3a267ba97e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 86,
+			"column": 15,
+			"endLine": 86,
+			"endColumn": 17,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "d3d22365c804815cc68ea651206f2d1ec87cba0c5bf47882266579232ce300a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 87,
+			"column": 15,
+			"endLine": 89,
+			"endColumn": 9,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set([...Object.keys(recorded.producerModules), ...Object.keys(computed.producerModules)])]",
+			"status": "generated",
+			"id": "f3a2c3110eef734676d2fd58caaee7116c2a0c4bdc0833154e1dc9cb199986c4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"orders its lines by producer name"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 87,
+			"column": 15,
+			"endLine": 89,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4d802d3855667f158a1e646f1004e0036258528edfc1789af7960611b9b49a5d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 88,
+			"column": 13,
+			"endLine": 88,
+			"endColumn": 97,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c87260195dc0376fe05d43cc7f94f1e7b0038284051b5e43d7cb23e0519e0d0c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 90,
+			"column": 27,
+			"endLine": 103,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a02a1c4b0f9f25b927c55c2c680d3752f8a0926fe9654072a763aa1896d3a8f5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 91,
+			"column": 22,
+			"endLine": 91,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "recorded.producerModules[name] && []",
+			"status": "generated",
+			"id": "b827ab25bf0756613126235ef3467071bf4a5ee3555be4a7e2b210bf0d23cf84",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 91,
+			"column": 56,
+			"endLine": 91,
+			"endColumn": 58,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "55f72a0cb6249f0f5375f34a52e1b22729e9c5352133ab8a6002586a285a8a50",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 92,
+			"column": 22,
+			"endLine": 92,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "computed.producerModules[name] && []",
+			"status": "generated",
+			"id": "444be1025d38fe1626f494253da3574b9369ac683ff516ef8a4f5d3dbfab9dd9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 92,
+			"column": 56,
+			"endLine": 92,
+			"endColumn": 58,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "af909a2f7b071de297dc7dc8761a92b632a37f3356ddf7cdbcf181bfefa66381",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 93,
+			"column": 6,
+			"endLine": 93,
+			"endColumn": 41,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "name in computed.producerModules",
+			"status": "generated",
+			"id": "19e756b4d4739c4264cfa99e31c6025162bd3c8aea026f70180bf5e232f798c4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 93,
+			"column": 6,
+			"endLine": 93,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a2a247b4efcf22593eb0fdcb8068db8f4c33beeea5f7c9d551046e71f1db60d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 93,
+			"column": 6,
+			"endLine": 93,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9481db0e63103642615547b79163ef228da9497587012a5b0fabbc306a8f3cef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 93,
+			"column": 43,
+			"endLine": 93,
+			"endColumn": 101,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d8f713aa06aadf8d6873bce7f260f4ac84e6a36290d4416a7796b0348b51d117",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 93,
+			"column": 54,
+			"endLine": 93,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "48f77e62ecc61c676648b11f288a453a5a9cb280f838a5498ea41fb01626f606"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 94,
+			"column": 6,
+			"endLine": 94,
+			"endColumn": 41,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "name in recorded.producerModules",
+			"status": "generated",
+			"id": "a197cb0a36b1d1805a95948c54173a9ce83f1b43dc92b44c418f2603cdf5723f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 94,
+			"column": 6,
+			"endLine": 94,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fc8f580aaf7dd16f2c1395fc4514069c3314989f244b6f0b7b49dcdbf33b4d74",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 94,
+			"column": 6,
+			"endLine": 94,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ad01f5526197a30de9ab826ef0efbd4ec35bbaa5c0917ee5694eda701a5edbcf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 94,
+			"column": 43,
+			"endLine": 94,
+			"endColumn": 102,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8da9ded3288323bf2731b8717647fcc6a9cd3bdbd3b05c5a2ca517d88df01b4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"differences",
+						"names a producer that has gone, and one that is new"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 94,
+			"column": 54,
+			"endLine": 94,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "afeeddc7be03cd2346ad575fe81595b5da2f52539e62680af63e1ef0234f5d82"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 95,
+			"column": 30,
+			"endLine": 95,
+			"endColumn": 44,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "was.has(path)",
+			"status": "generated",
+			"id": "b79b71effd7af4046d171b6b004599a0a4e5e08de4f3c03135d0ff095bbfab52",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 95,
+			"column": 30,
+			"endLine": 95,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1d8eb2086afc1d055851000a46801706a327caf53a31577aef0930a5bbd0f9c1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 95,
+			"column": 30,
+			"endLine": 95,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d5a7f0a862f0f52885daf9687d3a6e7c54f7b93563db7e9a011f291bb742c0de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer now reaches that its list lacks"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 95,
+			"column": 46,
+			"endLine": 95,
+			"endColumn": 111,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "c49cd4a6cf1e471a8256d3b40d8174639ec9f9521caa0615a912933a9e8b6728",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer now reaches that its list lacks"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 95,
+			"column": 57,
+			"endLine": 95,
+			"endColumn": 109,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7661a7acd478443e6277db4e722f21593b06ef4b5b7e05e8d03df12d997b453b"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 97,
+			"column": 7,
+			"endLine": 97,
+			"endColumn": 21,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "now.has(path)",
+			"status": "generated",
+			"id": "ca3a8b585039c4065f0e539aefd453fc786bc3ca589973c902eb7c4c3c946265",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 97,
+			"column": 7,
+			"endLine": 97,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5b403be22347189133fc098a164baccd8dab52b56592c0e8cb8c32e1227710d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 97,
+			"column": 7,
+			"endLine": 97,
+			"endColumn": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e2c759a028d235266e5b27bf87b006337db1f56bbe29bc5ba3f6ecdf67ad0d20",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer no longer reaches that its list names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 97,
+			"column": 23,
+			"endLine": 97,
+			"endColumn": 94,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "74d01494afefc5176e236793621ac4c88ad7d9630cef069c4849c0bbd87b0c5a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer no longer reaches that its list names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 97,
+			"column": 34,
+			"endLine": 97,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c936b36cc6e4190b4d8247344fbdeb015370040d01600a3003fbad0f64a4dca2"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 98,
+			"column": 26,
+			"endLine": 102,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "25ee754c8a83bf81e8cb96c068b355e4b1ee0c72707ab70436ddf9e7552c65de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 7,
+			"endLine": 99,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b0073e3255f3101676cd1eeadd11f4362e21c3e9b01cd673de8003fad64c546f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 7,
+			"endLine": 99,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "47f4d525dfe70981d9a7c1fd966710a1e13a38c3f28493ebdd250dc8f91441c0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 7,
+			"endLine": 99,
+			"endColumn": 83,
+			"mutatorName": "LogicalOperator",
+			"replacement": "was.has(path) || recorded.moduleHashes[path] !== computed.moduleHashes[path]",
+			"status": "generated",
+			"id": "530c3c1b2f44d2946777753723d8010ec57b21b13f6c4fd2e6065eff294fd0a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 24,
+			"endLine": 99,
+			"endColumn": 83,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ddfd39540799e7c0b443dabb80681517f420165106b7b1aa185fb4be1a358875",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 24,
+			"endLine": 99,
+			"endColumn": 83,
+			"mutatorName": "EqualityOperator",
+			"replacement": "recorded.moduleHashes[path] === computed.moduleHashes[path]",
+			"status": "generated",
+			"id": "16c1a8d2e2627142b8e6089b3fc7dc40935d25be130d14c334b64517756e3d18",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 99,
+			"column": 85,
+			"endLine": 101,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "afd53a4f432c0eac60aa478a193c4d9065bb847dd0016bc7533a1fbffd924e99",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 100,
+			"column": 4,
+			"endLine": 100,
+			"endColumn": 71,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2b7337792e755406785b37695b40a59194e9914a7b8dd0bba7a327b2fe1d0573",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names the producer and the module whose text changed without its line"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 100,
+			"column": 15,
+			"endLine": 100,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ce94269fb7ce77b3e1ae653522ea1331452d6a99f9b7e4d5512ebd8df52b8ecf"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 104,
+			"column": 56,
+			"endLine": 106,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f06abedf265f8451652af02c6f8fe87860bcacd40a474d916c5d6026725e07fb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer no longer reaches that its list names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 105,
+			"column": 6,
+			"endLine": 105,
+			"endColumn": 38,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "path in computed.moduleHashes",
+			"status": "generated",
+			"id": "73bb13b9261b1e18af97682ee6111e5185a713b2c7457f92f884f096afdd200c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 105,
+			"column": 6,
+			"endLine": 105,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "27cc330ec2fa40051c8795174085268de993b9a6139f64a336923e01eba6c17c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the recorded code hashes",
+						"match what each producer reaches now"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 105,
+			"column": 6,
+			"endLine": 105,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "cbed0bf7027e0b79a049ed8d53c47579d3ee107f31fd4fe9fc2ed0fac7dcc9cc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer no longer reaches that its list names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 105,
+			"column": 40,
+			"endLine": 105,
+			"endColumn": 98,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2ac12247088b5cff3953481832e8c62d63e1334438771bffc9fe7a3152000502",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the check over a scratch repository",
+						"names a module the producer no longer reaches that its list names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 105,
+			"column": 51,
+			"endLine": 105,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "49f1c686ada3ba7a2e237188f5a60fab63228e6f640f82c2c227007f06b54481"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 111,
+			"column": 58,
+			"endLine": 130,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d612e04dfd47acfb7ea3e15eba03e76defd23f607e4d6cf464c0ad2fcdcb4a6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 113,
+			"column": 2,
+			"endLine": 113,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "d5e639c1fff6a62e2399614f4017995dbafa105228471bffb32d2429514d45b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 113,
+			"column": 20,
+			"endLine": 113,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "48ef30703d4221effa83bb0d71f31cdd12106d72c0a2faa4d3150cc43ae622d1"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 116,
+			"column": 2,
+			"endLine": 116,
+			"endColumn": 110,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "cac760dc3f2836895c8d6168f9eb36624d69983572a8987242fb4918f6cc6145",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 116,
+			"column": 21,
+			"endLine": 116,
+			"endColumn": 110,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "517b713106dba8c4ecde4d441b81a6ed4a1380a96980ade673a5a4beeb18c0df"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 116,
+			"column": 48,
+			"endLine": 116,
+			"endColumn": 90,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4cdfa1606c886515d3a9b4fa1b3bee4998ade1cbf68723b4cc816bcc6d05bb43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 116,
+			"column": 58,
+			"endLine": 116,
+			"endColumn": 90,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6d5bd731443fe055dda1235fe6df41fc83b2832f9537b59f53830565a6b2af75"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 116,
+			"column": 97,
+			"endLine": 116,
+			"endColumn": 101,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a5a7a539da5e531744f18d9f3583bcb5ecbca8b001a179335ae8e5d33a1d4153"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 118,
+			"column": 8,
+			"endLine": 129,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "423c8a0a92bf846776aa76ecba08c189bada41b4ba4b5272e5f6312dd02cfe49",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 119,
+			"column": 2,
+			"endLine": 119,
+			"endColumn": 120,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eedb5aa80ade004df2fa9c9a92c570e75cd69764693eabd80d7c22ec89774de8"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 120,
+			"column": 2,
+			"endLine": 120,
+			"endColumn": 117,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2d50f966115f9b9c00c38608ae9e5c2ece71110c37137223cc9156fceb3fec39"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 121,
+			"column": 2,
+			"endLine": 121,
+			"endColumn": 6,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "14f431b1d0bbec1c2be7dbb4cd90f220700ca05d6969f4c71bee92d6a4c34819"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 122,
+			"column": 2,
+			"endLine": 122,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e8131f348079b709197d0d3327256565290270de9eba12f9049f8adaf3cd7910"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 123,
+			"column": 14,
+			"endLine": 123,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d3ef4c57520ea49dc09ccd2eaf758c2ed78db96527140ec8e89a305e4bc5331c"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 124,
+			"column": 2,
+			"endLine": 124,
+			"endColumn": 8,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ce07a1626318882ab2624cc1155d1b32921abf0c7e535550b88d99b5f2df628b"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 125,
+			"column": 2,
+			"endLine": 125,
+			"endColumn": 6,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b907ae582b70fb5e4af23d8deaea9459c776cabd6bfdff7e4a6d64aaec340e6a"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 126,
+			"column": 2,
+			"endLine": 126,
+			"endColumn": 83,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e492ecdfbb2ea65c392ce6dc500392b801dd6f069a4003defdb4b71ae1ba65d1"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 127,
+			"column": 13,
+			"endLine": 127,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c39428c9b5feda010117381013217bd767a27566823e0f948a6f60fb52a3f06c"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 128,
+			"column": 2,
+			"endLine": 128,
+			"endColumn": 8,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4bfefc3a45e9c8fe9ba55bc11fc6a496528fd0a4a40b9657feccd95ddb933aa5"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 129,
+			"column": 8,
+			"endLine": 129,
+			"endColumn": 10,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "850781d66305ae17067733552852c74b8e513daad924f176fbe5039af1444c5c"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 132,
+			"column": 4,
+			"endLine": 132,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6b639e3b299fda54305ade5a69d4f192fd8b90355985bd588bd1cea3edd86fe7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"checks nothing when another module imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 132,
+			"column": 4,
+			"endLine": 132,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b6db9d0f8650a3ac31669e1c4ac4135c8648f5d1d8b0222391d06080297de2fe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 132,
+			"column": 4,
+			"endLine": 132,
+			"endColumn": 54,
+			"mutatorName": "EqualityOperator",
+			"replacement": "process.argv[1] !== fileURLToPath(import.meta.url)",
+			"status": "generated",
+			"id": "9066a09b6fde7061c8b03b8b4bc66b9b448cb789498fde36abb926a9634d0fe1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 132,
+			"column": 56,
+			"endLine": 151,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b3fd007ea9a8d42fadb9d5ff0198c5085b2337ce838b0904779ccbb27a7bc0d4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 134,
+			"column": 5,
+			"endLine": 134,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6a0f8b254e201714ad7d02abb834d15d21edbdf2d7b2c83911b4560c95139467",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 134,
+			"column": 5,
+			"endLine": 134,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0245eeb43c1132c537205045ca217face0067ff7c932aef2043cdbec6746e592",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 134,
+			"column": 27,
+			"endLine": 134,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eec3c297877965a2778800aa7c4bc08628e86a92da5accc7f05ef7085e1e59d7"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 134,
+			"column": 39,
+			"endLine": 142,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d3fbc33484c4416edf495d0b888f597e1ac2788002c3b65e6ffadba8e35d3436",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 135,
+			"column": 2,
+			"endLine": 135,
+			"endColumn": 60,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8bd238d566fe0a9bbd9a18649023e58762c22cae89ddfb59bf653f0dd4c9f0a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 137,
+			"column": 38,
+			"endLine": 137,
+			"endColumn": 63,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f9983c3e7dfe8b44c6808e550514bbfa8ff5c98b685416aec073140baf539623"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 137,
+			"column": 66,
+			"endLine": 137,
+			"endColumn": 101,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "ac766d7fc5498dfc3d230478856e525943ab36ad070459afe1784e3c960b9b21",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command's formatting",
+						"formats the record it wrote, from the repository's root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 137,
+			"column": 67,
+			"endLine": 137,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "eccf5c2775b1e7213b7c4fe5f98591679a4c70856154f889c32ebd652a1033bb"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 137,
+			"column": 77,
+			"endLine": 137,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f136d0c20967c9aa1d155a0f20669eb4066b59caccd0f0384ae90ef2ab604156"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 137,
+			"column": 103,
+			"endLine": 140,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "73de198287f3daacf2e35ae2bb40e93080f5aba430181198f7a180caf97b5c88",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command's formatting",
+						"formats the record it wrote, from the repository's root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 139,
+			"column": 10,
+			"endLine": 139,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f3d6e473422fc80303ffb347ddd4833117938d61d45933dc0993c5e1db8da082"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 141,
+			"column": 6,
+			"endLine": 141,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5a158d8bfe2aa1bd234afba3d30ab3e31fb8a38b714452a4ad69d4cdcc9abf9c",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "on Biome success this calls process.exit(0), and the script ends with status 0 there anyway"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 141,
+			"column": 6,
+			"endLine": 141,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c3c330b3bc044be6f0679c82ad277cdbfc47bbc98d6c8f68c743f0b9328132c9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command's formatting",
+						"fails with Biome's own status when Biome fails"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 141,
+			"column": 6,
+			"endLine": 141,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "format.status === 0",
+			"status": "generated",
+			"id": "782bfb7c32e9541d86ee668b57cf6db9ed8d5acad2172dd8b0f2a75dbc2bdf2e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command's formatting",
+						"fails with Biome's own status when Biome fails"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 141,
+			"column": 40,
+			"endLine": 141,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "format.status && 1",
+			"status": "generated",
+			"id": "40461beca1da830bb245eb2d01c83c6aed054514fca997ce0b7a3f7e98c59acf",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command's formatting",
+						"fails with Biome's own status when Biome fails"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 142,
+			"column": 8,
+			"endLine": 150,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e9347a9457cb54a40f3b184962c9903eec5539ce71bfe9cc067ad7ef2f76b8e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 144,
+			"column": 28,
+			"endLine": 144,
+			"endColumn": 61,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5f471b00225e8727e6c54d1b5cbc9ecfd498bfc896a113986aecdba4392b0c71",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 145,
+			"column": 28,
+			"endLine": 145,
+			"endColumn": 46,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "70ab7ee9eeb35d327f2da5538f440138d1f228b05b0f40d376148c61983224f4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 146,
+			"column": 6,
+			"endLine": 146,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "16856571e456973e6ee690b80cab94909a63b751790c8cf9010c1040e24993cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 146,
+			"column": 6,
+			"endLine": 146,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "558322b0ffe737fc74b1a3cd31b5b8f3ce7ec86f13e8a79fa019879a78424e0d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 146,
+			"column": 6,
+			"endLine": 146,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found.length >= 0",
+			"status": "generated",
+			"id": "8350d9ce368337f7b98773342115a87b246359cc5a9a57988ba3b5792e0e20e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 146,
+			"column": 6,
+			"endLine": 146,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found.length <= 0",
+			"status": "generated",
+			"id": "00bed21b89d9fd91efc0d65299b6601d79cdbb09f58019ddc6ac045abf4cf91b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"writes a record that it then reads as matching"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 146,
+			"column": 24,
+			"endLine": 149,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7a9eb44dcd14351f30831e697bdea42304e7d0c7a562923eac040fba01a1487e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 147,
+			"column": 3,
+			"endLine": 147,
+			"endColumn": 60,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "0443a5b33c3c1f6e109e4f45c0443366ecf51d9e32fb812522d442680e690273",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 147,
+			"column": 15,
+			"endLine": 147,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5393f9d9c0f210a47bace30ce93e13fd37620c87729a1e3f2ba9cebc3f9e8b98"
+		},
+		{
+			"file": "scripts/code-hashes.mjs",
+			"line": 148,
+			"column": 3,
+			"endLine": 148,
+			"endColumn": 19,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "7258ea52638924876650efb4b284d8de9f8fdfcd851b14db3cb84488868471e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/code-hashes.test.mjs",
+					"path": [
+						"the command",
+						"prints each difference and the command, and fails, once a module changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 434,
+	"omitted": 0,
+	"unmutated": []
+}

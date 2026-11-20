@@ -1,0 +1,69 @@
+// Run from a checkout of main at 16c0d89cb, whose adjudication task is version 8, with this file copied into
+// packages/pipeline/test/ and FIXTURE_OUT naming this directory's recorded.json. It is not part of the suite.
+import { writeFileSync } from "node:fs";
+import { Changeset, loadConfig, type RepositorySource } from "@melian-agent/core";
+import {
+	checksExtension,
+	backgroundContext as context,
+	createMemoryStorage,
+	createNodeExecutionEnv,
+	createReviewRegistry,
+	openHarness,
+	reviewChangeset,
+	runChecks,
+} from "@melian-agent/pipeline";
+import { createFakeModels } from "@melian-agent/pipeline/testing";
+import { expect, it } from "vitest";
+import { AdjudicationTask } from "../src/adjudication.ts";
+import { ReviewIndex } from "../src/review-index.ts";
+import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
+
+it("records main's adjudication input for a review that counted a static check", { timeout: 120_000 }, async () => {
+	const repo = createRepository();
+	commit(repo, {
+		"melian.yaml": lines("tiers:", "  fast: [static.tsc]"),
+		"tsconfig.json": JSON.stringify({ compilerOptions: { strict: true, noEmit: true, target: "ES2022", module: "NodeNext" } }),
+		"src/a.ts": lines("export const a: number = 1;"),
+	});
+	commit(repo, { "src/a.ts": lines("export const a: number = 'one';") });
+	const fake = createFakeModels();
+	const registry = createReviewRegistry();
+	registry.install(checksExtension);
+	const harness = await openHarness(createMemoryStorage(), {
+		models: fake.models,
+		registry,
+		settings: { retry: { enabled: false } },
+		env: () => createNodeExecutionEnv(repo),
+	});
+	try {
+		const changeset = await Changeset.resolve(repo, "HEAD~1..HEAD");
+		const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
+		const { config } = await loadConfig(repo, source, "");
+		const root = await harness.root(context);
+		const checkRun = await runChecks(harness, { rootConversationId: root.id, changeset, config, source, tier: "fast" }, context);
+		const { verdict } = await reviewChangeset({ harness, changeset, config, lenses: [], standards: [], models: fake.review, policy: source, tier: "fast", checkRun });
+		expect(verdict.status).toBe("findings");
+		const revision = `${changeset.revision.base}..${changeset.revision.head}`;
+		const id = (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[revision]!.adjudication!.task;
+		const task = (await harness.getTask(id, context))!;
+		expect(task.version).toBe(AdjudicationTask.definition.version);
+		writeFileSync(
+			process.env.FIXTURE_OUT!,
+			`${JSON.stringify(
+				{
+					recordedBy: "packages/pipeline/test/fixtures/adjudication-v8-static/capture.test.ts at 16c0d89cb",
+					repoRoot: repo,
+					base: changeset.revision.base,
+					head: changeset.revision.head,
+					verdict: verdict.status,
+					task: { kind: AdjudicationTask.definition.name, version: task.version, input: task.input, initial: AdjudicationTask.definition.initial(task.input as never) },
+				},
+				null,
+				"\t",
+			)}\n`,
+		);
+	} finally {
+		await harness.close(context);
+		removeRepository(repo);
+	}
+});

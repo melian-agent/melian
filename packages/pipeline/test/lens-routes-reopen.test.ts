@@ -82,7 +82,7 @@ it("reopens main's verdicts and rounds twice, reading each stored plan as it did
 	expect(fake.provider.state.callCount).toBe(0);
 });
 
-it("resumes main's version-6 adjudication input unchanged under the current definition", async () => {
+it("migrates main's version-6 adjudication input unchanged, and fails it under the current definition", async () => {
 	const file = copied();
 	const fake = createFakeModels();
 	const first = await openHarness(await openSqliteStorage(file), { models: fake.models, registry: createRegistry() });
@@ -117,11 +117,12 @@ it("resumes main's version-6 adjudication input unchanged under the current defi
 	try {
 		second.resume();
 		await second.waitForTask(id, context);
-		expect(AdjudicationTask.definition.version).toBe(8);
+		expect(AdjudicationTask.definition.version).toBe(9);
+		// It names no code version, so it fails rather than decide under this build.
 		expect(await second.getTask(id, context)).toMatchObject({
-			version: 8,
+			version: 9,
 			input: recorded.task.input,
-			state: { status: "terminal", outcome: { status: "completed", result: "recorded" } },
+			state: { status: "terminal", outcome: { status: "failed" } },
 		});
 	} finally {
 		await second.close(context);

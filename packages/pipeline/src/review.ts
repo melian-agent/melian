@@ -60,6 +60,7 @@ import {
 	AdjudicationTask,
 	type AdjudicationTaskInput,
 	adjudicationInput,
+	adjudicationKey,
 	type ReviewOrigin,
 	readVerdict,
 	VerdictDocument,
@@ -2034,7 +2035,8 @@ async function startAdjudication(
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
-		const key = JSON.stringify({ ...deciding, details: undefined });
+		// The details ride with the verdict but are not part of what it was decided from.
+		const key = adjudicationKey({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];

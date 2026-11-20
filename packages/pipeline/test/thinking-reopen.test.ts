@@ -30,8 +30,8 @@ it.each([
 	["melian.lenses", 7],
 	["melian.verification", 4],
 	["melian.summarize", 2],
-	["melian.adjudication", 7],
-	["melian.adjudication", 7, "thinking-policy-v11"],
+	["melian.adjudication", 9],
+	["melian.adjudication", 9, "thinking-policy-v11"],
 ] as const)(
 	"reopens main's versioned %s input with no invented thinking",
 	async (kind, version, priorFixture?: "thinking-policy-v11") => {
@@ -109,10 +109,13 @@ it.each([
 				await second.waitForTask(id, context);
 				const migrated = await second.getTask(id, context);
 				expect(migrated).toMatchObject({
-					// Version 8 named the review's check run; a version 7 input reads unchanged.
-					version: kind === "melian.adjudication" ? 8 : version,
+					version,
 					input,
-					state: { status: "terminal", outcome: { status: "completed" } },
+					// An older adjudication task names no code version, so it fails rather than decide under this build.
+					state: {
+						status: "terminal",
+						outcome: { status: kind === "melian.adjudication" ? "failed" : "completed" },
+					},
 				});
 				expect(JSON.stringify(migrated!.input)).not.toContain(
 					priorFixture === undefined ? '"thinking"' : '"thinkingOverride"',

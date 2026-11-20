@@ -93,6 +93,8 @@ jobs:
           grep -q '^enola@.*not yet fetched' "$RUNNER_TEMP/tools.out"
           node_modules/.bin/melian doctor > "$RUNNER_TEMP/doctor.out"
           grep -q 'tool enola.*not yet fetched' "$RUNNER_TEMP/doctor.out"
+          # The recorded code hashes are read from the built package, which ships no source to hash.
+          node --input-type=module -e "import { codeVersion } from '@melian-agent/pipeline'; if (!/^[0-9a-f]{64}\$/.test(codeVersion('adjudication'))) { console.error('codeVersion failed in the tarball'); process.exit(1); }"
       - name: Fail if check rewrote files
         run: git diff --exit-code
 
