@@ -17,3 +17,5 @@ Example: 1,500 changed manifests, each naming twenty long scripts, wrote a guard
 ## What it costs
 
 A reviewer on the host also sees the trimmed detail for a very large change, though the host's own store could hold it whole. `git diff` still shows each file. A change too large to record at all gets no review until it is split.
+
+The shared check record carries that failure's reason as `unexpected`, since `recordCodes` lists only check errors' codes, so a reader on another host does not see that the change was too large; [issue #622](https://github.com/melian-agent/melian/issues/622) would share the reason.
