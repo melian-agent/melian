@@ -91,8 +91,10 @@ Commands:
                          removing it frees; --apply removes it. Changeset files are never removed. Exits 0, or 1
                          when a static check is running, which stops prune removing anything, or when the state
                          directory is a link, which prune does not follow.
-  doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
-                         access.
+  doctor [<target>]      Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
+                         access. With a target, such as "#12" or main...HEAD, print the plan that target's review
+                         would run, and name each preference file it would not read; a pull request reads its base's
+                         policy and lenses, so fetches its refs as review does.
 
 Options:
   --head, --base <sha>   Confirm the merge_group event SHAs (status merge-group).
@@ -484,8 +486,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (rest.length !== 1 || rest[0] !== "prune") throw new UsageError("store takes prune");
 				return await storePrune(scoped, values.apply);
 			case "doctor":
-				if (rest.length > 0) throw new UsageError("doctor takes no arguments");
-				return await doctor(scoped);
+				if (rest.length > 1) throw new UsageError("doctor takes at most one review target");
+				return await doctor(scoped, rest.length === 0 ? {} : { target: rest[0]! });
 			case "tools":
 				if (rest.length === 0) return await tools(scoped);
 				if (rest.length === 2 && rest[0] === "fetch") return await tools(scoped, rest[1]!);

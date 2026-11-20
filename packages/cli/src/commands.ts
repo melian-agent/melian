@@ -8,6 +8,7 @@ import {
 	describeInheritance,
 	FindingsLog,
 	Lens,
+	type LoadedConfig,
 	loadConfig,
 	loadSecrets,
 	type MelianConfig,
@@ -188,9 +189,74 @@ export class PublicationAttestations {
 	}
 }
 
-// A pull request reads policy from its base. A range on the checked-out commit reads it from the working tree, with the
-// preference files, since its author runs Melian; any other range reads it from its base. Credentials come from the
-// secrets files whatever the policy's source: they are the maintainer's, not the revision's.
+// What a review of one target covers and where it reads its plan. A pull request reads policy and lenses from its base.
+// A range on the checked-out commit reads them from the working tree, with the preference files, since its author runs
+// Melian; any other range reads them from its base. Review and doctor both resolve a target here, so doctor prints the
+// plan the review would run.
+export class ReviewTarget {
+	readonly changeset: Changeset;
+	readonly source: RepositorySource;
+	readonly origin: ReviewOrigin;
+	readonly pullRequest?: { readonly provider: ReviewProvider; readonly pullRequest: PullRequest };
+
+	private constructor(
+		changeset: Changeset,
+		source: RepositorySource,
+		origin: ReviewOrigin,
+		pullRequest?: { readonly provider: ReviewProvider; readonly pullRequest: PullRequest },
+	) {
+		this.changeset = changeset;
+		this.source = source;
+		this.origin = origin;
+		if (pullRequest !== undefined) this.pullRequest = pullRequest;
+	}
+
+	static async resolve(
+		io: Io,
+		argument: string,
+		expect?: { readonly base: string; readonly head: string },
+	): Promise<ReviewTarget> {
+		const target = parseTarget(argument);
+		if (target.kind === "range") {
+			const changeset = await Changeset.resolve(io.cwd, target.spec);
+			return new ReviewTarget(changeset, (await ReviewSource.ofRange(changeset, io.env)).source, { kind: "range" });
+		}
+		const provider = await gitHubFor(io.cwd, io.env);
+		const { pullRequest, changeset } = await fetchedPullRequest(io.cwd, provider, target.number);
+		// The policy and origin come from GitHub's answer, and the diff from the refs the fetch wrote.
+		if (expect !== undefined) await checkExpected(pullRequest, changeset, expect, "nothing was reviewed");
+		return new ReviewTarget(
+			changeset,
+			{ kind: "revision", commit: pullRequest.base.sha },
+			{
+				kind: "pull-request",
+				repository: pullRequest.repository,
+				pullRequest: pullRequest.number,
+				base: pullRequest.base.sha,
+				head: pullRequest.head.sha,
+			},
+			{ provider, pullRequest },
+		);
+	}
+
+	// The lenses and policy the review reads, and the checks its tier runs. `step` names each load for the review's spans.
+	async plan(step: (name: string) => void = () => {}): Promise<{
+		readonly lenses: Lens[];
+		readonly policy: LoadedConfig;
+		readonly tier: string;
+		readonly checks: string[];
+	}> {
+		const { repoRoot } = this.changeset;
+		step("lenses.load");
+		const lenses = await Lens.load(repoRoot, this.source, this.changeset.revision.paths());
+		step("config");
+		const policy = await loadConfig(repoRoot, this.source, ".");
+		const tier = policy.config.stages["pull-request"] ?? "full";
+		return { lenses, policy, tier, checks: checksOfTier(policy.config, tier) };
+	}
+}
+
+// Credentials come from the secrets files whatever the policy's source: they are the maintainer's, not the revision's.
 export async function review(
 	io: Io,
 	argument: string,
@@ -216,47 +282,25 @@ export async function review(
 	const beganAt = Date.now();
 	const spans = PrepareSpans.start("startup", io.startedAt ?? beganAt);
 	spans.step("resolve");
-	const target = parseTarget(argument);
-	let changeset: Changeset;
-	let source: RepositorySource;
-	let origin: ReviewOrigin = { kind: "range" };
+	const target = await ReviewTarget.resolve(io, argument, options.expect);
+	const { changeset, source, origin } = target;
 	// Whether a check that runs the head's own code may run it here. A pull request's head runs when it sits in the base
 	// repository and a writer pushed it. Nothing git records about a committed range, its upstream, its author or where
 	// it was fetched from, says whose code it is, so a range runs only on the reviewer's word. Any other head, such as a
 	// fork's, runs its tests only in a credential-free job of the Actions host.
-	let writer: WriterTrust = { trusted: false, detail: committedRange };
-	if (target.kind === "pullRequest") {
-		const provider = await gitHubFor(io.cwd, io.env);
-		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
-		// The policy and origin come from GitHub's answer, and the diff from the refs the fetch wrote.
-		if (options.expect !== undefined)
-			await checkExpected(pullRequest, fetched, options.expect, "nothing was reviewed");
-		changeset = fetched;
-		source = { kind: "revision", commit: pullRequest.base.sha };
-		origin = {
-			kind: "pull-request",
-			repository: pullRequest.repository,
-			pullRequest: pullRequest.number,
-			base: pullRequest.base.sha,
-			head: pullRequest.head.sha,
-		};
-		writer = await writerTrust(provider, pullRequest);
-	} else {
-		changeset = await Changeset.resolve(io.cwd, target.spec);
-		source = (await ReviewSource.ofRange(changeset, io.env)).source;
-	}
+	let writer: WriterTrust =
+		target.pullRequest === undefined
+			? { trusted: false, detail: committedRange }
+			: await writerTrust(target.pullRequest.provider, target.pullRequest.pullRequest);
 	// The reviewer vouches for the head on the command line, never in a file the repository holds.
 	if (options.trustHead === true) writer = { trusted: true, by: "reviewer" };
 	const { repoRoot } = changeset;
 	const paths = changeset.revision.paths();
-	spans.step("lenses.load");
-	const lenses = await Lens.load(repoRoot, source, paths);
+	const { lenses, policy, tier, checks: tierChecks } = await target.plan((name) => spans.step(name));
 	spans.step("standards.load");
 	const standardsSource =
 		source.kind === "revision" ? source : ({ kind: "revision", commit: changeset.revision.head } as const);
 	const standards = await Standards.load(repoRoot, standardsSource, paths);
-	spans.step("config");
-	const policy = await loadConfig(repoRoot, source, ".");
 	const { config: loaded } = policy;
 	// Under --trust-head the reviewer has read the working tree's melian.yaml, so its mutation settings stand. Without the
 	// flag, whether the check runs and for how long is the base's to say, even where the rest of the policy comes from the
@@ -272,7 +316,6 @@ export async function review(
 					},
 				}
 			: loaded;
-	const tier = loaded.stages["pull-request"] ?? "full";
 	// A record counts only from a writer the base trusts, so a store is opened only under that base's policy.
 	const trustsWriters =
 		options.records === undefined ? false : await ReviewSource.of(changeset, source).trustsWriters();
@@ -288,7 +331,7 @@ export async function review(
 	spans.step("models");
 	const { models, plan, retry } = await reviewModels(io.env, policy, lenses, {
 		model: options.model,
-		checks: checksOfTier(loaded, tier),
+		checks: tierChecks,
 		credentials: secrets.credentials,
 	});
 	for (const line of plan.summary().split("\n").filter(Boolean)) io.stderr(`melian: ${line}\n`);
@@ -382,7 +425,7 @@ export async function review(
 			: undefined;
 		// The walkthrough needs the change, not the verdict, so it runs beside the lenses once their run is recorded.
 		const summarize = () => {
-			if (target.kind !== "pullRequest" || options.walkthrough === false) return;
+			if (origin.kind !== "pull-request" || options.walkthrough === false) return;
 			walkthrough ??= summarizeReview({
 				harness,
 				changeset,

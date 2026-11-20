@@ -5,6 +5,7 @@ import { dirname, join, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
+	type LoadedConfig,
 	type LoadedSecrets,
 	loadConfig,
 	loadSecrets,
@@ -26,7 +27,7 @@ import {
 	staticToolSource,
 } from "@melian-agent/pipeline";
 import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
-import type { Io } from "./commands.ts";
+import { type Io, ReviewTarget, shellQuote, short } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { fromCheckout, git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 import { ToolInventory } from "./tools.ts";
@@ -118,17 +119,37 @@ async function secretsCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<{ chec
 
 // The review plan doctor would resolve now: each tier's model, credential, and file, each lens's levels, and every
 // warning, such as a tier a stage's lenses run on that no file routes, which would stop a review before that lens ran.
-async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSecrets): Promise<Check[]> {
-	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+// With no target it is a range review's on the checked-out commit, over every stage's checks. With one, it is that
+// review's, from the same resolution the review runs, and it names each preference file that review does not read.
+async function planChecks(io: Io, secrets: LoadedSecrets, argument: string | undefined): Promise<Check[]> {
+	const root = await git(io.cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return [];
 	try {
-		const source = { kind: "worktree", preferences: userFiles(env).config } as const;
-		const loaded = await loadConfig(root, source, ".");
-		const checks = Object.values(loaded.config.stages).flatMap((stage) => checksOfTier(loaded.config, stage));
-		const lenses = await Lens.load(root, source, ["."]);
+		let loaded: LoadedConfig;
+		let lenses: Lens[];
+		let checks: string[];
+		let scope: Check[];
+		if (argument === undefined) {
+			const source = { kind: "worktree", preferences: userFiles(io.env).config } as const;
+			loaded = await loadConfig(root, source, ".");
+			checks = Object.values(loaded.config.stages).flatMap((stage) => checksOfTier(loaded.config, stage));
+			lenses = await Lens.load(root, source, ["."]);
+			scope = [
+				{
+					name: "plan",
+					state: "ok",
+					detail: `for a review of a range on the checked-out commit, which reads the working tree and your preferences; run melian doctor "#<number>" for a pull request's plan`,
+				},
+			];
+		} else {
+			const target = await ReviewTarget.resolve(io, argument);
+			({ policy: loaded, lenses, checks } = await target.plan());
+			scope = targetScope(io, target, argument);
+		}
 		const { plan } = await reviewModels({}, loaded, lenses, { checks, credentials: secrets.credentials });
 		const refusal = decisionProviderRefusal(loaded.config);
 		return [
+			...scope,
 			{
 				name: "routes",
 				state: "ok",
@@ -145,8 +166,48 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
 		];
 	} catch (error) {
-		return [{ name: "plan", state: "warn", detail: error instanceof Error ? error.message : String(error) }];
+		return [
+			{
+				name: "plan",
+				state: argument === undefined ? "warn" : "fail",
+				detail: visibleText(error instanceof Error ? error.message : String(error)),
+			},
+		];
 	}
+}
+
+// Which review the plan is for, and each preference file that review leaves unread because it reads a revision.
+function targetScope(io: Io, target: ReviewTarget, argument: string): Check[] {
+	const { origin, source, changeset } = target;
+	const review =
+		origin.kind === "pull-request"
+			? `pull request #${origin.pullRequest}'s review`
+			: `a review of ${visibleText(shellQuote(argument))}`;
+	if (source.kind === "worktree")
+		return [
+			{
+				name: "plan",
+				state: "ok",
+				detail: `for ${review} on the checked-out commit, which reads the working tree and your preferences`,
+			},
+		];
+	const preferences = [join(changeset.repoRoot, melianPaths.localConfig), userFiles(io.env).config];
+	return [
+		{
+			name: "plan",
+			state: "ok",
+			detail: `for ${review}, which reads its policy and lenses from its base, ${short(source.commit)}`,
+		},
+		...preferences
+			.filter((path) => existsSync(path))
+			.map(
+				(path): Check => ({
+					name: "plan",
+					state: "warn",
+					detail: `${visibleText(path.startsWith(`${changeset.repoRoot}${sep}`) ? path.slice(changeset.repoRoot.length + 1) : path)} is ignored: that review reads no working-tree preference`,
+				}),
+			),
+	];
 }
 
 // Triage will choose a level by how hard a lens should look, so a higher level that costs less inverts its choice.
@@ -593,7 +654,11 @@ async function probeCheck(): Promise<Check> {
 }
 
 // Names credentials by provider and source, never by value.
-export async function doctor(io: Io, options: { readonly fetch?: typeof globalThis.fetch } = {}): Promise<number> {
+// With a target, the plan lines are the plan that target's review would run.
+export async function doctor(
+	io: Io,
+	options: { readonly fetch?: typeof globalThis.fetch; readonly target?: string } = {},
+): Promise<number> {
 	const nodeVersion = process.versions.node;
 	const { checks: secretChecks, secrets } = await secretsCheck(io.cwd, io.env);
 	const authPath = piAuthPath(io.env);
@@ -633,7 +698,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await decisionIndexCheck(io.cwd),
 		].filter((check) => check !== undefined),
 		...(await resolutionChecks(io.cwd, io.env)),
-		...(await planChecks(io.cwd, io.env, secrets)),
+		...(await planChecks(io, secrets, options.target)),
 	];
 	const width = Math.max(...checks.map((check) => check.name.length));
 	for (const check of checks) io.stdout(`${check.state.padEnd(4)}  ${check.name.padEnd(width)}  ${check.detail}\n`);
