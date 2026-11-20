@@ -1,13 +1,15 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Changeset,
 	DirectoryRecordStore,
 	pullRequestChangesetId,
+	Finding,
 	reviewPayloads,
 	type SharedRecord,
+	type StoredFinding,
 } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,7 +43,16 @@ function scratch(): string {
 }
 
 // A writer's pull request #7 whose base is `policy`, in a clone whose origin is a bare repository standing for GitHub's.
-async function pullRequest(options: { policy?: string; origin?: string; decidedUnder?: string | null } = {}) {
+async function pullRequest(
+	options: {
+		policy?: string;
+		origin?: string;
+		decidedUnder?: string | null;
+		sightings?: StoredFinding[];
+		skipped?: string;
+		state?: string;
+	} = {},
+) {
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
 	cleanup.push(repo);
 	const remote = join(scratch(), "origin.git");
@@ -73,27 +84,37 @@ async function pullRequest(options: { policy?: string; origin?: string; decidedU
 	const records = ReviewRecords.of(changeset.id, changeset.revision);
 	const check = records.check(
 		request,
-		{ name: "static.biome", status: "ran", version: "2.0.0", findings: 0, notes: [] },
-		[],
+		{ name: "static.biome", status: "ran", version: "2.0.0", findings: options.sightings?.length ?? 0, notes: [] },
+		options.sightings ?? [],
 	);
-	const account = records.account({
-		checks: ["static.biome"],
+	const facts = {
+		checks: options.skipped === undefined ? ["static.biome"] : ["static.biome", options.skipped],
 		records: [check],
-		filled: [],
+		filled:
+			options.skipped === undefined ? [] : [{ name: options.skipped, status: "skipped", reason: "no TypeScript" }],
 		allowSkip: [],
-		producers: [],
+		producers: [{ check: "static.biome", version: "2.0.0" }],
+	} as const;
+	const account = records.account({
+		...facts,
 		// A round with no findings is decided under the base tip's policy, as a writer's round of it is.
 		resolutionPolicy:
 			options.decidedUnder !== undefined
 				? options.decidedUnder
-				: (await configsFor(repo, { kind: "revision", commit: state.pull.base.sha }, [])).fingerprint,
+				: (
+						await configsFor(
+							repo,
+							{ kind: "revision", commit: state.pull.base.sha },
+							(options.sightings ?? []).map((each) => Finding.from(each)),
+						)
+					).fingerprint,
 	});
 	const round = records.round([check, account], undefined, [], []);
 	let stdout = "";
 	let stderr = "";
 	const io = {
 		cwd: repo,
-		env: { ...process.env, MELIAN_STATE_DIR: scratch() } as NodeJS.ProcessEnv,
+		env: { ...process.env, MELIAN_STATE_DIR: options.state ?? scratch() } as NodeJS.ProcessEnv,
 		stdout: (text: string) => {
 			stdout += text;
 		},
@@ -119,13 +140,28 @@ async function pullRequest(options: { policy?: string; origin?: string; decidedU
 			"--expect-head",
 			head,
 		];
-		expect(await main(args, io)).toBe(0);
+		expect(await main(args, io), stderr).toBe(0);
 		stdout = "";
 		stderr = "";
 	};
 	const gate = (target = "#7") => main(["gate", target], io);
-	return { changeset, check, account, round, relay, gate, out: () => stdout, err: () => stderr };
+	return { changeset, records, facts, check, account, round, relay, gate, out: () => stdout, err: () => stderr };
 }
+
+// A P1 Biome finding on the head's changed line, which blocks under the default resolution.
+const blocker = (): StoredFinding =>
+	Finding.create({
+		rule: "biome/suspicious/noDebugger",
+		message: "Biome reports suspicious/noDebugger.",
+		file: "a.ts",
+		startLine: 1,
+		snippet: "2",
+		occurrence: 0,
+		severity: "P1",
+		cause: "introduced",
+		source: { check: "static.biome", version: "2.0.0" },
+		explanation: { what: "A debugger statement.", whyHere: "The change added it.", whatToDo: "Remove it." },
+	}).toJSON();
 
 describe("melian gate", { timeout: 60_000 }, () => {
 	it("lets a head merge that a round on melian/state reviewed whole", async () => {
@@ -169,6 +205,80 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		const { gate, err } = await pullRequest({ origin: join(scratch(), "missing.git") });
 		expect(await gate()).toBe(2);
 		expect(err()).toBe("melian: melian/state could not be read (unreachable), so nothing was decided\n");
+	});
+
+	it("blocks a head whose round found a blocking finding, and prints it with its ID and what decided it", async () => {
+		const sighting = blocker();
+		const { check, account, round, relay, gate, out, err } = await pullRequest({ sightings: [sighting] });
+		await relay(check, account, round);
+		expect(await gate(), `${err()}${out()}`).toBe(1);
+		expect(out()).toContain(`Finding ${sighting.properties.id}`);
+		expect(out()).toContain("Decided by");
+		expect(out()).not.toContain("\u001b[");
+	});
+
+	it("says a round that ran only part of the base tip's tier leaves the merge unreviewed", async () => {
+		const policy = "trust:\n  writers: true\ntiers:\n  full: [static.biome, static.tsc]\n";
+		const { check, account, round, relay, gate, err } = await pullRequest({ policy, skipped: "static.tsc" });
+		await relay(check, account, round);
+		expect(await gate()).toBe(2);
+		expect(err()).toBe(
+			`melian: round ${round.id} counts, and covers 1 checks\n` +
+				"melian: no round that stands as reviewed ran every check the base tip's tier requires. To review it again: gh workflow run melian-round.yml -f pull_request=7\n",
+		);
+	});
+
+	it("names the tier as unmet, not the rounds as stale, when one counted round stands and another does not", async () => {
+		const policy = "trust:\n  writers: true\ntiers:\n  full: [static.biome, static.tsc]\n";
+		const { records, facts, check, account, round, relay, gate, err } = await pullRequest({
+			policy,
+			skipped: "static.tsc",
+		});
+		const undecided = records.account({ ...facts, resolutionPolicy: null });
+		const other = records.round([check, undecided], undefined, [], []);
+		await relay(check, account, round);
+		await relay(check, undecided, other);
+		expect(await gate()).toBe(2);
+		expect(err()).toContain(
+			"melian: no round that stands as reviewed ran every check the base tip's tier requires. To review it again:",
+		);
+	});
+
+	it("leaves out a finding the policy silences", async () => {
+		const sighting = blocker();
+		const quiet = Finding.create({
+			rule: "biome/style/useConst",
+			message: "Biome reports style/useConst.",
+			file: "a.ts",
+			startLine: 1,
+			snippet: "2",
+			occurrence: 0,
+			severity: "nit",
+			cause: "introduced",
+			source: { check: "static.biome", version: "2.0.0" },
+			explanation: { what: "A let.", whyHere: "The change added it.", whatToDo: "Use const." },
+		}).toJSON();
+		const { check, account, round, relay, gate, out } = await pullRequest({ sightings: [sighting, quiet] });
+		await relay(check, account, round);
+		expect(await gate()).toBe(1);
+		expect(out()).toContain(`Finding ${sighting.properties.id}`);
+		expect(out()).not.toContain(quiet.properties.id);
+	});
+
+	it("names only the store's code when its state directory cannot hold it", async () => {
+		const state = join(scratch(), "state");
+		writeFileSync(state, "not a directory\n");
+		const { gate, err } = await pullRequest({ state });
+		expect(await gate()).toBe(2);
+		expect(err()).toMatch(/^melian: melian\/state could not be read \([a-zA-Z]+\), so nothing was decided\n$/);
+	});
+
+	it("reads the tier the base tip's pull-request stage names", async () => {
+		const policy =
+			"trust:\n  writers: true\nstages:\n  pull-request: quick\ntiers:\n  quick: [static.biome]\n  full: [static.biome, static.tsc]\n";
+		const { check, account, round, relay, gate } = await pullRequest({ policy });
+		await relay(check, account, round);
+		expect(await gate()).toBe(0);
 	});
 
 	it("takes a pull request alone", async () => {

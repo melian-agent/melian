@@ -76,7 +76,7 @@ export async function gate(io: Io, argument: string): Promise<number> {
 			`melian: finding ${ended.finding} is live: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. To dismiss it at this head: melian dismiss ${argument} ${ended.finding} --reason <text> --records git:melian/state\n`,
 		);
 	if (outcome.verdict.status === "not-reviewed") {
-		const stale = outcome.rounds.length > 0 && outcome.rounds.every(({ covers }) => "refused" in covers);
+		const stale = outcome.rounds.every(({ covers }) => "refused" in covers);
 		const why =
 			outcome.failures.length > 0
 				? "the records cannot decide the merge"
