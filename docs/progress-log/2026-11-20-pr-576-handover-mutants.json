@@ -1,0 +1,281 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "8444d5c7ede8adcfecaf0eccee42cdad0dfd047f",
+    "head": "455779ca5f7738d947d87e1a71dee457763f0e04"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/record-relay.ts",
+    "packages/pipeline/src/checks.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 194,
+      "column": 61,
+      "endLine": 194,
+      "endColumn": 80,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "cf3ee52a80602dbef0f12e7869ada15219b22243535bb30c82a03a224b03fc82",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "refuses a fork's round, and melian/state is never created"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 194,
+      "column": 62,
+      "endLine": 194,
+      "endColumn": 79,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cbe3d03a6a31b68805646db106e51d87cd0fe07bad5b7beb6822bcf88bd2990d"
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 229,
+      "column": 5,
+      "endLine": 229,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c2887eeaed7540809ac36356f3aaafcb0bdf5b905c7975bf0701946aa59ec04e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/checks.test.ts",
+          "path": [
+            "runChecks",
+            "records only the head's notes when the base had no project for the tool to run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 229,
+      "column": 5,
+      "endLine": 229,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "08e2c149ad4251688331c80314d679706976ea053c4922a595c0824fb081eabd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-static.test.ts",
+          "path": [
+            "static.mutation",
+            "as a check of a tier",
+            "shares results across the heads of one review target, under the leave the head ran with"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 70,
+      "column": 14,
+      "endLine": 70,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "78cb7aa0dad44647ed188fbb036375be729b84d780e1ceb66d033085b8d275de"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 6,
+      "endLine": 289,
+      "endColumn": 96,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "37f14896f8b574ff5fdd50f6279eb709c1e09c545c7b0a3baaf598aa5f77c77d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 6,
+      "endLine": 289,
+      "endColumn": 96,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e90ee365965b46932e1653b35a6610b9e1c0f946381c52293eb69361f8b4976f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "refuses a fork's record of a check the key-holding job runs itself"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 6,
+      "endLine": 289,
+      "endColumn": 96,
+      "mutatorName": "LogicalOperator",
+      "replacement": "run.fork || RelayBatch.#checkNames(checked).some(name => !run.handedOver.includes(name))",
+      "status": "generated",
+      "id": "de551871f7978558d6003710a89d3b592e313967df2e2e7b4c66d9b0a82beb6f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 18,
+      "endLine": 289,
+      "endColumn": 96,
+      "mutatorName": "MethodExpression",
+      "replacement": "RelayBatch.#checkNames(checked).every(name => !run.handedOver.includes(name))",
+      "status": "generated",
+      "id": "01ad38a60f102158bab1d78691203920004ec26bc3faf79ceceae08b5f2c4cdf",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "A fork reaches this guard only with a check record, since refusedFromHeadCode refuses every other kind first, and a check record names exactly one check, so some and every agree."
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 55,
+      "endLine": 289,
+      "endColumn": 95,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "8cb560bb2e62b56de567f1d0e21511a2c0b83a19d8e83405e6ea07e9ebd33002",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "refuses a fork's record of a check the key-holding job runs itself"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 289,
+      "column": 65,
+      "endLine": 289,
+      "endColumn": 95,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "run.handedOver.includes(name)",
+      "status": "generated",
+      "id": "da169a06041b9a047afc7e80b9bcbcbd433fce171b2b0f90ba56f60d008bc4e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "refuses a fork's round, and melian/state is never created"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 290,
+      "column": 3,
+      "endLine": 290,
+      "endColumn": 47,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "0716686921dcc825caaa6ec7d643fda056c0ae2ba0c5fe55d20ef8e71e28401e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "refuses a fork's record of a check the key-holding job runs itself"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 290,
+      "column": 26,
+      "endLine": 290,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "12dd20a0ceacc9b5d363b0993237d2cf2ad39a29db5e63d9bdfde1ebc2825df1"
+    }
+  ],
+  "total": 13,
+  "omitted": 0,
+  "unmutated": []
+}

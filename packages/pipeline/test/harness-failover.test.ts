@@ -1,23 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { isContentRefusal, isFailoverError } from "../src/harness.ts";
+import { isContentRefusal, isFailoverError, isProviderLimit } from "../src/harness.ts";
+
+const limits = [
+	"GoUsageLimitError",
+	"FreeUsageLimitError",
+	"Monthly usage limit reached",
+	"Enable available balance to continue",
+	"insufficient_quota",
+	"You are out of budget",
+	"Quota exceeded for this project",
+	"Check your billing details",
+	"You have hit your ChatGPT usage limit (plus plan). Try again in ~5 min.",
+	"Codex error: The usage limit has been reached",
+	'{"error":{"code":"usage_limit_reached"}}',
+	"billing_hard_limit_reached",
+	"billing not active",
+	"429 subscription_sharing_usage_limit_exceeded",
+];
 
 describe("isFailoverError", () => {
-	it.each([
-		"GoUsageLimitError",
-		"FreeUsageLimitError",
-		"Monthly usage limit reached",
-		"Enable available balance to continue",
-		"insufficient_quota",
-		"You are out of budget",
-		"Quota exceeded for this project",
-		"Check your billing details",
-		"You have hit your ChatGPT usage limit (plus plan). Try again in ~5 min.",
-		"Codex error: The usage limit has been reached",
-		'{"error":{"code":"usage_limit_reached"}}',
-		"billing_hard_limit_reached",
-		"billing not active",
-		"429 subscription_sharing_usage_limit_exceeded",
-	])("moves on from the provider limit %j", (message) => {
+	it.each(limits)("moves on from the provider limit %j", (message) => {
 		expect(isFailoverError(message)).toBe(true);
 	});
 
@@ -81,5 +83,17 @@ describe("isContentRefusal", () => {
 			refusal: false,
 			failover: false,
 		});
+	});
+});
+
+describe("isProviderLimit", () => {
+	it.each(limits)("reads %j as a provider limit", (message) => {
+		expect(isProviderLimit(message)).toBe(true);
+	});
+
+	it("reads a transient failure, an authentication failure and a malformed request as no limit", () => {
+		expect(isProviderLimit("503 overloaded_error")).toBe(false);
+		expect(isProviderLimit("401 unauthorized")).toBe(false);
+		expect(isProviderLimit("400 invalid_request_error: billing must be an object")).toBe(false);
 	});
 });

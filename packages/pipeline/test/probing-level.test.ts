@@ -673,7 +673,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(reason).toMatch(/it planned 2 attacks and ran 1 probe in .+ s, and skipped 1 attack/);
 	});
 
-	it("runs a round's probes one at a time, so each writes its head's tree alone", async () => {
+	it("runs a round's probes one at a time, so each writes its head's tree alone", { tags: ["macos"] }, async () => {
 		// Each probe logs when it starts, and takes long enough that two at once would start together. Its command ends in
 		// exec, so nothing after it runs.
 		const log = join(mkdtempSync(join(tmpdir(), "melian-probe-order-")), "log");
@@ -764,7 +764,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(requests[planner]).toEqual([]);
 	});
 
-	it("runs the prober on its own tier, model and time limit, and the planner on the level's", async () => {
+	it("runs the prober on its own tier, model and time limit, and the planner on the level's", {
+		tags: ["macos"],
+	}, async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "probing" }] });
 		const seen: { role: string; model: string }[] = [];
 		const on =
@@ -1333,7 +1335,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(heads).toHaveLength(2);
 	});
 
-	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", async () => {
+	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", {
+		tags: ["macos"],
+	}, async () => {
 		let id = "p0";
 		let heads = 0;
 		const { run } = await review(
@@ -2297,7 +2301,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.status).toBe("ran");
 	});
 
-	it("says how a probe ended: timed out, cut, ended by a signal, or silent", async () => {
+	it("says how a probe ended: timed out, cut, ended by a signal, or silent", { tags: ["macos"] }, async () => {
 		const { run, requests } = await review(
 			{
 				planner: plan,
@@ -2436,7 +2440,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ended).not.toHaveProperty("budgetEnded");
 	});
 
-	it("counts the probes' time in seconds", async () => {
+	it("counts the probes' time in seconds", { tags: ["macos"] }, async () => {
 		const slow = `await new Promise((resolve) => setTimeout(resolve, 200));\n${failing}`;
 		const { run } = await review({ planner: plan, prober: probing(slow) });
 		const seconds = Number(/ran 1 probe in ([0-9.]+) s/.exec(record((await run).verdict).reason!)![1]);
@@ -4448,7 +4452,7 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		["was cut at its output limit", "yes x | head -c 40000"],
 		["was ended by a signal", "kill -9 $$"],
 		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
-	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
+	])("fails a level whose only probe of an attack %s", { tags: ["macos"] }, async (_, rewrite) => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(passing, [fauxAssistantMessage("Done.")], gaps, rewrite);
 		const failed = await settled(run);
@@ -4459,7 +4463,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
 	});
 
-	it("fails a level that answered one attack while every probe of another showed nothing", async () => {
+	it("fails a level that answered one attack while every probe of another showed nothing", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		let heads = 0;
 		const { run } = await review(
@@ -4517,7 +4523,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([]);
 	});
 
-	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", async () => {
+	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(
 			passing,
@@ -4529,7 +4537,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([]);
 	});
 
-	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", async () => {
+	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		let heads = 0;
 		const { run } = await review(

@@ -1,0 +1,173 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "e52203b34cf02f2f266f0e7932ff87a00e4e370b",
+		"head": "7370d4f99090f338bd1aa6af09e81bf22cfb686b"
+	},
+	"claimsIn": [
+		"packages/core/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2017d85aa9179e1e0dbef39151b68242a4a192ffe1adf6001aab96b3c9f5e8d7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"Finding.decision",
+						"resolves a finding two checks reported under each, and keeps the strictest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1fa43a788f3badaae058e50fe02471c98674dbfe753fc3e628cda01ca6ab2d3a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check !== \"guardrails\"",
+			"status": "generated",
+			"id": "1ffa5e591b45f37a9c8bbf115184cb117cfdb0d43fc99a7daefca627bb68e8ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 27,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "76c2ff2655192a65d08acea6db771d56af995a0f08b4f20b4b652a1cdd674d0f"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 42,
+			"endLine": 1896,
+			"endColumn": 105,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c5d6ea9dab094dfc5a6a167f65efbcc50ca60bf60963bfe543a648f844726d80",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a legacy guardrails sighting with no guardrail match speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 51,
+			"endLine": 1896,
+			"endColumn": 104,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1372906dffe59977aaa81b2af952750a71ec207cbb99ccb68ef137fa1661013f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a legacy guardrails sighting with no guardrail match speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 60,
+			"endLine": 1896,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4b072438226574cd3910d781378aab522774eab15eaab1b6841ad8e650c17b89"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 45,
+			"column": 34,
+			"endLine": 45,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}

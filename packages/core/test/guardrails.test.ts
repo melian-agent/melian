@@ -760,13 +760,13 @@ describe("policy-change-review", () => {
 		});
 
 		it("raises none without the glob", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
 
 		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			const { findings } = await guardrails(
 				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
@@ -777,6 +777,33 @@ describe("policy-change-review", () => {
 					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
 					.map((finding) => [finding.properties.path, finding.properties.severity]),
 			).toContainEqual([".github/workflows/check.yml", "P1"]);
+		});
+	});
+
+	describe("this repository's macOS test list and comparator", () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const scripts = ["scripts/compare-platform-reports.mjs", "scripts/macos-tests.json"];
+		const notices = (findings: readonly Finding[]) =>
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => [finding.properties.path, finding.properties.severity]);
+		const stripped = scripts.reduce((policy, path) => policy.replace(`, "${path}"`, ""), own);
+
+		it("raises a blocking notice for an edit to either", async () => {
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(scripts.map((path) => [path, "P1"]));
+		});
+
+		it("keeps both notices when the head strips them, because the base's policy decides", async () => {
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ "melian.yaml": stripped, [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(expect.arrayContaining(scripts.map((path) => [path, "P1"])));
 		});
 	});
 
@@ -955,6 +982,48 @@ describe("policy-change-review", () => {
 			"This revision changes tsconfig.build.json, which configures tsc. The head deletes tsconfig.build.json.",
 			"This revision changes tsconfig.json, which configures tsc. It turns on noCheck. It turns on skipLibCheck.",
 			"This revision changes web/biome.jsonc, which configures Biome. It turns Biome's linter off. It makes Biome ignore src/a.ts, which this change touches.",
+		]);
+	});
+
+	it("names each npm script the head changes or removes, at the root and in a workspace, and no head text", async () => {
+		const scripts = (fields: Record<string, unknown>) => lines(JSON.stringify(fields, undefined, 2));
+		const { findings } = await guardrails(
+			{
+				"package.json": scripts({
+					version: "1.0.0",
+					workspaces: ["web"],
+					scripts: { check: "biome check && vitest --run", lint: "biome lint", test: "vitest --run" },
+				}),
+				"web/package.json": scripts({ scripts: { build: "tsc -b", check: "tsc --noEmit" } }),
+			},
+			{
+				"package.json": scripts({
+					version: "2.0.0",
+					workspaces: ["web"],
+					scripts: { check: "true # head-only-marker", test: "vitest --run", extra: "rm -rf test" },
+				}),
+				"web/package.json": scripts({ scripts: { build: "true", check: "true" } }),
+			},
+		);
+		expect(
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => finding.properties.explanation.what),
+		).toEqual([
+			'This revision changes package.json, which configures the packages Biome and tsc load. It changes the npm script "check". It removes the npm script "lint".',
+			'This revision changes web/package.json, which configures the packages Biome and tsc load. It changes the npm scripts "build", "check".',
+		]);
+	});
+
+	it("adds nothing for an npm script the head only adds, or a change to another field", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": lines('{ "version": "1.0.0", "scripts": { "check": "vitest --run" } }') },
+			{
+				"package.json": lines('{ "version": "2.0.0", "scripts": { "check": "vitest --run", "precheck": "true" } }'),
+			},
+		);
+		expect(findings.map((finding) => finding.properties.explanation.what)).toEqual([
+			"This revision changes package.json, which configures the packages Biome and tsc load.",
 		]);
 	});
 
