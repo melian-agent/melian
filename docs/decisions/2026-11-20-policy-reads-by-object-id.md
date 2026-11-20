@@ -18,7 +18,7 @@ One file offends today. `blobText` in `packages/core/src/guardrails.ts` reads `p
 
 ## Known limit
 
-The rule matches within one function. An argument array built in one function and passed to git from another is not seen, and nor is a name built by concatenation with `+`. A reviewer still owns those cases.
+The rule matches within one function. An argument array built in one function and passed to git from another is not seen, and nor is a name built by concatenation with `+`. It also misses a name built in an inner arrow and fed to `cat-file --batch`, a name in a module-level `await` or a class field's initialiser, one built with `String.raw`, a colon written as `\x3a`, and a `"show"` held in a constant outside the function. A reviewer still owns those cases.
 
 A refspec without `+`, such as `refs/pull/1/head:refs/melian/pr`, is reported when its function also runs `show` or `cat-file`. Write it with `+`, or build it in a function of its own.
 
