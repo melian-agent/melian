@@ -43,8 +43,17 @@ function commitOn(repo: string, branch: string, options: { from?: string } = {})
 
 // The pull request as the provider reports it now, and the changeset fetched for it, whose base is the merge base of
 // the base tip and the head.
-function now(repo: string, baseTip: string, head: string): { pullRequest: PullRequest; fetched: Changeset } {
-	const pullRequest = { number: 7, base: { ref: "main", sha: baseTip }, head: { ref: "feature", sha: head } };
+function now(
+	repo: string,
+	baseTip: string,
+	head: string,
+	ref = "main",
+): { pullRequest: PullRequest; fetched: Changeset } {
+	const pullRequest = {
+		number: 7,
+		base: { ref, sha: baseTip, defaultBranch: "main" },
+		head: { ref: "feature", sha: head },
+	};
 	const fetched = { repoRoot: repo, revision: { base: gitIn(repo, "merge-base", baseTip, head), head } };
 	return { pullRequest: pullRequest as unknown as PullRequest, fetched: fetched as unknown as Changeset };
 }
@@ -54,8 +63,14 @@ async function relays(repo: string, baseTip: string, head: string, approved: { b
 	await expect(checkApproved(pullRequest, fetched, approved, outcome)).resolves.toBeUndefined();
 }
 
-async function refuses(repo: string, baseTip: string, head: string, approved: { base: string; head: string }) {
-	const { pullRequest, fetched } = now(repo, baseTip, head);
+async function refuses(
+	repo: string,
+	baseTip: string,
+	head: string,
+	approved: { base: string; head: string },
+	ref = "main",
+) {
+	const { pullRequest, fetched } = now(repo, baseTip, head, ref);
 	const result = checkApproved(pullRequest, fetched, approved, outcome);
 	await expect(result).rejects.toBeInstanceOf(CliError);
 	await expect(result).rejects.toThrow(new RegExp(`${outcome}$`));
@@ -102,16 +117,24 @@ describe("checkApproved", () => {
 		await refuses(repo, rewritten, head, approved);
 	});
 
-	it("relays when the base was retargeted to a branch that contains the approved base", async () => {
+	// The workflow reviews only a pull request into the default branch, so a retargeted one names a round it would refuse.
+	it("refuses when the base was retargeted to a branch that contains the approved base", async () => {
 		const { repo, base, head, approved } = approvedPullRequest();
 		const other = commitOn(repo, "other", { from: base });
-		await relays(repo, other, head, approved);
+		await refuses(repo, other, head, approved, "other");
+	});
+
+	it("refuses when the provider does not say which branch is the default", async () => {
+		const { repo, base, head, approved } = approvedPullRequest();
+		const { pullRequest, fetched } = now(repo, base, head);
+		const unsaid = { ...pullRequest, base: { ref: "main", sha: base } };
+		await expect(checkApproved(unsaid, fetched, approved, outcome)).rejects.toThrow(new RegExp(`${outcome}$`));
 	});
 
 	it("refuses when the base was retargeted to a branch that does not contain the approved base", async () => {
 		const { repo, root, head, approved } = approvedPullRequest();
 		const other = commitOn(repo, "other", { from: root });
-		await refuses(repo, other, head, approved);
+		await refuses(repo, other, head, approved, "other");
 	});
 
 	it("refuses when main merged the head's first commit, so the merge base moved", async () => {

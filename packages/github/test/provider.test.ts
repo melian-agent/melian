@@ -132,6 +132,15 @@ describe("publication response gaps", () => {
 });
 
 describe("provider identity", () => {
+	it("reads the repository's default branch beside the pull request's base", async () => {
+		const { state, provider } = fixture();
+		expect((await provider.pullRequest(7)).base).toEqual({
+			ref: state.pull.base.ref,
+			sha: state.pull.base.sha,
+			defaultBranch: "main",
+		});
+	});
+
 	it("reads the pull request author and repository permission for each login", async () => {
 		const { state, provider } = fixture();
 		state.author = "contributor";
