@@ -1,0 +1,5 @@
+# A Biome rule reports policy reads by object path
+
+[Issue #539](https://github.com/melian-agent/melian/issues/539), part two. `biome/object-by-path.grit` reports a `<revision>:<path>` object name in a function that runs `git show` or `git cat-file`, since such a read skips the revision source's hash check. `blobText` in `packages/core/src/guardrails.ts` is its one grandfathered offender, and [issue #591](https://github.com/melian-agent/melian/issues/591) moves it onto the revision source. [The decision](../decisions/2026-11-20-policy-reads-by-object-id.md) records the rule's limit: it cannot see an argument array built in another function.
+
+`scripts/object-by-path.test.mjs` holds 14 tests, and all pass. With `guardrails.ts`'s exclusion removed from `biome.json`, those tests still pass, since the grandfather loop then checks nothing, but `npx biome lint packages/core/src/guardrails.ts` exits 1 with the rule's diagnostic, so the gate's Biome step is what keeps the exclusion. `npx biome lint packages/` reports no other offender.
