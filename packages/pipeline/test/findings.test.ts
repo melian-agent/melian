@@ -51,6 +51,7 @@ import {
 	mergeSightings,
 	replaceCheckFindings,
 	seenBefore,
+	sharedDismissalHolds,
 	upsertVerification,
 } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
@@ -759,6 +760,35 @@ describe("the findings document", () => {
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type Legacy = { [key: string]: Json };
 const json = (value: unknown) => value as Json;
+
+describe("a shared dismissal at the revision it was made at", () => {
+	const a = { file: "src/a.ts", hash: "1".repeat(64) };
+	const b = { file: "src/b.ts", hash: "2".repeat(64) };
+	const shared = {
+		by: "ana",
+		reason: "accepted",
+		at: "2026-11-20T00:00:00.000Z",
+		trigger: { hash: "f".repeat(64), proof: [a] },
+	};
+	const citing = (proof: readonly { file: string; hash: string }[]) => ({
+		properties: {
+			cause: "affected" as const,
+			trigger: {
+				file: "src/a.ts",
+				index: 0,
+				snippet: "export const a = 2;",
+				hash: "f".repeat(64),
+				proof: [...proof],
+			},
+		},
+	});
+
+	it("holds while each sighting cites only hunks the revision holds, matched by file and hash together", () => {
+		expect(sharedDismissalHolds(shared, [citing([a])], [a, b])).toBe(true);
+		expect(sharedDismissalHolds(shared, [citing([{ file: a.file, hash: b.hash }])], [a, b])).toBe(false);
+		expect(sharedDismissalHolds(shared, [citing([{ file: b.file, hash: a.hash }])], [a, b])).toBe(false);
+	});
+});
 
 describe("version 5 findings", () => {
 	it("reads through version 6 after an SQLite reopen", async () => {

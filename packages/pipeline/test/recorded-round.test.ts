@@ -966,13 +966,30 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(await readAfter([first], [first, sibling], [first]))).toEqual([[id, "new", undefined]]);
 	});
 
-	it("reopens a dismissal on a sibling round another host wrote without its frontier, though the round read never names it", async () => {
-		const { id, elsewhere, first, again, readAfter } = await citedAcross("lens");
-		// Host B never held `first`, so its round follows none; its sighting cites a hunk the revision lacks.
-		const sibling = again([elsewhere], []);
-		const read = await readAfter([first], [first, sibling, elsewhere], [first]);
-		expect([read.status, read.blocking]).toEqual(["findings", true]);
-		expect(standingOf(read)).toEqual([[id, "new", undefined]]);
+	it.each(["lens", "check"] as const)(
+		"reopens a dismissal on a sibling round another host wrote without its frontier, whose %s record cites a hunk the revision lacks",
+		async (kind) => {
+			const { id, elsewhere, first, again, readAfter } = await citedAcross(kind);
+			// Host B never held `first`, so its round follows none; its sighting cites a hunk the revision lacks.
+			const sibling = again([elsewhere], []);
+			const read = await readAfter([first], [first, sibling, elsewhere], [first]);
+			expect([read.status, read.blocking]).toEqual(["findings", true]);
+			expect(standingOf(read)).toEqual([[id, "new", undefined]]);
+		},
+	);
+
+	it("keeps a dismissal past a round of another changeset at another revision", async () => {
+		const { id, first, roundAt, readAfter } = await citedAcross("lens");
+		const elsewhere = roundAt("1", "2", [], [], "f".repeat(64));
+		expect(standingOf(await readAfter([first], [first, elsewhere], [first]))).toEqual(dismissedOf(id));
+	});
+
+	it("leaves a finding live past a round since that follows a round neither the set nor the writer held", async () => {
+		const { id, first, roundAt, again, readAfter } = await citedAcross("lens");
+		// What `unknown` reviewed and cited never reached the set, so the reader cannot tell whether it ended the dismissal.
+		const unknown = roundAt("1", "2", [], []);
+		const since = again([], [unknown]);
+		expect(standingOf(await readAfter([first], [first, since], [first]))).toEqual([[id, "new", undefined]]);
 	});
 
 	it("keeps a dismissal whose frontier names a round this set lacks, read at a round that follows none", async () => {

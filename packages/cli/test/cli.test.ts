@@ -1237,6 +1237,20 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(written.map(({ key, payload }) => [key, (payload as { reason: string }).reason])).toEqual([[id, reason]]);
 	});
 
+	it("reads a round whose records cannot stand as not reviewed, and names no dismissal ended", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		rmSync(join(store, "changesets", changeset!, "lens"), { recursive: true });
+
+		const read = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+
+		expect(read.stdout).toContain("Verdict: not reviewed");
+		expect(read.stderr).not.toMatch(/live again|TypeError/);
+	});
+
 	it("says a push ended a shared dismissal, and to dismiss it again", () => {
 		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
 		policyBase(repo, "trusting", trustingPolicy);

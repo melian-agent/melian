@@ -87,8 +87,8 @@ export type EndedDismissal = {
 	readonly madeAt: string;
 	/** The round that reviewed another revision. */
 	readonly round: string;
-	/** The revision that round reviewed, if it names one. */
-	readonly at: string | undefined;
+	/** The revision that round reviewed. */
+	readonly at: string;
 };
 
 // The decided pieces a round's records hold, or why they cannot stand for the round.
@@ -314,11 +314,12 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 			const since = roundsSince(set, round, frontier);
 			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
+			// A round always names its revision, as the record's own check requires.
 			const moved = [round, ...since].find((each) => each.revision !== sighting.revision);
 			if (moved !== undefined)
 				return [
 					{
-						ended: { finding: key, record: id, madeAt: sighting.revision, round: moved.id, at: moved.revision },
+						ended: { finding: key, record: id, madeAt: sighting.revision, round: moved.id, at: moved.revision! },
 					},
 				];
 			const dismissal = {
@@ -338,10 +339,10 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 		});
 }
 
-// The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, short of `round`
-// itself: every round of the changeset in the set that is neither in `frontier` nor an ancestor of one there, in the
-// set's ID order and whatever its place, so a round another host wrote without the frontier, which `round` never
-// names, ends or reopens what it would have on time. `before` serves only to find the frontier's ancestors.
+// The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, `round` among them
+// unless the writer held it: every round of the changeset in the set that is neither in `frontier` nor an ancestor of
+// one there, in the set's ID order and whatever its place, so a round another host wrote without the frontier, which
+// `round` never names, ends or reopens what it would have on time. `before` serves only to find the frontier's ancestors.
 // `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round the set does
 // not hold that the writer did not, since what that round cited is unknown.
 function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
@@ -353,7 +354,7 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 	);
 	const held = new Set(frontier);
 	for (const pending = [...frontier]; pending.length > 0; )
-		for (const id of rounds.get(pending.pop()!)?.manifest()?.before ?? [])
+		for (const id of rounds.get(pending.pop()!)?.manifest()!.before ?? [])
 			if (!held.has(id)) {
 				held.add(id);
 				pending.push(id);
@@ -362,8 +363,7 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 	const known = [round, ...tested].every(
 		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
 	);
-	if (!known) return undefined;
-	return tested.filter((each) => each.id !== round.id);
+	return known ? tested : undefined;
 }
 
 // The proving hunks of a revision that changes `files`, as a lens cites them.

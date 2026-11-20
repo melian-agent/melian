@@ -853,7 +853,7 @@ async function recordedFindings(
 		const contents = round.contents(changeset.revision);
 		for (const ended of "refused" in contents ? [] : contents.ended)
 			io.stderr(
-				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at ?? "no revision"}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${argument} ${ended.finding} --reason <text> --records ${store}\n`,
+				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${argument} ${ended.finding} --reason <text> --records ${store}\n`,
 			);
 		decided.push({
 			round: id,
