@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { defaultConfig, pullRequestChangesetId, SharedRecord, TierAccount } from "@melian-agent/core";
+import { defaultConfig, pullRequestChangesetId, SharedRecord, TierAccount, withheld } from "@melian-agent/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { RelayBatch, RelayRefusal } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
@@ -67,18 +67,26 @@ describe("the relay trusts the payload schema, not the writer", () => {
 		expect(found.message).not.toContain("ghp_token");
 	});
 
-	it("refuses free text in a field classed as an ID or hash", async () => {
-		const snapshot = {
+	describe("a field classed as an ID or hash", () => {
+		const snapshot = (snapshotId: string) => ({
 			commit: head,
-			snapshotId: "ghp_token",
-			receipt: "r".repeat(64),
+			snapshotId,
+			receipt: withheld,
 			cacheKey: null,
 			coverage: null,
-		};
-		const found = await refused(
-			await planted((payload) => ({ ...payload, result: { ...result(payload), snapshots: [snapshot] } })),
-		);
-		expect(found.code).toBe("invalidRecord");
-		expect(found.message).not.toContain("ghp_token");
+		});
+		const withSnapshot = (snapshotId: string) =>
+			planted((payload) => ({ ...payload, result: { ...result(payload), snapshots: [snapshot(snapshotId)] } }));
+
+		it("takes a snapshot ID", async () => {
+			const batch = await RelayBatch.read(await withSnapshot(`sha256:${"c".repeat(64)}`), fork);
+			expect(batch.records).toHaveLength(1);
+		});
+
+		it("refuses free text in it", async () => {
+			const found = await refused(await withSnapshot("ghp_token"));
+			expect(found.code).toBe("invalidRecord");
+			expect(found.message).not.toContain("ghp_token");
+		});
 	});
 });
