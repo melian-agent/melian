@@ -559,6 +559,11 @@ export interface ComparisonGroup {
 	readonly melian: readonly string[];
 }
 
+/** A valid miss of a comparison: its file and lines at the compared head, or why it names none there. */
+export type ComparisonMiss =
+	| { readonly id: string; readonly file: string; readonly lines: readonly [number, number] }
+	| { readonly id: string; readonly skipped: string };
+
 function pairKey(pair: { readonly external: string; readonly melian: string }): string {
 	return JSON.stringify([pair.external, pair.melian]);
 }
@@ -1006,6 +1011,27 @@ export class Comparison {
 	/** The groups of external findings that match no Melian finding, each a defect Melian did not report. */
 	externalOnly(): ComparisonGroup[] {
 		return this.groups().filter((group) => group.melian.length === 0);
+	}
+
+	/**
+	 * Each valid external finding no Melian finding matches, with the lines it names at the compared head, or why it names
+	 * none there. A miss a person ruled out of scope is left out, since no lens owed it.
+	 */
+	misses(): ComparisonMiss[] {
+		return this.externalOnly()
+			.flatMap((group) => group.external)
+			.filter((finding) => {
+				const current = this.adjudication(finding.id)?.current;
+				return current?.verdict === "valid" && current.reason !== "out-of-scope";
+			})
+			.map(({ id, file, line, endLine, revision, outdated, commit }): ComparisonMiss => {
+				if (file === undefined || line === undefined) return { id, skipped: "names no file and line" };
+				if (revision === "base") return { id, skipped: "sits on the base side of the diff" };
+				if (outdated === true) return { id, skipped: "is outdated" };
+				if (commit !== undefined && commit !== this.head)
+					return { id, skipped: `was read at ${commit}, not the compared head` };
+				return { id, file, lines: [line, endLine ?? line] };
+			});
 	}
 
 	/** The IDs of the Melian findings no external finding matches. */

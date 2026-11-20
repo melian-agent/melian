@@ -1,9 +1,26 @@
 import { Revision } from "./changeset.ts";
+import type { ComparisonMiss } from "./comparison.ts";
 import type { StoredComparisonAdjudication } from "./comparison-adjudication.ts";
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
 import { ComparisonError } from "./errors.ts";
 import { visibleText } from "./render.ts";
+
+/** One valid miss as the measurement tool's misses file holds it. */
+export type MissCase = {
+	readonly name: string;
+	readonly repo: string;
+	readonly base: string;
+	readonly head: string;
+	readonly file: string;
+	readonly lines: [number, number];
+};
+
+/** The misses a comparison export can replay, and those it cannot, each by name with the reason. */
+export type MissesExport = {
+	readonly cases: readonly MissCase[];
+	readonly skipped: readonly { readonly name: string; readonly reason: string }[];
+};
 
 /** The markdown record of one changeset's comparison rounds; no output leaves the process here. */
 export class ComparisonExport {
@@ -47,6 +64,36 @@ export class ComparisonExport {
 			2,
 		);
 		return `${json.split("\n").map(visibleText).join("\n")}\n`;
+	}
+
+	/**
+	 * Every valid miss of the comparisons, in the shape the measurement tool's misses file takes, `{ name, repo, base,
+	 * head, file, lines }`, with each miss that names no lines at its compared head beside them and why. A finding
+	 * compared in several rounds is kept from the last. `repo` is the clone the misses are reviewed in again.
+	 */
+	misses(repo: string): MissesExport {
+		const latest = new Map<string, { readonly entry: ComparisonEntry; readonly miss: ComparisonMiss }>();
+		for (const entry of this.entries)
+			for (const miss of entry.comparison.misses()) {
+				latest.delete(miss.id);
+				latest.set(miss.id, { entry, miss });
+			}
+		const cases: MissCase[] = [];
+		const skipped: { readonly name: string; readonly reason: string }[] = [];
+		for (const { entry, miss } of latest.values()) {
+			const name = `${entry.changeset}-${miss.id}`;
+			if ("skipped" in miss) skipped.push({ name, reason: miss.skipped });
+			else
+				cases.push({
+					name,
+					repo,
+					base: entry.comparison.base,
+					head: entry.comparison.head,
+					file: miss.file,
+					lines: [...miss.lines],
+				});
+		}
+		return { cases, skipped };
 	}
 
 	/** Today's comparison form: reviewers, lettered tables, notes, counts, and a differences heading. */

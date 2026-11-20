@@ -15,6 +15,7 @@ import {
 	comparisonBacklog,
 	comparisonStats,
 	exportComparison,
+	exportMisses,
 	matchByHand,
 	parseImportSource,
 } from "./compare.ts";
@@ -74,6 +75,8 @@ Commands:
                          List owed goldens by lens; --markdown prints BACKLOG.md's generated section.
   compare export <range|#pr> [--out <path>] [--json]
                          Write the local comparison record as markdown, or its whole document as JSON.
+  compare misses <range|#pr> [--out <path>]
+                         Write each valid miss as a misses file for MELIAN_EVAL_MISSES.
   tools [fetch <name>]   List pinned tool readiness, or fetch and verify one tool. Exits 0 success, 1 failure.
   mutants list <range|#pr> [<file>...] [--claims-in <file>]... [--json] [--limit N|--all]
                          Enumerate changed production lines without running tests or head code. --claims-in records a
@@ -132,7 +135,7 @@ Options:
   --since <date>        Comparisons recorded since this ISO date (compare stats).
   --last <n>            The last n changesets compared (compare stats).
   --markdown            Print BACKLOG.md's generated section (compare backlog).
-  --out <path>          Write the export to this path (compare export).
+  --out <path>          Write the export to this path (compare export, compare misses).
   --limit <N>           List at most N mutants (default 200); --all lists every mutant (mutants list).
   --timeout <seconds>    End the probe after this many seconds, at most 600 (default 30) (probe).
   --no-walkthrough       Omit the walkthrough (review, publish).
@@ -369,7 +372,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				const [first, ...others] = rest;
 				if (
 					values.round !== undefined &&
-					(["export", "stats", "backlog"].includes(first ?? "") || rest.some((target) => /^#\d+$/.test(target)))
+					(["export", "misses", "stats", "backlog"].includes(first ?? "") ||
+						rest.some((target) => /^#\d+$/.test(target)))
 				)
 					throw new UsageError("--round is available for range comparison writes only");
 				if (first === "refresh") {
@@ -383,6 +387,12 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (first === "export") {
 					return await exportComparison(scoped, one(others, "compare export", "range or pull request"), {
 						json: values.json,
+						...(values.out === undefined ? {} : { out: values.out }),
+					});
+				}
+				if (first === "misses") {
+					if (values.json) throw new UsageError("compare misses always writes JSON; it takes no --json");
+					return await exportMisses(scoped, one(others, "compare misses", "range or pull request"), {
 						...(values.out === undefined ? {} : { out: values.out }),
 					});
 				}

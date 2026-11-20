@@ -45,6 +45,7 @@ export {
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
+	type ComparisonMiss,
 	type ComparisonUnmatch,
 	codexReviewSchema,
 	comparisonSchema,
@@ -417,7 +418,7 @@ export {
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
-export { ComparisonExport } from "./comparison-export.ts";
+export { ComparisonExport, type MissCase, type MissesExport } from "./comparison-export.ts";
 export {
 	type ComparisonEntry,
 	ComparisonSet,

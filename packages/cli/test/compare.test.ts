@@ -887,6 +887,77 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 	});
 });
 
+describe("melian compare misses", { timeout: 60_000 }, () => {
+	it("writes each valid miss as a misses file, and names one it cannot place", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 400, title: "Unchecked token", body: "b" },
+					{ title: "No line", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as {
+			base: string;
+			head: string;
+			external: Record<string, { title: string }>;
+		};
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [missed, unplaced] = [idOf("Unchecked token"), idOf("No line")];
+		for (const id of [missed, unplaced])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({
+			status: 0,
+			stdout: `Exported 1 miss to ${output}.\n`,
+			stderr: `Not exported: ${changeset}-${unplaced} names no file and line.\n`,
+		});
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${missed}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [400, 400],
+			},
+		]);
+	});
+
+	it("writes nothing when no valid miss remains", () => {
+		const { repo, files, env } = reviewed();
+		const path = codexFile(files, [codexFinding(400, "Unchecked token")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const output = join(files, "misses.json");
+		expect(melian(repo, ["compare", "misses", range, "--out", output], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining(`no valid miss of ${range} names its lines`),
+		});
+		expect(existsSync(output)).toBe(false);
+	});
+
+	it("refuses --json", () => {
+		expect(melian(root, ["compare", "misses", range, "--json"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining("compare misses always writes JSON"),
+		});
+	});
+});
+
 describe("comparison review fixes", { timeout: 60_000 }, () => {
 	it("exports without a review of the current head and clears a first round's debt after another review", () => {
 		const { repo, files, env, id } = reviewed();

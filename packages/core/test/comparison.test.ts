@@ -1800,3 +1800,82 @@ describe("Comparison export", () => {
 		expect(JSON.parse(record.renderJson()).comparisons["pull-7.r1"]).toEqual(comparison.toJSON());
 	});
 });
+
+describe("Comparison misses", () => {
+	const by = { by: "M", at: "2026-10-05T00:00:00Z" };
+
+	it("lists each valid external finding Melian did not match, with its lines at the compared head", () => {
+		const matched = external();
+		const missed = external({ line: 90, endLine: 94 });
+		const oneLine = external({ line: 130 });
+		const noise = external({ line: 170 });
+		const unjudged = external({ line: 210 });
+		const outside = external({ line: 250 });
+		const comparison = compared({
+			externals: [matched, missed, oneLine, noise, unjudged, outside],
+			findings: [melian()],
+		});
+		comparison.adjudicate(matched.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(oneLine.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		expect(comparison.misses()).toEqual([
+			{ id: missed.id, file: "src/run.ts", lines: [90, 94] },
+			{ id: oneLine.id, file: "src/run.ts", lines: [130, 130] },
+		]);
+	});
+
+	it("says why a valid miss names no lines at the compared head", () => {
+		const unplaced = external({ file: undefined, line: undefined });
+		const lineless = external({ file: "src/other.ts", line: undefined });
+		const base = external({ line: 90, revision: "base" });
+		const outdated = external({ line: 130, outdated: true });
+		const earlier = external({ line: 170, commit: "c".repeat(40) });
+		const atHead = external({ line: 210, commit: revision.head });
+		const reports = [unplaced, lineless, base, outdated, earlier, atHead];
+		const comparison = compared({ externals: reports, findings: [] });
+		for (const report of reports) comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.misses()).toEqual([
+			{ id: unplaced.id, skipped: "names no file and line" },
+			{ id: lineless.id, skipped: "names no file and line" },
+			{ id: base.id, skipped: "sits on the base side of the diff" },
+			{ id: outdated.id, skipped: "is outdated" },
+			{ id: earlier.id, skipped: `was read at ${"c".repeat(40)}, not the compared head` },
+			{ id: atHead.id, file: "src/run.ts", lines: [210, 210] },
+		]);
+	});
+
+	it("exports each miss as a case of the measurement tool, keeping a finding compared again from its last round", () => {
+		const missed = external({ line: 90 });
+		const skipped = external({ file: undefined, line: undefined });
+		const first = compared({ externals: [missed, skipped], findings: [] });
+		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		first.adjudicate(skipped.id, { ...by, verdict: "valid", reason: "no-owner" });
+		const later = { base: "d".repeat(40), head: "e".repeat(40) };
+		const second = Comparison.of(later);
+		second.import("file:codex.json", { findings: [missed], skippedBodies: 0 }, "2026-10-06T00:00:00.000Z");
+		second.compare(verdictOf({ findings: [] }));
+		second.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone");
+		expect(exported).toEqual({
+			cases: [
+				{
+					name: `pull-7-${missed.id}`,
+					repo: "/clone",
+					base: later.base,
+					head: later.head,
+					file: "src/run.ts",
+					lines: [90, 90],
+				},
+			],
+			skipped: [{ name: `pull-7-${skipped.id}`, reason: "names no file and line" }],
+		});
+	});
+});

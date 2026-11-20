@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import {
 	ComparisonExport,
 	MembershipError,
+	type MissesExport,
 	PullRequestMembership,
 	type PullRequestRoundHeads,
 	pullRequestChangesetId,
@@ -116,6 +117,37 @@ export class PullRequestComparison {
 		return 0;
 	}
 	async export(options: { readonly json: boolean; readonly out?: string }): Promise<number> {
+		const { entries, snapshot, history, additional, notice } = this.exported();
+		const comparisons = new ComparisonExport(entries, `#${this.number}`, this.url);
+		const record = options.json ? comparisons.renderJson() : comparisons.render();
+		const output = options.json
+			? snapshot === undefined
+				? record
+				: `${JSON.stringify({ ...JSON.parse(record), membership: snapshot, history: history!.versions }, null, 2)
+						.split("\n")
+						.map(visibleText)
+						.join("\n")}\n`
+			: `${snapshot === undefined ? "" : `${this.render(snapshot)}${additional ? `${visibleText(`Membership as of ${snapshot.at}. Additional records have no snapshot numbers. ${notice}`)}\n` : ""}\n`}${record}`;
+		if (options.out === undefined) this.io.stdout(output);
+		else {
+			const path = resolve(this.io.cwd, options.out);
+			await writeFile(path, output, "utf8");
+			this.io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
+		}
+		if (additional) this.io.stderr(`${visibleText(notice)}\n`);
+		return 0;
+	}
+	/** The valid misses of the comparisons an export would show, to review again in the clone `repo`. */
+	misses(repo: string): { readonly misses: MissesExport; readonly notice?: string } {
+		const { entries, additional, notice } = this.exported();
+		return {
+			misses: new ComparisonExport(entries, `#${this.number}`, this.url).misses(repo),
+			...(additional ? { notice } : {}),
+		};
+	}
+
+	// The stored comparisons the pull request's membership owns, in its snapshot's order.
+	private exported() {
 		const history = this.stores.histories.get(this.changeset);
 		const snapshot = history?.current();
 		const ids = new Set(snapshot?.members.map((round) => round.id));
@@ -166,25 +198,9 @@ export class PullRequestComparison {
 			);
 			entries.sort((a, b) => (positions.get(a.round!) ?? -1) - (positions.get(b.round!) ?? -1));
 		}
-		const comparisons = new ComparisonExport(entries, `#${this.number}`, this.url);
-		const record = options.json ? comparisons.renderJson() : comparisons.render();
-		const output = options.json
-			? snapshot === undefined
-				? record
-				: `${JSON.stringify({ ...JSON.parse(record), membership: snapshot, history: history!.versions }, null, 2)
-						.split("\n")
-						.map(visibleText)
-						.join("\n")}\n`
-			: `${snapshot === undefined ? "" : `${this.render(snapshot)}${additional ? `${visibleText(`Membership as of ${snapshot.at}. Additional records have no snapshot numbers. ${notice}`)}\n` : ""}\n`}${record}`;
-		if (options.out === undefined) this.io.stdout(output);
-		else {
-			const path = resolve(this.io.cwd, options.out);
-			await writeFile(path, output, "utf8");
-			this.io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
-		}
-		if (additional) this.io.stderr(`${visibleText(notice)}\n`);
-		return 0;
+		return { entries, snapshot, history, additional, notice };
 	}
+
 	private render(snapshot: PullRequestRoundSnapshot): string {
 		const lines = [
 			`Pull request #${this.number}: ${snapshot.members.length} member rounds (snapshot ${snapshot.version}).`,

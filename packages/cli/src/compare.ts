@@ -8,6 +8,7 @@ import {
 	type ExternalImporter,
 	Lens,
 	LensError,
+	type MissesExport,
 	Revision,
 	type StoredComparisonAdjudication,
 	type Verdict,
@@ -284,6 +285,46 @@ export async function exportComparison(
 	const target = parseTarget(argument);
 	if (target.kind === "pullRequest")
 		return (await PullRequestComparison.open(io, target.number, true)).export(options);
+	const { entries, repoRoot } = await rangeComparisons(io, argument);
+	const remote = await git(repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
+	const repository =
+		/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(remote)?.[1];
+	const url =
+		repository !== undefined && /^#\d+$/.test(argument)
+			? `https://github.com/${repository}/pull/${argument.slice(1)}`
+			: undefined;
+	const record = new ComparisonExport(entries, argument, url);
+	await written(io, options.json ? record.renderJson() : record.render(), options.out, "comparison");
+	return 0;
+}
+
+/**
+ * Writes every valid miss of the stored comparisons as the misses file the measurement tool reads, naming on standard
+ * error each one it leaves out and why. It refuses to write a file with no miss, which the tool would refuse to read.
+ */
+export async function exportMisses(io: Io, argument: string, options: { readonly out?: string }): Promise<number> {
+	const target = parseTarget(argument);
+	let misses: MissesExport;
+	let notice: string | undefined;
+	if (target.kind === "pullRequest") {
+		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+		({ misses, notice } = (await PullRequestComparison.open(io, target.number, true)).misses(repoRoot));
+	} else {
+		const { entries, repoRoot } = await rangeComparisons(io, argument);
+		misses = new ComparisonExport(entries, argument).misses(repoRoot);
+	}
+	for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
+	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
+	if (misses.cases.length === 0)
+		throw new CliError(
+			`no valid miss of ${argument} names its lines at its compared head; adjudicate one valid with melian compare adjudicate`,
+		);
+	const json = `${JSON.stringify(misses.cases, null, 2).split("\n").map(visibleText).join("\n")}\n`;
+	await written(io, json, options.out, `${misses.cases.length} ${misses.cases.length === 1 ? "miss" : "misses"}`);
+	return 0;
+}
+
+async function rangeComparisons(io: Io, argument: string) {
 	const stored = await StoredReview.open(io, argument);
 	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path))
@@ -293,25 +334,18 @@ export async function exportComparison(
 		const entries = await ComparisonReader.open(storage).read(stored.changeset.id);
 		if (entries.length === 0)
 			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
-		const remote = await git(stored.changeset.repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
-		const repository =
-			/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(
-				remote,
-			)?.[1];
-		const url =
-			repository !== undefined && /^#\d+$/.test(argument)
-				? `https://github.com/${repository}/pull/${argument.slice(1)}`
-				: undefined;
-		const record = new ComparisonExport(entries, argument, url);
-		const output = options.json ? record.renderJson() : record.render();
-		if (options.out === undefined) io.stdout(output);
-		else {
-			const path = resolve(io.cwd, options.out);
-			await writeFile(path, output, "utf8");
-			io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
-		}
-		return 0;
+		return { entries, repoRoot: stored.changeset.repoRoot };
 	} finally {
 		await storage.close(context);
 	}
+}
+
+async function written(io: Io, output: string, out: string | undefined, what: string): Promise<void> {
+	if (out === undefined) {
+		io.stdout(output);
+		return;
+	}
+	const path = resolve(io.cwd, out);
+	await writeFile(path, output, "utf8");
+	io.stdout(`Exported ${what} to ${visibleText(path)}.\n`);
 }
