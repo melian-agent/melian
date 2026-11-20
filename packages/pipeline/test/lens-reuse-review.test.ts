@@ -576,7 +576,11 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 	const instrumenter = (toolVersion: string, source: "checkout" | "melian") =>
 		vi
 			.spyOn(TypeScriptMutationAdapter, "open")
-			.mockResolvedValue({ identity: { toolVersion }, source } as unknown as TypeScriptMutationAdapter);
+			.mockResolvedValue({
+				identity: { toolVersion },
+				source,
+				installedPackages: () => `packages beneath ${toolVersion}`,
+			} as unknown as TypeScriptMutationAdapter);
 
 	afterEach(() => {
 		vi.restoreAllMocks();

@@ -40,7 +40,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationTaskInput, adjudicationKey, VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
-import { codeVersion } from "../src/code-version.ts";
+import { codeVersion, packagesVersion } from "../src/code-version.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -404,15 +404,19 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
-// Main's key names no code version, so this build's first review of main's store decides again, as
+// Main's key names no code or package version, so this build's first review of main's store decides again, as
 // adjudication-key-reopen.test.ts shows. The tests below are about the round an attachment keeps, so they give the
-// stored key this build's code before they review.
+// stored key this build's code and packages before they review.
 async function withCurrentKey(harness: Harness) {
 	const root = await harness.root(context);
 	await root.commit(async (tx) => {
 		const adjudication = (await tx.doc(ReviewIndex, root.id)).reviews[legacy.key]!.adjudication!;
 		const input = JSON.parse(adjudication.input) as AdjudicationTaskInput;
-		adjudication.input = adjudicationKey({ ...input, code: codeVersion("adjudication") });
+		adjudication.input = adjudicationKey({
+			...input,
+			code: codeVersion("adjudication"),
+			packages: packagesVersion("adjudication"),
+		});
 	}, context);
 }
 
