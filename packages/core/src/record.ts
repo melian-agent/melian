@@ -320,6 +320,15 @@ export class SharedRecord {
 		return record;
 	}
 
+	/**
+	 * This record, or `RecordError` `invalidRecord` when its canonical bytes pass {@link recordLimit} in UTF-8. Every
+	 * store's `add` asks it of each record of a batch before it writes any.
+	 */
+	storable(): SharedRecord {
+		if (Buffer.byteLength(this.bytes) > recordLimit) throw invalid(`a record is at most ${recordLimit} bytes`);
+		return this;
+	}
+
 	/** The SHA-256 of the key, in hex, which an adapter files the record under. */
 	get keyHash(): string {
 		return sha256(this.key);

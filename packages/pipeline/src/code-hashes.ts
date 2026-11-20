@@ -28,7 +28,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/diff.ts": "ab5040f505ee8aead0760d463f00dc9e4fb440663528b23f4f8ec631cc06b296",
 
-	"packages/core/src/directory-record-store.ts": "ff4e2d15b4e2c8d4d742bcf85aa36cb2ed50361774a6405818f9140f1934df2e",
+	"packages/core/src/directory-record-store.ts": "450ec61ef4c04af0057b1db37d7b9dc2b93d42273042d85a68739042606b5393",
 
 	"packages/core/src/emoji.ts": "cbf8ab55136e4bcf1f2fe81a1cfc4f69432e3d33d898da8882750c517bc19040",
 
@@ -86,9 +86,9 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/record-payloads.ts": "b6b3459f64e2cfa45f848b2852f1b3d84a5ee4d4d1292dcd15f0d98276142395",
 
-	"packages/core/src/record-store.ts": "4c86098bd02ce1931f3f1fe9793aad3b5373cb8982373af4ae8c8be895c4ae57",
+	"packages/core/src/record-store.ts": "cf22d37a4f0b82f5e63ee9b0661df3b5a32b0af9287de86dc1629ede2705fc13",
 
-	"packages/core/src/record.ts": "5988022c2ed051164b220ec89e0e66706da60b0b4c3a58fdc2edb55f7592cfc3",
+	"packages/core/src/record.ts": "3957096845057838ee3d4c897c7c3fec98cbfcef79a670a507a69d6901be1b1a",
 
 	"packages/core/src/render.ts": "876fe6874e8ffb8c3916775212dfbf76db634f29a5aa2a1c43d018a841af0f2d",
 

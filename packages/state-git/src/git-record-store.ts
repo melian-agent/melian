@@ -154,10 +154,7 @@ export class GitRecordStore implements RecordStore {
 
 	async add(records: RecordEnvelope[]): Promise<void> {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
-		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads));
-		for (const record of parsed)
-			if (Buffer.byteLength(record.bytes) > recordLimit)
-				throw new RecordError("invalidRecord", `a record is at most ${recordLimit} bytes`);
+		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads).storable());
 		if (parsed.length === 0) return;
 		await this.#write((tree) => {
 			for (const changeset of new Set(parsed.map((record) => record.changeset))) {
