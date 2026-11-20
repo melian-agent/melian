@@ -39,7 +39,7 @@ const enola = { check: "static.enola", version: "0.4.40" };
 async function notices(
 	base: Record<string, string>,
 	head: Record<string, string>,
-	options: { read?: string[]; remove?: string[]; source?: typeof enola } = {},
+	options: { read?: string[]; remove?: string[]; source?: Parameters<typeof packwerkNotices>[2] } = {},
 ) {
 	const baseCommit = commit(base, "base");
 	const headCommit = commit(head, "head", options.remove);
@@ -180,6 +180,22 @@ describe("packwerkNotices", () => {
 		const head = { "packs/a/package.yml": lines("enforce_dependencies: false") };
 		const { findings, input } = await notices({ ...packages, "melian.yaml": policy }, head);
 		expect(await resolveAt(findings[0]!, "packs/a/package.yml", input.revision.base)).toBe("block");
+	});
+
+	it("lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's", async () => {
+		const policy = lines(
+			"resolution:",
+			"  checks:",
+			"    guardrails:",
+			"      rules:",
+			"        guardrail/policy-change-review: { P2: block }",
+			"        guardrail/policy-change-review/analyser: { P2: silent }",
+		);
+		const head = { "packs/a/package.yml": lines("enforce_dependencies: false") };
+		const { findings, input } = await notices({ ...packages, "melian.yaml": policy }, head, {
+			source: { check: "guardrails" },
+		});
+		expect(await resolveAt(findings[0]!, "packs/a/package.yml", input.revision.base)).toBe("silent");
 	});
 });
 
