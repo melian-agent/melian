@@ -349,6 +349,15 @@ describe("a record's sighting budget", () => {
 			before.findings.acknowledge.map((f) => f.properties.id),
 		);
 	});
+
+	it("returns findings it cannot measure as they are, past the budget, for the store to refuse", () => {
+		const unwritable = [notice(1, { message: "A lone \uD800 surrogate." }), notice(2)];
+		expect(() => canonicalJson(unwritable[0]!.toJSON())).toThrow(RecordError);
+		const fitted = new SightingBudget(1).fit(unwritable);
+		expect(fitted).toHaveLength(2);
+		expect(fitted[0]).toBe(unwritable[0]);
+		expect(fitted[1]).toBe(unwritable[1]);
+	});
 });
 
 describe("an abridged finding", () => {
