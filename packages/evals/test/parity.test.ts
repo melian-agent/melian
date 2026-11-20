@@ -642,7 +642,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(elsewhere.models).not.toHaveBeenCalled();
 	});
 
-	it("refuses to resume on another probe host, whichever of its fields changed", async () => {
+	it("refuses to resume on another probe host, whichever of its fields changed, or from another version or arm", async () => {
 		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
 		expect(results()).toMatchObject({ version: 2, host: probeHost });
 		const others = [
@@ -663,14 +663,17 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			expect(elsewhere.models).not.toHaveBeenCalled();
 		}
 		expect((await measure(env, runners())).status).toBe(1);
-		const { host: _, ...older } = results();
-		writeFileSync(env.MELIAN_EVAL_PARITY_OUT!, JSON.stringify({ ...older, version: 1 }));
-		const old = runners();
-		expect(await measure(env, old)).toMatchObject({
-			status: 2,
-			errors: [`${env.MELIAN_EVAL_PARITY_OUT} is not a results file of this measurement`],
-		});
-		expect(old.models).not.toHaveBeenCalled();
+		const current = results();
+		const { host: _, ...older } = current;
+		for (const other of [{ ...older, version: 1 }, { ...current, arm: "Another arm" }]) {
+			writeFileSync(env.MELIAN_EVAL_PARITY_OUT!, JSON.stringify(other));
+			const old = runners();
+			expect(await measure(env, old), other.arm).toMatchObject({
+				status: 2,
+				errors: [`${env.MELIAN_EVAL_PARITY_OUT} is not a results file of this measurement`],
+			});
+			expect(old.models).not.toHaveBeenCalled();
+		}
 	});
 
 	it("refuses to resume when a miss it reviewed now names other lines, or the verifier changed", async () => {
