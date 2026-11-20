@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
 	ComparisonExport,
+	type ExportedMissReason,
 	MembershipError,
 	type MissesExport,
 	PullRequestMembership,
@@ -138,11 +139,14 @@ export class PullRequestComparison {
 		if (additional) this.io.stderr(`${visibleText(notice)}\n`);
 		return 0;
 	}
-	/** The valid misses of the comparisons an export would show, to review again in the clone `repo`. */
-	misses(repo: string): { readonly misses: MissesExport; readonly notice?: string } {
+	/** The valid misses with one of `reasons` of the comparisons an export would show, to review again in the clone `repo`. */
+	misses(
+		repo: string,
+		reasons: readonly ExportedMissReason[],
+	): { readonly misses: MissesExport; readonly notice?: string } {
 		const { entries, additional, notice } = this.exported();
 		return {
-			misses: new ComparisonExport(entries, `#${this.number}`, this.url).misses(repo),
+			misses: new ComparisonExport(entries, `#${this.number}`, this.url).misses(repo, reasons),
 			...(additional ? { notice } : {}),
 		};
 	}

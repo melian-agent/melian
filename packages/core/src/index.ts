@@ -416,6 +416,8 @@ export {
 	Adjudication as ComparisonAdjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
+	exportedMissReasons,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";

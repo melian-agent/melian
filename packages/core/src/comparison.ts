@@ -7,6 +7,7 @@ import {
 	Adjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
@@ -1014,17 +1015,17 @@ export class Comparison {
 	}
 
 	/**
-	 * One miss for each defect no Melian finding matches: the first valid report of its group in site order, with the
-	 * lines it names at the compared head, or why it names none there. A report a person ruled out of scope is passed
-	 * over, since no lens owed it, and so is one still awaiting a reason.
+	 * One miss for each defect no Melian finding matches: the first report of its group in site order judged valid
+	 * with one of `reasons`, with the lines it names at the compared head, or why it names none there. A report with
+	 * another reason, or still awaiting one, is passed over.
 	 */
-	misses(): ComparisonMiss[] {
+	misses(reasons: readonly ExportedMissReason[]): ComparisonMiss[] {
 		return this.externalOnly()
 			.flatMap((group) =>
 				group.external
 					.filter((finding) => {
 						const current = this.judgement(finding.id);
-						return current?.verdict === "valid" && current.reason !== "out-of-scope";
+						return current?.verdict === "valid" && (reasons as readonly string[]).includes(current.reason ?? "");
 					})
 					.slice(0, 1),
 			)

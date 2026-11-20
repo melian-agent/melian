@@ -12,13 +12,13 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/checks.ts": "e7481774eeb3141a6b9e5f063cffba1e7e04b959a14818594b4ebccb80d45429",
 
-	"packages/core/src/comparison-adjudication.ts": "0f88c3f91b1cede518c9e8d9cdd72f496fee5ebffb6fa6f453f826f2c6727562",
+	"packages/core/src/comparison-adjudication.ts": "2c676b0f19c015d52b42b92c905c6d4087f3db0a1ea5d535b04b70794ce7181c",
 
-	"packages/core/src/comparison-export.ts": "30ff02eca4b06d5eea19259cb8e91aff6741445d196ffebf7dda698e0c260968",
+	"packages/core/src/comparison-export.ts": "1d26866d40d78a8646d9a6e03f38d0d7af240e27200f153bd1c0daf7422e22ab",
 
 	"packages/core/src/comparison-set.ts": "8f56f2e3e5a3846bc66820bf95540f8a77da4cfaf63a402aa43df998a8497ade",
 
-	"packages/core/src/comparison.ts": "f1d64f5edcca6450f40367d02a2d0d12f7c5166b45d80269db325a826c6d9558",
+	"packages/core/src/comparison.ts": "4892f1643846bc7ed2962c74594a27d29f4dd00028c4a89bb41a3a777639e5e2",
 
 	"packages/core/src/config.ts": "7bdeeb890b93c90f520e2bb603b6965bf0188f69c94dabd315258fe276a77dde",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "85e39122bad9d85d6405f9e3ca45c6b90e4d5cb35aa9766039243821bc922373",
+	"packages/core/src/index.ts": "5ba1cfa85f7082d1400e110f857d9b45bd6ab54acbd040179bed2a475b0910ab",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 

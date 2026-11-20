@@ -7,6 +7,7 @@ import {
 	ComparisonError,
 	ComparisonExport,
 	ComparisonSet,
+	type ExportedMissReason,
 	type ExternalImporter,
 	Lens,
 	LensError,
@@ -304,26 +305,33 @@ export async function exportComparison(
 }
 
 /**
- * Writes every valid miss of the stored comparisons as the misses file the measurement tool reads, naming on standard
+ * Writes every valid miss of the stored comparisons with one of the reasons asked for as the misses file the measurement tool reads, naming on standard
  * error each one it leaves out and why. It refuses to write a file with no miss, which the tool would refuse to read.
  */
-export async function exportMisses(io: Io, argument: string, options: { readonly out?: string }): Promise<number> {
+export async function exportMisses(
+	io: Io,
+	argument: string,
+	options: { readonly reasons: readonly ExportedMissReason[]; readonly out?: string },
+): Promise<number> {
 	const target = parseTarget(argument);
 	let misses: MissesExport;
 	let notice: string | undefined;
 	if (target.kind === "pullRequest") {
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
-		({ misses, notice } = (await PullRequestComparison.open(io, target.number, true)).misses(repoRoot));
+		({ misses, notice } = (await PullRequestComparison.open(io, target.number, true)).misses(
+			repoRoot,
+			options.reasons,
+		));
 	} else {
 		const { entries, repoRoot } = await rangeComparisons(io, argument);
-		misses = new ComparisonExport(entries, argument).misses(repoRoot);
+		misses = new ComparisonExport(entries, argument).misses(repoRoot, options.reasons);
 	}
 	misses = await placed(misses);
 	for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
 	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
 	if (misses.cases.length === 0)
 		throw new CliError(
-			`no valid miss of ${argument} names its lines at its compared head; adjudicate one valid with melian compare adjudicate`,
+			`no valid miss of ${argument} ruled ${options.reasons.join(" or ")} names its lines at its compared head; adjudicate one valid with melian compare adjudicate`,
 		);
 	const json = `${JSON.stringify(misses.cases, null, 2).split("\n").map(visibleText).join("\n")}\n`;
 	await written(io, json, options.out, `${misses.cases.length} ${misses.cases.length === 1 ? "miss" : "misses"}`);

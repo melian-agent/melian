@@ -9,6 +9,7 @@ import {
 	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
+	exportedMissReasons,
 	externalFindingSchema,
 	externalFindingsFileSchema,
 	Finding,
@@ -1820,9 +1821,15 @@ describe("Comparison misses", () => {
 		comparison.adjudicate(oneLine.id, { ...by, verdict: "valid", reason: "needs-execution" });
 		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
 		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
-		expect(comparison.misses()).toEqual([
+		expect(comparison.misses(exportedMissReasons)).toEqual([
 			{ id: missed.id, file: "src/run.ts", lines: [90, 94] },
 			{ id: oneLine.id, file: "src/run.ts", lines: [130, 130] },
+		]);
+		expect(comparison.misses(["needs-execution"])).toEqual([
+			{ id: oneLine.id, file: "src/run.ts", lines: [130, 130] },
+		]);
+		expect(comparison.misses(["owned-missed", "no-owner"])).toEqual([
+			{ id: missed.id, file: "src/run.ts", lines: [90, 94] },
 		]);
 	});
 
@@ -1839,7 +1846,7 @@ describe("Comparison misses", () => {
 			[first.id, later.id],
 			[noise.id, valid.id],
 		]);
-		expect(comparison.misses()).toEqual([
+		expect(comparison.misses(exportedMissReasons)).toEqual([
 			{ id: first.id, file: "src/run.ts", lines: [12, 14] },
 			{ id: valid.id, file: "src/run.ts", lines: [91, 91] },
 		]);
@@ -1851,9 +1858,9 @@ describe("Comparison misses", () => {
 		const comparison = compared({ externals: [report], findings: [finding] });
 		comparison.adjudicate(report.id, { ...by, verdict: "valid" });
 		comparison.unmatch(report.id, finding.id, "M", "2026-10-05T00:00:00Z");
-		expect(comparison.misses()).toEqual([]);
+		expect(comparison.misses(exportedMissReasons)).toEqual([]);
 		comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "owned-missed" });
-		expect(comparison.misses()).toEqual([{ id: report.id, file: "src/run.ts", lines: [12, 12] }]);
+		expect(comparison.misses(exportedMissReasons)).toEqual([{ id: report.id, file: "src/run.ts", lines: [12, 12] }]);
 	});
 
 	it("says why a valid miss names no lines at the compared head", () => {
@@ -1866,7 +1873,7 @@ describe("Comparison misses", () => {
 		const reports = [unplaced, lineless, base, outdated, earlier, atHead];
 		const comparison = compared({ externals: reports, findings: [] });
 		for (const report of reports) comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "no-owner" });
-		expect(comparison.misses()).toEqual([
+		expect(comparison.misses(exportedMissReasons)).toEqual([
 			{ id: unplaced.id, skipped: "names no file and line" },
 			{ id: lineless.id, skipped: "names no file and line" },
 			{ id: base.id, skipped: "sits on the base side of the diff" },
@@ -1882,14 +1889,14 @@ describe("Comparison misses", () => {
 		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
 		const second = compared({ externals: [missed], findings: [melian()] });
 		second.adjudicate(missed.id, { ...by, verdict: "valid" });
-		expect(second.misses()).toEqual([]);
+		expect(second.misses(exportedMissReasons)).toEqual([]);
 		const exported = new ComparisonExport(
 			[
 				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
 				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
 			],
 			"#7",
-		).misses("/clone");
+		).misses("/clone", exportedMissReasons);
 		expect(exported).toEqual({ cases: [], skipped: [] });
 	});
 
@@ -1921,8 +1928,8 @@ describe("Comparison misses", () => {
 				},
 			],
 		};
-		expect(new ComparisonExport([round, legacy], "#7").misses("/clone")).toEqual(expected);
-		expect(new ComparisonExport([legacy, round], "#7").misses("/clone")).toEqual(expected);
+		expect(new ComparisonExport([round, legacy], "#7").misses("/clone", exportedMissReasons)).toEqual(expected);
+		expect(new ComparisonExport([legacy, round], "#7").misses("/clone", exportedMissReasons)).toEqual(expected);
 	});
 
 	it("exports each miss as a case of the measurement tool, keeping a finding compared again from its last round", () => {
@@ -1942,7 +1949,7 @@ describe("Comparison misses", () => {
 				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
 			],
 			"#7",
-		).misses("/clone");
+		).misses("/clone", exportedMissReasons);
 		expect(exported).toEqual({
 			cases: [
 				{

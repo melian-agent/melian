@@ -26,6 +26,7 @@ describe("the comparison's misses export", () => {
 		});
 		const { cases } = new ComparisonExport([{ changeset: "pull-7", round: "pull-7.r1", comparison }], "#7").misses(
 			"/clone",
+			["owned-missed"],
 		);
 		const directory = mkdtempSync(join(tmpdir(), "melian-misses-"));
 		try {

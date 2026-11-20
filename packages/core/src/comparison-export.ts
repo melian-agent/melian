@@ -1,6 +1,6 @@
 import { Revision } from "./changeset.ts";
 import type { ComparisonMiss } from "./comparison.ts";
-import type { StoredComparisonAdjudication } from "./comparison-adjudication.ts";
+import type { ExportedMissReason, StoredComparisonAdjudication } from "./comparison-adjudication.ts";
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
 import { ComparisonError } from "./errors.ts";
@@ -67,13 +67,13 @@ export class ComparisonExport {
 	}
 
 	/**
-	 * Every valid miss of the comparisons, in the shape the measurement tool's misses file takes, `{ name, repo, base,
+	 * Every valid miss with one of `reasons` of the comparisons, in the shape the measurement tool's misses file takes, `{ name, repo, base,
 	 * head, file, lines }`, with each miss that names no lines at its compared head beside them and why. A finding
 	 * compared in several rounds is kept from the last. A finding an unattributed comparison shares with another is
 	 * left out with its reason, since no order places that comparison among the rounds. `repo` is the clone the misses are
 	 * reviewed in again.
 	 */
-	misses(repo: string): MissesExport {
+	misses(repo: string, reasons: readonly ExportedMissReason[]): MissesExport {
 		const latest = new Map<string, { readonly entry: ComparisonEntry; readonly miss: ComparisonMiss }>();
 		// An unattributed comparison has no place among the rounds, so a finding it shares with another is never ordered.
 		const comparedIn = new Map<string, { changeset: string; unattributed: boolean; count: number }>();
@@ -88,7 +88,7 @@ export class ComparisonExport {
 						count: seen.count + 1,
 					});
 				}
-			for (const miss of entry.comparison.misses()) latest.set(miss.id, { entry, miss });
+			for (const miss of entry.comparison.misses(reasons)) latest.set(miss.id, { entry, miss });
 		}
 		const cases: MissCase[] = [];
 		const skipped: { readonly name: string; readonly reason: string }[] = [];

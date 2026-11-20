@@ -619,7 +619,7 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		).toBe(0);
 		const output = join(files, "misses.json");
 
-		const result = melian(repo, ["compare", "misses", "#7", "--out", output], env);
+		const result = melian(repo, ["compare", "misses", "#7", "--out", output, "--reason", "owned-missed"], env);
 
 		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n`, stderr: "" });
 		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
@@ -958,7 +958,7 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 					.status,
 			).toBe(0);
 		const output = join(files, "misses.json");
-		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
 		const changeset = /^range-[0-9a-f]{16}/.exec(
 			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
 		)![0];
@@ -1024,7 +1024,7 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 					.status,
 			).toBe(0);
 		const output = join(files, "misses.json");
-		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
 		const changeset = /^range-[0-9a-f]{16}/.exec(
 			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
 		)![0];
@@ -1081,7 +1081,7 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 			).toBe(0);
 		const output = join(files, "misses.json");
 
-		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
 
 		const changeset = /^range-[0-9a-f]{16}/.exec(
 			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
@@ -1110,9 +1110,59 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		const output = join(files, "misses.json");
 		expect(melian(repo, ["compare", "misses", range, "--out", output], env)).toMatchObject({
 			status: 1,
-			stderr: expect.stringContaining(`no valid miss of ${range} names its lines`),
+			stderr: expect.stringContaining(`no valid miss of ${range} ruled needs-execution names its lines`),
 		});
 		expect(existsSync(output)).toBe(false);
+	});
+
+	it("writes the misses of the reasons --reason names, needs-execution by default, and refuses any other", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Owned", body: "b" },
+					{ file: "src/user.ts", line: 3, title: "Runs", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [owned, runs] = ["Owned", "Runs"].map(idOf);
+		for (const [id, reason] of [
+			[owned, "owned-missed"],
+			[runs, "needs-execution"],
+		])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", reason!], env).status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const names = (...reasons: string[]) => {
+			const result = melian(
+				repo,
+				["compare", "misses", range, "--out", output, ...reasons.flatMap((reason) => ["--reason", reason])],
+				env,
+			);
+			expect(result.status).toBe(0);
+			return (JSON.parse(readFileSync(output, "utf8")) as { name: string }[]).map(({ name }) => name.slice(-16));
+		};
+
+		expect(names()).toEqual([runs]);
+		expect(names("owned-missed")).toEqual([owned]);
+		expect(names("owned-missed", "needs-execution").sort()).toEqual([owned, runs].sort());
+		for (const [reason, why] of [
+			["out-of-scope", "no lens owed"],
+			["typo", "owned-missed, no-owner or needs-execution"],
+		])
+			expect(melian(repo, ["compare", "misses", range, "--reason", reason!], env)).toMatchObject({
+				status: 64,
+				stderr: expect.stringContaining(why!),
+			});
 	});
 
 	it("refuses --json", () => {
