@@ -124,11 +124,26 @@ export class CloneEvidence {
 	}
 
 	private static entryLines(entry: EntryRecord): string[] {
-		const messages = (entry.model ?? []) as readonly { role?: unknown; content?: unknown }[];
+		const messages = (entry.model ?? []) as readonly {
+			role?: unknown;
+			content?: unknown;
+			sections?: Record<string, string | null>;
+			toolsAdded?: readonly { name?: unknown }[];
+			toolsRemoved?: readonly { name?: unknown }[];
+		}[];
 		if (messages.length === 0) return CloneEvidence.indented(`${entry.kind}: ${JSON.stringify(entry.data ?? null)}`);
 		return messages.flatMap((message) => {
+			// A system message's prompt sits in its sections, and a change of prompt or tools often leaves `content` empty.
 			const parts =
-				typeof message.content === "string" ? [{ type: "text", text: message.content }] : message.content;
+				typeof message.content === "string"
+					? message.content === ""
+						? []
+						: [{ type: "text", text: message.content }]
+					: message.content;
+			const tools = (label: string, list: readonly { name?: unknown }[] | undefined) =>
+				list === undefined || list.length === 0
+					? []
+					: CloneEvidence.indented(`${label}: ${list.map((tool) => String(tool.name)).join(", ")}`);
 			return [
 				`  ${visibleText(String(message.role))}:`,
 				...(Array.isArray(parts) ? parts : []).flatMap(
@@ -141,6 +156,11 @@ export class CloneEvidence {
 									: JSON.stringify(part),
 						),
 				),
+				...Object.entries(message.sections ?? {}).flatMap(([name, text]) =>
+					CloneEvidence.indented(text ?? `section ${name} removed`),
+				),
+				...tools("tools added", message.toolsAdded),
+				...tools("tools removed", message.toolsRemoved),
 			];
 		});
 	}

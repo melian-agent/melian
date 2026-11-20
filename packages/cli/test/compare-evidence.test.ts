@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { StoredVerdict } from "@melian-agent/core";
+import { type StoredVerdict, visibleText } from "@melian-agent/core";
 import { buildGoldenRepository, loadGoldens } from "@melian-agent/evals";
 import type { EvidencePointer, EvidenceStage } from "@melian-agent/pipeline";
 import { afterEach, describe, expect, it } from "vitest";
@@ -137,6 +137,22 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		expect(read.pointer).toMatchObject({ round: `${round}.r1`, external: external(30), policy: "worktree" });
 		expect(read.stages.map(({ stage }) => stage.id)).toEqual(read.pointer.stages);
 		expect(read.stages.every(({ entries, dropped }) => entries.length > 0 && dropped === 0)).toBe(true);
+		// A lens's system entry holds its prompt in sections, with empty content, so the text view prints the sections.
+		const systems = read.stages.map(({ entries }) => entries.find((entry) => entry.kind === "pi.system")!);
+		expect(systems).toHaveLength(6);
+		for (const system of systems) {
+			const [message] = system.model ?? [];
+			if (message?.role !== "system") throw new Error("a pi.system entry holds a system message");
+			expect(message.content).toBe("");
+			const sections = Object.values(message.sections ?? {}) as string[];
+			expect(sections.join("\n")).toContain("<injection_policy>");
+			const shown = sections.flatMap((text) => text.split("\n").map((line) => `    ${visibleText(line)}`));
+			const tools = message.toolsAdded ?? [];
+			expect(tools.map((tool) => tool.name)).toContain("read_file");
+			expect(printed.stdout).toContain(
+				`  system:\n${[...shown, `    tools added: ${tools.map((tool) => tool.name).join(", ")}`].join("\n")}\n`,
+			);
+		}
 	});
 
 	it("keeps the verifier that judged a lens sighting on the miss's lines, and only for such a miss", () => {
