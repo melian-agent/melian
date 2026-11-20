@@ -601,6 +601,31 @@ describe("Install.read", () => {
 			expect(Install.read(module(place))).toMatchObject({ unrecognised: [], identified: true });
 		});
 
+		it("names each unrecognised place once, sorted", () => {
+			mkdirSync(join(scratch, "node_modules", "pi", "vendor.zip"));
+			writeFileSync(join(scratch, ".pnp.cjs"), "");
+			const from = module("cache/pi.zip/node_modules/.store/pi");
+			expect(Install.read(from).unrecognised).toEqual([
+				".pnp.cjs",
+				"cache/pi.zip/node_modules/.store/pi",
+				"node_modules/pi/vendor.zip",
+			]);
+		});
+
+		it("recognises a module in a package a link reaches where no walked tree keys it as one", () => {
+			mkdirSync(join(scratch, "store", "node_modules", ".x", "pi"), { recursive: true });
+			writeFileSync(
+				join(scratch, "store", "node_modules", ".x", "pi", "package.json"),
+				JSON.stringify({ name: "pi" }),
+			);
+			rmSync(join(scratch, "node_modules", "pi"), { recursive: true });
+			symlinkSync(join("..", "store", "node_modules", ".x", "pi"), join(scratch, "node_modules", "pi"));
+			expect(Install.read(module("store/node_modules/.x/pi/dist"))).toMatchObject({
+				unrecognised: [],
+				identified: true,
+			});
+		});
+
 		it("recognises a module in a workspace package npm links", () => {
 			const directory = workspace("app");
 			expect(Install.read(join(directory, "src", "index.js"))).toMatchObject({ unrecognised: [], identified: true });

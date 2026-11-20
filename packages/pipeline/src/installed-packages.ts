@@ -109,10 +109,9 @@ class Walk {
 			for (const map of [".pnp.cjs", ".pnp.loader.mjs"])
 				if (existsSync(join(directory, map))) found.push(this.#shown(join(directory, map)));
 		if (start.split(sep).some((part) => part.endsWith(".zip"))) found.push(this.#shown(start));
-		const beneath = ancestors(start).filter((directory) => this.#beneath(directory));
 		if (
 			this.#place(start).split("/").includes("node_modules") &&
-			!beneath.some((directory) => this.#packages.has(directory))
+			!ancestors(start).some((directory) => this.#packages.has(directory))
 		)
 			found.push(this.#place(start));
 		return [...new Set(found)].sort();
