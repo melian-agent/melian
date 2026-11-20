@@ -1535,7 +1535,18 @@ describe("checkoutCommit", () => {
 		try {
 			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 			writeFileSync(join(other, "stray.txt"), "untracked\n");
-			execFileSync("git", ["-C", other, "commit", "--allow-empty", "-qm", "another"]);
+			execFileSync("git", [
+				"-C",
+				other,
+				"-c",
+				"user.name=t",
+				"-c",
+				"user.email=t@example.com",
+				"commit",
+				"--allow-empty",
+				"-qm",
+				"another",
+			]);
 			vi.stubEnv("GIT_DIR", join(other, ".git"));
 			vi.stubEnv("GIT_WORK_TREE", other);
 			expect(checkoutCommit(repo, [])).toBe(head);
