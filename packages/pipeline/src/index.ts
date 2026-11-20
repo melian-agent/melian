@@ -48,6 +48,16 @@ export {
 	ReviewError,
 	type ReviewErrorCode,
 } from "./errors.ts";
+export {
+	type EvidenceConversation,
+	EvidenceError,
+	type EvidenceLensFile,
+	type EvidencePointer,
+	type EvidenceStage,
+	EvidenceStore,
+	evidenceLimits,
+	MissEvidence,
+} from "./evidence.ts";
 export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
 	type Dismissal,

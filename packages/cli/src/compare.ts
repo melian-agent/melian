@@ -26,6 +26,7 @@ import {
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
 import { ComparisonStores } from "./comparison-stores.ts";
+import { CloneEvidence } from "./evidence.ts";
 import { idleModels, isScripted } from "./models.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
 import { CliError, git, openStorage, roundChangeset, storagePath } from "./repository.ts";
@@ -248,10 +249,40 @@ export async function adjudicateComparison(
 			if (comparison.melianFindings().includes(id))
 				io.stdout("This does not dismiss the Melian finding; melian dismiss records a dismissal.\n");
 		}
+		if (
+			fields.verdict === "valid" &&
+			comparison.externalFinding(id) !== undefined &&
+			!comparison.effectiveMatches().some((match) => match.external === id)
+		)
+			return await (await CloneEvidence.open(io, stored.changeset.repoRoot)).keep(
+				harness,
+				stored.changeset.revision,
+				comparison,
+				id,
+			);
 		return 0;
 	} finally {
 		await harness.close(context);
 	}
+}
+
+/** Prints the evidence `melian compare adjudicate` kept for miss `id` of the round `argument` compares. */
+export async function comparisonEvidence(
+	io: Io,
+	argument: string,
+	id: string,
+	options: { readonly json: boolean; readonly round?: string },
+): Promise<number> {
+	const { stored, harness } = await openComparison(io, argument, options.round);
+	let round: string | undefined;
+	try {
+		round = (await harness.round(stored.changeset.revision))?.id;
+	} finally {
+		await harness.close(context);
+	}
+	if (round === undefined)
+		throw new CliError(`an unattributed comparison has no round, so Melian kept no evidence for it`);
+	return (await CloneEvidence.open(io, stored.changeset.repoRoot)).print(stored.changeset.id, round, id, options.json);
 }
 
 export async function comparisonStats(

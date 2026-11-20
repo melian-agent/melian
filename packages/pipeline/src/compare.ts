@@ -10,6 +10,7 @@ import {
 	type StoredVerdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
+import { MissEvidence } from "./evidence.ts";
 import { FindingsDocument } from "./findings.ts";
 import {
 	backgroundContext,
@@ -178,6 +179,29 @@ export class CompareHarness {
 				throw error;
 			}
 		}, context);
+	}
+
+	/** The decided round a comparison of `revision` selects, or undefined for an unattributed comparison. */
+	async round(revision: ComparedRevision, context: Context = backgroundContext): Promise<Round | undefined> {
+		if (revision.round === "unattributed") return undefined;
+		const root = await this.harness.root(context);
+		return root.commit((tx) => this.selected(tx, root.id, revision), context);
+	}
+
+	/**
+	 * The evidence behind external finding `id` of `comparison` in the round `revision` selects, or undefined when this
+	 * storage holds none of that round's run, as for an unattributed comparison or a round that ran elsewhere.
+	 */
+	async evidence(
+		revision: ComparedRevision,
+		comparison: Comparison,
+		id: string,
+		context: Context = backgroundContext,
+	): Promise<MissEvidence | undefined> {
+		const round = await this.round(revision, context);
+		return round === undefined
+			? undefined
+			: MissEvidence.gather(this.storage, { round, comparison, external: id }, context);
 	}
 
 	/** The comparison recorded for the selected round or unattributed revision, or undefined when absent. */
