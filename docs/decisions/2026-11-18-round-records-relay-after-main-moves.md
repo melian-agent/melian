@@ -38,6 +38,7 @@ The gate passes the base and head it approved as `--expect-base` and `--expect-h
 
 The relay and the round job's `--check` call one guard, `checkApproved` in `packages/cli/src/target.ts`, so the two cannot disagree. It refuses unless all of these hold:
 
+- The pull request still merges into the repository's default branch, as the same read of the pull request reports it. The `melian round` workflow reviews only such a pull request, and refuses one stacked on another branch, because that base would supply the policy. A pull request retargeted after its round is now one the workflow would refuse, so its records must not be relayed under that round's name. The message says to start a new round. A provider that does not report the default branch is refused too.
 - Both approved values are whole commit IDs. A branch name such as `main` would resolve to the tip, and the relay would then read the tip's policy.
 - The pull request's head, and the revision Melian fetched, are the approved head. A head that moved, was force-moved or was rebased names records no round produced.
 - The approved base is in the history of the pull request's base. A base rewritten without it, or retargeted to a branch that lacks it, no longer describes the round.
@@ -45,4 +46,4 @@ The relay and the round job's `--check` call one guard, `checkApproved` in `pack
 
 The relay reads policy, `trust.writers` and the tier from the approved base, not from the base's tip. The approved base is the commit the round's review read. The relay must judge the records under the policy that produced them. A later `main` might trust writers the round did not, or select another tier, and neither should decide records made before it.
 
-Two cases pass on purpose. A base retargeted to another branch that still holds the approved base relays, because the diff and the policy the round read are unchanged. An approved base older than the tip, but no older than the merge base, relays under its own policy. That rests on the gate passing the base it really approved, and a writer can push to `melian/state` directly in any case.
+One case passes on purpose. An approved base older than the tip, but no older than the merge base, relays under its own policy. The gate supplies the base it approved, so the relay need not doubt it, and a writer could push to `melian/state` directly in any case.
