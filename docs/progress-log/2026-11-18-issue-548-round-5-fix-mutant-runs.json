@@ -1,0 +1,274 @@
+{
+  "head": "4c6a953b607e40ee7caec4f3e5db177ecd85196c",
+  "base": "9bd49629e",
+  "runs": [
+    {
+      "baseline": "review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "baseline": "review payload checks > accepts a whole account payload, sample 12",
+      "collected": 1,
+      "status": "passed"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 40,
+      "endLine": 544,
+      "endColumn": 90,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 53,
+      "endLine": 544,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 53,
+      "endLine": 544,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 53,
+      "endLine": 544,
+      "endColumn": 90,
+      "mutatorName": "LogicalOperator",
+      "replacement": "ids !== null || !ordered(ids, byText)",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 53,
+      "endLine": 544,
+      "endColumn": 65,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 53,
+      "endLine": 544,
+      "endColumn": 65,
+      "mutatorName": "EqualityOperator",
+      "replacement": "ids === null",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 544,
+      "column": 69,
+      "endLine": 544,
+      "endColumn": 90,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "ordered(ids, byText)",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 545,
+      "column": 6,
+      "endLine": 545,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 545,
+      "column": 6,
+      "endLine": 545,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 545,
+      "column": 6,
+      "endLine": 545,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unordered === -1",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 545,
+      "column": 20,
+      "endLine": 545,
+      "endColumn": 22,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "test": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > accepts a whole account payload, sample 12"
+      },
+      "collected": 1,
+      "status": "failed",
+      "killed": true
+    }
+  ],
+  "ignoredRuns": [
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 457,
+      "column": 10,
+      "endLine": 457,
+      "endColumn": 91,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a check record whose sighting another check reported"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 473,
+      "column": 4,
+      "endLine": 473,
+      "endColumn": 63,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > refuses free text in the account sample's filled/0/version"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 477,
+      "column": 4,
+      "endLine": 477,
+      "endColumn": 63,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/record-payload-classes.test.ts",
+        "name": "a shared record's classed fields > refuses free text in the verification sample's claims/0/source/version"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 500,
+      "column": 10,
+      "endLine": 500,
+      "endColumn": 74,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses a lens record that holds another lens's check, or one at another version or level"
+      }
+    },
+    {
+      "kind": "ignored",
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 545,
+      "column": 31,
+      "endLine": 545,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "appliedAt": "1782f6bb0 merged with main 814a4087c",
+      "killed": true,
+      "killedBy": {
+        "file": "packages/core/test/review-payloads.test.ts",
+        "name": "review payload checks > refuses an account that keeps the findings at /producers/0/ids out of order, or one twice, case 11"
+      }
+    }
+  ]
+}

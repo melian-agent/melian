@@ -16,6 +16,7 @@ import {
 	Standards,
 	type Verdict,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { RecordedDecider } from "@melian-agent/decisions";
 import {
 	type CheckRunRecord,
@@ -40,6 +41,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { accountKey, ReviewRecords } from "../src/review-records.ts";
+import { provenRun } from "./fixtures/proven-run.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers, withBudget } from "./fixtures/review-scenario.ts";
 import { expectSharedVerdict } from "./fixtures/shared-verdict.ts";
@@ -137,7 +139,8 @@ async function review(store: MemoryRecordStore, scenario: Scenario = {}) {
 		lenses,
 		standards: scenario.standards === undefined ? [] : await scenario.standards(changeset),
 		models: fake.review,
-		checks: [...(scenario.given ?? checks)],
+		// A host's round hands in the run its checks wrote, so a reader can prove its static checks as the host does.
+		checkRun: await provenRun(harness, changeset, [...(scenario.given ?? checks)]),
 		records: store,
 		...(scenario.triage === undefined ? {} : { decider: scenario.triage }),
 		...(scenario.policy === null ? {} : { policy: scenario.policy ?? worktree }),
@@ -453,14 +456,30 @@ describe("a round decided under another policy", () => {
 	});
 
 	it("refuses an account main wrote before accounts named their resolution policy", () => {
+		const { records } = JSON.parse(
+			readFileSync(new URL("./fixtures/records-main/records.json", import.meta.url), "utf8"),
+		) as { records: RecordEnvelope[] };
+		const id = "54d57830";
+		const round = records.find(
+			(each) => each.kind === "round" && SharedRecord.parseEnvelope(each).id.startsWith(id),
+		)!;
+		const set = records.filter(({ changeset }) => changeset === round.changeset);
+		const account = SharedRecord.parseEnvelope(set.find(({ kind }) => kind === "account")!);
+		expect(account.payload).toMatchObject({ v: 1 });
+		expect(account.payload).not.toHaveProperty("resolutionPolicy");
+		expect(RecordedRound.of(set, SharedRecord.parseEnvelope(round).id, everyRecordCounts).refusal()).toBe(
+			"names an account written before accounts named their resolution policy",
+		);
+	});
+
+	it("refuses the records a build wrote before they withheld outside text", () => {
 		const recorded = JSON.parse(
 			readFileSync(new URL("./fixtures/account-v1/recorded.json", import.meta.url), "utf8"),
 		) as { records: RecordEnvelope[] };
-		const account = recorded.records.find(({ kind }) => kind === "account")!;
-		expect(account.payload).toMatchObject({ v: 1 });
-		expect(account.payload).not.toHaveProperty("resolutionPolicy");
 		const round = RecordedRound.of(recorded.records, roundOf(recorded.records), everyRecordCounts);
-		expect(round.refusal()).toBe("names an account written before accounts named their resolution policy");
+		expect(round.refusal()).toBe(
+			"its records fail their checks: a verification record's payload does not match its schema at /outcomes/0/outcome: must have required properties model",
+		);
 	});
 });
 
@@ -507,7 +526,7 @@ describe("a round its records cannot stand for", () => {
 					records,
 					round,
 					account,
-					SharedRecord.parseEnvelope({ ...account.toJSON(), key: "k".repeat(64) }),
+					SharedRecord.parseEnvelope({ ...account.toJSON(), key: recordKey("another request") }),
 				);
 			},
 			"names an account of other records than its own",
@@ -566,7 +585,7 @@ describe("a round its records cannot stand for", () => {
 				const payload = lens.payload as { sightings: { properties: object }[] };
 				const other = SharedRecord.parseEnvelope({
 					...lens.toJSON(),
-					key: "k".repeat(64),
+					key: recordKey("another request"),
 					payload: { ...payload, sightings: [lowered(payload.sightings[0]!)] } as unknown as RecordJson,
 				});
 				return added(reviewed, records, round, other);

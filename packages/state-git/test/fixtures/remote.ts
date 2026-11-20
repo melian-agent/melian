@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type RecordEnvelope, type RecordJson, SharedRecord } from "@melian-agent/core";
-import { testPayloads } from "@melian-agent/core/testing";
+import { labelOf, recordKey, testPayloads } from "@melian-agent/core/testing";
 import { type Clock, GitRecordStore, type GitRecordStoreOptions } from "../../src/index.ts";
 
 const isolated = {
@@ -136,9 +136,9 @@ export class Remote {
 export const changeset = "pull-0123456789abcdef";
 export const other = "range-0123456789abcdef";
 
-/** A check record in `within`, keyed by `key`. */
-export function check(key: string, within = changeset, payload: RecordJson = {}): RecordEnvelope {
-	return { v: 1, changeset: within, kind: "check", key, payload };
+/** A check record in `within`, keyed by the key {@link recordKey} makes from `label`. */
+export function check(label: string, within = changeset, payload: RecordJson = {}): RecordEnvelope {
+	return { v: 1, changeset: within, kind: "check", key: recordKey(label), payload };
 }
 
 /** The path and bytes a store files `envelope` under. */
@@ -148,5 +148,5 @@ export function filed(envelope: RecordEnvelope): { path: string; bytes: string }
 }
 
 export function keys(records: readonly RecordEnvelope[]): string[] {
-	return records.map((record) => record.key).sort();
+	return records.map((record) => labelOf(record.key)).sort();
 }

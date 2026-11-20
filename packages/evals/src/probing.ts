@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
 	Changeset,
+	checksOfTier,
 	type Finding,
 	type FindingEvidence,
 	type FindingSource,
@@ -44,6 +45,9 @@ import { EvalThinking } from "./thinking.ts";
 type Print = (line: string) => void;
 
 const probingLens = "trust-boundary";
+
+/** A probe lens a review's policy refuses, which ends the run with exit 2 rather than leaving the review unscored. */
+class ProbeLensRefusal extends Error {}
 // What the lens's reader refuses in a file a lens could otherwise read, so no finding can cite it.
 const unreadable: readonly RevisionErrorCode[] = ["notFound", "notAFile", "symlink", "binary"];
 const probingCheck = `lens.${probingLens}`;
@@ -52,24 +56,33 @@ const probingCheck = `lens.${probingLens}`;
 export const probingGoldenPrefix = "trust-boundary-probe-";
 
 /**
- * One combination a probing measurement runs: a planner's model on `trust-boundary`'s own route and a prober's on
- * `proberTier`, or, without a prober, the level without probes on the planner's model.
+ * One combination a probing measurement runs: a planner's model on the own route of each lens in `lenses` and a
+ * prober's on `proberTier`, or, without a prober, the level without probes on the planner's model.
  */
 export class ProbingCombination implements ProbingRoute {
 	readonly label: string;
 	readonly planner: string;
 	readonly prober: string | undefined;
 	readonly proberTier: LensTier;
+	/** The lenses whose levels the combination rewrites in memory, never in the committed policy. */
+	readonly lenses: readonly string[];
 
-	private constructor(label: string, planner: string, prober: string | undefined, proberTier: LensTier) {
+	private constructor(
+		label: string,
+		planner: string,
+		prober: string | undefined,
+		proberTier: LensTier,
+		lenses: readonly string[],
+	) {
 		this.label = label;
 		this.planner = planner;
 		this.prober = prober;
 		this.proberTier = proberTier;
+		this.lenses = lenses;
 	}
 
-	/** Parses `label=planner>prober`, or `label=model` for the level without probes. */
-	static parse(entry: string, proberTier: LensTier): ProbingCombination {
+	/** Parses `label=planner>prober`, or `label=model` for the level without probes, for each of `lenses`. */
+	static parse(entry: string, proberTier: LensTier, lenses: readonly string[] = [probingLens]): ProbingCombination {
 		const match = /^([a-z0-9][a-z0-9-]*)\s*=(.+)$/.exec(entry.trim());
 		if (match === null)
 			throw new Error(
@@ -84,7 +97,7 @@ export class ProbingCombination implements ProbingRoute {
 			const { provider, modelId } = parseModelReference(model, probingLens, `MELIAN_EVAL_PROBE_ROUTES ${match[1]}`);
 			return `${provider}/${modelId}`;
 		});
-		return new ProbingCombination(match[1]!, planner!, prober, proberTier);
+		return new ProbingCombination(match[1]!, planner!, prober, proberTier, lenses);
 	}
 
 	get probes(): boolean {
@@ -92,7 +105,31 @@ export class ProbingCombination implements ProbingRoute {
 	}
 
 	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
-		const own = Object.hasOwn(config.lenses, probingLens) ? config.lenses[probingLens] : undefined;
+		const tier = config.stages["pull-request"] ?? "full";
+		const runs = checksOfTier(config, tier);
+		for (const name of this.lenses) {
+			// `Lens.load` returns one lens of a name for each folder that defines it, and every one is rewritten below.
+			const variants = lenses.filter((each) => each.name === name);
+			if (variants.length === 0)
+				throw new ProbeLensRefusal(
+					`MELIAN_EVAL_PROBE_LENSES names ${visibleText(name)}, which the base's policy does not load`,
+				);
+			const refused = variants.map((lens) => lens.probeRefusal()).find((reason) => reason !== undefined);
+			if (refused !== undefined)
+				throw new ProbeLensRefusal(`MELIAN_EVAL_PROBE_LENSES names ${name}, which cannot probe: ${refused}`);
+			if (!runs.includes(`lens.${name}`))
+				throw new ProbeLensRefusal(
+					`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`,
+				);
+		}
+		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
+		const governed = lenses
+			.filter(
+				(lens) =>
+					this.lenses.includes(lens.name) ||
+					Object.values(lens.levels).some((settings) => settings?.probe !== undefined),
+			)
+			.map(({ name }) => name);
 		// Each route keeps its tier's reasoning level, so a pair runs as it would ship.
 		const route = (model: string, tier: LensTier) => {
 			const thinking = config.models[tier]?.thinking;
@@ -100,18 +137,27 @@ export class ProbingCombination implements ProbingRoute {
 		};
 		const routedConfig: MelianConfig = {
 			...config,
-			lenses: { ...config.lenses, [probingLens]: { ...own, route: route(this.planner, "heavy") } },
+			lenses: {
+				...config.lenses,
+				...Object.fromEntries(
+					governed.map((name) => {
+						const own = Object.hasOwn(config.lenses, name) ? config.lenses[name] : undefined;
+						return [name, { ...own, route: route(this.planner, "heavy") }];
+					}),
+				),
+			},
 			models:
 				this.prober === undefined
 					? config.models
 					: { ...config.models, [this.proberTier]: route(this.prober, this.proberTier) },
 		};
 		const routedLenses = lenses.map((lens) => {
-			if (lens.name !== probingLens) return lens;
+			if (!governed.includes(lens.name)) return lens;
+			const named = this.lenses.includes(lens.name);
 			const levels = Object.fromEntries(
 				Object.entries(lens.levels).map(([level, settings]) => {
-					// No committed level probes until this measurement picks its routes, so `deep` is the level measured.
-					const probing = settings.probe ?? (level === "deep" ? {} : undefined);
+					// A named lens's `deep` probes even where its lens declares no probe, since `deep` is the level measured.
+					const probing = settings.probe ?? (named && level === "deep" ? {} : undefined);
 					if (probing === undefined) return [level, settings];
 					const { probe: _, ...rest } = settings;
 					return [
@@ -141,7 +187,8 @@ const missSchema = Type.Object(
 		base: Type.String({ minLength: 1 }),
 		head: Type.String({ minLength: 1 }),
 		file: Type.String({ minLength: 1 }),
-		rule: Type.String({ minLength: 1 }),
+		rule: Type.Optional(Type.String({ minLength: 1 })),
+		alternativeRules: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { minItems: 1 })),
 		fix: Type.Optional(Type.String({ minLength: 1 })),
 		lines: Type.Optional(Type.Tuple([Type.Integer({ minimum: 1 }), Type.Integer({ minimum: 1 })])),
 	},
@@ -195,6 +242,15 @@ export type MissMatch =
 			readonly near: readonly MissFinding[];
 	  };
 
+/** How a miss is reviewed: `trust-boundary` alone, or every lens the base's `full` tier runs. */
+export type MissReview = "lens" | "whole";
+
+/** A responsible lens that did not see a miss: no completed run of it covered the file, or none saw the lines. */
+export interface MissUnseen {
+	readonly lens: string;
+	readonly why: "not run" | "never shown";
+}
+
 /** A `needs-execution` miss: a finding a review missed in a range of a clone, which only running code would catch. */
 export class Miss {
 	readonly name: string;
@@ -202,7 +258,8 @@ export class Miss {
 	readonly base: string;
 	readonly head: string;
 	readonly file: string;
-	readonly rule: string;
+	/** The rules a sighting may report the miss under: `rule` and its alternatives, or none, when any rule answers. */
+	readonly rules: readonly string[];
 	readonly fix?: string;
 	readonly lines?: readonly [number, number];
 
@@ -212,21 +269,28 @@ export class Miss {
 		this.base = fields.base;
 		this.head = fields.head;
 		this.file = fields.file;
-		this.rule = fields.rule;
+		this.rules = fields.rule === undefined ? [] : [fields.rule, ...(fields.alternativeRules ?? [])];
 		this.fix = fields.fix;
 		this.lines = fields.lines;
 	}
 
 	/**
-	 * Reads a misses file: a JSON array of `{ name, repo, base, head, file, rule, fix?, lines? }`, where `fix` names the
-	 * commit that fixed the miss and `lines` is the first and last line of its defect at the head.
+	 * Reads a misses file: a JSON array of `{ name, repo, base, head, file, rule?, alternativeRules?, fix?, lines? }`,
+	 * where `fix` names the commit that fixed the miss and `lines` is the first and last line of its defect at the head.
+	 * Only a miss with `lines` may leave out `rule`, and only one with `rule` may name alternatives.
 	 */
 	static load(path: string): Miss[] {
 		const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
 		if (!Value.Check(missesSchema, parsed) || parsed.some(({ lines }) => lines !== undefined && lines[0] > lines[1]))
 			throw new Error(
-				`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule, fix?, lines? }`,
+				`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule?, alternativeRules?, fix?, lines? }`,
 			);
+		for (const { name, rule, alternativeRules, lines } of parsed) {
+			if (rule === undefined && lines === undefined)
+				throw new Error(`${path}: ${visibleText(name)} names no rule, so it needs lines`);
+			if (rule === undefined && alternativeRules !== undefined)
+				throw new Error(`${path}: ${visibleText(name)} names alternative rules but no rule`);
+		}
 		return parsed.map((fields) => new Miss(fields));
 	}
 
@@ -255,71 +319,85 @@ export class Miss {
 	}
 
 	/**
-	 * Why the miss cannot be scored on `target`, or `undefined` when it can: its file must be one the range changes and
-	 * the base's policy lets `trust-boundary` review, by its path or, for a rename, its old one, its rule one that lens
-	 * declares, and its lines inside the file, which must hold some at the head.
+	 * The lenses responsible for the miss on `target`, or why it cannot be scored there. Its file must be one the range
+	 * changes and a lens the review runs covers under the base's policy, by its path or, for a rename, its old one: in
+	 * `lens` mode `trust-boundary`, and in `whole` mode each lens in the base's `full` tier. Each of its rules must be one
+	 * that some lens of that tier, or the lens the review runs, declares for the file, in either mode, and one of them
+	 * must be the running lens's. Its lines must sit inside the file, which must hold some at the head. The responsible
+	 * lenses are those the review runs that cover the file and declare one of its rules, or all of them when it names none.
 	 */
-	async refusal(
+	async reviewers(
 		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
-	): Promise<string | undefined> {
+		review: MissReview,
+	): Promise<{ readonly lenses: readonly string[] } | { readonly refusal: string }> {
+		const refused = (refusal: string) => ({ refusal: `${this.name}: ${refusal}` });
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		const changed = revision.files.find((file) => file.path === this.file);
-		if (changed === undefined) return `${this.name}: ${this.file} is not among the files ${target.range} changes`;
+		if (changed === undefined) return refused(`${this.file} is not among the files ${target.range} changes`);
 		const policy = { kind: "revision", commit: target.base } as const;
 		const paths = revision.paths();
+		const config = (await loadConfig(this.repo, policy, ".")).config;
+		const tier = checksOfTier(config, "full");
 		// A rename can put the file in two lenses' coverage, the old path's and the new one's, and the review runs both.
-		const selections = Lens.select(
-			await Lens.load(this.repo, policy, paths),
-			(await loadConfig(this.repo, policy, ".")).config,
-			paths,
-		).filter(
-			({ lens, files }) =>
-				lens.name === probingLens &&
-				(files.includes(this.file) || (changed.oldPath !== undefined && files.includes(changed.oldPath))),
+		const reviewable = Lens.select(await Lens.load(this.repo, policy, paths), config, paths)
+			.filter(
+				({ lens, files }) =>
+					(tier.includes(`lens.${lens.name}`) || (review === "lens" && lens.name === probingLens)) &&
+					(files.includes(this.file) || (changed.oldPath !== undefined && files.includes(changed.oldPath))),
+			)
+			.map(({ lens }) => lens);
+		const covering = reviewable.filter(({ name }) => review === "whole" || name === probingLens);
+		const reviewing = review === "lens" ? `the ${probingLens} lens` : "a lens in the base's full tier";
+		if (covering.length === 0) return refused(`the base's policy does not let ${reviewing} review ${this.file}`);
+		const declares = (lens: Lens, rule: string) => lens.rules.some(({ id }) => id === rule);
+		// Each mode checks the spelling against the whole tier, so one misses file serves both.
+		const undeclared = this.rules.find((rule) => !reviewable.some((lens) => declares(lens, rule)));
+		if (undeclared !== undefined)
+			return refused(
+				`${undeclared} is not a rule any lens in the base's full tier that reviews ${this.file} declares`,
+			);
+		const responsible = covering.filter(
+			(lens) => this.rules.length === 0 || this.rules.some((rule) => declares(lens, rule)),
 		);
-		if (selections.length === 0)
-			return `${this.name}: the base's policy does not let the ${probingLens} lens review ${this.file}`;
-		if (!selections.some(({ lens }) => lens.rules.some(({ id }) => id === this.rule)))
-			return `${this.name}: ${this.rule} is not a rule the base's ${probingLens} lens declares`;
-		// The lens's own reader, so the file is refused, or cut, as `report_finding` would refuse or cut it.
+		if (responsible.length === 0)
+			return refused(`${this.rules.join(" or ")} is not a rule the base's ${probingLens} lens declares`);
 		const read = await readRevisionFile(this.repo, target.head, this.file).catch((error: unknown) => {
 			if (error instanceof RevisionError && unreadable.includes(error.code)) return error;
 			throw error;
 		});
 		if (read instanceof RevisionError)
-			return `${this.name}: ${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`;
+			return refused(`${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`);
 		const { content, truncated } = read;
-		if (content === "") return `${this.name}: ${this.file} is empty at ${target.head}`;
+		if (content === "") return refused(`${this.file} is empty at ${target.head}`);
 		const lines = content.split("\n");
 		if (truncated || lines.at(-1) === "") lines.pop();
-		if (this.lines === undefined ? !truncated || lines.length > 0 : this.lines[1] <= lines.length) return undefined;
+		if (this.lines === undefined ? !truncated || lines.length > 0 : this.lines[1] <= lines.length)
+			return {
+				lenses: responsible.map(({ name }) => name),
+			};
 		if (truncated)
-			return `${this.name}: a lens reads only the first ${lines.length} lines of ${this.file} at ${target.head}, which it cuts at ${revisionLimits.fileBytes} bytes`;
-		return `${this.name}: lines ${this.lines![0]}-${this.lines![1]} run past ${this.file}, which has ${lines.length} lines at ${target.head}`;
+			return refused(
+				`a lens reads only the first ${lines.length} lines of ${this.file} at ${target.head}, which it cuts at ${revisionLimits.fileBytes} bytes`,
+			);
+		return refused(
+			`lines ${this.lines![0]}-${this.lines![1]} run past ${this.file}, which has ${lines.length} lines at ${target.head}`,
+		);
 	}
 
 	/**
-	 * Why `run` cannot score the miss, or `undefined` when it can: its telemetry must show a completed `trust-boundary`
-	 * conversation, other than a prober, whose stored coverage holds the miss's file and which saw the defect: its prompt
-	 * showed the file's diff whole, or `read_file` delivered it a line of one of `location`'s ranges, or any line of the
-	 * file for a miss located by file and rule alone.
+	 * Why `run` cannot score the miss, lens by lens, or `undefined` when it can: its telemetry must show a completed
+	 * conversation of one of `lenses`, other than a prober, whose stored coverage holds the miss's file and which saw the
+	 * defect: its prompt showed the file's diff whole, or `read_file` delivered it a line of one of `location`'s ranges,
+	 * or any line of the file for a miss located by file and rule alone. A lens with no such conversation was `not run`
+	 * there, and one whose conversations were neither shown nor read the lines was `never shown` them.
 	 * The diff has no context lines, so it shows a range's lines only where a head-side hunk of `target`'s diff holds them.
 	 */
 	async unscoped(
 		run: Pick<RangeRun, "telemetry">,
 		target: Pick<ReviewTarget, "range">,
 		location: MissLocation,
-	): Promise<string | undefined> {
-		const scoped = run.telemetry.stages.filter(
-			(stage) =>
-				stage.name === "melian.lens" &&
-				stage.subject.startsWith(`${probingLens}@`) &&
-				stage.role !== "prober" &&
-				stage.outcome === "completed" &&
-				stage.coverage !== undefined &&
-				lensCovers(stage.coverage, this.file),
-		);
-		if (scoped.length === 0) return `the review shows no completed ${probingLens} run whose scope holds ${this.file}`;
+		lenses: readonly string[],
+	): Promise<readonly MissUnseen[] | undefined> {
 		const ranges = location.by === "file and rule" ? undefined : location.ranges;
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		const diffShows =
@@ -331,19 +409,48 @@ export class Miss {
 					({ newStart, newLines }) =>
 						newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first),
 				);
-		const seen = scoped.some(
-			(stage) =>
-				(diffShows && stage.shown?.includes(this.file)) ||
-				stage.read?.some(
-					(read) =>
-						read.path === this.file &&
-						(ranges === undefined ||
-							read.ranges.some(([start, end]) => ranges.some(([first, last]) => start <= last && end >= first))),
-				),
-		);
-		return seen
-			? undefined
-			: `the review shows no completed ${probingLens} run that was shown ${this.file} or ${ranges === undefined ? "read it" : `read lines ${ranges.map(([first, last]) => `${first}-${last}`).join(", ")} of it`}`;
+		const unseen: MissUnseen[] = [];
+		for (const lens of lenses) {
+			const scoped = run.telemetry.stages.filter(
+				(stage) =>
+					stage.name === "melian.lens" &&
+					stage.subject.startsWith(`${lens}@`) &&
+					stage.role !== "prober" &&
+					stage.outcome === "completed" &&
+					stage.coverage !== undefined &&
+					lensCovers(stage.coverage, this.file),
+			);
+			const seen = scoped.some(
+				(stage) =>
+					(diffShows && stage.shown?.includes(this.file)) ||
+					stage.read?.some(
+						(read) =>
+							read.path === this.file &&
+							(ranges === undefined ||
+								read.ranges.some(([start, end]) =>
+									ranges.some(([first, last]) => start <= last && end >= first),
+								)),
+					),
+			);
+			if (seen) return undefined;
+			unseen.push({ lens, why: scoped.length === 0 ? "not run" : "never shown" });
+		}
+		return unseen;
+	}
+
+	/** Why the miss has no score, from what {@link unscoped} found of each lens. */
+	unseenReason(unseen: readonly MissUnseen[], location: MissLocation): string {
+		const what =
+			location.by === "file and rule"
+				? "read it"
+				: `read lines ${location.ranges.map(([first, last]) => `${first}-${last}`).join(", ")} of it`;
+		return unseen
+			.map(({ lens, why }) =>
+				why === "not run"
+					? `the review shows no completed ${lens} run whose scope holds ${this.file}`
+					: `never shown to ${lens}: no completed run of it was shown ${this.file} or ${what}`,
+			)
+			.join("; ");
 	}
 
 	/** The commit the head names in the clone, which is what a trust decision vouches for. */
@@ -360,11 +467,18 @@ export class Miss {
 	}
 
 	/**
-	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code:
-	 * `trust-boundary` alone, every level its `deep`, under the base's policy. Its head is the reviewer's own only when
-	 * `trust` vouches for both commits, since the base's policy decides what a probe may read.
+	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code,
+	 * under the base's policy: in `lens` mode `trust-boundary` alone, and in `whole` mode the base's `full` tier. Every
+	 * level of a lens that probes is its `deep`, `trust-boundary` alone in `lens` mode and each of `probeLenses` in
+	 * `whole`. Its head is the reviewer's own only when `trust` vouches for both commits, since the base's policy decides
+	 * what a probe may read.
 	 */
-	target(trust: ProbeTrust): ReviewTarget & { readonly head: string } {
+	target(
+		trust: ProbeTrust,
+		review: MissReview = "lens",
+		probeLenses: readonly string[] = [probingLens],
+	): ReviewTarget & { readonly head: string } {
+		const probes = review === "lens" ? [probingLens] : probeLenses;
 		const base = this.commit(this.base);
 		const head = this.headCommit();
 		const unvouched = [base, head].filter((commit) => !trust.vouches(commit));
@@ -378,15 +492,14 @@ export class Miss {
 			head,
 			range: `${base}...${head}`,
 			writer,
-			sightingsOf: probingCheck,
 			scope: (config, lenses) => ({
 				config: {
 					...config,
-					tiers: { ...config.tiers, full: [probingCheck] },
+					tiers: review === "lens" ? { ...config.tiers, full: [probingCheck] } : config.tiers,
 					stages: { ...config.stages, "pull-request": "full" },
 				},
 				lenses: lenses.map((lens) => {
-					if (lens.name !== probingLens) return lens;
+					if (!probes.includes(lens.name)) return lens;
 					// Whichever level the review picks probes: routing adds a prober only to a level that probes, or to `deep`.
 					const deep = lens.level("deep");
 					const probing = { ...deep, probe: deep.probe ?? {} };
@@ -397,39 +510,39 @@ export class Miss {
 	}
 
 	/**
-	 * What a review found of the miss, scored on `trust-boundary`'s own sightings, since a merged finding keeps only its
-	 * speaker's lines. A sighting answers the miss when the verdict, in any of its groups, holds its claim unrefuted, by
-	 * its ID and the level that sighted it, and it sits at the miss's file under its rule and overlaps its lines; with no
-	 * lines, file and rule alone decide. Throws when the sightings and the verdict's claims disagree, which leaves the miss unscored rather
-	 * than missed.
+	 * What a review found of the miss, scored on each lens's own sightings, since a merged finding keeps only its
+	 * speaker's lines: `trust-boundary`'s in `lens` mode and every lens's in `whole`. A sighting answers the miss when the
+	 * verdict, in any of its groups, holds its claim unrefuted, by its check, ID and the level that sighted it, and it sits
+	 * at the miss's file under one of its rules, or any rule when it names none, and overlaps its lines; with no lines,
+	 * file and rule alone decide. Throws when the sightings and the verdict's claims disagree, which leaves the miss
+	 * unscored rather than missed.
 	 */
-	match(run: Pick<RangeRun, "verdict" | "sightings">, location: MissLocation): MissMatch {
-		const { sightings } = run;
-		if (sightings === undefined)
-			throw new Error(`${this.name}: its review returned no ${probingCheck} sightings to score`);
+	match(run: Pick<RangeRun, "verdict" | "sightings">, location: MissLocation, review: MissReview = "lens"): MissMatch {
+		const scored = (check: string) => (review === "lens" ? check === probingCheck : check.startsWith("lens."));
+		const sightings = run.sightings.filter((sighting) => scored(sighting.properties.source.check));
 		// An ID excludes lines, so two levels of the lens can sight one ID at different lines with different verdicts.
-		const identity = (id: string, source: FindingSource) => `${id} ${source.version}`;
+		const identity = (id: string, source: FindingSource) => JSON.stringify([source.check, id, source.version]);
 		const held = new Map<string, MemberClaim>();
 		for (const finding of run.verdict.all())
 			for (const claim of VerificationState.from(finding).claims) {
-				if (claim.source.check !== probingCheck) continue;
+				if (!scored(claim.source.check)) continue;
 				const key = identity(claim.id, claim.source);
 				if (held.has(key))
 					throw new Error(
-						`${this.name}: the verdict holds the ${probingCheck} claim ${claim.id} from ${claim.source.version} twice`,
+						`${this.name}: the verdict holds the ${claim.source.check} claim ${claim.id} from ${claim.source.version} twice`,
 					);
 				held.set(key, claim);
 			}
 		for (const sighting of sightings)
 			if (!held.has(identity(sighting.id, sighting.properties.source)))
 				throw new Error(
-					`${this.name}: ${probingCheck} sighted ${sighting.id} at ${sighting.properties.source.version}, which the verdict holds no claim for`,
+					`${this.name}: ${sighting.properties.source.check} sighted ${sighting.id} at ${sighting.properties.source.version}, which the verdict holds no claim for`,
 				);
 		const sighted = new Set(sightings.map((sighting) => identity(sighting.id, sighting.properties.source)));
 		for (const [key, claim] of held)
 			if (!sighted.has(key))
 				throw new Error(
-					`${this.name}: the verdict holds a ${probingCheck} claim ${claim.id} from ${claim.source.version} that the lens never sighted`,
+					`${this.name}: the verdict holds a ${claim.source.check} claim ${claim.id} from ${claim.source.version} that the lens never sighted`,
 				);
 		const claimOf = (sighting: Finding) => held.get(identity(sighting.id, sighting.properties.source))!;
 		const shown = (sighting: Finding): MissFinding => {
@@ -447,7 +560,7 @@ export class Miss {
 		const claims = sightings.filter(
 			(sighting) =>
 				claimOf(sighting).verification?.verdict !== "refuted" &&
-				sighting.ruleId === this.rule &&
+				(this.rules.length === 0 || this.rules.includes(sighting.ruleId)) &&
 				(sighting.properties.path ?? sighting.locations[0]!.physicalLocation.artifactLocation.uri) === this.file,
 		);
 		if (location.by === "file and rule") return { matched: "file and rule", hits: claims.map(shown), near: [] };
@@ -501,6 +614,7 @@ export type ProbingSet = "goldens" | "misses" | "all";
 /** A probing measurement's settings, parsed from the environment as `live.ts` parses its own. */
 export class ProbingSettings {
 	readonly combinations: readonly ProbingCombination[];
+	readonly probeLenses: readonly string[];
 	readonly passes: number;
 	readonly set: ProbingSet;
 	readonly thinking: EvalThinking;
@@ -508,11 +622,13 @@ export class ProbingSettings {
 	readonly verifierModel: string;
 	readonly golden: string | undefined;
 	readonly misses: string | undefined;
+	readonly missReview: MissReview;
 	readonly trust: ProbeTrust;
 	readonly out: string | undefined;
 
 	private constructor(fields: {
 		combinations: readonly ProbingCombination[];
+		probeLenses: readonly string[];
 		passes: number;
 		set: ProbingSet;
 		thinking: EvalThinking;
@@ -520,10 +636,12 @@ export class ProbingSettings {
 		verifierModel: string;
 		golden: string | undefined;
 		misses: string | undefined;
+		missReview: MissReview;
 		trust: ProbeTrust;
 		out: string | undefined;
 	}) {
 		this.combinations = fields.combinations;
+		this.probeLenses = fields.probeLenses;
 		this.passes = fields.passes;
 		this.set = fields.set;
 		this.thinking = fields.thinking;
@@ -531,6 +649,7 @@ export class ProbingSettings {
 		this.verifierModel = fields.verifierModel;
 		this.golden = fields.golden;
 		this.misses = fields.misses;
+		this.missReview = fields.missReview;
 		this.trust = fields.trust;
 		this.out = fields.out;
 	}
@@ -543,10 +662,17 @@ export class ProbingSettings {
 			throw new Error(
 				`MELIAN_EVAL_PROBER_TIER must be light, medium or heavy, not ${visibleText(JSON.stringify(tier))}`,
 			);
+		const probeLenses = (env.MELIAN_EVAL_PROBE_LENSES || probingLens)
+			.split(",")
+			.map((name) => name.trim())
+			.filter((name) => name !== "");
+		if (probeLenses.length === 0) throw new Error("MELIAN_EVAL_PROBE_LENSES names no lens");
+		const twice = probeLenses.find((name, index) => probeLenses.indexOf(name) !== index);
+		if (twice !== undefined) throw new Error(`MELIAN_EVAL_PROBE_LENSES repeats ${visibleText(twice)}`);
 		const combinations = (env.MELIAN_EVAL_PROBE_ROUTES ?? "")
 			.split(";")
 			.filter((entry) => entry.trim() !== "")
-			.map((entry) => ProbingCombination.parse(entry, tier));
+			.map((entry) => ProbingCombination.parse(entry, tier, probeLenses));
 		if (combinations.length === 0) throw new Error("MELIAN_EVAL_PROBE_ROUTES names no combination");
 		const labels = combinations.map(({ label }) => label);
 		const repeated = labels.find((label, index) => labels.indexOf(label) !== index);
@@ -556,6 +682,11 @@ export class ProbingSettings {
 		const verifier = env.MELIAN_EVAL_VERIFIER_MODEL ?? "";
 		const { provider, modelId } = parseModelReference(verifier, "verifier", "MELIAN_EVAL_VERIFIER_MODEL");
 		const misses = env.MELIAN_EVAL_MISSES || undefined;
+		const missReview = env.MELIAN_EVAL_MISS_REVIEW || "lens";
+		if (missReview !== "lens" && missReview !== "whole")
+			throw new Error(
+				`MELIAN_EVAL_MISS_REVIEW must be lens or whole, not ${visibleText(JSON.stringify(missReview))}`,
+			);
 		const set = env.MELIAN_EVAL_PROBE_SET || (misses === undefined ? "goldens" : "all");
 		if (set !== "goldens" && set !== "misses" && set !== "all")
 			throw new Error(
@@ -567,6 +698,7 @@ export class ProbingSettings {
 		if (model !== undefined) parseModelReference(model, "every tier", "MELIAN_EVAL_MODEL");
 		return new ProbingSettings({
 			combinations,
+			probeLenses,
 			passes,
 			set,
 			thinking,
@@ -574,6 +706,7 @@ export class ProbingSettings {
 			verifierModel: `${provider}/${modelId}`,
 			golden: env.MELIAN_EVAL_GOLDEN || undefined,
 			misses,
+			missReview,
 			trust: ProbeTrust.parse(env.MELIAN_EVAL_PROBE_TRUST),
 			out: env.MELIAN_EVAL_PROBE_OUT || undefined,
 		});
@@ -610,6 +743,12 @@ export interface ProbingReview {
 	readonly near?: MissMatch["near"];
 	/** For a miss located by its fix, the hunks the fix changed in its file. */
 	readonly hunks?: readonly (readonly [number, number])[];
+	/** For a found miss, the lens and level of each sighting that answered it. */
+	readonly foundBy?: readonly FindingSource[];
+	/** For a miss, each lens whose prober finished. */
+	readonly probedBy?: readonly string[];
+	/** For a miss with no score because no responsible lens saw it, what each one missed. */
+	readonly unseen?: readonly MissUnseen[];
 	readonly error?: string;
 	readonly notes: RangeRun["notes"];
 	readonly sharedProberTier: readonly string[];
@@ -685,9 +824,22 @@ function rendered(label: string, values: ProbingSummary): string {
  * Runs each combination over the selected corpus `passes` times, printing a line for each review with the notes its
  * lenses recorded, such as the attacks the planner planned and the probes that ran. Fails before any provider on a
  * setting the run cannot honour. Returns the exit status: 0 when every review scored, 1 when one did not, 2 when the
- * run never started.
+ * run never started or a review's policy refused a probe lens.
  */
-export async function measureProbing(
+export function measureProbing(
+	env: NodeJS.ProcessEnv,
+	runners: ProbingRunners,
+	print: Print,
+	printError: Print,
+): Promise<0 | 1 | 2> {
+	return measured(env, runners, print, printError).catch((error: unknown) => {
+		if (!(error instanceof ProbeLensRefusal)) throw error;
+		printError(visibleText(error.message));
+		return 2 as const;
+	});
+}
+
+async function measured(
 	env: NodeJS.ProcessEnv,
 	runners: ProbingRunners,
 	print: Print,
@@ -695,22 +847,39 @@ export async function measureProbing(
 ): Promise<0 | 1 | 2> {
 	let settings: ProbingSettings;
 	let goldens: Golden[];
-	let misses: { miss: Miss; target: ReviewTarget & { readonly head: string }; location: MissLocation }[];
+	let misses: {
+		miss: Miss;
+		target: ReviewTarget & { readonly head: string };
+		location: MissLocation;
+		lenses: readonly string[];
+	}[];
 	let save: (complete: boolean, results: readonly ProbingCombinationResult[]) => void;
 	try {
 		settings = ProbingSettings.parse(env);
 		const probing = runners.goldens().filter((golden) => golden.name.startsWith(probingGoldenPrefix) && golden.live);
 		goldens = settings.set === "misses" ? [] : selectGoldens(probing, settings.golden);
-		const targets =
-			settings.set === "goldens"
-				? []
-				: Miss.load(settings.misses!).map((miss) => ({ miss, target: miss.target(settings.trust) }));
-		const refused = (await Promise.all(targets.map(({ miss, target }) => miss.refusal(target)))).filter(
-			(refusal) => refusal !== undefined,
+		const review = settings.missReview;
+		const loaded = settings.set === "goldens" ? [] : Miss.load(settings.misses!);
+		const unlined = loaded.filter((miss) => miss.lines === undefined).map(({ name }) => visibleText(name));
+		// Only hand-entered lines score a miss, and a whole review's other lenses sight more of the file than the miss.
+		if (review === "whole" && unlined.length > 0)
+			throw new Error(
+				`MELIAN_EVAL_MISS_REVIEW=whole scores a miss only on its hand-entered lines, which ${unlined.join(", ")} ${unlined.length === 1 ? "has" : "have"} none of`,
+			);
+		const assessed = await Promise.all(
+			loaded.map(async (miss) => {
+				const target = miss.target(settings.trust, review, settings.probeLenses);
+				return { miss, target, reviewers: await miss.reviewers(target, review) };
+			}),
 		);
+		const refused = assessed.flatMap(({ reviewers }) => ("refusal" in reviewers ? [reviewers.refusal] : []));
 		if (refused.length > 0) throw new Error(`The misses file cannot be scored: ${refused.join("; ")}`);
 		misses = await Promise.all(
-			targets.map(async ({ miss, target }) => ({ miss, target, location: await miss.locate(target.head) })),
+			assessed.flatMap(({ miss, target, reviewers }) =>
+				"lenses" in reviewers
+					? [miss.locate(target.head).then((location) => ({ miss, target, location, lenses: reviewers.lenses }))]
+					: [],
+			),
 		);
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
@@ -724,18 +893,21 @@ export async function measureProbing(
 		const checkout = (...args: string[]) =>
 			execFileSync("git", ["-C", import.meta.dirname, ...args], { encoding: "utf8" }).trim();
 		const measured = {
-			version: 1,
+			version: 2,
 			commit: checkout("rev-parse", "HEAD"),
 			clean: checkout("status", "--porcelain") === "",
 			verifier: settings.verifierModel,
 			passes: settings.passes,
-			misses: misses.map(({ miss, target, location }) => ({
+			missReview: review,
+			probeLenses: settings.probeLenses,
+			misses: misses.map(({ miss, target, location, lenses }) => ({
 				name: miss.name,
 				repo: miss.repo,
 				base: miss.base,
 				head: miss.head,
 				file: miss.file,
-				rule: miss.rule,
+				rules: miss.rules,
+				lenses,
 				fix: miss.fix,
 				lines: miss.lines,
 				baseCommit: target.base,
@@ -791,13 +963,28 @@ export async function measureProbing(
 			const record = (
 				run: RangeRun,
 				line: string,
-				review: Pick<ProbingReview, "name" | "kind" | "score" | "found" | "matched" | "hits" | "near" | "hunks">,
+				review: Pick<
+					ProbingReview,
+					| "name"
+					| "kind"
+					| "score"
+					| "found"
+					| "matched"
+					| "hits"
+					| "near"
+					| "hunks"
+					| "foundBy"
+					| "probedBy"
+					| "unseen"
+				>,
 			) => {
 				telemetry.push(run.telemetry);
 				const sharing = Object.entries(run.tiers)
 					.filter(
 						([check, tier]) =>
-							combination.prober !== undefined && check !== probingCheck && tier === combination.proberTier,
+							combination.prober !== undefined &&
+							!combination.lenses.some((name) => check === `lens.${name}`) &&
+							tier === combination.proberTier,
 					)
 					.map(([check]) => check)
 					.sort();
@@ -816,6 +1003,7 @@ export async function measureProbing(
 			};
 			const tried = async <Run>(name: string, kind: ProbingReview["kind"], run: () => Promise<Run>) =>
 				attempt(`${combination.label} pass ${pass} ${name}`, run, print, (error) => {
+					if (error instanceof ProbeLensRefusal) throw error;
 					const failure = error instanceof GoldenRunError ? error : undefined;
 					const ran = failure?.telemetry;
 					if (ran !== undefined) telemetry.push(ran);
@@ -834,7 +1022,7 @@ export async function measureProbing(
 			for (const golden of goldens) {
 				const run = await tried(golden.name, "golden", () => runners.golden(golden, mode));
 				if (run === undefined) continue;
-				const score = scoreGolden(golden, run.findings);
+				const score = scoreGolden(golden, run.findings, run.sightings);
 				scores.push(score);
 				record(
 					run,
@@ -843,11 +1031,11 @@ export async function measureProbing(
 				);
 			}
 			let found = 0;
-			for (const { miss, target, location } of misses) {
+			for (const { miss, target, location, lenses } of misses) {
 				const scored = await tried(miss.name, "miss", async () => {
 					const run = await runners.range(target, mode);
 					try {
-						return { run, match: miss.match(run, location) };
+						return { run, match: miss.match(run, location, settings.missReview) };
 					} catch (error) {
 						throw new GoldenRunError(error, run.telemetry, run.probers);
 					}
@@ -855,7 +1043,8 @@ export async function measureProbing(
 				if (scored === undefined) continue;
 				const { run, match } = scored;
 				const hit = match.hits.length > 0;
-				const unscoped = await miss.unscoped(run, target, location);
+				const unseen = await miss.unscoped(run, target, location, lenses);
+				const unscoped = unseen === undefined ? undefined : miss.unseenReason(unseen, location);
 				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
 				const unadjudicated =
 					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
@@ -876,11 +1065,18 @@ export async function measureProbing(
 						: match.matched === "fix hunks"
 							? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
 							: "unadjudicated, no score: matched by file and rule alone";
+				const foundBy = new Map(match.hits.map(({ sightedBy }) => [JSON.stringify(sightedBy), sightedBy]));
+				const probedBy = run.telemetry.stages
+					.filter((stage) => stage.role === "prober" && stage.outcome === "completed")
+					.map((stage) => stage.subject.slice(0, stage.subject.indexOf("@")));
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
 					...(unadjudicated ? {} : { found: hit }),
 					...match,
+					...(hit && !unadjudicated ? { foundBy: [...foundBy.values()] } : {}),
+					probedBy: [...new Set(probedBy)].sort(),
+					...(unseen === undefined ? {} : { unseen }),
 				});
 			}
 			passes.push({

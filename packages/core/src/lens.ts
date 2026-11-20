@@ -218,6 +218,8 @@ export interface LensFields {
 	 * another name. Absent when the lens probes in its own name's wording, or does not probe.
 	 */
 	readonly probesAs?: string;
+	/** Set when the lens takes a built-in lens's name without extending it, so no level of it may probe. Not part of `version`. */
+	readonly shadowsBuiltin?: true;
 }
 
 /**
@@ -353,11 +355,14 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 	);
 }
 
+/** How many hex digits of its hash a lens's version keeps. A shared record's schema takes the same count. */
+export const lensVersionDigits = 12;
+
 // Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
 // scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
 function versioned(lens: Omit<LensFields, "version">): LensFields {
-	const { file: _, nearer: __, resolution: ___, emoji: ____, ...behaviour } = lens;
-	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
+	const { file: _, nearer: __, resolution: ___, emoji: ____, shadowsBuiltin: _____, ...behaviour } = lens;
+	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, lensVersionDigits);
 	return { ...lens, version };
 }
 
@@ -409,6 +414,22 @@ function declare(own: LensFrontMatter, base: Declared | undefined): Declared {
 	return { tier: own.tier ?? base?.tier, budget: declaredBudget(own.budget, base?.budget), levels };
 }
 
+const shadowingRefusal = (name: string) =>
+	`"probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in ${name} lens's name without extending it; give it and every farther ${name} lens "extends: ${name}"`;
+
+// Why a level of a lens whose `extends` chain reaches the built-in `origin` may not probe, or nothing when it may.
+function probeRefusal(origin: string | undefined): string | undefined {
+	if (origin === undefined || !lensProbingWording.has(origin)) {
+		const worded = [...lensProbingWording.keys()];
+		return `"probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`;
+	}
+	// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
+	// would leave the lens clean.
+	if (origin === "tests")
+		return `"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`;
+	return undefined;
+}
+
 // Each field a level leaves out comes from the top level, then from Melian's default. `careful` always exists, and is
 // resolved first, so a lens with no tier anywhere is refused for its top-level `tier`.
 function resolveLevels(file: string, name: string, declared: Declared, ancestry: Ancestry): LensLevels {
@@ -429,32 +450,19 @@ function resolveLevels(file: string, name: string, declared: Declared, ancestry:
 		const probe = own?.probe;
 		const { origin, builtins } = ancestry;
 		if (probe !== undefined && builtins.has(name) && origin !== name) {
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in ${name} lens's name without extending it; give it and every farther ${name} lens "extends: ${name}"`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
+			throw new LensError("missingField", file, `${file}: lens ${name}, level ${level}: ${shadowingRefusal(name)}`, {
+				field: `levels.${level}.probe`,
+				lens: name,
+				level,
+			});
 		}
-		if (probe !== undefined && (origin === undefined || !lensProbingWording.has(origin))) {
-			const worded = [...lensProbingWording.keys()];
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
-		// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
-		// would leave the lens clean.
-		if (probe !== undefined && origin === "tests") {
-			throw new LensError(
-				"missingField",
-				file,
-				`${file}: lens ${name}, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
-				{ field: `levels.${level}.probe`, lens: name, level },
-			);
-		}
+		const refused = probe === undefined ? undefined : probeRefusal(origin);
+		if (refused !== undefined)
+			throw new LensError("missingField", file, `${file}: lens ${name}, level ${level}: ${refused}`, {
+				field: `levels.${level}.probe`,
+				lens: name,
+				level,
+			});
 		return {
 			tier,
 			reads: own?.reads ?? "hunks",
@@ -520,6 +528,7 @@ function resolve(definition: Definition, base: Layered | undefined, builtins: Re
 		emoji,
 		// Absent for a lens that probes in its own name's words, so its version is the one it had before.
 		...(probes && origin !== own.name ? { probesAs: origin } : {}),
+		...(builtins.has(own.name) && origin !== own.name ? { shadowsBuiltin: true } : {}),
 	});
 	return { lens, declared, origin };
 }
@@ -788,6 +797,7 @@ export class Lens {
 	readonly resolution?: ResolutionEntry;
 	readonly emoji?: string;
 	readonly probesAs?: string;
+	readonly shadowsBuiltin?: true;
 
 	private constructor(fields: LensFields) {
 		this.name = fields.name;
@@ -807,6 +817,7 @@ export class Lens {
 		this.resolution = fields.resolution;
 		this.emoji = fields.emoji;
 		this.probesAs = fields.probesAs;
+		this.shadowsBuiltin = fields.shadowsBuiltin;
 	}
 
 	/** The lens `fields` describe, as given: its version is not computed again. */
@@ -943,6 +954,16 @@ export class Lens {
 			lens: this.name,
 			level,
 		});
+	}
+
+	/**
+	 * Why a level of this lens may not probe, as loading a level that set `probe` would refuse it, or nothing when it may:
+	 * for a run that turns probing on in memory. A loaded lens names the built-in its `extends` chain reaches only once
+	 * it probes, so a lens that does not probe yet is judged by its own name.
+	 */
+	probeRefusal(): string | undefined {
+		if (this.shadowsBuiltin) return shadowingRefusal(this.name);
+		return probeRefusal(this.probesAs ?? this.name);
 	}
 
 	/** The levels the lens runs at, from `quick` to `deep`: always `careful`, and `quick` and `deep` where it declares them. */
@@ -1106,7 +1127,7 @@ export class Lens {
 	/** The lens's fields, in their declared order. */
 	toJSON(): LensFields {
 		const { name, description, tools, severities, rules, paths, scope, levels, standards, handoffs } = this;
-		const { instructions, version, file, nearer, resolution, emoji, probesAs } = this;
+		const { instructions, version, file, nearer, resolution, emoji, probesAs, shadowsBuiltin } = this;
 		return {
 			name,
 			description,
@@ -1125,6 +1146,7 @@ export class Lens {
 			...(resolution === undefined ? {} : { resolution }),
 			...(emoji === undefined ? {} : { emoji }),
 			...(probesAs === undefined ? {} : { probesAs }),
+			...(shadowsBuiltin === undefined ? {} : { shadowsBuiltin }),
 		};
 	}
 

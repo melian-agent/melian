@@ -62,7 +62,7 @@ export async function reportGoldens(
 			failed.push(golden.name);
 			continue;
 		}
-		const score = scoreGolden(golden, ran.findings);
+		const score = scoreGolden(golden, ran.findings, ran.sightings);
 		scores.push(score);
 		print(
 			visibleText(
