@@ -561,6 +561,49 @@ describe("Install.read", () => {
 		});
 	});
 
+	describe("a link beneath the root but out of the project that holds it", () => {
+		// A project inside the root, as a checkout is inside a home directory that holds a stray node_modules.
+		let project: string;
+		beforeEach(() => {
+			project = join(scratch, "src", "melian");
+			mkdirSync(join(project, "node_modules"), { recursive: true });
+			writeFileSync(join(project, "main.js"), "");
+			mkdirSync(join(scratch, "work", "yaml"), { recursive: true });
+			writeFileSync(
+				join(scratch, "work", "yaml", "package.json"),
+				JSON.stringify({ name: "yaml", version: "2.0.0" }),
+			);
+			symlinkSync(join("..", "..", "..", "work", "yaml"), join(project, "node_modules", "yaml"));
+		});
+
+		it("keys the link as one out of the install, so the linked package's files stand for none", () => {
+			expect(Install.read(join(project, "main.js"))).toMatchObject({
+				outside: ["src/melian/node_modules/yaml"],
+				identified: false,
+			});
+			expect(Install.read(join(project, "main.js")).entries).toContainEqual([
+				"src/melian/node_modules/yaml",
+				"links outside",
+			]);
+		});
+
+		it("keeps a workspace link inside when the reading workspace holds a node_modules of its own", () => {
+			const directory = workspace("app");
+			mkdirSync(join(directory, "node_modules"));
+			expect(Install.read(join(directory, "src", "index.js"))).toMatchObject({ outside: [], identified: true });
+		});
+
+		it("keeps a link between a pnpm store's packages inside", () => {
+			install(".pnpm/sdk@2.0.0/node_modules/sdk", { name: "sdk", version: "2.0.0" });
+			install(".pnpm/pi@1.1.0/node_modules/pi", { name: "pi", version: "1.1.0" });
+			symlinkSync(
+				join("..", "..", "sdk@2.0.0", "node_modules", "sdk"),
+				join(scratch, "node_modules", ".pnpm", "pi@1.1.0", "node_modules", "sdk"),
+			);
+			expect(read()).toMatchObject({ outside: [], identified: true });
+		});
+	});
+
 	it("identifies an install where nothing links out", () => {
 		expect(read()).toMatchObject({ outside: [], identified: true });
 	});

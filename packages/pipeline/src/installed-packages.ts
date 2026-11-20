@@ -50,7 +50,7 @@ export class Install {
 		const root = chain.at(-1);
 		if (root === undefined)
 			throw new InstalledPackagesError(`Melian cannot key its install: no node_modules holds the module ${from}.`);
-		const walk = new Walk(root, limit);
+		const walk = new Walk(chain, limit);
 		walk.run(chain.map((directory) => join(directory, "node_modules")));
 		return new Install(walk.entries(), walk.outside(), walk.unrecognised(start));
 	}
@@ -74,6 +74,7 @@ function ancestors(directory: string): string[] {
 
 class Walk {
 	readonly #root: string;
+	readonly #chain: readonly string[];
 	readonly #limit: number;
 	readonly #entries = new Map<string, InstallEntry>();
 	readonly #outside: string[] = [];
@@ -83,8 +84,10 @@ class Walk {
 	readonly #odd: string[] = [];
 	readonly #queue: [string, Mode][] = [];
 
-	constructor(root: string, limit: number) {
-		this.#root = root;
+	// `chain` is each directory whose node_modules Node searches from the module, nearest first; the last is the root.
+	constructor(chain: readonly string[], limit: number) {
+		this.#chain = chain;
+		this.#root = chain.at(-1) as string;
 		this.#limit = limit;
 	}
 
@@ -131,8 +134,8 @@ class Walk {
 		return this.#beneath(path) ? this.#place(path) : path;
 	}
 
-	#beneath(directory: string): boolean {
-		const path = relative(this.#root, directory);
+	#beneath(directory: string, root = this.#root): boolean {
+		const path = relative(root, directory);
 		return !path.startsWith("..") && !isAbsolute(path);
 	}
 
@@ -164,7 +167,10 @@ class Walk {
 			this.#add(at, "links nowhere");
 			return;
 		}
-		if (!this.#beneath(target)) {
+		// A stray node_modules above a project raises the root, so a link counts as inside only within the nearest
+		// directory of the chain that holds it.
+		const project = this.#chain.find((directory) => this.#beneath(path, directory)) as string;
+		if (!this.#beneath(target, project)) {
 			this.#add(at, "links outside");
 			this.#outside.push(at);
 			return;
