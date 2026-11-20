@@ -47,6 +47,7 @@ The other 143 no longer run on macOS. Linux is enough for them. Each drives the 
 
 - The list is kept by hand. A new test that skips on Linux fails `check (macos, 24)` until its file is added. Before, the macOS job found the file in the Linux report. The failure names the file to add.
 - 143 tests of the probing level run on Linux alone. A new test in that file that depends on the platform needs the tag, and nothing finds it if it lacks the tag.
+- Removing the tag from one of the twelve, while others keep it, stops that test running on macOS, and the comparison still passes: it takes the tagged set from the Linux report. That removal is an edit to a test file that review sees, as deleting a test from a named suite is, which nothing catches either. A count or a list of the tagged tests would catch it, at the price of one more number or list kept by hand. The coordinator chose to accept the limit on 2026-11-20, after Codex's adversarial review raised it.
 - The run has one more job and one more artefact, `macos-vitest-reports`.
 
 ## What it saves
