@@ -1,0 +1,5117 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "56f7fb059aa79e63d7cde7aa78325b34808c116e",
+    "head": "b6a84e29c6ab967a1f44460c03d657ebc83a7b1a"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 4,
+      "endLine": 279,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0dcbbec97a174c904890f060a3280fb2a99a0bbba6c82a853d4a824850538088",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/adjudication-key-reopen.test.ts",
+          "path": [
+            "decides main's stored verdict again once, under a key that adds the code and package versions to the same input"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 4,
+      "endLine": 279,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1d11c85dacbde78166a513872a1636f4874212041bf240890c3bf50f5d9b1540",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "on a repeat review after a task ended without deciding",
+            "decides nothing on an adjudication task another build's code created, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 4,
+      "endLine": 279,
+      "endColumn": 59,
+      "mutatorName": "LogicalOperator",
+      "replacement": "task.input.code !== codeVersion(\"adjudication\") && task.input.packages !== packagesVersion(\"adjudication\")",
+      "status": "generated",
+      "id": "16f3a39b973ea42264cc9d120ad4cf4c3ee48dc5437566ef05bb5af6994a3e82",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "on a repeat review after a task ended without deciding",
+            "decides nothing on an adjudication task another build's code created, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 4,
+      "endLine": 278,
+      "endColumn": 51,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "05104aeee4638cbeda15a7f97464b13057bc63e82640bc053e4a816df49d3bcc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "on a repeat review after a task ended without deciding",
+            "decides nothing on an adjudication task another build's code created, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 4,
+      "endLine": 278,
+      "endColumn": 51,
+      "mutatorName": "EqualityOperator",
+      "replacement": "task.input.code === codeVersion(\"adjudication\")",
+      "status": "generated",
+      "id": "e8dadf66d71958c64425a18e834cf2feed8bc6474718204e0b623e0ff4da5193",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/adjudication-key-reopen.test.ts",
+          "path": [
+            "decides main's stored verdict again once, under a key that adds the code and package versions to the same input"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 278,
+      "column": 36,
+      "endLine": 278,
+      "endColumn": 50,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "eb5a0439b05836198df2d014502799dc38400c06921c34e7eaee0918f8808bc6"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 279,
+      "column": 4,
+      "endLine": 279,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6c4004088ea913fe932284080431d75d7e5b98d14d26ffeea3a32b3cc70fb9f6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "on a repeat review after a task ended without deciding",
+            "decides nothing on an adjudication task another install's packages created, and says why"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 279,
+      "column": 4,
+      "endLine": 279,
+      "endColumn": 59,
+      "mutatorName": "EqualityOperator",
+      "replacement": "task.input.packages === packagesVersion(\"adjudication\")",
+      "status": "generated",
+      "id": "1f4e38716e7a4b13aa026019510c59f6b4f27b7983c47af650389e90cf5c07e2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/adjudication-key-reopen.test.ts",
+          "path": [
+            "decides main's stored verdict again once, under a key that adds the code and package versions to the same input"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 279,
+      "column": 44,
+      "endLine": 279,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f85611450e0bf2353919c39e8172b86c567b51c055a7c87adb5c568f24d827cd"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 282,
+      "column": 5,
+      "endLine": 282,
+      "endColumn": 164,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "306d6e2a9266109e681ec7944fa82dc61d85edf4f7502e51e82b18c942fa71e2"
+    },
+    {
+      "file": "packages/pipeline/src/adjudication.ts",
+      "line": 426,
+      "column": 28,
+      "endLine": 426,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dbfdd4cc34e677fec6e8aa23967fc2e5e19c3788c9b665a56fa0145e8dd4b4f5"
+    },
+    {
+      "file": "packages/pipeline/src/check-request.ts",
+      "line": 123,
+      "column": 29,
+      "endLine": 123,
+      "endColumn": 37,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "26f8c64facc30274d858850876d99d860585b474a2fca93894d1d7f9c315c2d9"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 134,
+      "column": 42,
+      "endLine": 134,
+      "endColumn": 108,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f8a4ff6672e90811a76c01161d5ca1fd282ddce6f7a3bb82372cdcdd6ab02ab5"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 142,
+      "column": 43,
+      "endLine": 142,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ad6fca99b36083bda22d608f40cad7a4fc4d42deeba9ebafc6c53ba3d22b34b4"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 146,
+      "column": 42,
+      "endLine": 146,
+      "endColumn": 108,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d3c44500b3759b17f8198f8b82597ed8bb70bb02e07b71bdd5c0ac4fb3ed862a"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 168,
+      "column": 37,
+      "endLine": 168,
+      "endColumn": 103,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d3b9a9e6b33035102282e9e6472506e7498fee68a6e7eef6519d86047a940f64"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 170,
+      "column": 48,
+      "endLine": 170,
+      "endColumn": 114,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "aeaf6c62071735936946760cac07b6c37d71885f36d6b4666ff0f84c8247d039"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 184,
+      "column": 50,
+      "endLine": 184,
+      "endColumn": 116,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "89185b6a0d79fb442f067911e39010274161cbf875e7bbb3a67a6707775ac235"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 404,
+      "column": 2,
+      "endLine": 404,
+      "endColumn": 47,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f0ae5d165a1167d3473072bbd371f670d39ca80b32214d3458854a75df458931"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 626,
+      "column": 2,
+      "endLine": 626,
+      "endColumn": 47,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d1433b5448979d5d5d964c419c41bc3bae75a753841ba14f77452cb82c371c13"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 680,
+      "column": 103,
+      "endLine": 740,
+      "endColumn": 1,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bd58b5c32db9e4ebaa14d48f7f17180c56d4da025e392e37d6ae66e7ea94e7a0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 681,
+      "column": 15,
+      "endLine": 701,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d2580eebf15f185be58cc489c621be8f9a9b84b278f251579dfbe4a8591cdf52",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 682,
+      "column": 24,
+      "endLine": 688,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "f15199db7b2d319da65850046cd6a2ca68ec6448058861a69f67191457d2ef8b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 683,
+      "column": 3,
+      "endLine": 683,
+      "endColumn": 11,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8bfa0c95ee923d511e617c774d5c0c6c56a590f9ba39bd32c6d213cbe822d180"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 685,
+      "column": 3,
+      "endLine": 685,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "af3bfac33db5b319a9178c76af153736ed864f274bfb1a14c964472f68ee07c4"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 687,
+      "column": 3,
+      "endLine": 687,
+      "endColumn": 9,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f87d1a7bd6a6970f9665f9cc6cce5524530e8ce34e035253f0c91b5d33d9e93d"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 690,
+      "column": 28,
+      "endLine": 700,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "973c2da1e0d595f14178d738e5f3226d7ac7e9d9baa3930b18eb3d765d841b6a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 691,
+      "column": 3,
+      "endLine": 691,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7c04fa64d54ffcb65d3e5c8f9d67cc4a13b4f30b0ca041a1bbbe1abe37935df8"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 693,
+      "column": 3,
+      "endLine": 693,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1922b9e7730c3d25f825cff47ea9102a776a71475842f05d35d026cb3e3580f7"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 695,
+      "column": 3,
+      "endLine": 695,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4d4ec59c0b620e814ecadde1ca7fd415c73787979b2fc16ddf2ae8d73089e8b2"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 697,
+      "column": 3,
+      "endLine": 697,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "09dd735ab10460db3c2cee52cf9a1e239d2e3b358199150952be990e82e6ccd9"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 699,
+      "column": 3,
+      "endLine": 699,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "24623135cbe4d32ad108ba4cf0259c5a113f8caa68f84a632550a27b34819488"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 703,
+      "column": 9,
+      "endLine": 739,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "63b04e9811d9949ad0182e2b9a35ec2a89b421077199f4b600e10962dca084b4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 704,
+      "column": 24,
+      "endLine": 710,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "15cc72fee38078ce918a3507ebc43c674ce0ac8c456508c2a6829fb5b4ac6c6a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 705,
+      "column": 3,
+      "endLine": 705,
+      "endColumn": 11,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2bb8d7670bbdc2dabd0046315a49aee64158252cfbb5dfa38163bb61897b61c8"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 707,
+      "column": 3,
+      "endLine": 707,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "343603f2ceb66748a89d2e6e4d5daa7e1154bbe9a374d025778df1fe838faf6e"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 709,
+      "column": 3,
+      "endLine": 709,
+      "endColumn": 9,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6be96dd80ae7c3e55dc0f13f29f71a78c213578748db5ac55b5eea8cd3934a8d"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 712,
+      "column": 29,
+      "endLine": 728,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "01f9d10db97ac78302ae39fa878ade6af12a2cbba433befae8ccadfb03bfc62f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 713,
+      "column": 3,
+      "endLine": 713,
+      "endColumn": 19,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fef4bdc386449927c4048012a2aabde362049b2061b529afb51bfd363d66c770"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 715,
+      "column": 3,
+      "endLine": 715,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "37c02a5542a5ca5f2758809194f16c413bfd9aad313270614459f589d58b9a66"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 717,
+      "column": 3,
+      "endLine": 717,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0bcb9d9e2234aef0f2d1ad3aa5bf9a5753585f85572b0b7b2a0869c500136ad0"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 719,
+      "column": 3,
+      "endLine": 719,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "562915254ea76103401a135e05bc24572b4a16963582312c9ad0f32bbd1e2ceb"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 721,
+      "column": 3,
+      "endLine": 721,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b623d3fe56f788e5e439bb7461f46364d3d371966da363a53844c08651e92049"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 723,
+      "column": 3,
+      "endLine": 723,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e161c7bfbdf08ecda9f506109bf56061c88157c4202b600d04e9f13240a7fda8"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 725,
+      "column": 3,
+      "endLine": 725,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3075344266aa96d0c515e199b21a533056d96231b1d6b69a9f7f6e3d9f3e94e7"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 727,
+      "column": 3,
+      "endLine": 727,
+      "endColumn": 21,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "00e89dd53d6f6076f3e3acc21d608791568fcafbc71c5adaf1b7d4ec34e81472"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 730,
+      "column": 28,
+      "endLine": 738,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "7e6a1517a5d8956e98cdc75007bff7f080ab388ed0d7663983a115e94922b2ef",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 731,
+      "column": 3,
+      "endLine": 731,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2131f3b2e4537f7f16b604ee7f26a8fa887f979d901de58fbe86231f89fbbcb2"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 733,
+      "column": 3,
+      "endLine": 733,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d5f86d9a5b292daa2511f55b314e7396b900ad60990d84f0c51afbc5a60e5d37"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 735,
+      "column": 3,
+      "endLine": 735,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c14f7bd9554c32819ac7b205a8f47af86b83372733475730852be68839757169"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 737,
+      "column": 3,
+      "endLine": 737,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c4cb33f08ec8c6a19704be1f8a975848866bbdc05c39e14efeb6263e8f13c200"
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 31,
+      "column": 58,
+      "endLine": 49,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "67de231f02c0ab74b6dc092b7ec038b2b74bee907330f3e40d608b9f479f84e9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 33,
+      "column": 5,
+      "endLine": 33,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b8644c83b2d924d8f92551589ac2157d2eef428114edf2d75f8a2f685383e814",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 33,
+      "column": 5,
+      "endLine": 33,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "15ff0276f29e34c40d49feed918565b210394b76d8c92f7ade049bfb43939b97",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "reads the install once a process"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 33,
+      "column": 5,
+      "endLine": 33,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "known === undefined",
+      "status": "generated",
+      "id": "12315349061d503276fed45c2f09eeb7f9340ed97358eac0e283f9681b528f20",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 35,
+      "column": 5,
+      "endLine": 35,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0f9579be6fcad58fb3d0884513ae0a96c001942027f37b10ebf545b60c70a074",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 35,
+      "column": 5,
+      "endLine": 35,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c8fa110bf8fad8c7d3768890818dda6b483f042757074bfbfdc257a57d234041",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "refuses a producer the table does not hold, an inherited name included"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 35,
+      "column": 5,
+      "endLine": 35,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "imports !== undefined",
+      "status": "generated",
+      "id": "02c8162e768c67f952912e6e76717fcf58446000106959b994ce0bb2cf26e091",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 35,
+      "column": 28,
+      "endLine": 35,
+      "endColumn": 101,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "f484f1c0652fd06c1f5951a79c69895ee01dc8cd4cf0455c948be8ec1649262b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "refuses a producer the table does not hold, an inherited name included"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 35,
+      "column": 44,
+      "endLine": 35,
+      "endColumn": 99,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "64a7328df0d5803b5e828a12c65115af8d223cab7dc27870d91a5cb793c2d5d8"
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 36,
+      "column": 64,
+      "endLine": 45,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "56d8bc0fae9fb2955cb5a61b4e6c5769b8fe512f15befa0ff884d08f1022ffb6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 38,
+      "column": 6,
+      "endLine": 40,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "80287a7bf5e27baaf9dc41ef3ae3711e21becd953d0353bb61488a94c3fd57b0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 40,
+      "column": 10,
+      "endLine": 42,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "eaea9134c601540cab1701975ce0284a3c5f0fd5490db560e825d9a756805b87",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The catch block's only statement assigns undefined to manifest, which is declared without an initialiser and stays undefined when findPackageJSON throws before assigning."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 43,
+      "column": 6,
+      "endLine": 43,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ed5a5e5d905d86413f3b583da4c8dab5be8fd92bb0bd792e0b672bb5e79d3e49",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 43,
+      "column": 6,
+      "endLine": 43,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8487adf1715bd9ffe6a2558027f7c144b2c80bf93c35467898fd2b5050ebfad5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "fails, naming it, on an importing package Melian cannot find"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 43,
+      "column": 6,
+      "endLine": 43,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest !== undefined",
+      "status": "generated",
+      "id": "1da61b401ca9e74e80c776fa2dc0c67de629c2ff1c0ad6b933dd0c285e88f7b2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 43,
+      "column": 30,
+      "endLine": 43,
+      "endColumn": 108,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "8789860d6fccd3f5670d0368992388f919fef9a7667d542b8de54dc06129d733",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "fails, naming it, on an importing package Melian cannot find"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 43,
+      "column": 63,
+      "endLine": 43,
+      "endColumn": 106,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "abe742aac342f39c58cf816bb84c533b6203d3aa483c00225e72a37f595c47a5"
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 44,
+      "column": 19,
+      "endLine": 44,
+      "endColumn": 59,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1c6860374e952bfbb652001556d5743e3e662d47b6efad590b50f8a6ff153d30",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 44,
+      "column": 30,
+      "endLine": 44,
+      "endColumn": 58,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "17c3159be26dd4aca501b8dbffcd68a137f6439ed4543560359a755a973614f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "digests what each recorded import installs, resolved from the package that imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-version.ts",
+      "line": 47,
+      "column": 1,
+      "endLine": 47,
+      "endColumn": 36,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "3ac9ae0b0cf444480c6b5ae6b305e0d95bcf621cc324b48169b52c559d6df936",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/code-version.test.ts",
+          "path": [
+            "packagesVersion",
+            "reads the install once a process"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/dismiss.ts",
+      "line": 186,
+      "column": 29,
+      "endLine": 186,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "59b96e30cc8e4cf844b9697462c46c22b14f57f4ac2b233fade655bbf6593f0c"
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 157,
+      "column": 47,
+      "endLine": 166,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "81ba9a5fc910db81e8beabddf353e6d81b7cbde53df3b1e2c8c8448046b031a8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 158,
+      "column": 1,
+      "endLine": 164,
+      "endColumn": 2,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "modelPackages &&= installedPackagesDigest([\"@earendil-works/pi-ai\", \"@earendil-works/pi-durable\"].map(name => ({\n  name,\n  from: import.meta.url,\n  by: \"@melian-agent/pipeline\"\n})))",
+      "status": "generated",
+      "id": "7d1c13ff0c44f62d36da43466f361647f60a88d06c4f8e84ba619f156ec8c110",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 159,
+      "column": 2,
+      "endLine": 159,
+      "endColumn": 57,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "a22719b5558b775649f061ae00c0d0461a72fe7a2d916f9ecd2406783640c942",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 159,
+      "column": 3,
+      "endLine": 159,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "21a842fac8660a60ae851b65281ba9b272990d28828bd4c9ab4614f2fea1866d"
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 159,
+      "column": 28,
+      "endLine": 159,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d034c517659135d8be2e5fd8e3d82a39adbae7457195ee4c168d7adf81053556"
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 159,
+      "column": 62,
+      "endLine": 163,
+      "endColumn": 4,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "06e6c3540f3ce32e36586b2e85b63caed9958b7d10b905b694f8b59de226c535",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 159,
+      "column": 73,
+      "endLine": 163,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "41c64f464a1dfb758d19d18d7843f13f66813418ea0523c3b78f44676013b8b8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-request.test.ts",
+          "path": [
+            "lensRequest",
+            "keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/harness.ts",
+      "line": 162,
+      "column": 7,
+      "endLine": 162,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4057a756bd176c50a2366bffaa67be6dce537bbbc92ba6d6b500f3102e4d6b06"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 21,
+      "column": 17,
+      "endLine": 21,
+      "endColumn": 37,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "751649101541fe4476e50680574798fe7e7bbe208febe9887673c5e2d7efb257"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 24,
+      "column": 14,
+      "endLine": 24,
+      "endColumn": 38,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "69cd390ef7480feb426846675e2c7c458278520fe960c90cbb21b29e8b7dc998"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 35,
+      "column": 75,
+      "endLine": 76,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fc553722579f69e9e25b3878fdfd6f111bfcc28a5f5644a9335edb3933eb4b64",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 38,
+      "column": 103,
+      "endLine": 73,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d4d6d9926e5d4f0aa7b1ba59365e1a0a4355a378bc4d8e296cbbe9a4c5d7e2d1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 39,
+      "column": 6,
+      "endLine": 39,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cf9f79258921d6ab64b8f6341cffd6774f5ac1982e113177d7aaaeb903e1cf38",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out @types packages, installed or not, since they never run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 39,
+      "column": 6,
+      "endLine": 39,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3a923fcb7aec7f4abf98b6ec9ffdee5f161fdc482bd3b23af3601930c286c67d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out @types packages, installed or not, since they never run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 39,
+      "column": 6,
+      "endLine": 39,
+      "endColumn": 32,
+      "mutatorName": "MethodExpression",
+      "replacement": "name.endsWith(\"@types/\")",
+      "status": "generated",
+      "id": "d3ed70b96adf8f88e0c5a7f185d357700e421d2ed742966ecfafe427f6fe5718",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out @types packages, installed or not, since they never run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 39,
+      "column": 22,
+      "endLine": 39,
+      "endColumn": 31,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e6512dcf86b1d23f7b3072b353f91fecab6451ef2da1c41f6b1897dabd1d6962"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 41,
+      "column": 6,
+      "endLine": 43,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4c13204ea0452c6f2ad9abcc5f351e82c2ff6e17204877df65c32f04cb86045d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 43,
+      "column": 10,
+      "endLine": 45,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "16b6f5f101110038ba6f0f78eea8f99578bf3c96a3132402a4ed731e18dc1913",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The catch block's only statement assigns undefined to path, which is declared without an initialiser and stays undefined when findPackageJSON throws before assigning."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 46,
+      "column": 6,
+      "endLine": 46,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fb3c716e523a19a91f349961df325c4906a0e43b9612c8344a8e28657a0ede48",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 46,
+      "column": 6,
+      "endLine": 46,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "77124cdfc2fd1c3d8462100f2f42fd5230cd7a416877a246f09b6b77a87d836f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 46,
+      "column": 6,
+      "endLine": 46,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "path !== undefined",
+      "status": "generated",
+      "id": "8892888f9a6c3fffc832a0168bafceae24a34badb44bef0d0d0e76bf0c7f540b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 46,
+      "column": 26,
+      "endLine": 53,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7f03a12b0e30313633abe40c31d6666ed292024ce325ab3df914acc51efdf0c2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 47,
+      "column": 7,
+      "endLine": 47,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b6d72e27ca4d9baa06fb6f29ba600eb8c612e5924fa46170c19c65137e1af661",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 47,
+      "column": 7,
+      "endLine": 47,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cb468af909ee43bf6a11caaab86ab4eebc4ddfe8af5e4762d3c7a7d7d99fa3d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out an optional dependency that is not installed, as npm leaves out one its platform refuses"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 47,
+      "column": 7,
+      "endLine": 47,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "kind !== \"optional\"",
+      "status": "generated",
+      "id": "cc1fd656b450d3b3b326108b9d830bb966bac0b2706c42ffef1f94e076de1422",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 47,
+      "column": 16,
+      "endLine": 47,
+      "endColumn": 26,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1319d367c232ded57b0b71db7fc4621467e84bd2a7fc46b958b523514c1e9d3d"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 48,
+      "column": 7,
+      "endLine": 48,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cc88e2c80f6c4b5966a6da0d98878570d2cae8af54c301644512264350397043",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 48,
+      "column": 7,
+      "endLine": 48,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3c4787d42b797c6418fa659fe3f79372636949b1ecbd76f0d844fd0653281898",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a declared peer that is not installed, and the release that wants it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 48,
+      "column": 7,
+      "endLine": 48,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "kind !== \"peer\"",
+      "status": "generated",
+      "id": "abfa1df935c66373564ff1f1560f2a1eb63af78993abf2807d44b6fe63ea1eb8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 48,
+      "column": 16,
+      "endLine": 48,
+      "endColumn": 22,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "74af1a0a178acf73768fd5eaeb6a8a731bc1e84f1b02930fdc22cdebcdac3098"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 48,
+      "column": 24,
+      "endLine": 51,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "423319ca8d89bf209f2d7d8a7c6c6e253b959dac9b5a741507245ed7f3e7e164",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a declared peer that is not installed, and the release that wants it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 49,
+      "column": 4,
+      "endLine": 49,
+      "endColumn": 53,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "59ab02645c438d08d10134da0e2e7fc46b9fde57414ef5e811fd316a1f84eade",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a declared peer that is not installed, and the release that wants it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 49,
+      "column": 14,
+      "endLine": 49,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bff50ba30a65fd1be912c9583abe29843f25ab1f14ab7c7e2ff8048583b2eef4"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 52,
+      "column": 3,
+      "endLine": 52,
+      "endColumn": 112,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "5118c3ab04ab36103eabc427236abc06579409850fc5c89451882cf520dc9f1f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, when a dependency is not installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 52,
+      "column": 36,
+      "endLine": 52,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "53999cc49378eb350be90aadb3716e489bd70ed46bf7e3a30687777f3261ca60"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 54,
+      "column": 6,
+      "endLine": 54,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9fffc39884bd8cddb0ea989f17abe8fc3a28582df23cb3eaf321023d12f329bd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 54,
+      "column": 6,
+      "endLine": 54,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fa3826457350225107b4acb1e097e46ef751f5e4e488e39e62cc538313f95dab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "ends on a cycle"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 55,
+      "column": 2,
+      "endLine": 55,
+      "endColumn": 20,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "22995cfead479e5f3454cba83da6705413c92666b8976cf72b957c6bca620d75",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "ends on a cycle"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 57,
+      "column": 6,
+      "endLine": 59,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "60961d81a153741ea9a5db294beeb864cb8b24de98b4b4d82ad65f5f5cc2b90e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 59,
+      "column": 10,
+      "endLine": 61,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f70fdbd96b9f965ec31bc07395221911b30056cb558e1895d34400f9856892f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest that is not JSON"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 60,
+      "column": 3,
+      "endLine": 60,
+      "endColumn": 112,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "6fcb773ff4d6d8941e75eaba4b092488fa5a642ba667ca431544e7375c9c74e6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest that is not JSON"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 60,
+      "column": 36,
+      "endLine": 60,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e7b4a219e84fbbf7287ba903ecfc7de06ce993cf7789e7dcafdfe5bb7cea8083"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 6,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f9064b081529793ba87eaaa43b2b4f838b6fc69747ae576dc1c0ea7dd8cfc911",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 6,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c672ca05161978dfa90560e9d2c0175361eedbf655cf9ceacdff1001a485e13b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest of another name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 6,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.name !== name && typeof manifest.version !== \"string\"",
+      "status": "generated",
+      "id": "2057c1afc548f20f528fc8d4aa1d530b7556b7fe1e2d6b7418289688b1dce389",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest of another name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 6,
+      "endLine": 62,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "948fca8b5272d31eab93e79c6cf45cca59b9d06c4d83f58c598e53cb7e730ca5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest of another name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 6,
+      "endLine": 62,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest.name === name",
+      "status": "generated",
+      "id": "2c506c00a1681049d561fdd24db83300f3938874a8359b3a44b89ab4d96ee0c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 32,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "88b769963f557fee4902b7e9ccfb37e411df78d0fefdc2edc6fb38fec1f5b787",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest with no version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 32,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof manifest.version === \"string\"",
+      "status": "generated",
+      "id": "d41f0952ac2d8a745c44ba0a3d96f9df8dbea5b880a3450619ed5ff7fd0c29a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 62,
+      "column": 60,
+      "endLine": 62,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "29f7a0649ad875796d34193400b6c41705752b2ba8170b94e59b6e3388e2c006"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 112,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "26176ebf33274c879781bf205e7243e0145fc27d061a678bc05cfe71062c6547",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "fails, naming the package, on a manifest of another name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 63,
+      "column": 36,
+      "endLine": 63,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c03036aeb2fc8049005543a7afaa499c32db47ff966dd7fbf5e9abe939c88021"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 61,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cab12f4d5104b198631e4c800bbed12dfa903ecab46d47054b8879176f42bda4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 61,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "18d1ad43a5e96dd07a5842da66f04aaf40c32d213d8d4d2b6eef9c8ac09033f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 61,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.os !== undefined && manifest.cpu !== undefined",
+      "status": "generated",
+      "id": "fe2b269c4fae6af7920043ab8565a8f21b120d806827de9a312291c6d5256c9d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3304b5d010924fe0fae73814a8a861cc79ee2bc1fd48fb52344fb606cc7e2b3e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 31,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest.os === undefined",
+      "status": "generated",
+      "id": "9e066ce1160681d67118bba48ace5569ff099b23d31ce1bc5f41a0d4518b17fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 35,
+      "endLine": 64,
+      "endColumn": 61,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4218c3acdc2b853681efa9fde0daf63fdff2c86400f54f06718996eaad88f47d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares cpu, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 64,
+      "column": 35,
+      "endLine": 64,
+      "endColumn": 61,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest.cpu === undefined",
+      "status": "generated",
+      "id": "c1c77ee13c26fb0cbe7e0f6af72a4e2ef74a7c6e437934ef4457bee68f5ce131",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 65,
+      "column": 15,
+      "endLine": 65,
+      "endColumn": 44,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "460ca355114ec05dbca23b8cada139a547e0ee5bf0d782cd56e18ad89b6fbc70"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 2,
+      "endLine": 66,
+      "endColumn": 18,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "6a0af42eccf11b64f9926e28ee109e60abdae9b2514847594bdb3cfe220a5ab6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 69,
+      "column": 39,
+      "endLine": 69,
+      "endColumn": 74,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.optionalDependencies && {}",
+      "status": "generated",
+      "id": "faf2b1894da87b874519bb92d27333363cfea907e47678b06920545b15a39608",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 69,
+      "column": 77,
+      "endLine": 69,
+      "endColumn": 111,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "710ecca24fceb918154d2e9bd9e13e53d19267d4d878210b19c625bb4c1f7e79",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "walks an optional dependency that is installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 69,
+      "column": 99,
+      "endLine": 69,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b5ffc33347dce35feabbb6985c88667330954f8b157ee8fb993cd8ef8116d5f9"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 70,
+      "column": 39,
+      "endLine": 70,
+      "endColumn": 70,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.peerDependencies && {}",
+      "status": "generated",
+      "id": "7ae1d0d1809af3902487d889ecf262b492323776041999dbea4e42811a8544e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 70,
+      "column": 73,
+      "endLine": 70,
+      "endColumn": 103,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "dd95f93b41e4a2d5ac3fe7975e3807a7e7a92bf370ead782dcf4c7f5c333d2c2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a peer that is installed, and walks beneath it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 70,
+      "column": 95,
+      "endLine": 70,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "02c1c12c66ca9884422f98e5a1056b662c9c22dae0bd55df4acec3a65d8ed93d"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 71,
+      "column": 39,
+      "endLine": 71,
+      "endColumn": 66,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.dependencies && {}",
+      "status": "generated",
+      "id": "3dacbac86bd8715b276dd6b3eb82ad8afeed03b2e45eef05af00d2724d89329b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 71,
+      "column": 69,
+      "endLine": 71,
+      "endColumn": 103,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "507bcb2a091f1e4c121ae45831916298cbd59fe9faab6fae9cb8e7be84f23b11",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 71,
+      "column": 91,
+      "endLine": 71,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "30493800627adf8840021ed66c5265a5e5d1c68438dc3bb5523d279d92fd0034"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 72,
+      "column": 41,
+      "endLine": 72,
+      "endColumn": 76,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "f16d7f349c4b242e3f421b03a5a1eafae32a576a1d352001394784f345639ce3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 74,
+      "column": 27,
+      "endLine": 74,
+      "endColumn": 76,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "d58d9faf5338c7337954a9ec456b99095bb88380b59f2934f0da91129670b751",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 74,
+      "column": 64,
+      "endLine": 74,
+      "endColumn": 74,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8c109f1da2d29f0bafcfe6fa2d532b580913501f726c5474a4098cd9cd3d1397"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 75,
+      "column": 8,
+      "endLine": 75,
+      "endColumn": 25,
+      "mutatorName": "MethodExpression",
+      "replacement": "[...lines]",
+      "status": "generated",
+      "id": "8722488571dbe4ed1c87578a3ac294fd0a8241263920f028baf70e9553d76f12",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 75,
+      "column": 8,
+      "endLine": 75,
+      "endColumn": 18,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "d38556fe7843edc4720b0cef00cb51498d2b548e232d0d7b5c142b4824bc651d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 79,
+      "column": 79,
+      "endLine": 87,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6a80bdbb650b51a4db2e09dc6d3864a7abf62af56c8b18107d4a063ce1c982e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackagesDigest",
+            "is a SHA-256 over the sorted lines, each ended by a newline"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 80,
+      "column": 19,
+      "endLine": 80,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1c1119a5627a4bc34262bf15661615473cfd35f0929c5c64e2d5369a964fa2a9"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 83,
+      "column": 9,
+      "endLine": 83,
+      "endColumn": 30,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "e3705c59e9b4d49c986711dc591fab57bbbd7357463c722b9eaa7c33c523ebde",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackagesDigest",
+            "is a SHA-256 over the sorted lines, each ended by a newline"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 83,
+      "column": 19,
+      "endLine": 83,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c19c38f3d828dca4c5e43c32f67bc0f01070e6f69fa0ed137b1bc3533d680eab"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 84,
+      "column": 10,
+      "endLine": 84,
+      "endColumn": 12,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "49efa43b8149f9f3d4078e6b176f5b9beba81e3f8323366517e71c52c3cba714"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 86,
+      "column": 10,
+      "endLine": 86,
+      "endColumn": 15,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6a3fdfbbff306d12c82e2dcde9e147a1d9058076b41afaf6ccc9f19f12259f83"
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 164,
+      "column": 29,
+      "endLine": 172,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9c58435f157926e61470fb11a96c8a97a48453751b6654fe13b7c5fe643fbd85",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "selects an installed checkout instrumenter and otherwise Melian's pinned copy"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 165,
+      "column": 33,
+      "endLine": 171,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "d381846a8bac1326038a3c419b0998b2ea2d5f4ff61dc7765ef02f371272874c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "selects an installed checkout instrumenter and otherwise Melian's pinned copy"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 166,
+      "column": 3,
+      "endLine": 170,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5fb41f75a9b656a2e7cd95901dbf98ba323b6c7fefeb019ef2916b2492cbd8c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "selects an installed checkout instrumenter and otherwise Melian's pinned copy"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 167,
+      "column": 10,
+      "endLine": 167,
+      "endColumn": 41,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "511a4496a31489ddff27e62692f26731e621e6605761e3c7a72df7a4d3b8b75a"
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 8,
+      "endLine": 169,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "fb269c8dbd01111f40f61fd5d16af6dd3f78adb26ae1e135016cdc441017ac55",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "names the install that needs the instrumenter when its manifest cannot be found"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 8,
+      "endLine": 169,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "31455a3e0787231f7025947becd5ca45299787c9a60925dba308d682c38d5542",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "names the install that needs the instrumenter when its manifest cannot be found"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 8,
+      "endLine": 169,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "this.source !== \"checkout\"",
+      "status": "generated",
+      "id": "646bc7d95409fc7e8653c019fcbe9184d28c2369493cb0fded5cd2e6f651ad4a",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/mutation-enumeration.test.ts",
+          "path": [
+            "mutation enumeration",
+            "names the install that needs the instrumenter when its manifest cannot be found"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 24,
+      "endLine": 169,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ccdb5c1fc0f034f99832ff5b55bd3724f18ba790f68400ced31518224556ab45"
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 37,
+      "endLine": 169,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5ab32d2c8dc14f7d72b763ccc8edd73e25d32a34cd5a997fe75c2649577e33e2"
+    },
+    {
+      "file": "packages/pipeline/src/mutation-enumeration.ts",
+      "line": 169,
+      "column": 54,
+      "endLine": 169,
+      "endColumn": 62,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "35bf3cdd9eb69cb725db211e4100cde3b8054f82e326cf944f41c4bcb54cd66d"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2593,
+      "column": 3,
+      "endLine": 2597,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ac56731c35ea99e421b208eea7fb8b3b122bd50cc2d9229dcb4cacbba97b88b3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2593,
+      "column": 31,
+      "endLine": 2597,
+      "endColumn": 4,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4b320fe1c5feee899d61c88e875864cbdb27abc7e51e1978f8715e4550a331d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/lens-reuse-review.test.ts",
+          "path": [
+            "a repeat review keys the instrumenter that answers list_mutants",
+            "asks only the lens offered list_mutants again when the instrumenter's version or its source changes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 69,
+      "column": 18,
+      "endLine": 69,
+      "endColumn": 84,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "247bbe89924d84e22aca648dec16520587a26f673c894e3a3c0d9ede2af6b3cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 69,
+      "column": 55,
+      "endLine": 69,
+      "endColumn": 58,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dfd444bfedfaade07182b1edf30438b4ef025dc5dc55777f2750ec3925a1bc45"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 69,
+      "column": 69,
+      "endLine": 69,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7e66349affb49a3a265138d4cf43e66d1b467a31bb9af44be99e481c80dcab78"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 73,
+      "column": 24,
+      "endLine": 82,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5bb43d907baf2630405571753926818011b385977bb83c5815ae011203915750",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 75,
+      "column": 8,
+      "endLine": 75,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ff100ee48ad47fc64673d4462f1f4fd41a1282a7251e6b30682910eb5860b13b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 75,
+      "column": 8,
+      "endLine": 75,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "path === undefined",
+      "status": "generated",
+      "id": "344dab276d8ce419609b2122115e0aa468fa8e036bc8f7b455fd89d674805b99",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 75,
+      "column": 28,
+      "endLine": 80,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f9b512b484f26ffa488d3da4a140646c7493a7f7fd2dcfdb36af5b761381a15f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 76,
+      "column": 49,
+      "endLine": 76,
+      "endColumn": 55,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a9ec16bfaecff86f9ebb769273fa45d21f213495b9e642480418363692ff59ff"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 77,
+      "column": 6,
+      "endLine": 77,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "91ec6a9699fd4468e310dfcdbf39b263a7ff38d4289d5a50896e44489ac553c5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names the nearest manifest that names a package as its owner"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 77,
+      "column": 6,
+      "endLine": 77,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c08e22cc23a187a1bd6186d25541bc0f93af556229c7861432cb7284aa615307",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 77,
+      "column": 6,
+      "endLine": 77,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof name !== \"string\"",
+      "status": "generated",
+      "id": "cf54804d610ce93623ee09d346d1c8f597e81c222b4102045e250f47e335bc47",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 77,
+      "column": 22,
+      "endLine": 77,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "248405b801dc95abd2d0915b93fd224ac07ee567bd1aedb34c5ff9d9db241610"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 79,
+      "column": 9,
+      "endLine": 79,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "dcaed80b835e5d26249339971bfba5b0aa099348fb0c720d9be4903951cb32ce",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names the nearest manifest that names a package as its owner"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 79,
+      "column": 9,
+      "endLine": 79,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b15c10c5640f4661108079c5f95d6afc700e6957d7352e6ab2285b02a8034a11",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "Stopping at the filesystem root and asking findPackageJSON for /package.json agree unless a nameless /package.json exists, which no test can write without touching the host's root; with none, findPackageJSON returns undefined and the loop ends at the same throw."
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 79,
+      "column": 9,
+      "endLine": 79,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "parent !== dirname(path)",
+      "status": "generated",
+      "id": "9ada5d3a1344dfa8e74b7d958dd98ac3727337d2c00c80af3d9c56a1387951b0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names the nearest manifest that names a package as its owner"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 79,
+      "column": 91,
+      "endLine": 79,
+      "endColumn": 105,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "deca982649980338299065c2dacbaa0aebcc9d0a7d0543a5aea09ffed3996a41"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 81,
+      "column": 1,
+      "endLine": 81,
+      "endColumn": 72,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "0723468d05ca847a9ecb70de4c4b73e78c395b9711854805e1360053989f46e8",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "refuses a module that no manifest names as its package's"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 81,
+      "column": 17,
+      "endLine": 81,
+      "endColumn": 70,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bed0d7a75f506a160d9debdfa5d91650500c63a1630ba067cf000d03d1f4fb2a"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 87,
+      "column": 35,
+      "endLine": 110,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "54a180491d09f20c49cf7745e08d14f04fdc4734568c7246da3b886555585638",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 89,
+      "column": 15,
+      "endLine": 104,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2f3eda7cd00b97cebcaa0071ade6ae627b56d3a0c8ed7d6ba3686af843bfd19e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 90,
+      "column": 36,
+      "endLine": 103,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5b7e9d09cb2ca552f9f803948ee8cba6df7d5760340fe1df0fd0f5f3fb656f42",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 91,
+      "column": 36,
+      "endLine": 91,
+      "endColumn": 111,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8c6b5b5b795486c4613144cb10f3f62f9574a2d5a6f1fd2a237a007b769f03ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 91,
+      "column": 62,
+      "endLine": 91,
+      "endColumn": 109,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "2c8017b754fe71896ac25d16be17137a092e634a91c5acd63a46533f86533a59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 91,
+      "column": 86,
+      "endLine": 91,
+      "endColumn": 108,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "498f9f86b5814db964dedefd67040b492263b7ef41af8226900396aca8ff7411"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 97,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "15021654562fbba5efc2e17b2b8527197d92ad27d330eec8ca84af274570593f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 97,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d78ca1f5383b121936dbe8ad2b5cb410c0325fbecdb4d1d61092efbb49bd0daf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 97,
+      "endColumn": 27,
+      "mutatorName": "LogicalOperator",
+      "replacement": "parent?.startsWith(\"file:\") && resolved.url.startsWith(\"file:\") && !inInstall(parent) || inInstall(resolved.url)",
+      "status": "generated",
+      "id": "7a14cf683cb4a2dc7974b97f566ec9df3be893609dcec9435979e17bdcf075a3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 96,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2398d9adbd5b402d7d22d3d1720d71625f733ccc9c52f3a439d929e8cf523595",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 96,
+      "endColumn": 22,
+      "mutatorName": "LogicalOperator",
+      "replacement": "parent?.startsWith(\"file:\") && resolved.url.startsWith(\"file:\") || !inInstall(parent)",
+      "status": "generated",
+      "id": "f9c4cf73284662c902b9120a45845e907960c2866e9ba43df45efdc7fb99b41b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 95,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2895d6a26b32cf2924061e938d51c7ba0107c28f6f727141b439370b2083c045",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "Every resolve the hook sees comes from a file: parent, since the entry is imported from the script after registration, and a non-file resolved URL such as node:fs has no node_modules in its path, so the remaining operands decide alone."
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 95,
+      "endColumn": 36,
+      "mutatorName": "LogicalOperator",
+      "replacement": "parent?.startsWith(\"file:\") || resolved.url.startsWith(\"file:\")",
+      "status": "generated",
+      "id": "957ad01c70f81c4eb5ae610323fc401ffa515848fe7779124c8c1856b6690d29",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 94,
+      "endColumn": 31,
+      "mutatorName": "MethodExpression",
+      "replacement": "parent?.endsWith(\"file:\")",
+      "status": "generated",
+      "id": "8f139966f215cbef8844d709048dcb7e3f6a0b92204d0e5204ab1c9494d0c6d2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 4,
+      "endLine": 94,
+      "endColumn": 22,
+      "mutatorName": "OptionalChaining",
+      "replacement": "parent.startsWith",
+      "status": "generated",
+      "id": "a49d0f1237d32362eb3b416a0087361895ecfb4ce4cd506b1692d6ffc065ff39",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "Every resolve the hook sees has a parentURL: the entry is imported dynamically from the script after the hook registers, so parent is never undefined."
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 94,
+      "column": 23,
+      "endLine": 94,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c5cc44c484e9dfe6efb36ad54158247aab654e3faa60fb9df22d734face704a3"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 95,
+      "column": 4,
+      "endLine": 95,
+      "endColumn": 36,
+      "mutatorName": "MethodExpression",
+      "replacement": "resolved.url.endsWith(\"file:\")",
+      "status": "generated",
+      "id": "22dea6d39b26d1c9e9beb027a764b34006b9f96811f0a6a4974e83d5a2847b62",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 95,
+      "column": 28,
+      "endLine": 95,
+      "endColumn": 35,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "77a1d468af2bfbd7ab657299d772dd833759f98a3da357021feb8ed8321e3784"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 96,
+      "column": 4,
+      "endLine": 96,
+      "endColumn": 22,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "inInstall(parent)",
+      "status": "generated",
+      "id": "c05e4669045003842ddcb13f691f00f272b3d40b73934e4db72e5aed05866001",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 98,
+      "column": 5,
+      "endLine": 101,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "44e6645f9bf92db437a990898bcc57612c45a42603385e89ff7c24fd873dbfd6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 99,
+      "column": 4,
+      "endLine": 99,
+      "endColumn": 45,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "imported[packageAt(parent)] &&= new Set()",
+      "status": "generated",
+      "id": "42ecf539eaeed319e207923a16fe66460cd170addffc3bae9be65fa475c59577",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 100,
+      "column": 4,
+      "endLine": 100,
+      "endColumn": 61,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "7d79cc43ad37c30ced12a9606208d857cedff04abb304faeff8d46be7da01f29",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 106,
+      "column": 16,
+      "endLine": 107,
+      "endColumn": 9,
+      "mutatorName": "MethodExpression",
+      "replacement": "Object.keys(imported)",
+      "status": "generated",
+      "id": "63e3a6eb2f4086c64f2dfa1fbf985f2fc0223a8dbb4303bb50185a06c5b7e1c5",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "orders the importing packages, and each one's imports, by name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 108,
+      "column": 7,
+      "endLine": 108,
+      "endColumn": 45,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4ce1e3ed1a7950971651256c5495626ed08f62d39d56e25989a61f995f555136",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 108,
+      "column": 15,
+      "endLine": 108,
+      "endColumn": 45,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "1080fb8d8437112205e68e0d77828632b7b7338add8b5c923abbdaa239a5aaa8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 108,
+      "column": 20,
+      "endLine": 108,
+      "endColumn": 44,
+      "mutatorName": "MethodExpression",
+      "replacement": "[...imported[by]]",
+      "status": "generated",
+      "id": "bec236b3ea90498da8d757985e18c80ede89b319337061d252d0dac7e5b8cc7e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "orders the importing packages, and each one's imports, by name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 108,
+      "column": 20,
+      "endLine": 108,
+      "endColumn": 37,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "7f3f685a6c3ca42d3d274e9fe209321385a2179d5ba34ce8e73a290dc3fc5935",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 109,
+      "column": 1,
+      "endLine": 109,
+      "endColumn": 73,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "c500d01ee2a65582afd52f92add904e094585d44f50ecd244a0fc08ec522e89b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 109,
+      "column": 22,
+      "endLine": 109,
+      "endColumn": 71,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "bbddd9b574558cc51249e2a783eaa6e7d754bae28bf4547eef1b1285d6ac6304"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 114,
+      "column": 53,
+      "endLine": 123,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7d72df3e3afc5c66cd4684e54ab6239da149d1c02406206d4040e9dac478e110",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 115,
+      "column": 41,
+      "endLine": 115,
+      "endColumn": 105,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "351c2eec561042d10b4be49e83902362476a1781aa51040b71d586b8347af20b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 115,
+      "column": 74,
+      "endLine": 115,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0fee4591947bc6260c37c523ddc3e9345d6340104f33346b9ad1770a8090fdcb"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 115,
+      "column": 107,
+      "endLine": 119,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "137f4801b9f7e7b18598a53744507095e434ba4a0ecd6bf2b6c2857d8531de1f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 117,
+      "column": 12,
+      "endLine": 117,
+      "endColumn": 18,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "de988d5c0f9f9b664d65c5879cce9bf91c84a7f8328d6fcf64909830e4adbb37"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 118,
+      "column": 13,
+      "endLine": 118,
+      "endColumn": 29,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 * 1024 / 1024",
+      "status": "generated",
+      "id": "b33136eae601776257b78952b370c38b34c917639e11bd7f4fe051b7e9534a56",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 118,
+      "column": 13,
+      "endLine": 118,
+      "endColumn": 22,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 / 1024",
+      "status": "generated",
+      "id": "dcfd6c446ef4b12f73e00b493cc718f96f53828444b142461d142f468b703ed7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 120,
+      "column": 5,
+      "endLine": 120,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b5d25587e6b7d1329932b167cfc85c93477031b6d4509cd4ec25dede3c425a45",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 120,
+      "column": 5,
+      "endLine": 120,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4a3cf68a892a2906bad183ace98ef15075a194e73b5a31b43f7b5effdf52c6b4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "refuses an entry Node cannot load"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 120,
+      "column": 5,
+      "endLine": 120,
+      "endColumn": 21,
+      "mutatorName": "EqualityOperator",
+      "replacement": "run.status === 0",
+      "status": "generated",
+      "id": "190400dda042e653448218ca42ae82f7050b821a8376ee1d6b298d84248b428f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 120,
+      "column": 23,
+      "endLine": 120,
+      "endColumn": 106,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "577576f95b05e38c6369f3ab0a107900a3f4bf2874e5641e697a5cca82bb6a4a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "refuses an entry Node cannot load"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 120,
+      "column": 39,
+      "endLine": 120,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e22530f00c6b8bf097da02bfb65f0b98ae3fd9e848e673572be0b44baa447095"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 121,
+      "column": 15,
+      "endLine": 121,
+      "endColumn": 35,
+      "mutatorName": "MethodExpression",
+      "replacement": "run.stdout.trimStart()",
+      "status": "generated",
+      "id": "a9a6ed74ed23ced4b999ada076e69cf7e1baed247b6fab4beaab3fadb9eb3562",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 121,
+      "column": 42,
+      "endLine": 121,
+      "endColumn": 46,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "96a8a41fa0297a7495e9cbe974d3c8c27292298463d22ef7baf6552447b0d07b"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 122,
+      "column": 25,
+      "endLine": 122,
+      "endColumn": 41,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "lines.length + 1",
+      "status": "generated",
+      "id": "ac92fadf79714ed930675996f374648e6a2db97348d2870a5aefb86ef97b43ab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 168,
+      "column": 27,
+      "endLine": 180,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "eb533ba1859f36bfc7c0869b0b7d27b28376b2a56a3a4c2b0f84602352a490c9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 169,
+      "column": 18,
+      "endLine": 174,
+      "endColumn": 4,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "dd4eed86fbd3c50987b4c9d688e73ad8f243bbd2976a3fdd4cab6557b5c1e94a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 171,
+      "column": 19,
+      "endLine": 171,
+      "endColumn": 56,
+      "mutatorName": "LogicalOperator",
+      "replacement": "record.producerPackages?.[name] && {}",
+      "status": "generated",
+      "id": "c7ca800d2a2cca735466b437685eaff9a7b976d2586bb075bcf523f9ec1e4cdc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "differences",
+            "finds nothing in a matching record"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 171,
+      "column": 19,
+      "endLine": 171,
+      "endColumn": 50,
+      "mutatorName": "OptionalChaining",
+      "replacement": "record.producerPackages[name]",
+      "status": "generated",
+      "id": "25737a0202619f18f4a4acf288a7497c0716818ba8fb3f4178a6204221acf38e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "differences",
+            "finds nothing in a matching record"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 171,
+      "column": 66,
+      "endLine": 172,
+      "endColumn": 43,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "d521f00b5e85349ccaa8abbf4a39c02ea2650d7cce63d3c2536e12e9ae38f49b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 172,
+      "column": 14,
+      "endLine": 172,
+      "endColumn": 42,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "e08933f7fa2e06b07fc0e6822eb280814708dcd629ca7552a13ea952bb7e4c8a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 172,
+      "column": 23,
+      "endLine": 172,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "96d429d82545f1e44f67997c4a0f408ca5a60efe3eda62d32277ba2545cc9175"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 177,
+      "column": 30,
+      "endLine": 177,
+      "endColumn": 44,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "was.has(line)",
+      "status": "generated",
+      "id": "020d624253654d4ec8caeb05f5b0a2e04025c2566db526fe06822fd84e5dbd04",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 177,
+      "column": 30,
+      "endLine": 177,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "11eb2492aebe327671dea26796797dc9fa620da3bb0f8ce599469e30b5816852",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 177,
+      "column": 30,
+      "endLine": 177,
+      "endColumn": 44,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "ce07b25e72502b8ed2e0782e14e0555de038282b4462494383a5240ba36e681f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 177,
+      "column": 46,
+      "endLine": 177,
+      "endColumn": 111,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "767d731de9ab5587b034afe8454dfe5b821a8083249f9b1072c888b5729f0997",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 177,
+      "column": 57,
+      "endLine": 177,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "933526e2eae64a68deb906e3e08f06525026f5ac5c9632e5b87a9023e2f36284"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 179,
+      "column": 7,
+      "endLine": 179,
+      "endColumn": 21,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "now.has(line)",
+      "status": "generated",
+      "id": "8b1cddd3476f8841801629af7d74b8347cadf55d4d4edbc28684f4b71db7b964",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 179,
+      "column": 7,
+      "endLine": 179,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "56787381f37e92c6127e67caddc580b30fa8ea6f794abbf1e95fda3cbe40281a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the recorded code hashes",
+            "match what each producer reaches now"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 179,
+      "column": 7,
+      "endLine": 179,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "126d0f317214e83dd06c190cd743100989e7f92e390959ce12edd328b911c8ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 179,
+      "column": 23,
+      "endLine": 179,
+      "endColumn": 94,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "276e1fe6fc000267f8c7573691de8b9ad006df379e0898f78705fb4ded71df59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "names a package a producer now imports, and one it no longer does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 179,
+      "column": 34,
+      "endLine": 179,
+      "endColumn": 92,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "69ae0df316b1376a3823333dfec56c13ab96f14457997f6d7a81d7ecb1eda110"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 196,
+      "column": 2,
+      "endLine": 202,
+      "endColumn": 23,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "47aa6706c10bfe5ac816a9f89c4a3c7d68d8f31e81c914320a1f280ae8ee2b16",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "render",
+            "writes each producer's packages under the package that imports them"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 197,
+      "column": 3,
+      "endLine": 202,
+      "endColumn": 23,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f3e75ed5613c719ac90c958d4d877880ebdfd8682f04a030de0ccf422c682bc8"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 199,
+      "column": 5,
+      "endLine": 200,
+      "endColumn": 112,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "f9ad3c2a92336937d4a755251e79ad1cf1cec73892517d62a8ca049bbcb77089",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "render",
+            "writes each producer's packages under the package that imports them"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 112,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7c482b1ea9450b5a08b8c84335c0f1687871014211657872a7a59c4c88d97104"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 200,
+      "column": 48,
+      "endLine": 200,
+      "endColumn": 90,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "afb1bba8dc06b0a607ba8f485d96a79fea61508dc9356a22a1a65f4bb1b3d196",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "render",
+            "writes each producer's packages under the package that imports them"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 200,
+      "column": 57,
+      "endLine": 200,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b0c85f6fad93ed2320e720d03ea860ef401389e43f6ec8f41ea0c845fc0f9835"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 200,
+      "column": 97,
+      "endLine": 200,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a292cd2d33b3cb8d5b72f4fd5b294f79141923997bad94cd1b04d0fdad3e3f5b"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 202,
+      "column": 10,
+      "endLine": 202,
+      "endColumn": 14,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "93be4f73b11132d57a46fc973be1990b697b2e3258cf23ab8d51557f46e4d1c5"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 205,
+      "column": 2,
+      "endLine": 205,
+      "endColumn": 118,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1332ea9fc999ab2035aaafe75d6e7435a3300b4b9f08df1bfd424269e1026ec5"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 206,
+      "column": 2,
+      "endLine": 206,
+      "endColumn": 57,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "96fa0a9265fb3de8c13f21558b293b80bfe0ea23eab63729b2e498b4391e775f"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 216,
+      "column": 2,
+      "endLine": 216,
+      "endColumn": 6,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8b82d432ef027bd50a28327f23f5022292718d91ceb321599bc55e2884a9ee69"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 217,
+      "column": 2,
+      "endLine": 217,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b6cb08073bee51267ab30f84d91ce9371c398646271bbc99fb02d0a5aee7b0a3"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 218,
+      "column": 15,
+      "endLine": 218,
+      "endColumn": 19,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5b6e7422ecd92bb9bc8a3da95125b701b8c67897f0753f32fae077fb1a80ab1a"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 219,
+      "column": 2,
+      "endLine": 219,
+      "endColumn": 8,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8c6b12032319b9e6341b2be83e5bfb38ce2cbdd8aa12ba9a8ed1e76007996a34"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 4,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "abb0c93f410c3e1d0d341f904d2af674ff7c1737c4a45109f31b0f6aaa63ae7f",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes-import.test.mjs",
+          "path": [
+            "runs nothing when another module imports the script"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 4,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0479efde21e58361e5bfca938e36f420a2052c0eb1dfa537b71f49b108d24125",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 4,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "LogicalOperator",
+      "replacement": "process.argv[1] === fileURLToPath(import.meta.url) || process.argv[2] === \"--imports\"",
+      "status": "generated",
+      "id": "f69c3f9fe5dfb39fa38207868cf82dc26b50a293dceb4f62fe491146c42d1705",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 4,
+      "endLine": 223,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6abaf3c1e626ba81e345dce2b44210cec6bb9695cf52e3491d5cac1a78ac7680",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "checks nothing when another module imports it with --imports among its own arguments"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 4,
+      "endLine": 223,
+      "endColumn": 54,
+      "mutatorName": "EqualityOperator",
+      "replacement": "process.argv[1] !== fileURLToPath(import.meta.url)",
+      "status": "generated",
+      "id": "5fe390a3e1bd5328f28b10be0bec3d5489935379ed26465fdaa36330151e595b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 58,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d07500a7a8ab2bb0d1613e59179e227a0292a98970c8664097dae806e72256d1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 58,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "EqualityOperator",
+      "replacement": "process.argv[2] !== \"--imports\"",
+      "status": "generated",
+      "id": "ca91cb3b18939054c7f731653b631fe5efd4ec07c8eba1913e2aedfa88f996ea",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 78,
+      "endLine": 223,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3b12a2c6b8e92142ed9d22951dc3960d70d6a04e5ff541c11ecec12897cff0a4"
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 223,
+      "column": 91,
+      "endLine": 225,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6fe1f04d2e43fa9cd5eec83ac9bc5469e76738fa2a43e255d7ad5cc15ab45138",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the check over a scratch repository",
+            "lists the packages the modules import as they load, under the package that imports each"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 225,
+      "column": 11,
+      "endLine": 225,
+      "endColumn": 61,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "35257e960f0a14b0f2dc8dd46347b818f1b06e7577b78ff6a9e4191573f6d8b4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "checks nothing when another module imports it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 225,
+      "column": 11,
+      "endLine": 225,
+      "endColumn": 61,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "44f8b1cb58354daac14a52461c41dcc7fb33c2ff2aaf71a2d68b269bd1eb6211",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 225,
+      "column": 11,
+      "endLine": 225,
+      "endColumn": 61,
+      "mutatorName": "EqualityOperator",
+      "replacement": "process.argv[1] !== fileURLToPath(import.meta.url)",
+      "status": "generated",
+      "id": "b0778fea58be838bd44c463086fd32845c4f293c1884bb4d9098eaafb29f7fbe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/code-hashes.mjs",
+      "line": 238,
+      "column": 28,
+      "endLine": 238,
+      "endColumn": 79,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4ee955fa94343fa2a81342d0cbc850f7c1df292cbe1c0096297c69ae4123219d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/code-hashes.test.mjs",
+          "path": [
+            "the command",
+            "writes a record that it then reads as matching"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 271,
+  "omitted": 0,
+  "unmutated": []
+}
