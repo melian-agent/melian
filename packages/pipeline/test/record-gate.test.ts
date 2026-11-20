@@ -1,3 +1,5 @@
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import {
 	Changeset,
 	defaultConfig,
@@ -34,20 +36,21 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
 const contracts = "You are the contracts reviewer";
-const finding = (file: string, severity: string) => ({
+const finding = (file: string, severity: string, line = 1, rule = "changed-return", causes = [{ file, line }]) => ({
 	file,
-	line: 1,
-	rule: "changed-return",
+	line,
+	rule,
 	severity,
 	explanation: { what: "The value changed.", why: "This change rewrote it.", fix: "Restore it." },
 	failureScenario: "A caller that reads the value expects 1 and gets 2.",
-	evidence: [{ file, line: 1, role: "cause" }],
+	evidence: causes.map((cause) => ({ ...cause, role: "cause" })),
 });
 const checks: CheckRunRecord[] = [
 	{ name: "guardrails", status: "ran", findings: 0, notes: [] },
@@ -61,15 +64,27 @@ const reports = (reported: object) => (messages: readonly Message[]) =>
 		? fauxAssistantMessage("Done.")
 		: fauxAssistantMessage(fauxToolCall("report_finding", reported as never), { stopReason: "toolUse" });
 const quiet = () => fauxAssistantMessage("No findings.");
+// One reply per finding, each reporting it, then the lens's last word.
+const reportsEach = (...found: object[]): ScriptedReply[] => [
+	...found.map(
+		(each) => () => fauxAssistantMessage(fauxToolCall("report_finding", each as never), { stopReason: "toolUse" }),
+	),
+	() => fauxAssistantMessage("Done."),
+];
 
 let repo: string;
 let older: string;
 const harnesses: Harness[] = [];
 
-// main moves from `older` to a commit that changes src/b.ts, and feature, cut from main's tip, changes src/a.ts.
+// main moves from `older` to a commit that changes src/b.ts, and feature, cut from main's tip, changes src/a.ts. No
+// commit changes src/u.ts.
 beforeEach(() => {
 	repo = createRepository();
-	older = commit(repo, { "src/a.ts": lines("export const a = 1;"), "src/b.ts": lines("export const b = 1;") });
+	older = commit(repo, {
+		"src/a.ts": lines("export const a = 1;"),
+		"src/b.ts": lines("export const b = 1;"),
+		"src/u.ts": lines("export const u = 1;"),
+	});
 	commit(repo, { "src/b.ts": lines("export const b = 2;") });
 	gitIn(repo, "checkout", "--quiet", "-b", "feature");
 	commit(repo, { "src/a.ts": lines("export const a = 2;") });
@@ -366,3 +381,231 @@ describe("the merge gate over a changeset's records", () => {
 		expect(outcome.ended.map(({ finding }) => finding)).toEqual([id]);
 	});
 });
+
+// Each counted finding as its path, line, resolution and severity, in the verdict's order.
+const placed = (outcome: RecordGate) =>
+	[...Object.values(outcome.verdict.findings).flat()].map((each) => [
+		each.properties.path,
+		each.lines()[0],
+		each.properties.resolution,
+		each.properties.severity,
+	]);
+
+// feature's head changes four lines of src/a.ts and adds src/c.ts, so findings can sit on several changed lines.
+function widen() {
+	commit(repo, {
+		"src/a.ts": lines("export const a = 2;", "export const a2 = 2;", "export const a3 = 3;", "export const a4 = 4;"),
+		"src/c.ts": lines("export const c = 1;", "export const c2 = 2;"),
+	});
+}
+
+describe("the merge gate's merged findings", () => {
+	it("keeps each finding at its strictest resolution and severity, whichever round raised it", async () => {
+		widen();
+		const store = exported();
+		const a = (line: number, severity: string) => finding("src/a.ts", severity, line);
+		await review(store, "main...feature", reportsEach(a(1, "P1"), a(2, "P2"), a(3, "P0"), a(4, "P1")));
+		await review(store, "main...feature", reportsEach(a(1, "P2"), a(2, "P1"), a(3, "P1"), a(4, "P0")));
+		const outcome = await gate(await listed(store));
+
+		expect(placed(outcome)).toEqual([
+			["src/a.ts", 1, "block", "P1"],
+			["src/a.ts", 2, "block", "P1"],
+			["src/a.ts", 3, "block", "P0"],
+			["src/a.ts", 4, "block", "P0"],
+		]);
+		expect([outcome.passes(), outcome.verdict.status, outcome.verdict.blocking]).toEqual([false, "findings", true]);
+	});
+
+	it("orders the findings of every round by path, then line, then ID", async () => {
+		widen();
+		const store = exported();
+		await review(store, "main...feature", reportsEach(finding("src/c.ts", "P1", 2), finding("src/a.ts", "P1", 4)));
+		await review(
+			store,
+			"main...feature",
+			reportsEach(finding("src/c.ts", "P1", 1), finding("src/a.ts", "P1", 2), {
+				...finding("src/a.ts", "P1", 2),
+				endLine: 3,
+			}),
+		);
+		const outcome = await gate(await listed(store));
+
+		expect(placed(outcome).map(([path, line]) => [path, line])).toEqual([
+			["src/a.ts", 2],
+			["src/a.ts", 2],
+			["src/a.ts", 4],
+			["src/c.ts", 1],
+			["src/c.ts", 2],
+		]);
+		const ids = outcome.verdict.findings.block.slice(0, 2).map(({ id }) => id);
+		expect(ids).toEqual([...ids].sort());
+	});
+
+	// A P1 on a line the merge leaves alone is pre-existing, and so advisory.
+	it.each([
+		["acknowledge", "P2", 1],
+		["advisory", "P1", 2],
+	])("reads findings that neither pass nor block when the one finding is %s", async (resolution, severity, line) => {
+		commit(repo, { "src/a.ts": lines("export const a2 = 2;", "export const a = 1;") });
+		const store = exported();
+		await review(store, "main...feature", [reports(finding("src/a.ts", severity, line))]);
+		const outcome = await gate(await listed(store));
+
+		expect([placed(outcome), outcome.verdict.status, outcome.verdict.blocking]).toEqual([
+			[["src/a.ts", line, resolution, severity]],
+			"findings",
+			false,
+		]);
+		expect(outcome.passes()).toBe(resolution === "advisory");
+	});
+
+	it("does not pass a head with one finding that blocks and one that awaits an answer", async () => {
+		widen();
+		const store = exported();
+		await review(store, "main...feature", reportsEach(finding("src/a.ts", "P1"), finding("src/a.ts", "P2", 2)));
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.passes(), placed(outcome).map(([, , resolution]) => resolution)]).toEqual([
+			false,
+			["block", "acknowledge"],
+		]);
+	});
+
+	it("counts a finding off the merge's diff whose cause is proved by a hunk on it", async () => {
+		commit(repo, { "src/z.ts": lines("export const z = 1;") });
+		const store = exported();
+		const proved = finding("src/u.ts", "P1", 1, "changed-return", [
+			{ file: "src/b.ts", line: 1 },
+			{ file: "src/z.ts", line: 1 },
+		]);
+		await at("main", older, () => review(store, "main...feature", [reports(proved)]));
+		const outcome = await gate(await listed(store));
+
+		const [counted] = Object.values(outcome.verdict.findings).flat();
+		expect(counted?.properties.path).toBe("src/u.ts");
+		expect(counted?.properties.trigger?.file).toBe("src/b.ts");
+		expect(counted?.properties.trigger?.proof?.map(({ file }) => file)).toEqual(["src/b.ts", "src/z.ts"]);
+	});
+
+	it("counts a finding off the merge's diff whose trigger is on it", async () => {
+		const store = exported();
+		const proved = finding("src/b.ts", "P1", 1, "changed-return", [{ file: "src/a.ts", line: 1 }]);
+		await review(store, "main...feature", [reports(proved)]);
+		const outcome = await gate(await listed(store));
+
+		expect(rule(outcome)).toEqual([["src/b.ts", "block"]]);
+	});
+
+	it("lists no dismissal of a finding in a file the merge's diff leaves alone", async () => {
+		const store = exported();
+		const { harness, changeset, verdict } = await at("main", older, () =>
+			review(store, "main...feature", blocks("src/b.ts")),
+		);
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "b is meant to be 2", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.rounds.length, rule(outcome), outcome.verdict.dismissed]).toEqual([1, [], []]);
+	});
+});
+
+describe("the merge gate's refusals", () => {
+	it("counts no round of another changeset", async () => {
+		const store = exported();
+		await review(store, "main...feature", blocks());
+		const merge = await Changeset.resolve(repo, "main...feature");
+		const outcome = await RecordGate.decide(await listed(store), `${merge.id}-other`, {
+			repoRoot: repo,
+			target: gitIn(repo, "rev-parse", "main"),
+			revision: merge.revision,
+			config,
+			policy: worktree,
+			tier: TierAccount.of(config, "full", []),
+			counts: everyRecordCounts,
+		});
+
+		expect([outcome.rounds, rule(outcome), outcome.verdict.status]).toEqual([[], [], "not-reviewed"]);
+	});
+
+	it("throws an error that is not a record's own", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		const broken = new Error("the counting rule broke");
+
+		await expect(
+			gate(await listed(store), () => {
+				throw broken;
+			}),
+		).rejects.toBe(broken);
+	});
+
+	it("cannot decide when git cannot tell whether a round's base is in the tip's history", async () => {
+		const first = gitIn(repo, "rev-parse", "feature");
+		commit(repo, { "src/a.ts": lines("export const a = 3;") });
+		const store = exported();
+		await at("main", first, () => review(store, "main...feature"));
+		const records = await listed(store);
+		const merge = await Changeset.resolve(repo, "main...feature");
+		// The round's base is feature's first commit; removing its object leaves git unable to answer.
+		const object = gitIn(repo, "rev-parse", "--git-path", `objects/${first.slice(0, 2)}/${first.slice(2)}`);
+		rmSync(join(repo, object));
+		const outcome = await RecordGate.decide(records, merge.id, {
+			repoRoot: repo,
+			target: gitIn(repo, "rev-parse", "main"),
+			revision: merge.revision,
+			config,
+			policy: worktree,
+			tier: TierAccount.of(config, "full", []),
+			counts: everyRecordCounts,
+		});
+
+		expect([outcome.verdict.status, outcome.failures]).toEqual([
+			"not-reviewed",
+			[`git cannot tell whether round ${roundId(records)}'s base ${first} is in the base tip's history`],
+		]);
+	});
+
+	it("cannot decide when a counted round's records cannot stand for it", async () => {
+		const store = exported();
+		const { changeset } = await review(store, "main...feature", blocks());
+		const records = (await listed(store)).map((each) => SharedRecord.parseEnvelope(each));
+		const round = records.find(({ kind }) => kind === "round")!;
+		const named = new Set(round.manifest()!.read.map(({ id }) => id));
+		const account = records.find(({ kind, id }) => kind === "account" && named.has(id))!;
+		const second = SharedRecord.parseEnvelope({
+			...account.toJSON(),
+			payload: { ...(account.payload as object), allowSkip: ["static.tsc"] },
+		});
+		const byId = new Map(records.map((each) => [each.id, each]));
+		const { base, head } = changeset.revision;
+		const manifest = round.manifest()!;
+		const twice = ReviewRecords.of(changeset.id, { base, head }).round(
+			[...manifest.read.map(({ id }) => byId.get(id)!), second],
+			undefined,
+			manifest.replaces,
+			manifest.before,
+		);
+		const outcome = await gate(
+			[...records.filter((each) => each !== round), second, twice].map((each) => each.toJSON()),
+		);
+
+		expect([outcome.passes(), outcome.verdict.status, outcome.rounds, outcome.failures]).toEqual([
+			false,
+			"not-reviewed",
+			[],
+			[`round ${twice.id} names no account, or more than one`],
+		]);
+	});
+});
+
+function roundId(records: readonly RecordEnvelope[]): string {
+	return SharedRecord.parseEnvelope(records.find(({ kind }) => kind === "round")!).id;
+}
