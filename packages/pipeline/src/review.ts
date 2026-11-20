@@ -7,6 +7,7 @@ import {
 	type Decider,
 	type Decision,
 	defaultScrutinyLevel,
+	describeBudgetEnd,
 	describeLineage,
 	EscalationRule,
 	type EscalationTrigger,
@@ -722,7 +723,14 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 				if (failed !== undefined) return failed;
 				plan = await planOf();
-				if (plan === undefined) return { status: "unanswered", reason: "the planner recorded no attack plan" };
+				if (plan === undefined) {
+					const ended = await budgetEnded(runtime, planner, context);
+					const reason =
+						ended === undefined
+							? "the planner recorded no attack plan"
+							: `${describeBudgetEnd(ended)}, before the planner recorded an attack plan`;
+					return { status: "unanswered", reason };
+				}
 				const key = `${lens.key}/prober`;
 				let prober = started.children[key];
 				if (prober === undefined) {
