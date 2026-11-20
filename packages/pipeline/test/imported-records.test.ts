@@ -161,7 +161,9 @@ describe("ImportedRecords.verification", () => {
 	const one = [{ key: "1111111111111111", claims: [claimKey] }];
 
 	it("answers every candidate the record says is done, with the verdicts of their claims", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [
+			verification([{ candidate: "1111111111111111", outcome: done }]),
+		]);
 		expect(imported.verification(request, revision, one, () => false)).toEqual({
 			outcomes: { "1111111111111111": done },
 			claims: [claim],
@@ -170,14 +172,23 @@ describe("ImportedRecords.verification", () => {
 
 	it("names no version on a claim whose source the record holds with none", () => {
 		const bare = { id, source: { check: "static.biome" }, verification: verdict };
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }], [bare])]);
+		const imported = ImportedRecords.from(changeset, [
+			verification([{ candidate: "1111111111111111", outcome: done }], [bare]),
+		]);
 		expect(
-			imported.verification(request, revision, [{ key: "1111111111111111", claims: [`${id} static.biome@`] }], () => false),
+			imported.verification(
+				request,
+				revision,
+				[{ key: "1111111111111111", claims: [`${id} static.biome@`] }],
+				() => false,
+			),
 		).toEqual({ outcomes: { "1111111111111111": done }, claims: [bare] });
 	});
 
 	it("answers nothing under another request or revision", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [
+			verification([{ candidate: "1111111111111111", outcome: done }]),
+		]);
 		expect(imported.verification("f".repeat(64), revision, one, () => false)).toBeUndefined();
 		expect(imported.verification(request, `${other}..${head}`, one, () => false)).toBeUndefined();
 	});
@@ -195,13 +206,17 @@ describe("ImportedRecords.verification", () => {
 	});
 
 	it("answers nothing when this host refuses the model that judged a candidate", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [
+			verification([{ candidate: "1111111111111111", outcome: done }]),
+		]);
 		expect(imported.verification(request, revision, one, (model) => model === "openai/sol")).toBeUndefined();
 		expect(imported.verification(request, revision, one, (model) => model === "openai/terra")).toBeDefined();
 	});
 
 	it("answers nothing when the record judged none of a candidate's claims", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }], [])]);
+		const imported = ImportedRecords.from(changeset, [
+			verification([{ candidate: "1111111111111111", outcome: done }], []),
+		]);
 		expect(imported.verification(request, revision, one, () => false)).toBeUndefined();
 	});
 });
