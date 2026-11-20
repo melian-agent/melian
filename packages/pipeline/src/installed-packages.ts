@@ -231,14 +231,12 @@ class Walk {
 	// A package directory's whole manifest, since `exports`, `main` and `type` change what runs at one version, or that
 	// it has none, since Node can still load it. Its bytes, unparsed, since Node strips a byte-order mark JSON refuses.
 	#release(directory: string): string[] {
-		if (!existsSync(join(directory, "package.json"))) return ["no manifest"];
+		const manifest = join(directory, "package.json");
+		if (!existsSync(manifest)) return ["no manifest"];
 		try {
-			return [
-				"manifest",
-				createHash("sha256")
-					.update(readFileSync(join(directory, "package.json")))
-					.digest("hex"),
-			];
+			// A FIFO or a device would block the read, so only a regular file is read.
+			if (!lstatSync(manifest).isFile()) throw new Error("not a regular file");
+			return ["manifest", createHash("sha256").update(readFileSync(manifest)).digest("hex")];
 		} catch {
 			this.#odd.push(this.#place(directory));
 			return ["unreadable manifest"];

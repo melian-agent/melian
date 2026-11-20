@@ -166,7 +166,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/harness.ts": "0d20c62adf957b5f8fcd759c3c558b36ddc92b35677fd622d17bc372fda16c32",
 
-	"packages/pipeline/src/installed-packages.ts": "7fa1703751d6b5c00b2734f7f3e5300193d441f8b6f83e9e291aa1bb1fca36ec",
+	"packages/pipeline/src/installed-packages.ts": "2e1ba81b6192035c23a7aa1480acea1b4dcef3f5a1006171474853568fc81989",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 

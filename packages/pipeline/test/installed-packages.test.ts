@@ -604,6 +604,13 @@ describe("Install.read", () => {
 		});
 	});
 
+	it("leaves the install unidentified, naming the place, for a manifest that is no regular file", () => {
+		rmSync(join(scratch, "node_modules", "sdk", "package.json"));
+		execFileSync("mkfifo", [join(scratch, "node_modules", "sdk", "package.json")]);
+		expect(read()).toMatchObject({ unrecognised: ["node_modules/sdk"], identified: false });
+		expect(read().entries).toContainEqual(["node_modules/sdk", "unreadable manifest"]);
+	});
+
 	it("identifies an install where nothing links out", () => {
 		expect(read()).toMatchObject({ outside: [], identified: true });
 	});
