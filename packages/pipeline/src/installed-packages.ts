@@ -198,7 +198,9 @@ class Walk {
 		try {
 			entries = readdirSync(directory, { withFileTypes: true });
 		} catch {
-			throw new InstalledPackagesError(`Melian cannot read ${this.#place(directory)} in its install.`);
+			// A place the walk cannot read may hold anything, so the install it is in stands for no other.
+			this.#odd.push(this.#place(directory));
+			return;
 		}
 		if (mode === "package") {
 			this.#packages.add(directory);
@@ -221,16 +223,19 @@ class Walk {
 	}
 
 	// A package directory's whole manifest, since `exports`, `main` and `type` change what runs at one version, or that
-	// it has none, since Node can still load it. Its bytes, not core's canonical JSON, which refuses a fraction.
+	// it has none, since Node can still load it. Its bytes, unparsed, since Node strips a byte-order mark JSON refuses.
 	#release(directory: string): string[] {
 		if (!existsSync(join(directory, "package.json"))) return ["no manifest"];
-		let manifest: Buffer;
 		try {
-			manifest = readFileSync(join(directory, "package.json"));
-			JSON.parse(manifest.toString("utf8"));
+			return [
+				"manifest",
+				createHash("sha256")
+					.update(readFileSync(join(directory, "package.json")))
+					.digest("hex"),
+			];
 		} catch {
-			throw new InstalledPackagesError(`Melian cannot read the installed package at ${this.#place(directory)}.`);
+			this.#odd.push(this.#place(directory));
+			return ["unreadable manifest"];
 		}
-		return ["manifest", createHash("sha256").update(manifest).digest("hex")];
 	}
 }

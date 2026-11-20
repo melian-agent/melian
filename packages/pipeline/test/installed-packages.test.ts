@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+	chmodSync,
 	cpSync,
 	mkdirSync,
 	mkdtempSync,
@@ -349,11 +350,25 @@ describe("Install.read", () => {
 		]);
 	});
 
-	it("fails, naming the place, when a scope links to a file", () => {
+	it("leaves the install unidentified, naming the place, when a scope links to a file", () => {
 		mkdirSync(join(scratch, "store"));
 		writeFileSync(join(scratch, "store", "file"), "");
 		symlinkSync(join(scratch, "store", "file"), join(scratch, "node_modules", "@scope"));
-		expect(failure(() => read())).toBe("Melian cannot read store/file in its install.");
+		expect(read()).toMatchObject({ unrecognised: ["store/file"], identified: false });
+	});
+
+	it("leaves the install unidentified, naming the place, for a directory it cannot read", (context) => {
+		if (process.getuid?.() === 0) {
+			process.stderr.write("skipped: root reads a directory whatever its mode\n");
+			context.skip();
+		}
+		mkdirSync(join(scratch, "node_modules", ".cache"));
+		chmodSync(join(scratch, "node_modules", ".cache"), 0);
+		try {
+			expect(read()).toMatchObject({ unrecognised: ["node_modules/.cache"], identified: false });
+		} finally {
+			chmodSync(join(scratch, "node_modules", ".cache"), 0o755);
+		}
 	});
 
 	it("keys a directory named like a scope inside a package as no package", () => {
@@ -454,9 +469,20 @@ describe("Install.read", () => {
 		expect(digest()).toBe(first);
 	});
 
-	it("fails, naming the place, on a manifest that is not JSON", () => {
-		install("sdk", "{");
-		expect(failure(() => read())).toBe("Melian cannot read the installed package at node_modules/sdk.");
+	it.each([
+		["a byte-order mark, which Node strips", `\uFEFF${JSON.stringify({ name: "sdk", version: "2.0.0" })}`],
+		["text that is not JSON", "{"],
+	])("keys a manifest that holds %s by its bytes", (_, text) => {
+		install("sdk", text);
+		expect(read()).toMatchObject({ unrecognised: [], identified: true });
+		expect(read().entries).toContainEqual(manifest("node_modules/sdk"));
+	});
+
+	it("leaves the install unidentified, naming the place, for a manifest it cannot read", () => {
+		rmSync(join(scratch, "node_modules", "sdk", "package.json"));
+		mkdirSync(join(scratch, "node_modules", "sdk", "package.json"));
+		expect(read()).toMatchObject({ unrecognised: ["node_modules/sdk"], identified: false });
+		expect(read().entries).toContainEqual(["node_modules/sdk", "unreadable manifest"]);
 	});
 
 	it("fails, naming the module, when no node_modules holds it", () => {
