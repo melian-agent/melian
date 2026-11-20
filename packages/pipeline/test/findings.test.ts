@@ -587,6 +587,36 @@ describe("the findings document", () => {
 			expect(read!.properties.pastDismissals).toEqual([{ ...dismissal, replacedAt: again.at }]);
 		});
 
+		it("takes a static finding's dismissal made again under a new run, with the new run", async () => {
+			const linted = Finding.create({ ...input, source: { check: "static.example", version: "1" } });
+			const id = linted.properties.id;
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "a", task: 1 }),
+				context,
+			);
+			await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1", "P1"), context);
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "b", task: 2 }),
+				context,
+			);
+			const replaced = await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1", "P1"), context);
+			expect(replaced).toEqual(dismissal);
+			expect((await lifecycle(harness, id))?.dismissedSighting?.run).toBe("b");
+		});
+
+		it("changes nothing when a dismissal shown at no severity is made again", async () => {
+			const linted = Finding.create({ ...input, source: { check: "static.example", version: "1" } });
+			const id = linted.properties.id;
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "a", task: 1 }),
+				context,
+			);
+			await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1"), context);
+			const again = await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1"), context);
+			expect(again).toBeUndefined();
+			expect((await lifecycle(harness, id))?.history).toEqual([]);
+		});
+
 		it("refuses a blank or overlong reason and commits nothing", async () => {
 			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 			for (const reason of [" \n ", "x".repeat(maxDismissalReasonLength + 1)]) {
