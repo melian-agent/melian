@@ -1021,6 +1021,19 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("reports a lock it cannot create as that error, not as a lock another run holds", async () => {
+		const out = join(scratch, `${"p".repeat(251)}.json`);
+		const using = runners();
+		const { status, errors } = await measure(
+			{ ...env, MELIAN_EVAL_PARITY_OUT: out, MELIAN_EVAL_PARITY_MISSES: "two" },
+			using,
+		);
+		expect(status).toBe(2);
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toContain("ENAMETOOLONG");
+		expect(using.range).not.toHaveBeenCalled();
+	});
+
 	it("refuses a second run that names the held results file through a link", async () => {
 		const out = env.MELIAN_EVAL_PARITY_OUT!;
 		const alias = join(scratch, "alias.json");
