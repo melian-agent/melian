@@ -261,4 +261,38 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		);
 		expect(stored(evidence)).toEqual([]);
 	});
+
+	it("keeps nothing for a miss judged a duplicate of another", () => {
+		const { repo, env, external, evidence } = compared([30, 1]);
+		const duplicate = melian(
+			repo,
+			["compare", "adjudicate", range, external(1), "--verdict", "duplicate", "--of", external(30)],
+			env,
+		);
+		expect(duplicate).toMatchObject({ status: 0, stderr: "" });
+		expect(duplicate.stdout).not.toContain("evidence");
+		expect(stored(evidence)).toEqual([]);
+	});
+
+	it("records no lens file for a valid miss with no file, though the policy is a committed revision", () => {
+		const { repo, env, evidence } = compared([30], true);
+		const directory = realpathSync(mkdtempSync(join(tmpdir(), "melian-evidence-nofile-")));
+		cleanup.push(directory);
+		const other = join(directory, "other.json");
+		writeFileSync(
+			other,
+			JSON.stringify({ reviewer: { name: "claude-code" }, findings: [{ title: "No file", body: "Nowhere." }] }),
+		);
+		const imported = melian(repo, ["compare", range, "--from", `file:${other}`], env);
+		expect(imported, imported.stderr).toMatchObject({ status: 0 });
+		const id = /^ {2,4}([0-9a-f]{16}) {2}claude-code /m.exec(imported.stdout)![1]!;
+		expect(melian(repo, valid(id), env)).toMatchObject({ status: 0, stderr: "" });
+
+		const json = melian(repo, ["compare", "evidence", range, id, "--json"], env);
+
+		const { pointer } = JSON.parse(json.stdout) as { pointer: EvidencePointer };
+		expect(pointer.policy).toMatch(/^revision:[0-9a-f]{40}$/);
+		expect(pointer.lensFiles).toEqual([]);
+		expect(stored(evidence)).not.toEqual([]);
+	});
 });

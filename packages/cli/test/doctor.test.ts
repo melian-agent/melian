@@ -345,6 +345,7 @@ describe("doctor trust boundaries", () => {
 		expect(result.trust).toMatch(/^warn /);
 		expect(result.trust).toContain("not inside a git repository; root policy is unknown");
 		expect(result.stdout).not.toMatch(/ {2}mutation\s/);
+		expect(result.stdout).not.toMatch(/ {2}evidence\s/);
 		expect(state.calls).toEqual([]);
 	});
 
