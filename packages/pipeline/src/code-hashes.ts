@@ -42,7 +42,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "e25a127084c79c65e96cb627dbe85d46043308c5122bf4ca4085149f0445b835",
+	"packages/core/src/findings.ts": "7e362b522e8bb4c44cedcdd547c4d109bfdfd5f5b765b14cf2db28f0a60026d6",
 
 	"packages/core/src/git.ts": "2d9688ae4087985f2928a35dcfd86bfe9edfbf2e83fa9c54732d7f7c1afbc70f",
 
@@ -54,11 +54,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "3f0d5c2c1867ef08ab235ea840a1928e8396f8b35ac9732fc58db9180bcc3ec9",
+	"packages/core/src/index.ts": "fcb6f0c62f7b6042dc1a1ea5fbaa465480d22f9d3ada986849d48dbbb37bc6c5",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
-	"packages/core/src/lens.ts": "5f2ba6890b4dd3efc420bf3ebe975fad0df79631cd23f883b3b052b0a0d822c8",
+	"packages/core/src/lens.ts": "34b1e2105566bea6b9897b9892015782521101421d9bd297e4db3d5ccc018845",
 
 	"packages/core/src/line-map.ts": "119eb57464d532345d3ec58f1e2a6c2f702174afb9e396dd7eafc51b2cf19f41",
 
@@ -84,11 +84,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
-	"packages/core/src/record-payloads.ts": "add1e8df10eebbcb5a3aa79e7be96ec653ed8ee276efffb31b405c07efb8a2f2",
+	"packages/core/src/record-payloads.ts": "b6b3459f64e2cfa45f848b2852f1b3d84a5ee4d4d1292dcd15f0d98276142395",
 
 	"packages/core/src/record-store.ts": "4c86098bd02ce1931f3f1fe9793aad3b5373cb8982373af4ae8c8be895c4ae57",
 
-	"packages/core/src/record.ts": "4b698c18846d84cb187319adbe06c7c915658ef8ece08dc0c3ced21dd3360fe8",
+	"packages/core/src/record.ts": "e3e235580cb244d14f57629ba97e02efa2d60c42e05211a8d3d523fe6020595e",
 
 	"packages/core/src/render.ts": "876fe6874e8ffb8c3916775212dfbf76db634f29a5aa2a1c43d018a841af0f2d",
 
@@ -136,7 +136,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/callers.ts": "206f88d3a7e93898600a5410581110af923ed4133c8cd17c7c8a65d25bb26c21",
 
-	"packages/pipeline/src/caveats.ts": "b6c57ea82ecac1af0e5a30160684e2eb9b6fb8b1694e6f8cb7a8ef4c18602896",
+	"packages/pipeline/src/caveats.ts": "d99cc92e5c6e7a74a9d422c437715859674e83bbf744a517a931fc7a8f92908e",
 
 	"packages/pipeline/src/check-request.ts": "74967e89d09bdb90824d3d11c36bc9261179a2ad64f0fa85e160ce2be761f5b2",
 
@@ -227,7 +227,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/pipeline/src/untrusted.ts": "8cf13d2a40873d39f26ec76a8f310eda0b731f6aa3a8f849348414f169ced054",
 
 	"packages/pipeline/src/verification-instructions.ts":
-		"aa8e09f20595846f3772d63a4e69505013cc0d9d767f9b0bd388aef890a52ec7",
+		"1394f83c0f8a5d5263c0994c14bac22a897821582dec9a210c7a970b46c131d4",
 
 	"packages/pipeline/src/verification-waves.ts": "740c08b81e6f8702862577142c05ab655f0e151c42f996eec530296bbbabb881",
 };
