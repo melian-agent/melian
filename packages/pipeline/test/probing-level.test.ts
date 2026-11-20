@@ -2735,7 +2735,19 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		const ran = record((await run).verdict);
 		expect(ran.status).toBe("ran");
-		expect(ran.reason).not.toContain("refused");
+		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+	});
+
+	it("says only that every model failed when every model hit its limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [limited, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({ status: "failed", reason: "every model of its tier failed" });
 	});
 
 	it("says which model answered the prober after its first model's content filter refused the plan", async () => {
