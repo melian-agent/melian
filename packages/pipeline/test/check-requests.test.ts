@@ -13,6 +13,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CheckSources, ChecksDocument } from "../src/checks.ts";
+import { codeVersion } from "../src/code-version.ts";
 import { FindingsDocument, stampOf } from "../src/findings.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
 
@@ -95,25 +96,27 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 	const taskOf = async (root: { readonly id: ConversationId }, run: number, check: string) =>
 		(await harness.snapshot(CheckSources, root.id, String(run), context))?.tasks[check];
 
-	// Main's build before the stamp asked for these versions of each check, and its run's terminal commit wrote no stamp.
-	const before = { guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 4, "static.mutation": 2 };
-	it("never reuse a run an earlier build completed without a stamp, so asking again stamps the sightings", async () => {
+	// Main's build before the stamp asked for the first versions of each check, and its run's terminal commit wrote no
+	// stamp. The last build before code hashes asked for the second, by hand-raised numbers and no `code`.
+	it.each([
+		[
+			"without a stamp",
+			{ guardrails: 1, "static.biome": 2, "static.tsc": 3, "static.enola": 4, "static.mutation": 2 },
+		],
+		[
+			"under hand-raised numbers",
+			{ guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 5, "static.mutation": 3 },
+		],
+	])("never reuse a run an earlier build completed %s, so asking again stamps the sightings", async (_, before) => {
 		const { made, root, changeset } = await run();
 		const revision = Revision.key(changeset.revision);
 		const stored = (await harness.snapshot(ChecksDocument, root.id, context))!;
 		const kept = stored.requests![made.request] as Record<string, unknown>;
-		// Every static check stamps its sightings, so each asks under a version no build before the stamp asked.
-		expect(kept.checks).toEqual({
-			guardrails: 1,
-			"static.biome": 3,
-			"static.tsc": 4,
-			"static.enola": 6,
-			"static.mutation": 3,
-		});
-		const old = KeyedRequest.of("check", {
-			...kept,
-			checks: before,
-		} as never).key;
+		// The run asks under its checks' code version, which no build with hand-raised numbers keyed.
+		expect(kept.code).toBe(codeVersion("checks"));
+		expect(kept).not.toHaveProperty("checks");
+		const { code: _code, ...earlier } = kept;
+		const old = KeyedRequest.of("check", { ...earlier, checks: before } as never).key;
 		const { base, head } = changeset.revision;
 		const current = `${base} ${head} fast ${made.request.slice(0, 16)} 0`;
 		const task = stored.tasks[current]!;
@@ -122,10 +125,7 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 			delete runs.tasks[current];
 			delete runs.requests![made.request];
 			runs.tasks[`${base} ${head} fast ${old.slice(0, 16)} 0`] = task;
-			runs.requests![old] = {
-				...kept,
-				checks: before,
-			} as never;
+			runs.requests![old] = { ...earlier, checks: before } as never;
 			delete (await tx.doc(FindingsDocument, root.id)).checkRuns![revision];
 		}, context);
 		const again = await run();

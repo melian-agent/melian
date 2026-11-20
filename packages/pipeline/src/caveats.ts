@@ -1,12 +1,6 @@
-import type { StoredVerdict } from "@melian-agent/core";
+import { blindCallers, lightTriage, type StoredVerdict } from "@melian-agent/core";
 
-// The start of the caveat a review states once when no lens saw who calls the changed code.
-export const blindCallers =
-	"callers were unavailable for every changed site, so no lens saw who calls the changed code";
-
-// The note, and the caveat, of a review in which triage chose quick for every lens.
-export const lightTriage =
-	"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage";
+export { blindCallers, lightTriage };
 
 const unavailable = "Callers unavailable: ";
 

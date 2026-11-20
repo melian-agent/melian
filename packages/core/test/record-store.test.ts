@@ -18,6 +18,7 @@ import {
 	directoryRecordStoreFixture,
 	memoryRecordStoreFixture,
 	type RecordStoreFixture,
+	recordKey,
 	recordStoreConformance,
 	testPayloads,
 } from "@melian-agent/core/testing";
@@ -783,7 +784,7 @@ describe("the conformance suite's own bookkeeping", () => {
 describe("MemoryRecordStore", () => {
 	it("hands out copies, so a caller's edit never reaches the store", async () => {
 		const store = new MemoryRecordStore({ payloads: testPayloads });
-		const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: { n: 1 } };
+		const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: recordKey("k"), payload: { n: 1 } };
 		await store.add([envelope]);
 		(envelope.payload as { n: number }).n = 2;
 		const [listed] = await store.list(changeset);
@@ -812,7 +813,7 @@ describe("MemoryRecordStore", () => {
 		);
 		expect(await message(store.writeCell(changeset, undefined, "lease A"))).toBe("a cell holds one JSON value");
 		await store.dispose(changeset);
-		expect(await message(store.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]))).toBe(
+		expect(await message(store.add([{ v: 1, changeset, kind: "check", key: recordKey("k"), payload: {} }]))).toBe(
 			`changeset ${changeset} is disposed`,
 		);
 		space.plant("pull-fedcba9876543210", "lens");
@@ -826,7 +827,13 @@ describe("MemoryRecordStore", () => {
 
 describe("DirectoryRecordStore", () => {
 	let root: string;
-	const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "static.biome", payload: { n: 1 } };
+	const envelope: RecordEnvelope = {
+		v: 1,
+		changeset,
+		kind: "check",
+		key: recordKey("static.biome"),
+		payload: { n: 1 },
+	};
 	const record = SharedRecord.parse(envelope, testPayloads);
 
 	beforeEach(() => {
@@ -1032,7 +1039,7 @@ describe("DirectoryRecordStore", () => {
 
 	it("refuses a record file whose bytes are not UTF-8, though their lossy decoding gives its name", async () => {
 		const store = await DirectoryRecordStore.open(root, testPayloads);
-		const lossy = SharedRecord.parse({ ...envelope, key: "\ufffd" }, testPayloads);
+		const lossy = SharedRecord.parse({ ...envelope, kind: "post", key: "\ufffd" }, testPayloads);
 		const bytes = Buffer.from(lossy.bytes, "utf8");
 		const at = bytes.indexOf(Buffer.from("\ufffd", "utf8"));
 		const invalid = Buffer.concat([bytes.subarray(0, at), Buffer.from([0xff]), bytes.subarray(at + 3)]);
@@ -1198,13 +1205,13 @@ describe("a store with no payload check for a kind", () => {
 		["directory", async () => DirectoryRecordStore.open(directory())],
 	])("refuses to add or list it on the %s adapter", async (_name, open) => {
 		const store = await open();
-		const check: RecordEnvelope = { v: 1, changeset, kind: "check", key: "k", payload: {} };
+		const check: RecordEnvelope = { v: 1, changeset, kind: "check", key: recordKey("k"), payload: {} };
 		expect((await rejection(store.add([check]), RecordError)).code).toBe("unvalidatedKind");
 		const round: RecordEnvelope = {
 			v: 1,
 			changeset,
 			kind: "round",
-			key: "r",
+			key: recordKey("r"),
 			revision: `${"a".repeat(40)}..${"b".repeat(40)}`,
 			payload: { read: [], walkthrough: null, replaces: [], before: [] },
 		};
@@ -1215,7 +1222,7 @@ describe("a store with no payload check for a kind", () => {
 	it("lists a record it has no check for on the directory adapter, and a set that counts it refuses it", async () => {
 		const path = directory();
 		const writer = await DirectoryRecordStore.open(path, testPayloads);
-		await writer.add([{ v: 1, changeset, kind: "check", key: "k", payload: {} }]);
+		await writer.add([{ v: 1, changeset, kind: "check", key: recordKey("k"), payload: {} }]);
 		const listed = await (await DirectoryRecordStore.open(path)).list(changeset);
 		expect(listed).toHaveLength(1);
 		expect(() => RecordSet.of(listed, { counts: everyRecordCounts })).toThrow(
@@ -1226,7 +1233,7 @@ describe("a store with no payload check for a kind", () => {
 	it("lists a record it has no check for on the memory adapter, and a set that counts it refuses it", async () => {
 		const space = new MemoryRecordSpace();
 		await new MemoryRecordStore({ space, payloads: testPayloads }).add([
-			{ v: 1, changeset, kind: "check", key: "k", payload: {} },
+			{ v: 1, changeset, kind: "check", key: recordKey("k"), payload: {} },
 		]);
 		const listed = await new MemoryRecordStore({ space }).list(changeset);
 		expect(listed).toHaveLength(1);

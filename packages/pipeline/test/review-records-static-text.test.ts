@@ -14,6 +14,7 @@ import {
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CheckRunRecord } from "../src/checks.ts";
+import { codeVersion } from "../src/code-version.ts";
 import { DismissError } from "../src/errors.ts";
 import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
@@ -21,8 +22,8 @@ import { commit, createRepository, lines, removeRepository } from "./fixtures/re
 // Text a static tool wrote that the head's tree does not hold, such as a login the head led it to read.
 const token = "melian-test-token-9c4a71";
 const bytes = (record: SharedRecord) => JSON.stringify(record.toJSON());
-// A check run's request under this build, whose Enola check stores no tool text.
-const enolaRun = KeyedRequest.of("check", { checks: { "static.enola": 2 } });
+// A check run's request under this build, whose checks' code stores no tool text.
+const enolaRun = KeyedRequest.of("check", { code: codeVersion("checks") });
 
 let repo: string;
 beforeEach(() => {
@@ -283,11 +284,11 @@ describe("an exported record keeps what a static finding shares", () => {
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
 		const lens: StoredFinding[] = stored.map((finding) => ({
 			...finding,
-			properties: { ...finding.properties, source: { check: "lens.correctness", version: "1@careful" } },
+			properties: { ...finding.properties, source: { check: "lens.correctness", version: "0123456789ab@careful" } },
 		}));
 		const run = {
 			name: "correctness",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 			request: "d".repeat(64),
 			probe: false,
@@ -320,9 +321,10 @@ describe("an exported record keeps what a static finding shares", () => {
 		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${token} ${snapshotId}` }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${snapshotId} ${token}` }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, enola_version: `0.4.37 ${token}` }))).toBe(withheld);
-		const longest = { ...fields, enola_version: `0${"1".repeat(63)}` };
+		expect(exported(JSON.stringify({ ...fields, enola_version: "0" }))).toBe(withheld);
+		const longest = { ...fields, enola_version: `0.0.1-${"a".repeat(58)}` };
 		expect(exported(JSON.stringify(longest))).toBe(JSON.stringify(longest));
-		expect(exported(JSON.stringify({ ...fields, enola_version: `0${"1".repeat(64)}` }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, enola_version: `0.0.1-${"a".repeat(59)}` }))).toBe(withheld);
 	});
 	describe("Enola's snapshot identities, which Melian computes as hashes", () => {
 		const records = ReviewRecords.of("c".repeat(64), { base: "a".repeat(40), head: "b".repeat(40) });

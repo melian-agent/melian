@@ -14,6 +14,6 @@ The notice is the guardrails check's in everything that decides it. It carries t
 
 Its severity is the guardrail's `severity`, not `analyserSeverity`, which blocks a change to an analyser's configuration at P1. The ruling chose acknowledge: a Packwerk file is ordinary project structure, which a head adds whenever it adds a package.
 
-The check request key raises `static.enola` to version 6, so no run a build stored before the notice existed is reused for a head that changes a Packwerk file.
+The check request keys the checks' code by its recorded hashes, which this change moves, so no run a build stored before the notice existed is reused for a head that changes a Packwerk file.
 
 Raise the Packwerk list with the pin. A later Enola that reads another file for Packwerk, or reads `packwerk.yml` elsewhere, needs `EnolaFacts.packwerkFiles` changed and its test with it.
