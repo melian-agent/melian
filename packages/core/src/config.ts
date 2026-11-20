@@ -587,6 +587,11 @@ export interface LoadedConfig {
 	readonly routes: RouteLineage;
 	/** Each contributing file's own `resolution` key, nearest first, for the files that write one. */
 	readonly resolutionLayers: readonly ResolutionLayer[];
+	/**
+	 * Each preference file that contributed, nearest first, with the dotted path of every value it sets. Only a working
+	 * tree source reads preference files, so a review that reads a revision, such as a pull request's, ignores these.
+	 */
+	readonly preferences: readonly { readonly file: string; readonly keys: readonly string[] }[];
 }
 
 /** The largest `melian.yaml` the loader reads. A larger file is a `tooLarge` error, never truncated. */
@@ -1252,12 +1257,12 @@ export async function loadConfig(repoRoot: string, source: RepositorySource, pat
 	const target = repoPath(repoRoot, path);
 	const reader = await openSource(repoRoot, source).catch(fromSource(repoRoot));
 	const kind = await reader.exists(target).catch(fromSource(target));
-	const { config, sources, routes, resolutionLayers } = await loadLayers(
+	const { config, sources, routes, resolutionLayers, preferences } = await loadLayers(
 		reader,
 		directoriesUpToRoot(target, kind === "directory"),
 		source,
 	);
-	return { config, sources, routes, resolutionLayers };
+	return { config, sources, routes, resolutionLayers, preferences };
 }
 
 /**
@@ -1369,5 +1374,17 @@ async function loadLayers(
 		...(Object.keys(lensRouteBy).length === 0 ? {} : { lensRouteBy }),
 		...(Object.keys(lensRouteThinking).length === 0 ? {} : { lensRouteThinking }),
 	};
-	return { config, sources: layers.map(({ site }) => site.file), routes, layers, resolutionLayers };
+	return {
+		config,
+		sources: layers.map(({ site }) => site.file),
+		routes,
+		layers,
+		resolutionLayers,
+		preferences: layers.slice(0, preferences).map(({ site, layer }) => ({ file: site.file, keys: leafPaths(layer) })),
+	};
+}
+
+function leafPaths(value: unknown, prefix = ""): string[] {
+	if (!isPlain(value) || Object.keys(value).length === 0) return prefix === "" ? [] : [prefix];
+	return Object.entries(value).flatMap(([key, child]) => leafPaths(child, prefix === "" ? key : `${prefix}.${key}`));
 }
