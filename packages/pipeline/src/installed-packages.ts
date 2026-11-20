@@ -30,12 +30,15 @@ export class InstalledPackagesError extends Error {
  * peer that does not resolve is a line too, so an optional peer that appears moves the list. Left out: `@types/*`,
  * which never runs; a package whose manifest declares `os` or `cpu` and whose parent names its exact version, a
  * platform build that parent's version stands for;
- * and an optional dependency that does not resolve, which npm skips for a platform it refuses. A root, or a dependency,
+ * and an optional dependency that does not resolve, which npm skips for a platform it refuses. Each resolution is a
+ * line too, `parent > name@version`, a root's parent being the package that imports it, so two installs of the same
+ * releases that resolve them differently differ. Whether a platform build is left out is decided by each resolution
+ * of it, so the order of the walk decides nothing. A root, or a dependency,
  * that does not resolve to a readable manifest of its own name fails, naming it.
  */
 export function installedPackages(roots: readonly PackageRoot[]): string[] {
 	const lines = new Set<string>();
-	const visited = new Set<string>();
+	const walked = new Set<string>();
 	type Kind = "required" | "peer" | "optional";
 	const visit = (name: string, from: string, wanted: string, kind: Kind, range?: string) => {
 		if (name.startsWith("@types/")) return;
@@ -53,8 +56,6 @@ export function installedPackages(roots: readonly PackageRoot[]): string[] {
 			}
 			throw new InstalledPackagesError(`Melian cannot find the installed package ${name}, which ${wanted} needs.`);
 		}
-		if (visited.has(path)) return;
-		visited.add(path);
 		let manifest: Manifest;
 		try {
 			manifest = JSON.parse(readFileSync(path, "utf8")) as Manifest;
@@ -65,6 +66,9 @@ export function installedPackages(roots: readonly PackageRoot[]): string[] {
 			throw new InstalledPackagesError(`Melian cannot read the installed package ${name}, which ${wanted} needs.`);
 		if ((manifest.os !== undefined || manifest.cpu !== undefined) && range === manifest.version) return;
 		const self = `${name}@${manifest.version}`;
+		lines.add(`${wanted} > ${self}`);
+		if (walked.has(path)) return;
+		walked.add(path);
 		lines.add(self);
 		const here = pathToFileURL(path).href;
 		const kinds = new Map<string, [Kind, string]>();
