@@ -95,8 +95,10 @@ async function printImports(entry) {
 				resolved.url.startsWith("file:") &&
 				!inInstall(parent) &&
 				inInstall(resolved.url)
-			)
-				(imported[packageAt(parent)] ??= new Set()).add(packageAt(resolved.url));
+			) {
+				imported[packageAt(parent)] ??= new Set();
+				imported[packageAt(parent)].add(packageAt(resolved.url));
+			}
 			return resolved;
 		},
 	});
