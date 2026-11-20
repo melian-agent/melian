@@ -266,6 +266,12 @@ describe("a record's sighting budget", () => {
 		expect(refusal(exact - 1, all)).toMatchObject({ code: "recordTooLarge" });
 	});
 
+	it("abridges a lone file's finding under the one-file note, the shortest", () => {
+		// Its Why here is a byte longer than the one-file note, and shorter than any note naming more files.
+		const only = notice(0, { message: "Changes it.", what: "Changes it.", whyHere: "w".repeat(note(1).length + 1) });
+		expect(new SightingBudget(bytes([only]) - 1).fit([only])).toEqual([only.abridged(note(1))]);
+	});
+
 	it("measures multi-byte detail in bytes at the bound and one past it", () => {
 		const wide = Array.from({ length: 50 }, (_, index) => notice(index, { what: "€".repeat(1500) }));
 		const exact = bytes(wide);
