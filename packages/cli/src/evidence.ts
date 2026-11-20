@@ -7,7 +7,7 @@ import {
 	type EvidenceLensFile,
 	type EvidenceStage,
 	EvidenceStore,
-	type MissEvidence,
+	MissEvidence,
 } from "@melian-agent/pipeline";
 import { type Io, short } from "./commands.ts";
 import { isScripted } from "./models.ts";
@@ -43,13 +43,15 @@ export class CloneEvidence {
 	 */
 	async keep(harness: CompareHarness, revision: Revision, finding: ExternalFinding): Promise<number> {
 		const { id } = finding;
-		const gathered = await harness.evidence(revision, finding);
-		if (gathered === undefined) {
+		const owned = await harness.ownedRun(revision);
+		if (owned === undefined) {
 			this.io.stdout(
 				`Kept no evidence for ${id}: this clone holds no record of its round's run. An Actions round's records went with its job, and rerunning ${short(revision.head)} on a host gives a new conversation, not the original.\n`,
 			);
 			return 0;
 		}
+		const { storage, ...run } = owned;
+		const gathered = await MissEvidence.gather(storage, { ...run, finding });
 		try {
 			const kept = await this.store.write(gathered.withLensFiles(await this.lensFiles(gathered, finding)));
 			this.io.stdout(

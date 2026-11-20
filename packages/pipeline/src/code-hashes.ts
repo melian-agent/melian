@@ -144,7 +144,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
-	"packages/pipeline/src/compare.ts": "10fe80a360a838474ac6d015f3d8625cc0be649782dc83c970bde8ecbec21c0d",
+	"packages/pipeline/src/compare.ts": "99e347ec6633b9f161c160176402fbe9478b42878188cd9bb5b961a510195e97",
 
 	"packages/pipeline/src/configurations.ts": "7b4ac90ce8d882b91050c1f49f391bf27cb99d9f1a354e91b0ef77eb35d495c6",
 
@@ -154,13 +154,9 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/credentials.ts": "6c2e84358b4f90ae4454bf819b79bf8bd4e018f894dadbc9efdb31415b0d0595",
 
-	"packages/pipeline/src/decisions.ts": "21c40a22cc367e7663668d383c198e72e820a5c5024c1d2f2853cf33fb53adef",
-
 	"packages/pipeline/src/enola-static.ts": "8d9fadb5c8d72d31527374c59e86d131ef0fb5204c175b77ac7057741b9456d9",
 
 	"packages/pipeline/src/errors.ts": "7e1b0fad0c2cf88c60e8d071aa775d256fbb2c1471a55210aa98c97af9dd0105",
-
-	"packages/pipeline/src/evidence.ts": "470904f3616111dc5caaf0d7a7ac778d0fd81ebf976ca7639aeb2bd8c807f6cf",
 
 	"packages/pipeline/src/findings.ts": "16b1ab790215a1ffb06bbbee8213f660ced5536230dd48eab31ae02e9d537c2d",
 
@@ -221,8 +217,6 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/pipeline/src/supersession.ts": "5bc57a9f8c1d31f62eac8bf85d80eac78f47c885062de6255c052a346e4db321",
 
 	"packages/pipeline/src/task-timing.ts": "1dc07c1bc77fd1f454325634ac50f30c6aab6aedf3b3078884d8fcae5903822e",
-
-	"packages/pipeline/src/telemetry.ts": "48ec6471eacc7f7d48a89ff9b5408b7ce0de516a07ae598788c3bc6beb92b56c",
 
 	"packages/pipeline/src/token-usage.ts": "8531ae32190f96c869eda095f1c0258e32dfbba1d6e90cc40cf3a46a3886e2fd",
 
@@ -392,13 +386,9 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/credentials.ts",
 
-		"packages/pipeline/src/decisions.ts",
-
 		"packages/pipeline/src/enola-static.ts",
 
 		"packages/pipeline/src/errors.ts",
-
-		"packages/pipeline/src/evidence.ts",
 
 		"packages/pipeline/src/findings.ts",
 
@@ -459,8 +449,6 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/supersession.ts",
 
 		"packages/pipeline/src/task-timing.ts",
-
-		"packages/pipeline/src/telemetry.ts",
 
 		"packages/pipeline/src/token-usage.ts",
 

@@ -1,7 +1,6 @@
 import {
 	Comparison,
 	type ComparisonEntry,
-	type ExternalFinding,
 	type ExternalImport,
 	type PullRequestRoundHeads,
 	Revision,
@@ -9,9 +8,9 @@ import {
 	type StoredComparison,
 	type StoredComparisonAdjudication,
 	type StoredVerdict,
+	type Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
-import { MissEvidence } from "./evidence.ts";
 import { FindingsDocument } from "./findings.ts";
 import {
 	backgroundContext,
@@ -190,26 +189,24 @@ export class CompareHarness {
 	}
 
 	/**
-	 * The evidence behind `finding`, a miss in the round `revision` selects, or undefined when this storage holds none of
-	 * that round's run: an unattributed comparison, a round that ran elsewhere, or one a later review of its revision
-	 * has replaced in the review index.
+	 * The round `revision` selects and its verdict, with the storage that holds its run, or undefined when this storage
+	 * holds none of that round's run: an unattributed comparison, a round that ran elsewhere, or one a later review of
+	 * its revision has replaced in the review index. `MissEvidence.gather` reads a miss's evidence from it.
 	 */
-	async evidence(
+	async ownedRun(
 		revision: ComparedRevision,
-		finding: ExternalFinding,
 		context: Context = backgroundContext,
-	): Promise<MissEvidence | undefined> {
+	): Promise<{ readonly storage: Storage; readonly round: Round; readonly verdict: Verdict } | undefined> {
 		if (revision.round === "unattributed") return undefined;
 		const root = await this.harness.root(context);
-		const owned = await root.commit(async (tx) => {
+		return root.commit(async (tx) => {
 			const round = await this.selected(tx, root.id, revision);
 			const verdict = round.verdict();
 			const owner = (await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()]?.adjudication?.task;
 			return verdict !== undefined && round.stored.tasks.some((task) => task === owner)
-				? { round, verdict }
+				? { storage: this.storage, round, verdict }
 				: undefined;
 		}, context);
-		return owned === undefined ? undefined : MissEvidence.gather(this.storage, { ...owned, finding }, context);
 	}
 
 	/** The comparison recorded for the selected round or unattributed revision, or undefined when absent. */

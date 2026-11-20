@@ -1,4 +1,4 @@
-import { Adjudication, defaultConfig, ExternalFinding, Revision } from "@melian-agent/core";
+import { Adjudication, defaultConfig, Revision } from "@melian-agent/core";
 import { CompareHarness, backgroundContext as context, createMemoryStorage } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,14 +7,6 @@ import { ReviewIndex } from "../src/review-index.ts";
 
 const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 const key = Revision.key(revision);
-const miss = ExternalFinding.create({
-	reviewer: { name: "codex" },
-	file: "src/run.ts",
-	line: 3,
-	title: "a miss",
-	body: "body",
-	source: { kind: "file", path: "codex.json", position: 0 },
-});
 
 const open: CompareHarness[] = [];
 
@@ -34,29 +26,29 @@ async function decided(): Promise<CompareHarness> {
 	return harness;
 }
 
-describe("CompareHarness evidence", () => {
-	it("selects no round and gathers nothing for an unattributed comparison", async () => {
+describe("CompareHarness ownedRun", () => {
+	it("selects no round and owns no run of an unattributed comparison", async () => {
 		const harness = await decided();
 		const unattributed = { ...revision, round: "unattributed" };
 
 		expect(await harness.round(unattributed)).toBeUndefined();
-		expect(await harness.evidence(unattributed, miss)).toBeUndefined();
+		expect(await harness.ownedRun(unattributed)).toBeUndefined();
 	});
 
-	it("gathers nothing for a round when the review index holds no review of its revision", async () => {
+	it("owns no run of a round when the review index holds no review of its revision", async () => {
 		const harness = await decided();
 		expect((await harness.round(revision))?.stored.tasks).toEqual([]);
 
-		expect(await harness.evidence(revision, miss)).toBeUndefined();
+		expect(await harness.ownedRun(revision)).toBeUndefined();
 	});
 
-	it("gathers nothing for a round when its revision's review has no adjudication yet", async () => {
+	it("owns no run of a round when its revision's review has no adjudication yet", async () => {
 		const harness = await decided();
 		const root = await harness.harness.root(context);
 		await root.commit(async (tx) => {
 			(await tx.doc(ReviewIndex, root.id)).reviews[key] = { lenses: [] };
 		}, context);
 
-		expect(await harness.evidence(revision, miss)).toBeUndefined();
+		expect(await harness.ownedRun(revision)).toBeUndefined();
 	});
 });
