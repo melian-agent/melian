@@ -1,0 +1,5 @@
+# The CLI's git drops what core's git drops
+
+[Issue #539](https://github.com/melian-agent/melian/issues/539), part one. The CLI's `git` in `packages/cli/src/repository.ts` now runs with core's `gitEnvironment`, which core exports for it, so a caller's `GIT_DIR`, `GIT_GRAFT_FILE`, `GIT_ALTERNATE_OBJECT_DIRECTORIES` and the rest of git's repository-local variables no longer reach it. [The decision](../decisions/2026-11-20-cli-git-runs-in-core-git-environment.md) records the cost: the caller's `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS` settings are dropped too.
+
+`packages/cli/test/repository.test.ts` runs one test for each variable `git rev-parse --local-env-vars` names, and one that points `GIT_DIR` at another repository. Before the change 14 of them failed: 13 variables reached git, and the `GIT_DIR` read returned the other repository's `melian.yaml`. All 19 tests in the file pass after it. The existing test that the caller's `GIT_CONFIG_COUNT` setting reached git now asserts only the `core.useReplaceRefs` pin, since the ruling drops that setting.

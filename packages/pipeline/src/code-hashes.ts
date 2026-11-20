@@ -44,7 +44,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/findings.ts": "e25a127084c79c65e96cb627dbe85d46043308c5122bf4ca4085149f0445b835",
 
-	"packages/core/src/git.ts": "2d9688ae4087985f2928a35dcfd86bfe9edfbf2e83fa9c54732d7f7c1afbc70f",
+	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
 	"packages/core/src/graph-coverage.ts": "9825e427c7e6dd961612861d7a0a570d1356ff1766f63ca52ddee1e4d62f72b8",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "3f0d5c2c1867ef08ab235ea840a1928e8396f8b35ac9732fc58db9180bcc3ec9",
+	"packages/core/src/index.ts": "9d4dbea53bf5418f2066ffe397545c6ea5e8f1e5d7587d8fad9f0bd75d522112",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
