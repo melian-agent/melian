@@ -1,0 +1,1 @@
+{"changeset":"pull-87fa69b83634a9f3","key":"d0f4b053d6369494f520d37de3ecf12ba7b16cf288509d03cee6c9f3d1aa2f2f","kind":"check","payload":{"result":{"findings":0,"name":"static.tsc","notes":[],"snapshots":null,"status":"ran","version":"7.0.2"},"sightings":[],"v":1},"revision":"3adda9f10d2029eb665ccb74ce2f9a7146dfd866..6acc2d7d2ba04a904d3749c43c7439df0b9d16b8","v":1}
