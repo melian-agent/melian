@@ -42,9 +42,9 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "7e362b522e8bb4c44cedcdd547c4d109bfdfd5f5b765b14cf2db28f0a60026d6",
+	"packages/core/src/findings.ts": "e56bea75941cd6786f606ec176d7f80d8aaaecf6bc86f1e1d96afb68cb6dcd2d",
 
-	"packages/core/src/git.ts": "2d9688ae4087985f2928a35dcfd86bfe9edfbf2e83fa9c54732d7f7c1afbc70f",
+	"packages/core/src/git.ts": "7aa8ddd284792605fbcc1395158a338e08cd481d6ae8af39de34b941cb45301a",
 
 	"packages/core/src/graph-coverage.ts": "9825e427c7e6dd961612861d7a0a570d1356ff1766f63ca52ddee1e4d62f72b8",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "fcb6f0c62f7b6042dc1a1ea5fbaa465480d22f9d3ada986849d48dbbb37bc6c5",
+	"packages/core/src/index.ts": "5c97d7134fc7068f9a29aa8b3b9de59109e00b2ed8a4eb3464ed38ffdf377340",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -164,7 +164,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "519975ee7709e41da4715147fb73e6886c0395d63f6fd05a1f99a03d5d0281cf",
+	"packages/pipeline/src/harness.ts": "21827ea77d7c5aec9a43f7597fd73b482b34266853876c89ae149aafabe79c64",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 
