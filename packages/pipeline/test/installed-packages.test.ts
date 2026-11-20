@@ -1,6 +1,16 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -527,6 +537,74 @@ describe("Install.read", () => {
 
 	it("identifies an install where nothing links out", () => {
 		expect(read()).toMatchObject({ outside: [], identified: true });
+	});
+
+	describe("a layout other than npm's", () => {
+		// A module at `place` beneath the install root, in a package directory of its own.
+		const module = (place: string) => {
+			mkdirSync(join(scratch, place), { recursive: true });
+			writeFileSync(join(scratch, place, "main.js"), "");
+			return join(scratch, place, "main.js");
+		};
+
+		it.each([".pnp.cjs", ".pnp.loader.mjs"])("leaves the install unidentified beside Yarn's map %s", (map) => {
+			const entries = read().entries;
+			writeFileSync(join(scratch, map), "");
+			expect(read()).toMatchObject({ entries, outside: [], unrecognised: [map], identified: false });
+		});
+
+		it("finds Yarn's map in any directory above the module", () => {
+			const from = module("packages/app");
+			writeFileSync(join(scratch, "packages", "app", ".pnp.cjs"), "");
+			expect(Install.read(from).unrecognised).toEqual(["packages/app/.pnp.cjs"]);
+		});
+
+		it("names a map above the install root by its path", () => {
+			const parent = mkdtempSync(join(tmpdir(), "melian-installed-packages-pnp-"));
+			try {
+				writeFileSync(join(parent, ".pnp.cjs"), "");
+				mkdirSync(join(parent, "app", "node_modules"), { recursive: true });
+				writeFileSync(join(parent, "app", "main.js"), "");
+				expect(Install.read(join(parent, "app", "main.js")).unrecognised).toEqual([
+					join(realpathSync(parent), ".pnp.cjs"),
+				]);
+			} finally {
+				rmSync(parent, { recursive: true, force: true });
+			}
+		});
+
+		it("leaves the install unidentified for a module read through an archive, as Yarn's cache holds one", () => {
+			install("../cache/pi.zip/node_modules/@app/pi", { name: "@app/pi", version: "1.0.0" });
+			const from = module("cache/pi.zip/node_modules/@app/pi/dist");
+			expect(Install.read(from)).toMatchObject({
+				unrecognised: ["cache/pi.zip/node_modules/@app/pi/dist"],
+				identified: false,
+			});
+		});
+
+		it("leaves the install unidentified for a directory named as an archive in a walked tree", () => {
+			mkdirSync(join(scratch, "node_modules", "pi", "vendor.zip"));
+			expect(read()).toMatchObject({ unrecognised: ["node_modules/pi/vendor.zip"], identified: false });
+		});
+
+		it("leaves the install unidentified for a module beneath a node_modules that no package holds", () => {
+			const from = module("node_modules/.store/pi");
+			expect(Install.read(from)).toMatchObject({ unrecognised: ["node_modules/.store/pi"], identified: false });
+		});
+
+		it.each([
+			["an installed package", "node_modules/pi/dist"],
+			["a package a pnpm store holds", "node_modules/.pnpm/pi@1.1.0/node_modules/pi/dist"],
+			["a directory named like an archive's", "node_modules/pi/zip"],
+		])("recognises a module in %s", (_, place) => {
+			if (place.includes(".pnpm")) install(".pnpm/pi@1.1.0/node_modules/pi", { name: "pi", version: "1.1.0" });
+			expect(Install.read(module(place))).toMatchObject({ unrecognised: [], identified: true });
+		});
+
+		it("recognises a module in a workspace package npm links", () => {
+			const directory = workspace("app");
+			expect(Install.read(join(directory, "src", "index.js"))).toMatchObject({ unrecognised: [], identified: true });
+		});
 	});
 
 	it("is a SHA-256 over the canonical JSON of the sorted entries", () => {

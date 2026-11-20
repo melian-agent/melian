@@ -29,10 +29,13 @@ export class Install {
 	readonly entries: readonly InstallEntry[];
 	/** The places beneath the root that link out of it, each of which leaves the install unidentified. */
 	readonly outside: readonly string[];
+	/** The places that show a layout other than npm's, such as Yarn's Plug'n'Play map, each of which leaves it unidentified. */
+	readonly unrecognised: readonly string[];
 
-	private constructor(entries: readonly InstallEntry[], outside: readonly string[]) {
+	private constructor(entries: readonly InstallEntry[], outside: readonly string[], unrecognised: readonly string[]) {
 		this.entries = entries;
 		this.outside = outside;
+		this.unrecognised = unrecognised;
 	}
 
 	/** Reads the install Node resolves from `from`, a module's file URL or path, failing past `limit` directories. */
@@ -49,12 +52,12 @@ export class Install {
 			throw new InstalledPackagesError(`Melian cannot key its install: no node_modules holds the module ${from}.`);
 		const walk = new Walk(root, limit);
 		walk.run(chain.map((directory) => join(directory, "node_modules")));
-		return new Install(walk.entries(), walk.outside());
+		return new Install(walk.entries(), walk.outside(), walk.unrecognised(start));
 	}
 
-	/** Whether nothing beneath the root links out of it, so a run keyed by the install may stand for another. */
+	/** Whether nothing links out of the root and its layout is npm's, so a run keyed by the install may stand for another. */
 	get identified(): boolean {
-		return this.outside.length === 0;
+		return this.outside.length === 0 && this.unrecognised.length === 0;
 	}
 
 	get digest(): string {
@@ -76,6 +79,8 @@ class Walk {
 	readonly #outside: string[] = [];
 	readonly #entered = new Set<string>();
 	readonly #followed = new Set<string>();
+	readonly #packages = new Set<string>();
+	readonly #archives: string[] = [];
 	readonly #queue: [string, Mode][] = [];
 
 	constructor(root: string, limit: number) {
@@ -96,6 +101,23 @@ class Walk {
 		return [...this.#outside].sort();
 	}
 
+	// Melian does not read Yarn's Plug'n'Play map, and a directory named as an archive is one Yarn's patched fs opened. A
+	// module beneath a node_modules that no keyed package holds was placed by a layout the walk does not know.
+	unrecognised(start: string): string[] {
+		const found = [...this.#archives];
+		for (const directory of ancestors(start))
+			for (const map of [".pnp.cjs", ".pnp.loader.mjs"])
+				if (existsSync(join(directory, map))) found.push(this.#shown(join(directory, map)));
+		if (start.split(sep).some((part) => part.endsWith(".zip"))) found.push(this.#shown(start));
+		const beneath = ancestors(start).filter((directory) => this.#beneath(directory));
+		if (
+			this.#place(start).split("/").includes("node_modules") &&
+			!beneath.some((directory) => this.#packages.has(directory))
+		)
+			found.push(this.#place(start));
+		return [...new Set(found)].sort();
+	}
+
 	// A directory's place beneath the root, with `/` between its parts on every platform.
 	#place(directory: string): string {
 		return relative(this.#root, directory).split(sep).join("/");
@@ -103,6 +125,10 @@ class Walk {
 
 	#add(...entry: string[]) {
 		this.#entries.set(canonicalJson(entry), entry);
+	}
+
+	#shown(path: string): string {
+		return this.#beneath(path) ? this.#place(path) : path;
 	}
 
 	#beneath(directory: string): boolean {
@@ -146,7 +172,10 @@ class Walk {
 		this.#add(at, "links", this.#place(target));
 		if (mode === "modules" || mode === "scope") this.#queue.push([target, mode]);
 		// A linked package's own files are no release, as a workspace package's are not, so only its manifest is keyed.
-		if (mode === "package") this.#add(this.#place(target), ...this.#release(target));
+		if (mode === "package") {
+			this.#packages.add(target);
+			this.#add(this.#place(target), ...this.#release(target));
+		}
 		for (const directory of ancestors(target)) {
 			if (!this.#beneath(directory)) break;
 			if (existsSync(join(directory, "node_modules")))
@@ -161,13 +190,17 @@ class Walk {
 				`Melian cannot key its install: it holds more than ${this.#limit} directories.`,
 			);
 		this.#entered.add(directory);
+		if (directory.endsWith(".zip")) this.#archives.push(this.#place(directory));
 		let entries: Dirent[];
 		try {
 			entries = readdirSync(directory, { withFileTypes: true });
 		} catch {
 			throw new InstalledPackagesError(`Melian cannot read ${this.#place(directory)} in its install.`);
 		}
-		if (mode === "package") this.#add(this.#place(directory), ...this.#release(directory));
+		if (mode === "package") {
+			this.#packages.add(directory);
+			this.#add(this.#place(directory), ...this.#release(directory));
+		}
 		for (const entry of entries) {
 			const path = join(directory, entry.name);
 			const slot = (mode === "modules" || mode === "scope") && !entry.name.startsWith(".");

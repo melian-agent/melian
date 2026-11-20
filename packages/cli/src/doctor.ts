@@ -216,22 +216,29 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 	};
 }
 
-// A package Melian runs that a link takes out of its install, as `npm link` does, leaves the install unidentified: the
-// review still runs, and reuses no run.
+// A package Melian runs that a link takes out of its install, as `npm link` does, or a layout other than npm's, such as
+// Yarn's Plug'n'Play, leaves the install unidentified: the review still runs, and reuses no run.
 function packagesCheck(): Check {
-	let outside: string[];
+	let install: ReturnType<typeof melianInstall>;
 	try {
-		outside = [...melianInstall().outside];
+		install = melianInstall();
 	} catch (error) {
 		return { name: "packages", state: "fail", detail: visibleText((error as Error).message) };
 	}
-	return outside.length === 0
+	const { outside, unrecognised } = install;
+	const reasons = [
+		...(outside.length === 0
+			? []
+			: [`${visibleText(outside.join(", "))} ${outside.length === 1 ? "links" : "link"} outside Melian's install`]),
+		...(unrecognised.length === 0
+			? []
+			: [
+					`${visibleText(unrecognised.join(", "))} ${unrecognised.length === 1 ? "is" : "are"} not laid out as npm lays out an install`,
+				]),
+	];
+	return reasons.length === 0
 		? { name: "packages", state: "ok", detail: "nothing in Melian's install links outside it" }
-		: {
-				name: "packages",
-				state: "warn",
-				detail: `${visibleText(outside.join(", "))} ${outside.length === 1 ? "links" : "link"} outside Melian's install, so no review reuses a run`,
-			};
+		: { name: "packages", state: "warn", detail: `${reasons.join("; ")}, so no review reuses a run` };
 }
 
 // Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip

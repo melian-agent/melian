@@ -72,10 +72,20 @@ What the walk does not see, and why each is left:
   npm's hidden lockfile, `node_modules/.package-lock.json`, would catch the registry case where npm's install took a different tarball. npm writes it on every install, with each place's `version`, `resolved` URL and `integrity`, a SHA-512 of the tarball npm verified. Here it is 178 KB with 379 entries, 363 of them with an integrity, and it parses in about 2 ms, so reading it would cost little. It catches less than it seems. `npm ci` already refuses a tarball whose integrity differs from the committed lockfile's, so two hosts that run `npm ci` on one lockfile cannot take different tarballs. The integrity is npm's record of the tarball, not of the files on disk, so it misses the patched file, the postinstall output and a hand edit. pnpm, Yarn and Bun write no such file, so an install by another manager would need its own rule. It is the lockfile's answer, not Node's, which this decision set aside above. Melian does not read it.
 - **A `node_modules` beneath the root that no walked tree holds**, such as one made by hand in `scripts/` or in a workspace package's `src/`. No module of Melian's resolves from there, except a workspace module beside it, which only a hand edit makes.
 - **CommonJS's global folders**, `NODE_PATH` and `~/.node_modules`. Melian is ESM, whose resolver never reads them.
+- **The install beneath triage, verification and the walkthrough.** Their keys hold no `packages` yet, so after an install change lenses rerun and triage may attach to a decision the older install made, which can keep a lens at a lower level. On 2026-11-20 the coordinator put them with the second half of [issue #437](https://github.com/melian-agent/melian/issues/437), stacked on this change, so each task changes version once and takes the module digest and `packages` together.
 
 ## An install Melian cannot identify
 
 A link out of the install, such as `npm link yaml` to `/work/yaml`, names a place the walk cannot read without walking the host. It records the fixed entry `["node_modules/yaml", "links outside"]`, adds the place to `outside`, and walks no further. The digest stays deterministic, and `identified` reads false. No value drawn at random enters any key, so rule 6 of [the identity guideline](../guidelines/identity.md#rules) stands as written, and this decision amends nothing there.
+
+A layout other than npm's leaves the install unidentified the same way, with each place in `unrecognised`. Codex's eighth review found that Yarn's Plug'n'Play keeps packages in zip archives, which Yarn's patched fs opens as directories, so the walk could key one archive's tree and call the install identified. Melian does not read Yarn's map. On 2026-11-20 the coordinator chose to detect the layout instead, and to add one general guard, so the next layout fails safe without a review finding it. Each of these is unrecognised, and a named test in `installed-packages.test.ts`:
+
+- a `.pnp.cjs` or `.pnp.loader.mjs` in the module's directory or any directory above it, the install root's parents included;
+- a module whose path runs through a component ending `.zip`;
+- a walked directory whose name ends `.zip`;
+- the general guard: a module beneath a `node_modules` that no package the walk keyed holds, such as one in `node_modules/.store/pi`.
+
+A module in an installed package, a pnpm store's package, or a workspace package npm links is recognised, each a named test. A further layout a reviewer finds becomes a named test under this rule, not a new mechanism.
 
 The flag gates reuse where a key is looked up, as `checkReusable` already does for an unread policy and an unidentified checkout install, by [the request-key decision](2026-11-14-request-keys-as-built.md). Three places carry it. Each has a test that two reviews on the same unidentified install share a key and reuse nothing:
 
@@ -83,7 +93,7 @@ The flag gates reuse where a key is looked up, as `checkReusable` already does f
 2. **Lenses.** `runLenses` takes `reusable`, false when Melian's install or the instrumenter's is unidentified. It then neither attaches to the stored task nor copies a lens run from another. Tests in `lens-reuse-review.test.ts`: the second review asks every lens again, and copies none.
 3. **Adjudication.** A review and a repeated dismissal attach to the stored adjudication only on an identified install. Tests in `review.test.ts` and `dismiss.test.ts`.
 
-`melian doctor` names each place that links out on its `packages` line, as a warning.
+`melian doctor` names each place that links out, and each place not laid out as npm lays out an install, on its `packages` line, as a warning.
 
 ## Failing closed
 
