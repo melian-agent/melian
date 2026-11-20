@@ -210,11 +210,16 @@ export class RelayBatch {
 		// A lens run's copy exported as the lens ended, with no check, under the key of the run the round reads.
 		const early = (record: SharedRecord) =>
 			record.kind === "lens" && (record.payload as LensPayload).check === null && lensKeys.has(record.key);
+		// Triage, the round's telemetry and early lens copies count against the bound whether or not the round names them.
+		const extra = (record: SharedRecord) =>
+			record.kind === "triage" || (record.kind === "telemetry" && record.key === round.id) || early(record);
 		let extras = 0;
 		for (const record of records) {
-			if (record === round || read.has(record.id)) continue;
-			if (record.kind !== "triage" && !(record.kind === "telemetry" && record.key === round.id) && !early(record))
-				throw new RelayRefusal("unnamedRecord", record.path);
+			if (record === round) continue;
+			if (!extra(record)) {
+				if (!read.has(record.id)) throw new RelayRefusal("unnamedRecord", record.path);
+				continue;
+			}
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
 		}
 		const accounts = manifest.read.filter((named) => named.kind === "account");

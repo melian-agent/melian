@@ -287,6 +287,22 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(await artefact(...written, ...past), writer))).code).toBe("tooManyExtras");
 	});
 
+	it("counts triage records the round names against the same bound", async () => {
+		const biome = check();
+		const made = account([biome]);
+		const triage = (index: number) => records().triage(index.toString(16).padStart(64, "0"), { inputCut: false });
+		const named = (triages: SharedRecord[]) => [
+			biome,
+			made,
+			...triages,
+			records().round([biome, made, ...triages], undefined, [], []),
+		];
+		const at = Array.from({ length: relayLimits.extras }, (_, index) => triage(index));
+		expect((await RelayBatch.read(await artefact(...named(at)), writer)).records).toHaveLength(at.length + 3);
+		const past = [...at, triage(relayLimits.extras)];
+		expect((await refusal(RelayBatch.read(await artefact(...named(past)), writer))).code).toBe("tooManyExtras");
+	});
+
 	it("refuses a writer's round that names no account, or two", async () => {
 		const biome = check();
 		const bare = records().round([biome], undefined, [], []);
