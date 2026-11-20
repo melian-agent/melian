@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,8 @@ const root = fileURLToPath(new URL("../../../", import.meta.url));
 const bin = join(root, "packages/cli/bin/melian.js");
 const golden = loadGoldens().find((each) => each.name === "correctness-null-deref")!;
 const range = "main...feature";
+const lensDirectory = ".melian/lenses/correctness";
+const lensFile = `${lensDirectory}/LENS.md`;
 // Every character visible text escapes, but the line feed that ends each printed line.
 const unsafe = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 
@@ -42,10 +44,23 @@ function melian(cwd: string, args: string[], env: Record<string, string>) {
 }
 
 // The null-dereference golden reviewed on its feature branch, with Codex's findings imported against the review.
-function compared(lines: readonly number[]) {
+// With `committedLens`, the policy and a repository `correctness` lens are committed on main, which feature merges, and
+// main is checked out again, so the range reads its policy from the base commit, as `revision:<sha>`.
+function compared(lines: readonly number[], committedLens = false) {
 	const { repo } = buildGoldenRepository(golden);
 	cleanup.push(repo);
-	writeFileSync(join(repo, "melian.yaml"), "tiers:\n  fast: [guardrails]\n");
+	if (committedLens) {
+		const run = (...args: string[]) => execFileSync("git", args, { cwd: repo, env: { ...process.env, ...gitEnv } });
+		run("checkout", "--quiet", "main");
+		writeFileSync(join(repo, "melian.yaml"), "tiers:\n  fast: [guardrails]\n");
+		mkdirSync(join(repo, lensDirectory), { recursive: true });
+		writeFileSync(join(repo, lensFile), "---\nname: correctness\nextends: correctness\n---\n");
+		run("add", "--all");
+		run("commit", "--quiet", "-m", "policy");
+		run("checkout", "--quiet", "feature");
+		run("merge", "--quiet", "--no-edit", "main");
+		run("checkout", "--quiet", "main");
+	} else writeFileSync(join(repo, "melian.yaml"), "tiers:\n  fast: [guardrails]\n");
 	const files = realpathSync(mkdtempSync(join(tmpdir(), "melian-evidence-cli-")));
 	cleanup.push(files);
 	const script = join(files, "script.json");
@@ -196,6 +211,22 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 				`^warn {2}evidence +${evidence.replaceAll(".", "\\.")}, [0-9.]+ KiB of its budget of 1\\.0 KiB; a valid miss keeps no more evidence until evidence\\.budget is raised in your configuration, since melian store prune keeps evidence until issue #627 lands$`,
 			),
 		);
+	});
+
+	it("records the blob of a repository lens at the policy commit, and no other lens", () => {
+		const { repo, env, external } = compared([30], true);
+		const kept = melian(repo, valid(external(30)), env);
+		expect(kept).toMatchObject({ status: 0, stderr: "" });
+		const policy = execFileSync("git", ["rev-parse", "main"], { cwd: repo, encoding: "utf8" }).trim();
+		const blob = execFileSync("git", ["rev-parse", `${policy}:${lensFile}`], { cwd: repo, encoding: "utf8" }).trim();
+
+		const json = melian(repo, ["compare", "evidence", range, external(30), "--json"], env);
+
+		const { pointer } = JSON.parse(json.stdout) as { pointer: EvidencePointer };
+		expect(pointer.policy).toBe(`revision:${policy}`);
+		expect(pointer.lensFiles).toEqual([
+			{ lens: expect.stringMatching(/^correctness@[0-9a-f]{12}$/), file: lensFile, blob },
+		]);
 	});
 
 	it("keeps nothing for a valid Melian finding or a match, which are not misses", () => {

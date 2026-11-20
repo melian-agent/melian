@@ -35,3 +35,5 @@ Each kill ran by hand against its named test alone. The test was matched by its 
 `packages/cli` files are outside the claims. The CLI tests in `packages/cli/test/compare-evidence.test.ts` cover them.
 
 Timing: mutants 4 × 130 min (the average of four runs); other 1 × 30 min (unit and CLI test runs); gate 3 × 15 min.
+
+- Finding lens.tests P2 on evidence.ts:95-117 (untested `lensFiles`): `packages/cli/test/compare-evidence.test.ts` "records the blob of a repository lens at the policy commit, and no other lens" adjudicates a miss under a `revision:` policy with a committed lens. Mutants run by hand, each failing the test alone: deleting `files.push(...)` and removing the `!` from `!named.has(...)`.
