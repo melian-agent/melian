@@ -973,7 +973,7 @@ describe("recording a dismissal", () => {
 			digest,
 			identified: false,
 			outside: ["node_modules/yaml"],
-			lines: [],
+			entries: [],
 		} as never);
 		try {
 			await dismiss(harness, id);

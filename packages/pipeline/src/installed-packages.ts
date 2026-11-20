@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { type Dirent, existsSync, lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { canonicalJson } from "@melian-agent/core";
 
 export class InstalledPackagesError extends Error {
 	readonly code = "installed-packages";
@@ -21,13 +22,16 @@ type Mode = "modules" | "scope" | "package" | "tree";
  * install root is the outermost directory whose `node_modules` Node searches from the module the install is read from.
  * The decision of 2026-11-20 says what it leaves out.
  */
+// A place beneath the install root, its kind, and what that kind records there.
+export type InstallEntry = readonly string[];
+
 export class Install {
-	readonly lines: readonly string[];
+	readonly entries: readonly InstallEntry[];
 	/** The places beneath the root that link out of it, each of which leaves the install unidentified. */
 	readonly outside: readonly string[];
 
-	private constructor(lines: readonly string[], outside: readonly string[]) {
-		this.lines = lines;
+	private constructor(entries: readonly InstallEntry[], outside: readonly string[]) {
+		this.entries = entries;
 		this.outside = outside;
 	}
 
@@ -45,7 +49,7 @@ export class Install {
 			throw new InstalledPackagesError(`Melian cannot key its install: no node_modules holds the module ${from}.`);
 		const walk = new Walk(root, limit);
 		walk.run(chain.map((directory) => join(directory, "node_modules")));
-		return new Install(walk.lines(), walk.outside());
+		return new Install(walk.entries(), walk.outside());
 	}
 
 	/** Whether nothing beneath the root links out of it, so a run keyed by the install may stand for another. */
@@ -54,9 +58,7 @@ export class Install {
 	}
 
 	get digest(): string {
-		return createHash("sha256")
-			.update(this.lines.map((line) => `${line}\n`).join(""))
-			.digest("hex");
+		return createHash("sha256").update(canonicalJson(this.entries)).digest("hex");
 	}
 }
 
@@ -70,7 +72,7 @@ function ancestors(directory: string): string[] {
 class Walk {
 	readonly #root: string;
 	readonly #limit: number;
-	readonly #lines = new Set<string>();
+	readonly #entries = new Map<string, InstallEntry>();
 	readonly #outside: string[] = [];
 	readonly #entered = new Set<string>();
 	readonly #queue: [string, Mode][] = [];
@@ -85,8 +87,8 @@ class Walk {
 		for (let next = this.#queue.shift(); next !== undefined; next = this.#queue.shift()) this.#enter(...next);
 	}
 
-	lines(): string[] {
-		return [...this.#lines].sort();
+	entries(): InstallEntry[] {
+		return [...this.#entries].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, entry]) => entry);
 	}
 
 	outside(): string[] {
@@ -96,6 +98,10 @@ class Walk {
 	// A directory's place beneath the root, with `/` between its parts on every platform.
 	#place(directory: string): string {
 		return relative(this.#root, directory).split(sep).join("/");
+	}
+
+	#add(...entry: string[]) {
+		this.#entries.set(canonicalJson(entry), entry);
 	}
 
 	#beneath(directory: string): boolean {
@@ -125,18 +131,18 @@ class Walk {
 		}
 		const at = this.#place(path);
 		if (target === undefined) {
-			this.#lines.add(`${at} links nowhere`);
+			this.#add(at, "links nowhere");
 			return;
 		}
 		if (!this.#beneath(target)) {
-			this.#lines.add(`${at} links outside the install`);
+			this.#add(at, "links outside");
 			this.#outside.push(at);
 			return;
 		}
-		this.#lines.add(`${at} links ${this.#place(target)}`);
+		this.#add(at, "links", this.#place(target));
 		if (mode === "modules" || mode === "scope") this.#queue.push([target, mode]);
 		// A linked package's own files are no release, as a workspace package's are not, so only its manifest is keyed.
-		if (mode === "package") this.#lines.add(`${this.#place(target)} ${this.#release(target)}`);
+		if (mode === "package") this.#add(this.#place(target), ...this.#release(target));
 		for (const directory of ancestors(target)) {
 			if (!this.#beneath(directory)) break;
 			if (existsSync(join(directory, "node_modules")))
@@ -157,7 +163,7 @@ class Walk {
 		} catch {
 			throw new InstalledPackagesError(`Melian cannot read ${this.#place(directory)} in its install.`);
 		}
-		if (mode === "package") this.#lines.add(`${this.#place(directory)} ${this.#release(directory)}`);
+		if (mode === "package") this.#add(this.#place(directory), ...this.#release(directory));
 		for (const entry of entries) {
 			const path = join(directory, entry.name);
 			const slot = (mode === "modules" || mode === "scope") && !entry.name.startsWith(".");
@@ -175,8 +181,8 @@ class Walk {
 	}
 
 	// What a package directory holds: its manifest's name and version, or that it has none, since Node can still load it.
-	#release(directory: string): string {
-		if (!existsSync(join(directory, "package.json"))) return "without a manifest";
+	#release(directory: string): string[] {
+		if (!existsSync(join(directory, "package.json"))) return ["no manifest"];
 		let manifest: { name?: unknown; version?: unknown };
 		try {
 			manifest = JSON.parse(readFileSync(join(directory, "package.json"), "utf8")) as typeof manifest;
@@ -185,6 +191,6 @@ class Walk {
 		}
 		const name = typeof manifest.name === "string" ? manifest.name : "";
 		const version = typeof manifest.version === "string" ? manifest.version : "";
-		return `${name}@${version}`;
+		return ["release", name, version];
 	}
 }

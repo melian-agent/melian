@@ -1707,8 +1707,8 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		const installed = await TypeScriptMutationAdapter.open(repo);
 		expect(installed.source).toBe("checkout");
 		expect(installed.identity).toEqual({ ...fallback.identity, source: "checkout" });
-		expect(installed.install().lines).toEqual([
-			"node_modules/@stryker-mutator/instrumenter @stryker-mutator/instrumenter@10.0.0",
+		expect(installed.install().entries).toEqual([
+			["node_modules/@stryker-mutator/instrumenter", "release", "@stryker-mutator/instrumenter", "10.0.0"],
 		]);
 		expect(fallback.install().digest).toBe(melianInstall().digest);
 		gitIn(repo, "add", "-f", "node_modules/.keep");

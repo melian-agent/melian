@@ -61,7 +61,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const code = vi.hoisted(() => ({ version: "recorded", packages: "installed", identified: true }));
 vi.mock("../src/code-version.ts", () => ({
 	codeVersion: () => code.version,
-	melianInstall: () => ({ digest: code.packages, identified: code.identified, outside: [], lines: [] }),
+	melianInstall: () => ({ digest: code.packages, identified: code.identified, outside: [], entries: [] }),
 }));
 
 import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";

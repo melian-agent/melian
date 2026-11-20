@@ -576,7 +576,7 @@ describe("a repeat review on an install Melian cannot identify", () => {
 	const unidentified = () =>
 		vi
 			.spyOn(codeVersionModule, "melianInstall")
-			.mockReturnValue({ digest: "linked", identified: false, outside: ["node_modules/yaml"], lines: [] } as never);
+			.mockReturnValue({ digest: "linked", identified: false, outside: ["node_modules/yaml"], entries: [] } as never);
 
 	afterEach(() => {
 		vi.restoreAllMocks();

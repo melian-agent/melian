@@ -592,7 +592,7 @@ describe("doctor clone check", () => {
 
 describe("doctor packages", () => {
 	const installWith = (outside: string[]) =>
-		({ outside, identified: outside.length === 0, digest: "e".repeat(64), lines: [] }) as unknown as ReturnType<
+		({ outside, identified: outside.length === 0, digest: "e".repeat(64), entries: [] }) as unknown as ReturnType<
 			typeof pipeline.melianInstall
 		>;
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}packages\s+/.test(each));

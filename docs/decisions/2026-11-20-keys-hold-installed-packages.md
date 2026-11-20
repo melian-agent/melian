@@ -8,7 +8,7 @@ Amends: [A lens run offered `list_mutants` keys the instrumenter that answers it
 
 Amends: [A lens run is reused by its request key, one lens at a time](2026-11-15-lens-runs-reused-per-request.md), whose key held the versions of Pi Durable and pi-ai alone
 
-Status: the coordinator chose this design on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470), after reviews found a new collision in each earlier form: one digest over the whole install, a fixed line and a flag for an install Melian cannot identify, and the bound. Those are the coordinator's choices, not a maintainer's ruling.
+Status: the coordinator chose this design on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470), after reviews found a new collision in each earlier form: one digest over the whole install, a fixed entry and a flag for an install Melian cannot identify, and the bound. Those are the coordinator's choices, not a maintainer's ruling.
 
 ## Problem
 
@@ -28,13 +28,13 @@ The first forms keyed only what each producer's imports reach, walking manifests
 
 - The install root is the outermost ancestor of the module that holds a `node_modules`, since Node searches every ancestor's.
 - In a `node_modules` directory, each child is a package slot, and an `@scope` child holds slots. A name starting with a dot, such as `.bin` or `.cache`, is walked as a plain tree.
-- A package records `place name@version`, read from its `package.json`, or `place without a manifest`, since Node can load one. Its subdirectories are walked for a nested `node_modules`.
-- A link records `place links target`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's release but not its files, since a workspace package's source is no release; the code version covers it.
-- A link that resolves nowhere records `place links nowhere`.
+- A package records `[place, "release", name, version]`, read from its `package.json`, or `[place, "no manifest"]`, since Node can load one. Its subdirectories are walked for a nested `node_modules`.
+- A link records `[place, "links", target]`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's release but not its files, since a workspace package's source is no release; the code version covers it.
+- A link that resolves nowhere records `[place, "links nowhere"]`.
 
 The lockfile is not asked. It records what npm meant to install, not what Node finds, and a hand edit, `npm link` or a second package manager changes the second without the first.
 
-`place` is the path relative to the install root, with `/` between its parts on every platform. The digest is a SHA-256 over the sorted lines, each ended by a newline. One layout at two absolute paths gives one digest, so a host and an Actions runner that run `npm ci` on one lockfile share it. In this repository the walk reads 2,263 directories and writes 402 lines, 31 of them links, in about 90 ms, once a process.
+`place` is the path relative to the install root, with `/` between its parts on every platform. Each entry is a list of strings, and the digest is a SHA-256 over core's `canonicalJson` of the sorted list of entries. No place, target, name or version can stand for a kind or for another field, since each is a JSON string of its own. One layout at two absolute paths gives one digest, so a host and an Actions runner that run `npm ci` on one lockfile share it. In this repository the walk reads 2,263 directories and writes 402 entries, 31 of them links, in about 90 ms, once a process.
 
 **A bound.** The walk reads at most `maxInstallDirectories`, 50,000 directories, and past it fails the key: "Melian cannot key its install: it holds more than 50000 directories." That is 22 times this repository's install. A global install whose root is `/usr/lib` reads every global package, and one that big fails closed rather than walk without end.
 
@@ -48,7 +48,9 @@ Seven layouts collided under the earlier forms. Each is a named test in `install
 6. a `node_modules` made by hand inside a package's own directory, such as `pi/cjs/node_modules`, changes;
 7. a platform build's own dependency moves, and a package's entry in a nested directory with its own `node_modules` changes.
 
-An npm alias, `node_modules/sdk` holding `real-sdk@2.0.0`, is an eighth test. It reads as `node_modules/sdk real-sdk@2.0.0`, and moving it moves the digest. Against main's walk at 56f7fb059, the hand-made nested, platform, nested entry and dev dependency cases each kept the digest, and the alias failed the key, so every review would have failed.
+Codex's review of the first whole-install form found that its text lines could be forged. A link to a directory named `nowhere` wrote the line of a link that names no directory, a space in a place shifted where a link's target began, and an `@` in a manifest's name moved where its version began. Each is a named test that failed on the text lines and passes on the entries.
+
+An npm alias, `node_modules/sdk` holding `real-sdk@2.0.0`, is an eighth test. It reads as `["node_modules/sdk", "release", "real-sdk", "2.0.0"]`, and moving it moves the digest. Against main's walk at 56f7fb059, the hand-made nested, platform, nested entry and dev dependency cases each kept the digest, and the alias failed the key, so every review would have failed.
 
 ## What it gives up
 
@@ -62,7 +64,7 @@ What the walk does not see, and why each is left:
 
 ## An install Melian cannot identify
 
-A link out of the install, such as `npm link yaml` to `/work/yaml`, names a place the walk cannot read without walking the host. It records the fixed line `node_modules/yaml links outside the install`, adds the place to `outside`, and walks no further. The digest stays deterministic, and `identified` reads false. No value drawn at random enters any key, so rule 6 of [the identity guideline](../guidelines/identity.md#rules) stands as written, and this decision amends nothing there.
+A link out of the install, such as `npm link yaml` to `/work/yaml`, names a place the walk cannot read without walking the host. It records the fixed entry `["node_modules/yaml", "links outside"]`, adds the place to `outside`, and walks no further. The digest stays deterministic, and `identified` reads false. No value drawn at random enters any key, so rule 6 of [the identity guideline](../guidelines/identity.md#rules) stands as written, and this decision amends nothing there.
 
 The flag gates reuse where a key is looked up, as `checkReusable` already does for an unread policy and an unidentified checkout install, by [the request-key decision](2026-11-14-request-keys-as-built.md). Three places carry it. Each has a test that two reviews on the same unidentified install share a key and reuse nothing:
 
@@ -80,7 +82,7 @@ An adjudication task whose `packages` differs from the running install's fails, 
 
 ## Melian's own packages
 
-The walk lists Melian's own packages like any other. A published install reads `node_modules/@melian-agent/core @melian-agent/core@1.1.0`, and a checkout reads the workspace link and the release at `packages/core`. So the digest covers a published pipeline paired with another core. Each workspace package also names the others at their exact version, as AGENTS.md asks of every direct dependency, and `scripts/check-pinned-deps.mjs` fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
+The walk lists Melian's own packages like any other. A published install reads `["node_modules/@melian-agent/core", "release", "@melian-agent/core", "1.1.0"]`, and a checkout reads the workspace link and the release at `packages/core`. So the digest covers a published pipeline paired with another core. Each workspace package also names the others at their exact version, as AGENTS.md asks of every direct dependency, and `scripts/check-pinned-deps.mjs` fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
 
 ## What it costs
 
