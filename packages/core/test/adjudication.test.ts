@@ -907,6 +907,23 @@ describe("instruction files", () => {
 		expect(byId(verdict, listed.id).properties.explanation).toEqual(listed.properties.explanation);
 	});
 
+	it("reports the finding whole when only another sighting's claim names a file the policy does not list", () => {
+		const listed = notice(brief);
+		const stored = injection().toJSON();
+		const sighting = {
+			id: "b".repeat(16),
+			ruleId: "melian/injection-attempt",
+			source: { check: "lens.correctness", version: "1" },
+			severity: "P1",
+			failureScenario: "A reviewer model reads the runner and approves the change unread.",
+			evidence: evidence("src/run.ts"),
+		} as const;
+		const merged = Finding.from({ ...stored, properties: { ...stored.properties, otherClaims: [sighting] } });
+		const verdict = decide([listed, merged]);
+		expect(verdict.findings.block.map((each) => each.id)).toEqual([merged.id]);
+		expect(byId(verdict, merged.id).properties.decidedBy?.replacedBy).toBeUndefined();
+	});
+
 	it("reports the finding whole when its trigger or a proof hunk lies in another file", () => {
 		const listed = notice(brief);
 		for (const trigger of [
