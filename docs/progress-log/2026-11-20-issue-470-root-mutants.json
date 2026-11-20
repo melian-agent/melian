@@ -1,0 +1,692 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c4d4b9b4d9a986641ec99a4b28773ae8ec68b891",
+		"head": "a93396f9f4069c2815be5e765e246788fa906088"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 170,
+			"column": 48,
+			"endLine": 170,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "aeaf6c62071735936946760cac07b6c37d71885f36d6b4666ff0f84c8247d039"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 27,
+			"column": 16,
+			"endLine": 30,
+			"endColumn": 2,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "160c5e768446d89f0504f545cb6a14147b9024f08bf46ac931fcc86a3c560853",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the package, when it resolves outside the install root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 29,
+			"column": 2,
+			"endLine": 29,
+			"endColumn": 121,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3e8fadbfe9e68f6f6f12df708da45663d8cd54c43ecbc7c73a293cc95c7086ca"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 38,
+			"column": 85,
+			"endLine": 38,
+			"endColumn": 87,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "7400d0e59dae2a5fd9f8a9798b343274d4cbb823724692fa3d06a391a3fa9035",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 39,
+			"column": 29,
+			"endLine": 39,
+			"endColumn": 31,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "bda0b610cec43a58006fddd6701f4a20310c8ff35bb23304c3931b8fa9b4f9de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 68,
+			"column": 6,
+			"endLine": 68,
+			"endColumn": 37,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "found.includes(\"node_modules\")",
+			"status": "generated",
+			"id": "5932d2d37df32af665c5d11c45c23f75d46acfab618f53f670219f47dde4e2ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 68,
+			"column": 6,
+			"endLine": 68,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce9f7081ac08fa9e8b2d88944ed6a49ff1f807db27c1808a7a1f80582c88d31f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 68,
+			"column": 6,
+			"endLine": 68,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d3de1e8330b54aae5d151e378885b634cbf7b2ea53d5b15b982940868e476145",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the root, when Node finds it beneath no node_modules, as a package naming itself is"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 68,
+			"column": 22,
+			"endLine": 68,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0fc6936d37951eceb55ed443c90797f347fd9fbba879797ed0138e9ca0c00b46"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 69,
+			"column": 15,
+			"endLine": 69,
+			"endColumn": 60,
+			"mutatorName": "MethodExpression",
+			"replacement": "found",
+			"status": "generated",
+			"id": "003b647693f5a5c45930ade60576a30ed9172211b3144d04f30b5d6f22008ca2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 69,
+			"column": 44,
+			"endLine": 69,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "06d4da324c07a88a1d3a74a38feee31b064bc52d84384334b6920f8ceeba461f"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 73,
+			"column": 14,
+			"endLine": 73,
+			"endColumn": 68,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "717d73709346b03c3ea7b81b57274a79fd793bb3b06ae1886370903a7f2ef516",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 85,
+			"column": 16,
+			"endLine": 85,
+			"endColumn": 18,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "b34d794b920a84d6cc2b1cd8603c4e5a24a7922ebecb7e51d481699dd2693cfb",
+			"claim": "equivalent",
+			"evidence": "The default applies only when no copy pushed a folder, and then no copy exists to place, so its contents never reach a line.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 8,
+			"endLine": 87,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d7eed625a5e34ea718e218a75fde848e91d6a306e95ec91f89e9f51b94493f7d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 8,
+			"endLine": 87,
+			"endColumn": 86,
+			"mutatorName": "LogicalOperator",
+			"replacement": "depth < first.length || rest.every(folder => folder[depth] === first[depth])",
+			"status": "generated",
+			"id": "997bf78926d57c61e9d46742e3b776210915baf86fc1cc18beeebe5324af7b3f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 8,
+			"endLine": 87,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c3c4673d364c13c19c86fcddd4b1708a00d5d2e3923c1b7359b59527c33a8192",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 8,
+			"endLine": 87,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "depth <= first.length",
+			"status": "generated",
+			"id": "d256eb0a97053202fed5856810dae33693d056fb0f91765acda6899c6ac75136",
+			"claim": "equivalent",
+			"evidence": "One step past the end compares undefined, so it adds a step only when every folder equals first, and first.slice(0, length + 1) is first.",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 8,
+			"endLine": 87,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "depth >= first.length",
+			"status": "generated",
+			"id": "14791e08e56265587548a7605bd09a138d220ead0af90a0eeb2750d360582afd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 32,
+			"endLine": 87,
+			"endColumn": 86,
+			"mutatorName": "MethodExpression",
+			"replacement": "rest.some(folder => folder[depth] === first[depth])",
+			"status": "generated",
+			"id": "07649c7a3d3d104765f0bda7fd47f44198c28e90925570a37c3b1c0d07247d59",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"takes the install root from every copy, when npm nests a root beneath a workspace package and hoists one of what it needs"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 43,
+			"endLine": 87,
+			"endColumn": 85,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a25c3f428db3e3cf4688ec5bc25ff33232801b0d587a6ccaec8969ff3fe0013e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 55,
+			"endLine": 87,
+			"endColumn": 85,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "165ce58d39e6cfed3d1996d40b035d038bcf5c6f27db9ee9660d6cf5df86f623",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"takes the install root from every copy, when npm nests a root beneath a workspace package and hoists one of what it needs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 55,
+			"endLine": 87,
+			"endColumn": 85,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b4ced5e1b26e8fae20fc56c453d9adda167e6d62731e26109b5ee37a4f934138",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 55,
+			"endLine": 87,
+			"endColumn": 85,
+			"mutatorName": "EqualityOperator",
+			"replacement": "folder[depth] !== first[depth]",
+			"status": "generated",
+			"id": "e81f24fe7bcc4ef7970376408bb625f87aa3517df0eb29db2e97a321a0c4955d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 88,
+			"endLine": 87,
+			"endColumn": 95,
+			"mutatorName": "UpdateOperator",
+			"replacement": "depth--",
+			"status": "generated",
+			"id": "1f2f82304cba03de1fc62c2dc6955f073a033184767c4ca36caf7839d51e873c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 88,
+			"column": 21,
+			"endLine": 88,
+			"endColumn": 42,
+			"mutatorName": "MethodExpression",
+			"replacement": "first",
+			"status": "generated",
+			"id": "73d3af951fc50c764ce67427528c698cd0f3a0cefb41f036fc41fa9f09ecc5c1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"takes the install root from every copy, when npm nests a root beneath a workspace package and hoists one of what it needs"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 89,
+			"column": 28,
+			"endLine": 93,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f2cb2504eda1bd069b4977bbf7d59cc3d432007c795603aefd9a246d6024dcfe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 6,
+			"endLine": 91,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e0d15f1e821e1458ac48963ad4d8ba85708fe797e9da6d672653af039efb2691",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 6,
+			"endLine": 91,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "76ce27305863467b407a25ba50c3636b501ca46485f24146cc52e82621b95c71",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the package, when it resolves outside the install root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 6,
+			"endLine": 91,
+			"endColumn": 49,
+			"mutatorName": "LogicalOperator",
+			"replacement": "place.startsWith(\"..\") && isAbsolute(place)",
+			"status": "generated",
+			"id": "394f9068ad2167535291f4e9a6899cdbd52adced9aa936be633fe4c2ab34cfb6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the package, when it resolves outside the install root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 6,
+			"endLine": 91,
+			"endColumn": 28,
+			"mutatorName": "MethodExpression",
+			"replacement": "place.endsWith(\"..\")",
+			"status": "generated",
+			"id": "9daa409ab5f89ae0ecbacbeec003dbbaa74ce0c551e546631b9f8c61ab76d023",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the package, when it resolves outside the install root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 23,
+			"endLine": 91,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "605f6ff7a029b1e29fe92ce93a601fa0453d7044f486ece67a21cf98bba67903"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 92,
+			"column": 2,
+			"endLine": 92,
+			"endColumn": 58,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "951ee4e7dc2399d99f19f83f68f215111ebd26e028fdc6d2f30e8ad5f1658681",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 92,
+			"column": 12,
+			"endLine": 92,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "05e8996800dbaf3cd17d01759f7a28aebfda69c830d35b8d6344b6cceb953c0a"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 92,
+			"column": 37,
+			"endLine": 92,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f4bcc65cf677ac8c02346660d0ee9ff72e218334b1fcd7d67a6687b10274b19e"
+		}
+	],
+	"total": 34,
+	"omitted": 0,
+	"unmutated": []
+}
