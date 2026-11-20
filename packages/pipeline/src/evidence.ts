@@ -227,7 +227,7 @@ export class EvidenceStore {
 		if (held + adding > this.budget)
 			throw new EvidenceError(
 				"budget",
-				`${this.directory} holds ${held} bytes, and this evidence needs ${adding} more, past its budget of ${this.budget}; run melian store prune, or raise evidence.budget`,
+				`${this.directory} holds ${held} bytes, and this evidence needs ${adding} more, past its budget of ${this.budget}. melian store prune keeps evidence, so raise evidence.budget, or remove by hand evidence no comparison still needs`,
 			);
 		planned.push({ components: [...misses, pointerName], bytes: pointerBytes });
 		const created: string[] = [];

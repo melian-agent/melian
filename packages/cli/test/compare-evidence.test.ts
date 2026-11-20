@@ -175,6 +175,24 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		expect(stored(evidence)).toEqual([]);
 	});
 
+	it("prints the evidence directory's size against its budget in doctor", () => {
+		const { repo, env, external, evidence } = compared([30]);
+		const line = (output: string) => output.split("\n").find((each) => /^\S+\s+evidence\s/.test(each));
+		expect(line(melian(repo, ["doctor"], env).stdout)).toMatch(
+			new RegExp(`^ok {4}evidence +${evidence.replaceAll(".", "\\.")}, 0 B of its budget of 1\\.0 GiB$`),
+		);
+		expect(melian(repo, valid(external(30)), env).status).toBe(0);
+		writeFileSync(join(repo, "melian.local.yaml"), "evidence:\n  budget: 1KiB\n");
+
+		const full = line(melian(repo, ["doctor"], env).stdout);
+
+		expect(full).toMatch(
+			new RegExp(
+				`^warn {2}evidence +${evidence.replaceAll(".", "\\.")}, [0-9.]+ KiB of its budget of 1\\.0 KiB; a valid miss keeps no more evidence until evidence\\.budget is raised$`,
+			),
+		);
+	});
+
 	it("keeps nothing for a valid Melian finding or a match, which are not misses", () => {
 		const { repo, env, external, melianId, evidence } = compared([8]);
 		expect(melian(repo, valid(external(8)), env).stdout).not.toContain("evidence");
