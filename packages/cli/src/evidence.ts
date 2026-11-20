@@ -3,7 +3,6 @@ import { type ExternalFinding, Lens, LensError, loadConfig, userFiles, visibleTe
 import {
 	type CompareHarness,
 	type EntryRecord,
-	EvidenceError,
 	type EvidenceLensFile,
 	type EvidenceStage,
 	EvidenceStore,
@@ -51,20 +50,23 @@ export class CloneEvidence {
 			return 0;
 		}
 		const { storage, ...run } = owned;
-		const gathered = await MissEvidence.gather(storage, { ...run, finding });
 		try {
+			const gathered = await MissEvidence.gather(storage, { ...run, finding });
 			const kept = await this.store.write(gathered.withLensFiles(await this.lensFiles(gathered, finding)));
 			this.io.stdout(
 				`Kept evidence for ${id}: ${gathered.stages.length} conversations, ${kept.written.length} newly written, at ${visibleText(kept.pointer)}.\n`,
 			);
 			return 0;
 		} catch (error) {
-			if (!(error instanceof EvidenceError)) throw error;
-			this.io.stderr(
-				`melian: the adjudication is recorded, but no evidence was kept: ${visibleText(error.message)}\n`,
-			);
-			return 1;
+			return CloneEvidence.unkept(this.io, error);
 		}
+	}
+
+	/** Says that the adjudication a failed copy follows is recorded, and returns the exit code 1. */
+	static unkept(io: Io, error: unknown): number {
+		const message = error instanceof Error ? error.message : String(error);
+		io.stderr(`melian: the adjudication is recorded, but no evidence was kept: ${visibleText(message)}\n`);
+		return 1;
 	}
 
 	/** Prints the evidence kept for `id` in `round`, every model and tool text made visible. */

@@ -245,6 +245,15 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		]);
 	});
 
+	it("says the adjudication is recorded when the evidence directory cannot be read", () => {
+		const { repo, env, external, evidence } = compared([30]);
+		writeFileSync(evidence, "not a directory");
+		const kept = melian(repo, valid(external(30)), env);
+		expect(kept.status).toBe(1);
+		expect(kept.stdout).toContain(`Adjudicated ${external(30)}`);
+		expect(kept.stderr).toMatch(/^melian: the adjudication is recorded, but no evidence was kept: .*ENOTDIR/);
+	});
+
 	it("keeps nothing for an unmatched external finding judged noise", () => {
 		const { repo, env, external, evidence } = compared([30]);
 		const noise = melian(repo, ["compare", "adjudicate", range, external(30), "--verdict", "noise"], env);

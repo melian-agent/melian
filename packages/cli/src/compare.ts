@@ -261,12 +261,11 @@ export async function adjudicateComparison(
 			fields.verdict === "valid" &&
 			missed !== undefined &&
 			!comparison.effectiveMatches().some((match) => match.external === id)
-		)
-			return await (await CloneEvidence.open(io, stored.changeset.repoRoot)).keep(
-				harness,
-				stored.changeset.revision,
-				missed,
-			);
+		) {
+			const evidence = await CloneEvidence.open(io, stored.changeset.repoRoot).catch((error: unknown) => error);
+			if (!(evidence instanceof CloneEvidence)) return CloneEvidence.unkept(io, evidence);
+			return await evidence.keep(harness, stored.changeset.revision, missed);
+		}
 		return 0;
 	} finally {
 		await harness.close(context);
