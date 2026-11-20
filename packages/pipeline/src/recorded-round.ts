@@ -340,11 +340,10 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 }
 
 // The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, `round` among them
-// unless the writer held it: every round of the changeset in the set that is neither in `frontier` nor an ancestor of
-// one there, in the set's ID order and whatever its place, so a round another host wrote without the frontier, which
-// `round` never names, ends or reopens what it would have on time. `before` serves only to find the frontier's ancestors.
-// `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round the set does
-// not hold that the writer did not, since what that round cited is unknown.
+// unless the writer held it: every round of the changeset in the set outside `frontier`, in the set's ID order and
+// whatever its place, so a round another host wrote, which the writer never met, ends or reopens it on time.
+// `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round that neither the
+// set nor the writer held, since what that round cited is unknown. That is the one thing `before` still decides.
 function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
 	const rounds = new Map(
 		set
@@ -353,14 +352,6 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 			.map((record) => [record.id, record]),
 	);
 	const held = new Set(frontier);
-	for (const pending = [...frontier]; pending.length > 0; ) {
-		const each = rounds.get(pending.pop()!);
-		for (const id of each === undefined ? [] : each.manifest()!.before)
-			if (!held.has(id)) {
-				held.add(id);
-				pending.push(id);
-			}
-	}
 	const tested = [...rounds.values()].filter((each) => !held.has(each.id));
 	const known = [round, ...tested].every(
 		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),

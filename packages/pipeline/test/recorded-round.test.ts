@@ -917,23 +917,23 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(read).filter(([each]) => each === id)).toEqual(dismissedOf(id));
 	});
 
-	it("tests no round its writer held before its frontier, though a later round names it beside the frontier", async () => {
+	it("ends a dismissal at a round its frontier does not name, though a round there follows it", async () => {
 		const { id, elsewhere, roundAt, readAfter } = await citedAcross("lens");
-		// The writer held `earlier`, whose sighting would reopen the finding, through `frontier`, which follows it.
+		// The frontier names `frontier` alone, so `earlier`, which it follows, is a round the writer never met.
 		const earlier = roundAt("1", "2", [elsewhere], []);
 		const frontier = roundAt("2", "3", [], [earlier]);
 		const read = await readAfter([earlier, frontier], [earlier, frontier, elsewhere], [frontier]);
-		expect(standingOf(read)).toEqual(dismissedOf(id));
+		expect(standingOf(read)).toEqual([[id, "new", undefined]]);
 	});
 
-	it("tests no round its writer held two rounds before its frontier, though a later round names it", async () => {
+	it("ends a dismissal at a round two rounds before its frontier, which the frontier does not name", async () => {
 		const { id, elsewhere, roundAt, readAfter } = await citedAcross("lens");
-		// `earliest`, whose sighting would reopen the finding, comes before `earlier`, which comes before the frontier.
+		// `earliest` comes before `earlier`, which comes before the frontier; the frontier names neither.
 		const earliest = roundAt("1", "2", [elsewhere], []);
 		const earlier = roundAt("2", "3", [], [earliest]);
 		const frontier = roundAt("3", "4", [], [earlier]);
 		const read = await readAfter([earliest, frontier], [earliest, earlier, frontier, elsewhere], [frontier]);
-		expect(standingOf(read)).toEqual(dismissedOf(id));
+		expect(standingOf(read)).toEqual([[id, "new", undefined]]);
 	});
 
 	it("keeps a dismissal whose writer held the round read, and a later round of another revision", async () => {
@@ -990,6 +990,14 @@ describe("the dismissal records a reader applies", () => {
 		const unknown = roundAt("1", "2", [], []);
 		const since = again([], [unknown]);
 		expect(standingOf(await readAfter([first], [first, since], [first]))).toEqual([[id, "new", undefined]]);
+	});
+
+	it("ends a dismissal at a round of another revision its writer never met, though a round of its frontier names it", async () => {
+		const { id, first, roundAt, again, readAfter } = await citedAcross("lens");
+		// A store synced in part: the writer's listing held `met` but not `unmet`, the round of another revision it follows.
+		const unmet = roundAt("1", "2", [], [first]);
+		const met = again([], [unmet]);
+		expect(standingOf(await readAfter([met], [first, unmet, met], [first, met]))).toEqual([[id, "new", undefined]]);
 	});
 
 	it("keeps a dismissal whose frontier names a round this set lacks, read at a round that follows none", async () => {
@@ -1210,13 +1218,16 @@ describe("the dismissal records a reader applies", () => {
 		const { id, elsewhere, first, second, again, readAfter } = await citedAcross("lens");
 		const third = again([], [second]);
 		const shared = [first, second, third, elsewhere];
-		expect(standingOf(await readAfter([third], shared, [second]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([third], shared, [first, second]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([third], shared, [second]))).toEqual([[id, "new", undefined]]);
 		expect(standingOf(await readAfter([third], shared, [first]))).toEqual([[id, "new", undefined]]);
 	});
 
 	it("remembers nothing for a dismissal whose writer held the round the read round follows", async () => {
 		const { id, elsewhere, first, second, readAfter } = await citedAcross("lens");
-		expect(standingOf(await readAfter([second], [first, second, elsewhere], [second]))).toEqual(dismissedOf(id));
+		const shared = [first, second, elsewhere];
+		expect(standingOf(await readAfter([second], shared, [first, second]))).toEqual(dismissedOf(id));
+		expect(standingOf(await readAfter([second], shared, [second]))).toEqual([[id, "new", undefined]]);
 	});
 
 	// A build before the frontier wrote no record of the rounds it held, so its record counts as no dismissal.
