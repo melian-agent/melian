@@ -258,7 +258,7 @@ describe("built-in lenses", () => {
 			contracts: "c339dabecb88",
 			conventions: "17f43d8215aa",
 			correctness: "1e482f964a70",
-			design: "e7337b0f9b01",
+			design: "b43685fb807a",
 			durability: "fa681fe5fdbc",
 			"removed-behaviour": "07f88ed160c3",
 			tests: "8a0970a96104",
@@ -271,7 +271,7 @@ describe("built-in lenses", () => {
 			contracts: "dcefc7175792",
 			conventions: "6e869581ce38",
 			correctness: "45f032dccb0c",
-			design: "ca23817939ca",
+			design: "23783b306eb8",
 			"removed-behaviour": "d9a864a309f7",
 			tests: "57ffc8d539c8",
 			"trust-boundary": "e857ab303af5",
@@ -420,7 +420,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 16, tokens: 10_000_000, tools: 400 },
+				budget: { findings: 16, tokens: 10_000_000, tools: 600 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);
