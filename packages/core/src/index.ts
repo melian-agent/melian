@@ -599,6 +599,7 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
+export { envelopeAllowance, SightingBudget } from "./sighting-budget.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

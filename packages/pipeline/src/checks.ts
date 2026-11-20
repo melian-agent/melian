@@ -21,6 +21,7 @@ import {
 	type RecordJson,
 	type RepositorySource,
 	Revision,
+	SightingBudget,
 	type StaticTool,
 	staticFindings,
 	type ToolLog,
@@ -328,7 +329,7 @@ async function runCheck(
 		return {
 			status: "ran",
 			report: {
-				findings: [...ordinary.findings, ...supersession.findings],
+				findings: SightingBudget.checkRecord.fit([...ordinary.findings, ...supersession.findings]),
 				notes: [...ordinary.notes, ...supersession.notes],
 			},
 		};

@@ -42,7 +42,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "d35edbf1a17c3b438fd1abe65674ab8367d75759d015c09bd2cf2c628dd8b848",
+	"packages/core/src/findings.ts": "19d39862b2d77ab69359c2e18ff786691706450350274414d45a4abf23d0456c",
 
 	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "8186734ee620c4e6ef1d903861ad07d48eac609822d13d3ad0ee4b32f1a978cb",
+	"packages/core/src/index.ts": "9aa9efd2060b1ac5d54dea1993f29808b211ec5f19c67ba5412b7a88ada775f7",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -102,6 +102,8 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
 
+	"packages/core/src/sighting-budget.ts": "d04b0e681831c537508f25aa1f42f67da28dec1be0bae9198a3b55b37b7f3b75",
+
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 
 	"packages/core/src/standards.ts": "d924aadb580c96d9b4d92de23e3abe02922e640602025727e52926f76729c31f",
@@ -140,7 +142,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
-	"packages/pipeline/src/checks.ts": "cc651221d31d050070c29ef2b927ebdbab67c7c5e109c06d356a1f7992b54ac7",
+	"packages/pipeline/src/checks.ts": "f7658cad77dc80bf892d314e19422756d7fdc8a1de9c362109a361d1a66aee82",
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
@@ -333,6 +335,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/core/src/run-details.ts",
 
 		"packages/core/src/secrets.ts",
+
+		"packages/core/src/sighting-budget.ts",
 
 		"packages/core/src/source.ts",
 
@@ -563,6 +567,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/core/src/run-details.ts",
 
 		"packages/core/src/secrets.ts",
+
+		"packages/core/src/sighting-budget.ts",
 
 		"packages/core/src/source.ts",
 

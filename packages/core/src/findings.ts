@@ -1932,6 +1932,18 @@ export class Finding {
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
+	/**
+	 * This finding with its detail left out for `note`: its headline stands as What, `note` as Why here, and What to do
+	 * is kept. Nothing its ID, severity, resolution or place comes from changes.
+	 */
+	abridged(note: string): Finding {
+		const { explanation } = this.properties;
+		return Finding.parse({
+			...this.toJSON(),
+			properties: { ...this.properties, explanation: { ...explanation, what: this.message.text, whyHere: note } },
+		});
+	}
+
 	toJSON(): StoredFinding {
 		const { ruleId, level, message, partialFingerprints, locations, properties } = this;
 		return { ruleId, level, message, partialFingerprints, locations, properties };
