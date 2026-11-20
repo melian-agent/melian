@@ -344,7 +344,10 @@ describe("built-in lenses", () => {
 				const named = checksOfTier(config, tier)
 					.filter((check) => check.startsWith("lens."))
 					.map((check) => lenses.find((lens) => lens.name === check.slice(5)));
-				return [tier, named.length === 0 ? "no lens" : named.filter((lens) => lens?.standards).map((lens) => lens?.name)];
+				return [
+					tier,
+					named.length === 0 ? "no lens" : named.filter((lens) => lens?.standards).map((lens) => lens?.name),
+				];
 			}),
 		);
 		expect(reading).toEqual({ fast: "no lens", standard: ["conventions"], full: ["conventions", "design"] });
