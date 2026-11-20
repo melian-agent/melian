@@ -306,8 +306,10 @@ async function policyChanges(
 				}),
 			);
 			if (forced && baseIdentity === headIdentity) return undefined;
-			// Melian cannot see what a link's target holds, so a notice behind one asks again whenever the head's content changes.
-			const behind = linked.has(path) ? `:tree:${await treeOf(repoRoot, revision.head)}` : "";
+			// Melian cannot see what a link's target holds, so a notice behind one asks again whenever either side's content changes.
+			const behind = linked.has(path)
+				? `:tree:${await treeOf(repoRoot, revision.base)}:${await treeOf(repoRoot, revision.head)}`
+				: "";
 			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}${behind}`) };
 			const marked = (await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {};
 			const override = guardrail.enabled

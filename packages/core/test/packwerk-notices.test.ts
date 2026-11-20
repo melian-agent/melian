@@ -398,6 +398,25 @@ describe("packwerkNotices", () => {
 		expect(triggers[1]).not.toBe(triggers[0]);
 	});
 
+	it("gives a linked notice a new trigger when only the base changes the link's target", async () => {
+		const base = commit({ ...packages, ...shared }, "base", [], { "packs/c": "../lib/c" });
+		const head = commit({ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") }, "head");
+		const moved = commit({ "lib/c/package.yml": lines("enforce_dependencies: false") }, "moved base");
+		const triggers = await Promise.all(
+			[base, moved].map(async (from) => {
+				const { revision } = await Changeset.resolve(repo, `${from}..${head}`);
+				const input = { repoRoot: repo, revision, source: { kind: "revision", commit: from } as const };
+				const notice = (await packwerkNotices(input, linkedRead, enola)).find(
+					(finding) => finding.properties.path === "packs/c/package.yml",
+				);
+				return notice?.properties.trigger?.hash;
+			}),
+		);
+		expect(triggers[0]).toBeDefined();
+		expect(triggers[1]).toBeDefined();
+		expect(triggers[1]).not.toBe(triggers[0]);
+	});
+
 	it("keeps a linked notice's trigger across a head that changes no content", async () => {
 		const base = commit({ ...packages, ...shared }, "base", [], { "packs/c": "../lib/c" });
 		const first = commit({ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") }, "first");
