@@ -1,0 +1,965 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "6c4fe029121466d01c09d6f04bccbd0ae915719f",
+    "head": "e51addfa4232f94a6338be7b3ed6653d6acbb80d"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/record-relay.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 76,
+      "column": 14,
+      "endLine": 76,
+      "endColumn": 85,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "831d468be652c3a226bfcc11fea5b32b21c7cda9a217bffeeda601ec03d57f37"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 216,
+      "column": 16,
+      "endLine": 217,
+      "endColumn": 104,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ab0545826b76ed6211315740c84f104f7e04ceff006e780bc9eb221c73a748d8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 104,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c985b612d29c3fbc102027bb9e5b82a2f9e9ef384f6661d8d45a71782b326143",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 104,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e61706ffbc38b0e3ff241ef6d27a67fe0255d076b26018e0fc8f530dc60edf1b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 104,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(record.kind === \"triage\" || record.kind === \"telemetry\" && record.key === round.id) && early(record)",
+      "status": "generated",
+      "id": "9de6b9bfa626df8d1c051717113e661b9ed29aa183750d4c4ac6f0ae89c1b5f5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 87,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0c7e9179faebe05cbb58648ae9f8f2d59b737780a68b2df35baa3b190ccaf8cc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 87,
+      "mutatorName": "LogicalOperator",
+      "replacement": "record.kind === \"triage\" && record.kind === \"telemetry\" && record.key === round.id",
+      "status": "generated",
+      "id": "46a007de9adfdbd5e9c6169af5092f548c7ec4a155d0e07af4d6d667763e1046",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "aa675540d706a6a5ba0a82e5be91a0403bcb211a16612f904c2553cf3880467f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 3,
+      "endLine": 217,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.kind !== \"triage\"",
+      "status": "generated",
+      "id": "80da24ead4cfd8060196eba13b6aa046b1f74456265ce667e457c794a94ce33c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 19,
+      "endLine": 217,
+      "endColumn": 27,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0edbf4cc80a524b25878873e1ee946067fa7c69eeaa3d1e837c43868de141697"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 32,
+      "endLine": 217,
+      "endColumn": 86,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "80155589d09c8ac2d10dc925f5666af53100c88ed26b6561f4ad4a12ea951965",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 32,
+      "endLine": 217,
+      "endColumn": 86,
+      "mutatorName": "LogicalOperator",
+      "replacement": "record.kind === \"telemetry\" || record.key === round.id",
+      "status": "generated",
+      "id": "d66709d5db1832c10d87bd64cafb5c1aa5c68469fb8c2195119ea42a09627b74",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 32,
+      "endLine": 217,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "d4d5dafafa6676d1a1580d572ae83e912560b122ed9bec520bf231a4148769b3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record keyed by its round's ID that is not the round's telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 32,
+      "endLine": 217,
+      "endColumn": 59,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.kind !== \"telemetry\"",
+      "status": "generated",
+      "id": "d077bcbda510d35743dbe12fb6b679b104489a0799b037660fb51740d66d3681",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 48,
+      "endLine": 217,
+      "endColumn": 59,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "77c28fcbdb8d8577b446233ae360d862990807d4afc0224665b56576ce9f9afa"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 63,
+      "endLine": 217,
+      "endColumn": 86,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b222885359837cbc6fe4fab08a78555952731b50f4e43824d14fdc14a253a5f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 217,
+      "column": 63,
+      "endLine": 217,
+      "endColumn": 86,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.key !== round.id",
+      "status": "generated",
+      "id": "1cc469b43a6a3a27d5f7137897109286e1abb5242a8e821a5d2a48d9ffcf6b88",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 220,
+      "column": 7,
+      "endLine": 220,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4f5abf17bba47e8cdd88fd20db0683a1f6f9d93be3d494652e24555480497ce0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 220,
+      "column": 7,
+      "endLine": 220,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2ca30cefdeda9f9f63bb9b21847a4a0c31388060e7ba2f8168f0583c666b5de0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 220,
+      "column": 7,
+      "endLine": 220,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record !== round",
+      "status": "generated",
+      "id": "55be5ed922159ce0bb950662e2b95f17caa0427a11810354492879fd379652bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 221,
+      "column": 7,
+      "endLine": 221,
+      "endColumn": 21,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "extra(record)",
+      "status": "generated",
+      "id": "499e8b21e009a077ce8260b96d0cd9b9e91d40c6879b15860249ca1b4172c6a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 221,
+      "column": 7,
+      "endLine": 221,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9bb451b9f90f6bf3a6ac5c147af38a0feea232ef322bdf1790b80719b6dccc13",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 221,
+      "column": 7,
+      "endLine": 221,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4068cd0c9daa404b99785e4faf5595124cf0d2d3661089e39f7441b446ff3136",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 221,
+      "column": 23,
+      "endLine": 224,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6e7c4929fa220f87eda794eb9263a12920f155509f41cfd3aeb2dd18f3cae263",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 28,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "read.has(record.id)",
+      "status": "generated",
+      "id": "acd2d1500f81737f89e1a7105868d67cc4165a0f2e736ee93926c9647a23c147",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7b928b8e9c207b6e3b6a0a8cfe6835d035bd268a8a7035da253adf34194e9c4b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 222,
+      "column": 8,
+      "endLine": 222,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "dbbb0b3ab855ded4fff04aa3e06a7af1f6eabcb3c5029917d47b0fbbb5295174",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 222,
+      "column": 30,
+      "endLine": 222,
+      "endColumn": 83,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "844e8f58abc76a157a1b47731ab03ddea5fc139b744261d3927d84ecc0881453",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a record the round does not name, and takes its triage and telemetry"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 222,
+      "column": 53,
+      "endLine": 222,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0e18a87a92cf2b75376e307d70894d86c7b6e6fffd5181657fcdf2391086e2f1"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 228,
+      "column": 18,
+      "endLine": 230,
+      "endColumn": 3,
+      "mutatorName": "MethodExpression",
+      "replacement": "records",
+      "status": "generated",
+      "id": "a953f6dc06fddb5814a5ed31c0b2c10a5aa3e731634cab69df51944b50a1095d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 3,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "bce0e0817b378af47790274edc14c0f5d62349a9d63b93ca21ec8c5f65acf45c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "with a tier of lenses",
+            "refuses two decided triage records that disagree, one cut and one not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 15,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "36b37e4697167e9660875d82cb53cc15540a3c2001e0869d6ff8776252e6b729",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 15,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6c769cb421b7b4087dffb9ad6e0959a87575e0a0dce693d807a861e7192df5cd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "with a tier of lenses",
+            "refuses two decided triage records that disagree, one cut and one not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 15,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "LogicalOperator",
+      "replacement": "record.kind === \"triage\" || (record.payload as TriagePayload).decision !== null",
+      "status": "generated",
+      "id": "391b3baeb8ca0d6e86b27c4498ea617f8db7b0a54af302f9ffd5b7af491a5228",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 15,
+      "endLine": 229,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b6886b5c53163c52ec502c7efb955d6bb644388cb6d1e52c577d5cfedfa4d8b7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 15,
+      "endLine": 229,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.kind !== \"triage\"",
+      "status": "generated",
+      "id": "c319d989ab456d1f38e409d045e550cf10f9e4f454dabafa1a7af7e88454afee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 31,
+      "endLine": 229,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "732bbca991a1d18cb5a1738d3ca806a03d29522d7c61ddf753dd388f799d8aaf"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 43,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c8e793120570b167436900d45cfab82db8ce1459bfda35bd23de9c91e4bd51ff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "takes the most triage and telemetry records it allows, and refuses one more"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 229,
+      "column": 43,
+      "endLine": 229,
+      "endColumn": 94,
+      "mutatorName": "EqualityOperator",
+      "replacement": "(record.payload as TriagePayload).decision === null",
+      "status": "generated",
+      "id": "624a2fccedf1a3ab433f72d0c4ad8cb99e119a07d5c60701ed5170dab7df4f31",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "takes the most triage and telemetry records it allows, and refuses one more"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 6,
+      "endLine": 231,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "304800f7eda0a98d74cdd2bebc7042129383fd5652a81e9d99e3964f29ec7517",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 6,
+      "endLine": 231,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6f0a3cf484fb5f2bb1911075fcf42b0f29dcdf06ec5ef6c7c49c2b49bfa3a304",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "with a tier of lenses",
+            "refuses two decided triage records that disagree, one cut and one not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 6,
+      "endLine": 231,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "decided.length >= 1",
+      "status": "generated",
+      "id": "2a92a1203889e24dd64cdb4924bf45a028b709281b48941f17cea4e8bd0c4eb1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "with a tier of lenses",
+            "takes a round whose lens, triage and filled records give its account"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 6,
+      "endLine": 231,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "decided.length <= 1",
+      "status": "generated",
+      "id": "96196c278fdc6ad41a066332dc6dc0d209a06434e7b5049aa648f12154f99af4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "adds a writer's check, lens and round records to the store whole"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 26,
+      "endLine": 231,
+      "endColumn": 82,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "0209365f81989b08f893b69db5dd504509e30fd230b32ab4d4274c14aa38efa6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "with a tier of lenses",
+            "refuses two decided triage records that disagree, one cut and one not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 231,
+      "column": 49,
+      "endLine": 231,
+      "endColumn": 62,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "76816a81463027b8b67c445a882263446dc074864a6e1b8d5521742f1c6c53b8"
+    }
+  ],
+  "total": 45,
+  "omitted": 0,
+  "unmutated": []
+}
