@@ -22,6 +22,12 @@ Example: a change rewrites the verifier's instructions in `packages/pipeline/src
 
 A person reads a listed file's flagged text as a notice. It is never silent to them: the notice needs acknowledgement, and an unresolved acknowledgement fails the published status until a maintainer dismisses it with a reason.
 
+## Which files a repository lists
+
+A listed file draws a notice on every change to it, and a notice is a read a person owes. On the host a read is a dismissal. So a repository lists a file only when it is mostly wording, or when it rarely changes. Melian's root `melian.yaml` drops a source file that more than about one merged pull request in ten touches. Over the 100 pull requests merged before this one, from [pull request #308](https://github.com/melian-agent/melian/pull/308) to [pull request #579](https://github.com/melian-agent/melian/pull/579), `packages/pipeline/src/review.ts` was touched by 23, mostly for code, so it is left off. No other listed source file was touched by more than 8. This rule is the coordinator's, given on 2026-11-20 in its session, not a ruling. `AGENTS.md` already draws a notice on every change as a policy file, so listing it adds no read.
+
+An injection finding on prompt text in a file the list leaves off is reported as before, at P1. The fix is to move that prompt into a wording file, which then joins the list.
+
 ## Why
 
 A file the base names as instructions is one the maintainer already expects to hold prompt text, so an injection finding there says what the notice says: a person must read this change. One notice, quoting the lens, asks for that read once. The list comes from the base so that a head cannot name a file to move its own hostile text off the injection finding.

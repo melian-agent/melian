@@ -81,7 +81,6 @@ guardrails:
       - packages/pipeline/src/untrusted.ts # the boundary fences, the injection policy and the triage boundary
       - packages/pipeline/src/lens-tools.ts # the injection_policy section and the tool descriptions
       - packages/pipeline/src/lens-request.ts # lens continuation prompts
-      - packages/pipeline/src/review.ts # the change prompt, the decisions lead-in and carried findings
       - packages/pipeline/src/callers.ts # the callers lead-in
       - packages/pipeline/src/enclosing-functions.ts # the read_file note
       - packages/pipeline/src/verification-instructions.ts # the verifier's instructions
