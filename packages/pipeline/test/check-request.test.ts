@@ -136,6 +136,7 @@ describe("writesFixedText", () => {
 
 	it.each<[string, RecordJson]>([
 		["a code that is a number", { code: 2 }],
+		["a code in a list, which a pattern reads as its text", { code: ["0".repeat(64)] }],
 		["a code one digit short", { code: "0".repeat(63) }],
 		["a code one digit long", { code: "0".repeat(65) }],
 		["a code in capitals", { code: "A".repeat(64) }],
