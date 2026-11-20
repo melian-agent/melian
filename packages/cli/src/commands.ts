@@ -557,7 +557,9 @@ export function short(commit: string): string {
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-export function shellQuote(argument: string): string {
+// Control characters are written visibly first, so a path cannot rewrite the terminal the command is printed to.
+export function shellQuote(text: string): string {
+	const argument = visibleText(text);
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;

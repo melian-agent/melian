@@ -1302,6 +1302,27 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("writes a control character in the store's path as visible text in the command that dismisses again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = `dir:${join(scratch, "records\u001b[2Jcleared")}`;
+		melian(repo, ["review", "trusting", "--records", store], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", store], env).status).toBe(0);
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", "trusting", "--records", store], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", "trusting", "--records", store], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).not.toContain("\u001b");
+		expect(notices[0]).toContain(`--records 'dir:${join(scratch, "records\\u001b[2Jcleared")}'`);
+	});
+
 	it.each([
 		["sets trust.writers: false", "trust:\n  writers: false\n"],
 		["leaves trust.writers at its default", ""],
