@@ -1709,7 +1709,9 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		expect(installed.source).toBe("checkout");
 		expect(installed.identity).toEqual({ ...fallback.identity, source: "checkout" });
 		expect(installed.installedPackages()).toBe(
-			createHash("sha256").update("@stryker-mutator/instrumenter@10.0.0\n").digest("hex"),
+			createHash("sha256")
+				.update("@stryker-mutator/instrumenter@10.0.0\nthe checkout > @stryker-mutator/instrumenter@10.0.0\n")
+				.digest("hex"),
 		);
 		expect(fallback.installedPackages()).toBe(
 			installedPackagesDigest([
