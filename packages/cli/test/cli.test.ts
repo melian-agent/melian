@@ -1274,7 +1274,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(notices[0]).toContain(`it was dismissed at revision ${dismissedAt}`);
 		expect(notices[0]).toContain("as after a push");
 		expect(notices[0]).toContain(
-			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason <text> --records dir:${store}`,
+			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason "<text>" --records dir:${store}`,
 		);
 		expect(read.stdout).toContain(id);
 	});
@@ -1297,9 +1297,22 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 
 		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
 		expect(notices).toHaveLength(1);
-		expect(notices[0]).toContain(
-			`dismiss it again: melian dismiss "#12...HEAD" ${id} --reason <text> --records "${store}"`,
-		);
+		const command = notices[0]!.slice(notices[0]!.indexOf("melian dismiss "));
+		const words = spawnSync("bash", ["--noprofile", "--norc", "-c", `words() { printf '%s\\0' "$@"; }; words ${command}`], {
+			cwd: scratch,
+			encoding: "utf8",
+		});
+		expect(words).toMatchObject({ status: 0, stderr: "" });
+		expect(words.stdout.split("\0").slice(0, -1)).toEqual([
+			"melian",
+			"dismiss",
+			target,
+			id,
+			"--reason",
+			"<text>",
+			"--records",
+			store,
+		]);
 	});
 
 	it("writes a control character in the store's path as visible text in the command that dismisses again", () => {
