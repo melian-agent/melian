@@ -16,15 +16,16 @@ The macOS tests run in `test (macos, 24)`, beside the Linux jobs. That job needs
 - the files that hold a test Linux skips, run whole;
 - `probing-level.test.ts`, run with `--tags-filter=macos`, so only the tests that carry the Vitest tag `macos` run.
 
-`check (macos, 24)` keeps its name and becomes a short Ubuntu job. It waits for both, and runs `scripts/compare-platform-reports.mjs` over the Node 24 Linux report and the two macOS reports. It fails unless all five of these hold:
+`check (macos, 24)` keeps its name and becomes a short Ubuntu job. It waits for both, and runs `scripts/compare-platform-reports.mjs` over the Node 24 Linux report and the two macOS reports. It fails unless the macOS test job succeeded and all six of these hold:
 
 1. Every test Linux skipped passed on macOS. A test missing from the macOS reports has not passed. The list's `allowed` entry excuses one test, which needs root on both runners.
 2. Each named suite ran on macOS, and every one of its tests passed. Each tagged file has at least one test that the Linux report shows carrying the tag, and each of those tests passed on macOS.
 3. No test macOS ran failed. A test that the tag filter left out, which Vitest reports as skipped, is not counted.
 4. The Linux report shows at least one skipped test. A report with none is broken, not complete.
 5. Every file Linux skipped a test in is on the list. A file that is missing fails the run, and the message names the file to add.
+6. Each macOS report says its run succeeded. A failed hook or an unhandled error fails a run whose every test passed, and the test statuses alone would not show it. Codex's adversarial review found the gap.
 
-Checks 1 to 4 are the checks the macOS job made before. So no test Linux skips reaches `main` without passing on macOS. A wrong list can fail the run. It cannot pass a test that never ran, because check 1 counts that test as missing.
+Checks 1 to 4 are the checks the macOS job made before; check 6 and the job's own result stand for the exit code that failed the old job. So no test Linux skips reaches `main` without passing on macOS. A wrong list can fail the run. It cannot pass a test that never ran, because check 1 counts that test as missing.
 
 The tag is the marker, written in the test file. The workflow reads it through Vitest's filter. The comparison reads it from the Linux report, which lists each test's tags, so a lost tag shows as a tagged file with no tagged test, and fails check 2. A test of the script checks that the committed list's tag is the one the file uses and that `vitest.config.ts` defines.
 

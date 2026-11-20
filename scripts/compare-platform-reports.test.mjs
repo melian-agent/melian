@@ -17,7 +17,15 @@ const report = (...tests) => {
 		results.push({ ancestorTitles: ancestors, title, status, tags });
 		files.set(file, results);
 	}
-	return { testResults: [...files].map(([file, assertionResults]) => ({ name: `${root}${file}`, assertionResults })) };
+	return {
+		success: true,
+		testResults: [...files].map(([file, assertionResults]) => ({
+			name: `${root}${file}`,
+			status: "passed",
+			message: "",
+			assertionResults,
+		})),
+	};
 };
 
 const suite = "packages/pipeline/test/probe-sandbox.test.ts";
@@ -82,6 +90,7 @@ const rows = (value) =>
 	);
 
 const drop = (value, file, title) => ({
+	...value,
 	testResults: value.testResults
 		.map((entry) => ({
 			...entry,
@@ -93,6 +102,7 @@ const drop = (value, file, title) => ({
 });
 
 const restatus = (value, file, title, status) => ({
+	...value,
 	testResults: value.testResults.map((entry) => ({
 		...entry,
 		assertionResults: entry.assertionResults.map((test) =>
@@ -240,6 +250,24 @@ describe("compare", () => {
 		const mac = restatus(macTagged(), tagged, "records a plan", "skipped");
 		const { errors } = compare({ linux: skipping, mac: [macWhole(), mac], list });
 		expect(errors).toEqual([`skipped on Linux, not passed on macOS: ${tagged} > a suite > records a plan: skipped`]);
+	});
+
+	it("fails a macOS report that did not succeed, though every test in it passed", () => {
+		const whole = macWhole();
+		whole.success = false;
+		whole.testResults[1].status = "failed";
+		whole.testResults[1].message = "afterAll hook failed\nat cleanup";
+		expect(compare({ linux: linux(), mac: [whole, macTagged()], list }).errors).toEqual([
+			`a macOS report did not succeed: ${suite}: afterAll hook failed`,
+		]);
+	});
+
+	it("fails a macOS report that did not succeed with no file failed, such as an unhandled error", () => {
+		const tagged = macTagged();
+		tagged.success = false;
+		expect(compare({ linux: linux(), mac: [macWhole(), tagged], list }).errors).toEqual([
+			"a macOS report did not succeed: no file failed",
+		]);
 	});
 
 	it("names a file by its path from the checkout's packages or scripts folder", () => {

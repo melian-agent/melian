@@ -30,8 +30,8 @@ const statusById = (tests) => {
 };
 
 /**
- * Checks five things, and returns what it counted and every way they failed:
- * the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
+ * Checks six things, and returns what it counted and every way they failed:
+ * every macOS run succeeded; the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
  * on macOS; each named suite ran whole, and each tagged file's tagged tests passed; and no test macOS ran failed.
  */
 export function compare({ linux, mac, list }) {
@@ -49,6 +49,15 @@ export function compare({ linux, mac, list }) {
 	const lines = [`Linux skipped tests in: ${skippedFiles.join(", ")}`];
 	const errors = [];
 
+	for (const report of mac) {
+		// A hook or an unhandled error fails a run whose every test passed.
+		if (report.success !== true) {
+			const failed = report.testResults
+				.filter((entry) => entry.status === "failed")
+				.map((entry) => `${fileOf(entry.name)}: ${entry.message.split("\n")[0]}`);
+			errors.push(`a macOS report did not succeed: ${failed.join("; ") || "no file failed"}`);
+		}
+	}
 	if (skipped.length === 0) errors.push("the Linux report shows no skipped test, so it cannot be the whole run");
 	for (const file of skippedFiles) {
 		if (!listed.has(file))

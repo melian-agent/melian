@@ -150,6 +150,11 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Fail unless the macOS tests succeeded
+        if: ${{ needs.test-macos.result != 'success' }}
+        run: |
+          echo "test (macos, 24) ended ${{ needs.test-macos.result }}"
+          exit 1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
