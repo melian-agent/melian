@@ -12,7 +12,10 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 export const recordedFile = "packages/pipeline/src/code-hashes.ts";
 
 // Each producer's entry module. The compiler lists what it reaches.
-export const producers = { adjudication: "packages/pipeline/src/adjudication.ts" };
+export const producers = {
+	adjudication: "packages/pipeline/src/adjudication.ts",
+	checks: "packages/pipeline/src/checks.ts",
+};
 
 // Asks TypeScript for every file `entry` reaches, as the gate's own compiler resolves them: the native compiler ships no
 // program API, so its command line is the authority. Installed packages are left out, since the lockfile versions them.

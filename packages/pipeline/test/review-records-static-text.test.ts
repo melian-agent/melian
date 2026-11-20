@@ -14,6 +14,7 @@ import {
 } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CheckRunRecord } from "../src/checks.ts";
+import { codeVersion } from "../src/code-version.ts";
 import { DismissError } from "../src/errors.ts";
 import { type DismissalFacts, ReviewRecords, withheld } from "../src/review-records.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
@@ -21,8 +22,8 @@ import { commit, createRepository, lines, removeRepository } from "./fixtures/re
 // Text a static tool wrote that the head's tree does not hold, such as a login the head led it to read.
 const token = "melian-test-token-9c4a71";
 const bytes = (record: SharedRecord) => JSON.stringify(record.toJSON());
-// A check run's request under this build, whose Enola check stores no tool text.
-const enolaRun = KeyedRequest.of("check", { checks: { "static.enola": 2 } });
+// A check run's request under this build, whose checks' code stores no tool text.
+const enolaRun = KeyedRequest.of("check", { code: codeVersion("checks") });
 
 let repo: string;
 beforeEach(() => {

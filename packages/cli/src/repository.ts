@@ -1,13 +1,12 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { isChangesetId, withoutReplacements } from "@melian-agent/core";
+import { join, resolve } from "node:path";
+import { gitEnvironment, isChangesetId } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
-		const env = withoutReplacements(process.env);
-		execFile("git", args, { cwd, env, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+		execFile("git", args, { cwd, env: gitEnvironment(), maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
 			if (error === null) done(stdout.trim());
 			else fail(new CliError(`git ${args[0]} failed: ${stderr.trim() || error.message}`));
 		});
@@ -122,4 +121,12 @@ export async function fetchBase(
 		remote,
 		`+refs/heads/${pullRequest.base.ref}:refs/melian/pull/${pullRequest.number}/current-base`,
 	]);
+}
+
+// Git reads a remote with no colon, or a slash before its first colon, as a path relative to the checkout, by
+// url_is_local_not_ssh in its connect.c, which no command answers; the store runs git in its own repository instead.
+export function fromCheckout(root: string, url: string): string {
+	const colon = url.indexOf(":");
+	const slash = url.indexOf("/");
+	return colon === -1 || (slash !== -1 && slash < colon) ? resolve(root, url) : url;
 }
