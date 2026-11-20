@@ -12,13 +12,15 @@ Example: the CLI once read a pull request's `melian.yaml` with `git show <base>:
 
 A Biome Grit plugin, `biome/object-by-path.grit`, reports a string or template shaped `<revision>:<path>` inside a function body or arrow function that also contains `"show"` or `"cat-file"`. Its message points to `packages/core/src/source.ts`. It runs on every file under `packages/*/src/`.
 
-It leaves alone a colon that is not an object name. A refspec starts with `+` or names a ref on both sides, and a URL's colon is followed by `/`. An option such as `--format=%H:%T`, a message with spaces and a peeled name such as `<sha>^{commit}` pass too. So does a label in a function that runs neither command.
+It leaves alone a colon that is not an object name. A refspec that starts with `+` passes, and so does a URL, whose colon is followed by `/`. An option such as `--format=%H:%T`, a message with spaces and a peeled name such as `<sha>^{commit}` pass too. So does a label in a function that runs neither command.
 
 One file offends today. `blobText` in `packages/core/src/guardrails.ts` reads `package.json`, `melian.yaml` and analyser configuration by path. It is the plugin's one exclusion in `biome.json`, until [issue #591](https://github.com/melian-agent/melian/issues/591) moves it onto the revision source. The exclusion covers the whole file, so a test lints it with the exclusion lifted and requires exactly the one read it was excused for. A second read added anywhere in it fails the test, and so does removing `blobText`'s, so the list only shrinks.
 
 ## Known limit
 
 The rule matches within one function. An argument array built in one function and passed to git from another is not seen, and nor is a name built by concatenation with `+`. A reviewer still owns those cases.
+
+A refspec without `+`, such as `refs/pull/1/head:refs/melian/pr`, is reported when its function also runs `show` or `cat-file`. Write it with `+`, or build it in a function of its own.
 
 ## Proof
 
