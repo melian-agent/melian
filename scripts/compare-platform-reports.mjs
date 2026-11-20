@@ -8,10 +8,19 @@ import { parseArgs } from "node:util";
 
 const fileOf = (name) => name.replace(/^.*?\/((packages|scripts)\/)/, "$1");
 
+// The job installs nothing, so core's visibleText is out of reach; this escapes the same characters.
+const visible = (text) =>
+	text.replace(
+		/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,
+		(c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+	);
+
 const testsOf = (report) =>
 	report.testResults.flatMap((entry) => {
 		const file = fileOf(entry.name);
 		return entry.assertionResults.map((test) => ({
+			// A title may hold " > ", so tests match by key and are named by id.
+			key: JSON.stringify([file, ...test.ancestorTitles, test.title]),
 			id: [file, ...test.ancestorTitles, test.title].join(" > "),
 			file,
 			status: test.status,
@@ -22,9 +31,9 @@ const testsOf = (report) =>
 // Two tests can share a name; the name passed only if every test under it passed.
 const statusById = (tests) => {
 	const statuses = new Map();
-	for (const { id, status } of tests) {
-		const known = statuses.get(id);
-		if (known === undefined || known === "passed") statuses.set(id, status);
+	for (const { key, status } of tests) {
+		const known = statuses.get(key);
+		if (known === undefined || known === "passed") statuses.set(key, status);
 	}
 	return statuses;
 };
@@ -42,7 +51,7 @@ export function compare({ linux, mac, list }) {
 	const listed = new Set([...list.suites, ...list.tagged, ...list.skipped]);
 	const tagged = new Set(list.tagged);
 	const taggedIds = new Set(
-		linuxTests.filter((test) => tagged.has(test.file) && test.tags.includes(list.tag)).map((test) => test.id),
+		linuxTests.filter((test) => tagged.has(test.file) && test.tags.includes(list.tag)).map((test) => test.key),
 	);
 	const skipped = linuxTests.filter((test) => test.status !== "passed");
 	const skippedFiles = [...new Set(skipped.map((test) => test.file))].sort();
@@ -65,8 +74,8 @@ export function compare({ linux, mac, list }) {
 				`Linux skipped a test in ${file}, which scripts/macos-tests.json does not list: add it to skipped`,
 			);
 	}
-	for (const { id } of skipped) {
-		const status = macStatus.get(id);
+	for (const { key, id } of skipped) {
+		const status = macStatus.get(key);
 		if (status !== "passed" && !allowed.has(id))
 			errors.push(`skipped on Linux, not passed on macOS: ${id}: ${status ?? "missing"}`);
 	}
@@ -78,21 +87,21 @@ export function compare({ linux, mac, list }) {
 			errors.push(`named suite did not run whole on macOS: ${counted}`);
 	}
 	for (const file of list.tagged) {
-		const ids = linuxTests.filter((test) => test.file === file && taggedIds.has(test.id)).map((test) => test.id);
-		const counted = `${file}: ${ids.filter((id) => macStatus.get(id) === "passed").length} of ${ids.length} tests tagged ${list.tag} passed`;
+		const keys = linuxTests.filter((test) => test.file === file && taggedIds.has(test.key)).map((test) => test.key);
+		const counted = `${file}: ${keys.filter((key) => macStatus.get(key) === "passed").length} of ${keys.length} tests tagged ${list.tag} passed`;
 		lines.push(counted);
-		if (ids.length === 0 || ids.some((id) => macStatus.get(id) !== "passed"))
+		if (keys.length === 0 || keys.some((key) => macStatus.get(key) !== "passed"))
 			errors.push(`tagged tests did not all pass on macOS: ${counted}`);
 	}
 	for (const test of macTests) {
 		// The tag filter reports each test it left out as skipped.
-		const filteredOut = tagged.has(test.file) && !taggedIds.has(test.id) && test.status === "skipped";
+		const filteredOut = tagged.has(test.file) && !taggedIds.has(test.key) && test.status === "skipped";
 		if (test.status !== "passed" && !allowed.has(test.id) && !filteredOut)
 			errors.push(`did not pass on macOS: ${test.id}: ${test.status}`);
 	}
 	if (errors.length === 0)
 		lines.push(`${skipped.length} tests Linux skipped: every one passed on macOS or is allowed`);
-	return { lines, errors };
+	return { lines: lines.map(visible), errors: errors.map(visible) };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {

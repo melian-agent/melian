@@ -328,6 +328,35 @@ describe("compare", () => {
 		});
 		expect(lines[0]).toBe("Linux skipped tests in: scripts/codex-sandboxed.test.mjs");
 	});
+
+	it("escapes control characters in what it prints, so a report cannot rewrite the log", () => {
+		const forged = macWhole();
+		forged.success = false;
+		forged.testResults[0].status = "failed";
+		forged.testResults[0].message = "\u001b[2J\u001b[HFORGED‮: all checks passed";
+		const skippedTitle = "spells\u0007 the path";
+		const { lines, errors } = compare({
+			linux: report(...rows(linux()), { file: gated, title: skippedTitle, status: "skipped" }),
+			mac: [forged, macTagged()],
+			list,
+		});
+		expect(errors).toContain(
+			`a macOS report did not succeed: ${forged.testResults[0].name.slice(root.length)}: \\u001b[2J\\u001b[HFORGED\\u202e: all checks passed`,
+		);
+		expect(errors).toContain(
+			`skipped on Linux, not passed on macOS: ${gated} > a suite > spells\\u0007 the path: missing`,
+		);
+		expect([...lines, ...errors].join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f‮]/);
+	});
+
+	it("does not let a test whose title holds the separator borrow another test's pass", () => {
+		const { errors } = compare({
+			linux: report(...rows(linux()), { file: gated, ancestors: ["s"], title: "b > c", status: "skipped" }),
+			mac: [report(...rows(macWhole()), { file: gated, ancestors: ["s", "b"], title: "c" }), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([`skipped on Linux, not passed on macOS: ${gated} > s > b > c: missing`]);
+	});
 });
 
 describe("the command", () => {
