@@ -962,6 +962,22 @@ describe("recording a dismissal", () => {
 		expect(await adjudicationTask(harness)).toBe(task);
 	});
 
+	it("adjudicates the same dismissal again when its earlier adjudication was aborted", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await dismissCutShort(first, id);
+		await first.close(context);
+		// Nothing resumes the reopened harness's scheduler before the abort, so the pending adjudication never runs.
+		const harness = await reviewHarness(await openSqliteStorage(path));
+		const aborted = (await adjudicationTask(harness))!;
+		await harness.abortTask(aborted as TaskId, context);
+		expect((await harness.waitForTask(aborted as TaskId, context)).state.outcome.status).toBe("aborted");
+		await dismiss(harness, id);
+		expect(await adjudicationTask(harness)).not.toBe(aborted);
+	});
+
 	it("adjudicates the same dismissal again on an install Melian cannot identify, though its key is the same", async () => {
 		const harness = await reviewHarness(createMemoryStorage());
 		scriptFinding();
