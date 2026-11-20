@@ -103,6 +103,17 @@ describe("installedPackages", () => {
 		},
 	);
 
+	it("leaves out a platform build its parent requires at its exact version", () => {
+		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", bin: "1.0.0" } });
+		install("bin", { name: "bin", version: "1.0.0", cpu: ["x64"] });
+		expect(installedPackages(roots)).toEqual(["pi@1.1.0", "sdk@2.0.0"]);
+	});
+
+	it("keys a package its parent pins exactly when it names no platform", () => {
+		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "2.0.0" } });
+		expect(installedPackages(roots)).toEqual(["pi@1.1.0", "sdk@2.0.0"]);
+	});
+
 	it("keys a platform build its parent names by a range, since the parent's version does not fix it", () => {
 		install("pi", {
 			name: "pi",

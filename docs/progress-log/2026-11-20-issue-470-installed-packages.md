@@ -1,0 +1,15 @@
+# Request keys hold the installed packages each producer runs
+
+For [issue #470](https://github.com/melian-agent/melian/issues/470), each producer's key now holds `packages`, a digest of every installed package beneath what its code imports. The lens run keys the packages beneath pi-ai and Pi Durable, in place of their two versions. A run offered `list_mutants` keys the instrumenter's packages, Babel included. The checks and adjudication key the packages their own modules import as they load. The coordinator chose the approach on 2026-11-20 and [recorded it on the issue](https://github.com/melian-agent/melian/issues/470#issuecomment-7028716067); [the decision](../decisions/2026-11-20-keys-hold-installed-packages.md) holds it, and the identity guideline's rows for the lens request, the adjudication key and the check request say what each leaves out and what a miss costs.
+
+`scripts/code-hashes.mjs` records which packages each producer imports, from Node's resolver while the producer's entry loads in a child process, and the gate fails when the record drifts. At run time `installedPackages` walks from those imports with `findPackageJSON`. A package that does not resolve, or a manifest that cannot be read, fails the key and names the package.
+
+The failing test came first. On main at 56f7fb059, a lens request and a check request kept their keys when a package beneath pi-ai, or `yaml`, moved; on the branch both keys change.
+
+`adjudication-key-reopen.test.ts` reopens a version 8 task that main's own code left pending, captured by `capture-pending-8.mjs` from `git archive 56f7fb059`. It fails, and the next review decides again with no model call. In the other direction, main's code at 56f7fb059 resumed a pending task this build wrote with `packages`: it failed on its `code` check, made no model call and did not crash, since the task has no input schema. So `packages` takes no task version, and [issue #562](https://github.com/melian-agent/melian/issues/562) keeps version 9.
+
+The mutation inventory, [2026-11-20-issue-470-mutants.json](2026-11-20-issue-470-mutants.json), lists 271 mutants of 56f7fb059...b6a84e29c, 177 generated. Each ran by hand against its named test alone, after that test passed unmutated: 161 died to existing tests, 11 to new ones, and 5 are equivalent, each with its reason.
+
+Fix commits: `31bd013b4` keeps an assignment out of an expression for Biome; `7365b2e2b` gives the legacy fixtures and adapter fakes this build's packages; `cc0d7117b` adds the tests that kill the surviving mutants.
+
+Codex's adversarial review found one medium finding: the first rule left out every platform build, so a root platform package, or one a parent named by a range, could move with no key change. `dfe3b4c73` leaves one out only when its parent's manifest names its exact version, since the parent's version then stands for it. Three tests failed on the old rule and pass on the fix. [2026-11-20-issue-470-platform-mutants.json](2026-11-20-issue-470-platform-mutants.json) lists the fix's 21 mutants: 20 died to their named tests, two of them new, and one is equivalent.
