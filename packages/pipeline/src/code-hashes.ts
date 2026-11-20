@@ -138,7 +138,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/caveats.ts": "d99cc92e5c6e7a74a9d422c437715859674e83bbf744a517a931fc7a8f92908e",
 
-	"packages/pipeline/src/check-request.ts": "74967e89d09bdb90824d3d11c36bc9261179a2ad64f0fa85e160ce2be761f5b2",
+	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
 	"packages/pipeline/src/checks.ts": "4c8e3f33c0ff10557857a73e877ba49b51765f9fdd79e4353c101001a5511584",
 
@@ -451,6 +451,212 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/task-timing.ts",
 
 		"packages/pipeline/src/token-usage.ts",
+
+		"packages/pipeline/src/tool-cache.ts",
+
+		"packages/pipeline/src/tool-provisioning.ts",
+
+		"packages/pipeline/src/untrusted.ts",
+
+		"packages/pipeline/src/verification-instructions.ts",
+
+		"packages/pipeline/src/verification-waves.ts",
+	],
+
+	checks: [
+		"packages/core/src/adjudication.ts",
+
+		"packages/core/src/analyser.ts",
+
+		"packages/core/src/cause.ts",
+
+		"packages/core/src/changeset.ts",
+
+		"packages/core/src/checks.ts",
+
+		"packages/core/src/comparison-adjudication.ts",
+
+		"packages/core/src/comparison-export.ts",
+
+		"packages/core/src/comparison-set.ts",
+
+		"packages/core/src/comparison.ts",
+
+		"packages/core/src/config.ts",
+
+		"packages/core/src/coverage-artifacts.ts",
+
+		"packages/core/src/decider.ts",
+
+		"packages/core/src/diff.ts",
+
+		"packages/core/src/directory-record-store.ts",
+
+		"packages/core/src/emoji.ts",
+
+		"packages/core/src/enola-graph.ts",
+
+		"packages/core/src/enola-paths.ts",
+
+		"packages/core/src/enola.ts",
+
+		"packages/core/src/errors.ts",
+
+		"packages/core/src/evidence.ts",
+
+		"packages/core/src/findings.ts",
+
+		"packages/core/src/git.ts",
+
+		"packages/core/src/graph-coverage.ts",
+
+		"packages/core/src/graph.ts",
+
+		"packages/core/src/guardrails.ts",
+
+		"packages/core/src/host.ts",
+
+		"packages/core/src/index.ts",
+
+		"packages/core/src/lease.ts",
+
+		"packages/core/src/lens.ts",
+
+		"packages/core/src/line-map.ts",
+
+		"packages/core/src/models.ts",
+
+		"packages/core/src/mutation-inventory.ts",
+
+		"packages/core/src/mutation.ts",
+
+		"packages/core/src/overrides.ts",
+
+		"packages/core/src/paths.ts",
+
+		"packages/core/src/pattern.ts",
+
+		"packages/core/src/plan.ts",
+
+		"packages/core/src/probing-wording.ts",
+
+		"packages/core/src/process-tree.ts",
+
+		"packages/core/src/publication.ts",
+
+		"packages/core/src/pull-request-rounds.ts",
+
+		"packages/core/src/record-payloads.ts",
+
+		"packages/core/src/record-store.ts",
+
+		"packages/core/src/record.ts",
+
+		"packages/core/src/render.ts",
+
+		"packages/core/src/request-key.ts",
+
+		"packages/core/src/resolution.ts",
+
+		"packages/core/src/revision.ts",
+
+		"packages/core/src/run-details.ts",
+
+		"packages/core/src/secrets.ts",
+
+		"packages/core/src/source.ts",
+
+		"packages/core/src/standards.ts",
+
+		"packages/core/src/static.ts",
+
+		"packages/core/src/tier-account.ts",
+
+		"packages/core/src/tool-manifest.ts",
+
+		"packages/core/src/triage.ts",
+
+		"packages/core/src/verification.ts",
+
+		"packages/decisions/src/decision-files-error.ts",
+
+		"packages/decisions/src/decision-files.ts",
+
+		"packages/decisions/src/design-sections.ts",
+
+		"packages/decisions/src/fallback.ts",
+
+		"packages/decisions/src/index.ts",
+
+		"packages/decisions/src/markdown.ts",
+
+		"packages/decisions/src/recorded.ts",
+
+		"packages/pipeline/src/cache-scratch.ts",
+
+		"packages/pipeline/src/callers.ts",
+
+		"packages/pipeline/src/caveats.ts",
+
+		"packages/pipeline/src/check-request.ts",
+
+		"packages/pipeline/src/checks.ts",
+
+		"packages/pipeline/src/code-version.ts",
+
+		"packages/pipeline/src/coverage-cache.ts",
+
+		"packages/pipeline/src/coverage-identity.ts",
+
+		"packages/pipeline/src/enola-static.ts",
+
+		"packages/pipeline/src/findings.ts",
+
+		"packages/pipeline/src/graph-cache.ts",
+
+		"packages/pipeline/src/graph-memo.ts",
+
+		"packages/pipeline/src/harness.ts",
+
+		"packages/pipeline/src/installed-version.ts",
+
+		"packages/pipeline/src/lens-tools.ts",
+
+		"packages/pipeline/src/link-dependencies.ts",
+
+		"packages/pipeline/src/mutant-listing.ts",
+
+		"packages/pipeline/src/mutation-cache.ts",
+
+		"packages/pipeline/src/mutation-enumeration.ts",
+
+		"packages/pipeline/src/mutation-paths.ts",
+
+		"packages/pipeline/src/mutation-process.ts",
+
+		"packages/pipeline/src/mutation-static.ts",
+
+		"packages/pipeline/src/mutation-stderr.ts",
+
+		"packages/pipeline/src/mutation-vitest.ts",
+
+		"packages/pipeline/src/probe-process.ts",
+
+		"packages/pipeline/src/probe.ts",
+
+		"packages/pipeline/src/probing.ts",
+
+		"packages/pipeline/src/review-coverage.ts",
+
+		"packages/pipeline/src/review-index.ts",
+
+		"packages/pipeline/src/spans.ts",
+
+		"packages/pipeline/src/static.ts",
+
+		"packages/pipeline/src/supersession.ts",
+
+		"packages/pipeline/src/task-timing.ts",
 
 		"packages/pipeline/src/tool-cache.ts",
 
