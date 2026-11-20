@@ -320,6 +320,21 @@ async function runCheck(
 	mutation: MutationHooks,
 	environment: NodeJS.ProcessEnv,
 ): Promise<Outcome> {
+	const outcome = await outcomeOf(input, env, context, mutation, environment);
+	if (outcome.report === undefined) return outcome;
+	return {
+		...outcome,
+		report: { ...outcome.report, findings: SightingBudget.checkRecord.fit(outcome.report.findings) },
+	};
+}
+
+async function outcomeOf(
+	input: CheckInput,
+	env: () => Promise<ExecutionEnv | undefined>,
+	context: Context,
+	mutation: MutationHooks,
+	environment: NodeJS.ProcessEnv,
+): Promise<Outcome> {
 	if (input.check === "guardrails") {
 		const { repoRoot } = input.changeset;
 		const revision = Revision.from(input.changeset.revision);
@@ -329,7 +344,7 @@ async function runCheck(
 		return {
 			status: "ran",
 			report: {
-				findings: SightingBudget.checkRecord.fit([...ordinary.findings, ...supersession.findings]),
+				findings: [...ordinary.findings, ...supersession.findings],
 				notes: [...ordinary.notes, ...supersession.notes],
 			},
 		};

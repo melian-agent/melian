@@ -12,6 +12,7 @@ Example: 1,500 changed manifests, each naming twenty long scripts, wrote a guard
 
 - Past the limit, the guardrails check leaves out the detail of its last findings in ID order, as `SightingBudget.checkRecord.fit` does. A trimmed finding keeps its ID, rule, severity, resolution, place and What to do, so what blocks is unchanged. Its Why here names how many files lost their detail and says that `git diff` shows them. A finding that trimming would not make smaller keeps its detail.
 - A record that still passes the limit with every finding trimmed fails the guardrails check, with `RecordError` `recordTooLarge` and a fixed sentence that holds no finding's text. The review reads not reviewed, and its records export.
+- Every check's record gets the same budget, not the guardrails alone. A static tool may write 16 MiB of output, so enough Biome, tsc or Enola findings could pass the limit after adjudication had stored a verdict; `runCheck` fits every check's findings where it forms the outcome. This extension is the builder's, from Codex's adversarial review; it is not a ruling.
 - The trim applies to the check's own findings, not only to the exported record. The verdict's fingerprint hashes the findings' text, so trimming at export alone would give the local and the shared verdict different texts for one round.
 
 ## What it costs

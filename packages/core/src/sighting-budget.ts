@@ -13,7 +13,7 @@ function bytes(value: unknown): number {
 }
 
 const tooLarge =
-	"The change has too many guardrails findings to record within the store's 4 MiB limit, even with their detail left out.";
+	"The change has too many findings from one check to record within the store's 4 MiB limit, even with their detail left out.";
 
 function note(files: number): string {
 	const [file, those] = files === 1 ? ["file", "that file"] : ["files", "those files"];

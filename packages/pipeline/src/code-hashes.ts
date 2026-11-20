@@ -102,7 +102,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
 
-	"packages/core/src/sighting-budget.ts": "6c60d23e297f46c2c49877caffee5bbfc4c7d64bc920c8e690ac033ecb6e9f87",
+	"packages/core/src/sighting-budget.ts": "dd9e028e701c188ec76e193ebecee0fc23deefa601036d496e9dd1c7703cf2e9",
 
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 
@@ -142,7 +142,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
-	"packages/pipeline/src/checks.ts": "f7658cad77dc80bf892d314e19422756d7fdc8a1de9c362109a361d1a66aee82",
+	"packages/pipeline/src/checks.ts": "2556a57125683ebf45792239b695d1320e992a05f713f1073a0875e33311e88e",
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
