@@ -1051,6 +1051,58 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		);
 	});
 
+	it("names a miss on the line a lens's read of a long file cuts, and writes the line before it", () => {
+		const { repo, files, env } = checkout();
+		writeFileSync(join(repo, "src", "long.txt"), `x\n${"a".repeat(9 * 1024 * 1024)}`);
+		git(repo, "add", "src/long.txt");
+		git(repo, "commit", "--quiet", "-m", "add a file longer than a lens reads");
+		expect(melian(repo, ["review", range], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/long.txt", line: 1, title: "Whole line", body: "b" },
+					{ file: "src/long.txt", line: 2, title: "Cut line", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { base: string; head: string; external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [whole, cut] = ["Whole line", "Cut line"].map(idOf);
+		for (const id of [whole, cut])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({
+			status: 0,
+			stdout: `Exported 1 miss to ${output}.\n`,
+			stderr: `Not exported: ${changeset}-${cut} a lens reads only the first 1 lines of src/long.txt at ${stored.head}.\n`,
+		});
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${whole}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/long.txt",
+				lines: [1, 1],
+			},
+		]);
+	});
+
 	it("writes nothing when no valid miss remains", () => {
 		const { repo, files, env } = reviewed();
 		const path = codexFile(files, [codexFinding(400, "Unchecked token")]);
