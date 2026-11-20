@@ -146,12 +146,14 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	// leaves no dismissal on the host. A commit that fails after the write leaves the record saying dismissed while the
 	// host still blocks, so a reader of the record passes what the host blocks until the same dismissal again commits
 	// it; that run writes the same record.
-	const refusing = <T>(step: () => Promise<T>) =>
+	// A write the store reports failed may have landed, as its port allows, so its refusal says to run dismiss again.
+	const refusing = <T>(step: () => Promise<T>, wrote = false) =>
 		step().catch((error: unknown) => {
 			const why = error instanceof Error ? error.message : String(error);
+			const again = wrote ? "; the store may hold its record, so run the command again" : "";
 			throw new DismissError(
 				"storeFailed",
-				`the dismissal is not recorded, because the record store failed: ${why}`,
+				`the dismissal is not recorded, because the record store failed: ${why}${again}`,
 				{
 					...where,
 					cause: error,
@@ -224,7 +226,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 					unshared.push({ finding: report, code: error.code });
 				}
 			}
-			await refusing(() => target.store.add(made));
+			await refusing(() => target.store.add(made), true);
 		}
 		// The review's own input with the findings version the dismissal moved to, so a later review that computes the same
 		// input attaches to this task. The review's checkout stays while it exists, since

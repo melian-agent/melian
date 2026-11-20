@@ -776,7 +776,11 @@ describe("a dismissal made with a store that fails", () => {
 
 			await expect(made).rejects.toMatchObject({ code: "storeFailed", cause: refused });
 			await expect(made).rejects.toThrow(
-				`the dismissal is not recorded, because the record store failed: the store's ${method} is unreachable`,
+				new RegExp(
+					`^the dismissal is not recorded, because the record store failed: the store's ${method} is unreachable${
+						method === "add" ? "; the store may hold its record, so run the command again" : ""
+					}$`,
+				),
 			);
 			const root = (await harness!.root(context)).id;
 			const verdict = await readVerdict(harness!, root, Revision.key(first.changeset.revision), context);
@@ -784,6 +788,26 @@ describe("a dismissal made with a store that fails", () => {
 			expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
 		},
 	);
+
+	it("keeps the record in the store, records nothing on the host, and refuses, when the store's add lands and then fails, until dismiss again writes the same record", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const add = store.add.bind(store);
+		const refused = new Error("the store's add is unreachable");
+		vi.spyOn(store, "add").mockImplementationOnce(async (records) => {
+			await add(records);
+			throw refused;
+		});
+
+		await expect(dismiss(store, first, id)).rejects.toMatchObject({ code: "storeFailed", cause: refused });
+		const shared = dismissalsOf(await store.list(first.changeset.id));
+		expect([await statusOf(id), shared.length]).toEqual(["new", 1]);
+
+		const made = await dismiss(store, first, id);
+		expect([await statusOf(id), made.finding.properties.status]).toEqual(["dismissed", "dismissed"]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual(shared);
+	});
 
 	it("leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
