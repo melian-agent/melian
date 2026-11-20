@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -93,6 +93,15 @@ describe("the object-by-path Biome plugin", { timeout: 30_000 }, () => {
 		const source = `${declare}function f(c: string, p: string) {\n\treturn git(".", ["show", \`\${c}:\${p}\`]);\n}\n`;
 		for (const path of excluded()) expect(lint(path, source), path).toEqual([]);
 		expect(lint("packages/core/src/source.ts", source)).toEqual([3]);
+	});
+
+	it("checks the source of every package", () => {
+		const source = `${declare}function f(c: string, p: string) {\n\treturn git(".", ["show", \`\${c}:\${p}\`]);\n}\n`;
+		const packages = readdirSync(join(root, "packages")).filter((name) =>
+			existsSync(join(root, "packages", name, "src")),
+		);
+		expect(packages.length).toBeGreaterThan(1);
+		for (const name of packages) expect(lint(`packages/${name}/src/scratch.ts`, source), name).toEqual([3]);
 	});
 
 	it("finds in each grandfathered file exactly the reads it was excused for, so the file gains none and the list only shrinks", () => {
