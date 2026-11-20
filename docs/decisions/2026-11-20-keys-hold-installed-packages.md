@@ -29,7 +29,7 @@ The first forms keyed only what each producer's imports reach, walking manifests
 - The install root is the outermost ancestor of the module that holds a `node_modules`, since Node searches every ancestor's.
 - In a `node_modules` directory, each child is a package slot, and an `@scope` child holds slots. A name starting with a dot, such as `.bin` or `.cache`, is walked as a plain tree.
 - A package records `[place, "manifest", digest]`, a SHA-256 of its `package.json`'s bytes, or `[place, "no manifest"]`, since Node can load one. The whole manifest is keyed, not its name and version alone, because `exports`, `main` and `type` change what runs at one version. The digest is over the file's bytes, not core's `canonicalJson`, which refuses a fraction or a lone surrogate that a manifest may hold. Melian does not parse it: Node strips a byte-order mark that `JSON.parse` refuses, so a parse would fail a manifest Node loads, as the review of record found. Its subdirectories are walked for a nested `node_modules`.
-- A link records `[place, "links", target]`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's manifest but not its other files, since a workspace package's source is no release; the code version covers it.
+- A link records `[place, "links", target]`, and is never walked through. A target inside the install, as [An install Melian cannot identify](#an-install-melian-cannot-identify) bounds it, is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's manifest but not its other files, since a workspace package's source is no release; the code version covers it.
 - A link that resolves nowhere records `[place, "links nowhere"]`.
 
 The lockfile is not asked. It records what npm meant to install, not what Node finds, and a hand edit, `npm link` or a second package manager changes the second without the first.
@@ -78,6 +78,8 @@ What the walk does not see, and why each is left:
 
 A link out of the install, such as `npm link yaml` to `/work/yaml`, names a place the walk cannot read without walking the host. It records the fixed entry `["node_modules/yaml", "links outside"]`, adds the place to `outside`, and walks no further. The digest stays deterministic, and `identified` reads false. No value drawn at random enters any key, so rule 6 of [the identity guideline](../guidelines/identity.md#rules) stands as written, and this decision amends nothing there.
 
+A link out of the project that holds it counts as a link out of the install. Melian's round at `31c0dd74e` found that a stray `node_modules` in a home directory raised the install root to that directory, so `npm link yaml` from a checkout to `~/work/yaml` read as a link inside, keyed only its manifest, and left the install identified. A link's target now counts as inside only when it lies beneath the nearest directory of the module's chain that holds the link. Nearest to the module would not do: `packages/pipeline` holds a `node_modules` of its own, so every workspace link in the root's `node_modules` would read as outside. In a checkout, the repository root holds those links, so they stay inside, and so do a pnpm store's links between its packages. Each is a named test. Two residuals stay: a link inside the project to a directory that is no workspace package, such as npm's `file:./vendor/x`, keys only its manifest, and a link in the stray `node_modules` itself is judged against the directory that holds it.
+
 A layout other than npm's leaves the install unidentified the same way, with each place in `unrecognised`. Codex's eighth review found that Yarn's Plug'n'Play keeps packages in zip archives, which Yarn's patched fs opens as directories, so the walk could key one archive's tree and call the install identified. Melian does not read Yarn's map. On 2026-11-20 the coordinator chose to detect the layout instead, and to add one general guard, so the next layout fails safe without a review finding it. Each of these is unrecognised, and a named test in `installed-packages.test.ts`:
 
 - a `.pnp.cjs` or `.pnp.loader.mjs` in the module's directory or any directory above it, the install root's parents included;
@@ -86,7 +88,7 @@ A layout other than npm's leaves the install unidentified the same way, with eac
 - a directory the walk reaches as two kinds of place, such as a linked scope over a directory it keys as a package, which Melian's round found at `559cfd32f`: the scope's packages entered no entry, so pi-ai's version moved and the digest held;
 - the general guard: a module beneath a `node_modules` that no package the walk keyed holds, such as one in `node_modules/.store/pi`.
 
-A module in an installed package, a pnpm store's package, or a workspace package npm links is recognised, each a named test. A further layout a reviewer finds becomes a named test under this rule, not a new mechanism.
+A module in an installed package, a pnpm store's package, or a workspace package npm links is recognised, each a named test. A further layout a reviewer finds goes to the coordinator, as [the walk's boundary](#the-walks-boundary) says.
 
 The flag gates reuse where a key is looked up, as `checkReusable` already does for an unread policy and an unidentified checkout install, by [the request-key decision](2026-11-14-request-keys-as-built.md). Three places carry it. Each has a test that two reviews on the same unidentified install share a key and reuse nothing:
 
@@ -96,11 +98,28 @@ The flag gates reuse where a key is looked up, as `checkReusable` already does f
 
 `melian doctor` names each place that links out, and each place not laid out as npm lays out an install, on its `packages` line, as a warning.
 
+## The walk's boundary
+
+Melian's round at `31c0dd74e` found two more shapes the walk mishandled, after the review of record had found a third: a directory reached as two kinds of place, a root raised by a stray `node_modules`, and a manifest that is no regular file. On 2026-11-20 the coordinator asked whether the walk should go, and the static check's record key take its place. It answered that the walk stays, and set its boundary in three parts.
+
+**What the walk promises.** A shape made outside npm reads as unidentified wherever the walk can see it: a link out of the project that holds it, a layout other than npm's, a directory or manifest it cannot read. An unidentified install reuses nothing, so a shape the walk sees can cost model spend but never stands one install for another.
+
+**Two gaps left open by choice.** Neither changes a place, a link or a manifest, so neither moves the digest:
+
+- a linked package's files edited in place, such as `src/index.js` in the directory `npm link` points `node_modules/yaml` at;
+- a file under `node_modules` changed by hand after install, such as a line added to `node_modules/ms/index.js`.
+
+Closing either means hashing every file, which [What it gives up](#what-it-gives-up) sets aside.
+
+**Why the static check's record key was not used.** `installDigests`, which keys a check run, hashes the lockfile and npm's record, `node_modules/.package-lock.json`, and npm itself trusts that record only after Arborist's `assertNoNewer` walks every package directory. In a scratch install of `debug@4.3.4` and `ms@2.0.0`, the record hashed `d19589024f16` before and after `ms` was copied by hand into `debug/node_modules`, and after `node_modules/ms` was swapped by hand for a link out of the install. The walk tells both apart. A global install, `npm install -g`, writes no record at all, so a record key would leave every such install of Melian unidentified for good.
+
+**The stop rule.** A further shape the walk mishandles is a design question for the coordinator, not a fix: a review that finds one raises the class before any pass writes code for it.
+
 ## Failing closed
 
 A module whose path cannot be read, a module beneath no `node_modules`, and an install past the bound each fail the key with a reason, and a review that keys Melian's install, or the instrumenter's for `list_mutants`, fails with it. The key never holds an empty or partial list. Those three stay failures: none is a layout a review can work around, and a review that ran under them would key nothing.
 
-A directory the walk cannot read, such as a root-owned `node_modules/.cache`, or a scope linked to a file, and a manifest it cannot read, record no list of what they hold. Each leaves the install unidentified with its place in `unrecognised`, and an unreadable manifest records `[place, "unreadable manifest"]`. The review of record found that a failure there aborted any review that offered `list_mutants`, where the base ran; a review that reuses nothing is better than one that aborts. The coordinator chose this on 2026-11-20.
+A directory the walk cannot read, such as a root-owned `node_modules/.cache`, or a scope linked to a file, and a manifest it cannot read, record no list of what they hold. So does a manifest that is no regular file, such as a FIFO, which Melian's round at `31c0dd74e` found blocked the walk for good: the walk reads a manifest only after `lstat` finds a regular file. Each leaves the install unidentified with its place in `unrecognised`, and an unreadable manifest records `[place, "unreadable manifest"]`. The review of record found that a failure there aborted any review that offered `list_mutants`, where the base ran; a review that reuses nothing is better than one that aborts. The coordinator chose this on 2026-11-20.
 
 An adjudication task whose `packages` differs from the running install's fails, as one with another build's `code` does, and decides nothing. `packages` and `identified` take no task version. The task has no input schema, so a build reads an unknown field without complaint. Any build that does not know the field also has other adjudication code, so its `code` check fails the task before the field matters, and the next review decides again. `adjudication-key-reopen.test.ts` reopens a version 8 task main's own code left pending, from `fixtures/adjudication-key-main/pending-8.sqlite`; it fails, and the next review decides again with no model call.
 
