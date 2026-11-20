@@ -1,0 +1,472 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "559cfd32f1e10ca3d369cd08724c112151562ae5",
+		"head": "1e4d36c4ba98aab5a0c9c0690b8071c8a0a2045e"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 169,
+			"column": 48,
+			"endLine": 169,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be511074177ca26fd3b1dd5f65cff6163ff50528013d57758d496b51ff37cd4b"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 83,
+			"column": 27,
+			"endLine": 83,
+			"endColumn": 29,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "0d2196b80fda9301294c462ed97c7530e357ff97681a11018da5f8fb07b78faa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 108,
+			"column": 16,
+			"endLine": 108,
+			"endColumn": 30,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "a6160a092f12de1005f76d390671249ff6ae6195b2f5828f60370bc7dd5db74c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a directory named as an archive in a walked tree"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 6,
+			"endLine": 189,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a80894a8f60d61066c8a4bf2bc6be0068169b59cfb4ee6c2ab971aebb9179bab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 6,
+			"endLine": 189,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b762b51798fbe89cff062a8a7d7836ac1cd6173826d4672ff26b3953d9690820",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a linked scope over a directory the walk keys as a package"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 6,
+			"endLine": 189,
+			"endColumn": 41,
+			"mutatorName": "LogicalOperator",
+			"replacement": "seen !== undefined || seen !== mode",
+			"status": "generated",
+			"id": "7ba7c15ae36bb8097bdf0babae875fa8be6c416387809b8a284281136d354954",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 6,
+			"endLine": 189,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4960e6e106025f74f4f98ea84b0483646d86b3a863700fb5105084b9dc4993a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 6,
+			"endLine": 189,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "seen === undefined",
+			"status": "generated",
+			"id": "c120eea050a0c386949a4dd11bbe7350d1f66c3e250659b4c1caf20271abfdd5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 28,
+			"endLine": 189,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bfba447951d19803fdee0e44d7174921719e8f65dd927f99568219b59ce780d5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a linked scope over a directory the walk keys as a package"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 28,
+			"endLine": 189,
+			"endColumn": 41,
+			"mutatorName": "EqualityOperator",
+			"replacement": "seen === mode",
+			"status": "generated",
+			"id": "b354e7f423905c8a06b2229a49fa586d5c98d18fab7a0b81c7aeb64ac2b753f3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a linked scope over a directory the walk keys as a package"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 189,
+			"column": 43,
+			"endLine": 189,
+			"endColumn": 82,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "66cae4933b32928bf3d6cad9a6d6ee68e59affb8f7ceb43fcde4c959cf81e22f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a linked scope over a directory the walk keys as a package"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 190,
+			"column": 6,
+			"endLine": 190,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "797f266a484f7cd897ebad81ce5cccfab59910d6911eb6282051e45cf02070b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 190,
+			"column": 6,
+			"endLine": 190,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6396807306c9a34c5b1a789eb38d97acbda1e07f89b1f1bfc159ed82d442f488",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a linked scope over a directory the walk keys as a package"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 190,
+			"column": 6,
+			"endLine": 190,
+			"endColumn": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "seen === undefined",
+			"status": "generated",
+			"id": "70d07139b5eebf43caece08cb9ea7f59807d7f37a782facbe7f75d955331e972",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 195,
+			"column": 2,
+			"endLine": 195,
+			"endColumn": 37,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "3c5c114aebbe411e34e3e348c6acf98cf01a37bbbf434d1464b96384396d83d7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"reads an install of as many directories as its bound, and fails one past it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 196,
+			"column": 6,
+			"endLine": 196,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "203a073a2974167e3f38c00c830c03a9ed6dc6ca8f9bf50038c3810fd7130138",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a link that names no directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 196,
+			"column": 6,
+			"endLine": 196,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "61def2a45336cb26152e431939fdc525bd9a57368e7eed12b4283a3ad50c1f05",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a directory named as an archive in a walked tree"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 196,
+			"column": 6,
+			"endLine": 196,
+			"endColumn": 32,
+			"mutatorName": "MethodExpression",
+			"replacement": "directory.startsWith(\".zip\")",
+			"status": "generated",
+			"id": "eb964d82c4752ee0fddfa4066016c752090803d4e18faec9fe41acc7ad6bc7eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a directory named as an archive in a walked tree"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 196,
+			"column": 25,
+			"endLine": 196,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d0addadebc634a16f08404be303a73b8048dd2e80f4a2236ac3cc611bcd47c97"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 196,
+			"column": 34,
+			"endLine": 196,
+			"endColumn": 73,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2e01c410d0cf64c2d80ebcf176dbf03831399d462c881825247ff948443727ad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"a layout other than npm's",
+						"leaves the install unidentified for a directory named as an archive in a walked tree"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		}
+	],
+	"total": 20,
+	"omitted": 0,
+	"unmutated": []
+}
