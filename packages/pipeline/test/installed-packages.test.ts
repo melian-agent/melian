@@ -180,6 +180,25 @@ describe("installedPackages", () => {
 		]);
 	});
 
+	it("takes the install root from every copy, when npm nests a root beneath a workspace package and hoists what it needs", () => {
+		rmSync(join(scratch, "node_modules", "pi"), { recursive: true });
+		const workspace = join(scratch, "packages", "pipeline");
+		mkdirSync(join(workspace, "node_modules", "pi"), { recursive: true });
+		writeFileSync(
+			join(workspace, "package.json"),
+			JSON.stringify({ name: "@melian-agent/pipeline", version: "0.0.0" }),
+		);
+		writeFileSync(
+			join(workspace, "node_modules", "pi", "package.json"),
+			JSON.stringify({ name: "pi", version: "1.1.0", dependencies: { sdk: "^2" } }),
+		);
+		roots = [{ name: "pi", from: pathToFileURL(join(workspace, "package.json")).href, by: "@melian-agent/pipeline" }];
+		expect(installedPackages(roots)).toEqual([
+			"node_modules/sdk sdk@2.0.0",
+			"packages/pipeline/node_modules/pi pi@1.1.0",
+		]);
+	});
+
 	it("records a package reached through a link at the place it links to, and resolves beneath it from there", () => {
 		rmSync(join(scratch, "node_modules", "pi"), { recursive: true });
 		mkdirSync(join(scratch, "packages", "pi", "node_modules", "sdk"), { recursive: true });
