@@ -204,6 +204,14 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 		}),
 	],
 	[
+		"add drops a record at the record limit without refusing it",
+		"add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch",
+		(inner, _shared, payloads) => ({
+			add: (records) =>
+				inner.add(records.filter((record) => SharedRecord.parse(record, payloads).bytes.length !== recordLimit)),
+		}),
+	],
+	[
 		"add takes a record a byte past the record limit",
 		"add: takes a record of the record limit, and refuses one a byte past it, which never lists",
 		(inner, _shared, payloads) => {
