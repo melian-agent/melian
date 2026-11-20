@@ -207,4 +207,11 @@ describe("npm scripts", () => {
 		]);
 		expect(switchOffs("package.json", base, `﻿﻿${manifest({ check: "true" })}`, [])).toEqual([]);
 	});
+
+	it("keeps a byte order mark inside a script, so removing it is a change", () => {
+		const mark = String.fromCharCode(0xfeff);
+		expect(
+			switchOffs("package.json", manifest({ check: `echo ${mark}x` }), manifest({ check: "echo x" }), []),
+		).toEqual(['It changes the npm script "check".']);
+	});
 });
