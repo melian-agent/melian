@@ -43,7 +43,7 @@ function scratch(): string {
 	return path;
 }
 
-// A writer's pull request #7 whose base is `policy`, in a clone whose origin is a bare repository standing for GitHub's.
+// A writer's pull request, #7 unless `number` says otherwise, whose base is `policy`, in a clone whose origin is a bare repository standing for GitHub's.
 async function pullRequest(
 	options: {
 		policy?: string;
@@ -52,16 +52,19 @@ async function pullRequest(
 		sightings?: StoredFinding[];
 		skipped?: string;
 		state?: string;
+		number?: number;
 	} = {},
 ) {
+	const number = options.number ?? 7;
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
 	cleanup.push(repo);
 	const remote = join(scratch(), "origin.git");
 	execFileSync("git", ["init", "--bare", "--quiet", remote], { env: { ...process.env, ...isolatedGitEnv } });
 	gitIn(repo, "remote", "add", "origin", options.origin ?? remote);
 	const range = await Changeset.resolve(repo, "main...feature");
-	const changeset = range.withId(pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7));
+	const changeset = range.withId(pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, number));
 	const state = pullRequestState();
+	state.pull.number = number;
 	moveTo(state, changeset);
 	state.author = "octocat";
 	state.permissions = { octocat: "write" };
@@ -81,7 +84,10 @@ async function pullRequest(
 		fetch: fakeGitHub(state),
 	});
 	vi.spyOn(targets, "gitHubFor").mockResolvedValue(provider);
-	vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({ pullRequest: await provider.pullRequest(7), changeset });
+	vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+		pullRequest: await provider.pullRequest(number),
+		changeset,
+	});
 	const records = ReviewRecords.of(changeset.id, changeset.revision);
 	const check = records.check(
 		request,
@@ -135,7 +141,7 @@ async function pullRequest(
 		const args = [
 			"records",
 			"relay",
-			"#7",
+			`#${number}`,
 			"--from",
 			`dir:${directory}`,
 			"--expect-base",
@@ -147,7 +153,7 @@ async function pullRequest(
 		stdout = "";
 		stderr = "";
 	};
-	const gate = (target = "#7") => main(["gate", target], io);
+	const gate = (target = `#${number}`) => main(["gate", target], io);
 	return { changeset, records, facts, check, account, round, relay, gate, out: () => stdout, err: () => stderr };
 }
 
@@ -189,11 +195,58 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		expect(err()).toBe(
 			[
 				`melian: round ${round.id} counts, and covers 1 checks`,
-				"melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two. To dismiss it at this head: melian dismiss #7 0123456789abcdef --reason <text> --records git:melian/state",
-				"melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it again: melian dismiss #7 fedcba9876543210 --reason <text> --records git:melian/state",
+				'melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two. To dismiss it at this head: melian dismiss "#7" 0123456789abcdef --reason "<text>" --records git:melian/state',
+				'melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it again: melian dismiss "#7" fedcba9876543210 --reason "<text>" --records git:melian/state',
 				"",
 			].join("\n"),
 		);
+	});
+
+	it("prints every command it suggests so that a shell passes each argument whole, and escapes what the store wrote", async () => {
+		const shell = (command: string) =>
+			execFileSync("sh", ["-c", `set -- ${command}; printf '%s\\n' "$@"`], { encoding: "utf8" })
+				.split("\n")
+				.slice(0, -1);
+		const commands = (text: string) =>
+			[...text.matchAll(/(?:To dismiss it at this head|To dismiss it again|To review it again): (.*)$/gm)].map(
+				([, command]) => shell(command!),
+			);
+		const dismissed = await pullRequest({ number: 12 });
+		await dismissed.relay(dismissed.check, dismissed.account, dismissed.round);
+		const decide = RecordGate.decide.bind(RecordGate);
+		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) =>
+			Object.assign(Object.create(RecordGate.prototype), await decide(...args), {
+				ended: [
+					{
+						finding: "0123456789abcdef",
+						record: "r1",
+						madeAt: "base..one\u001b[2J",
+						round: "r2",
+						at: "base..two",
+					},
+				],
+				unjudged: [{ finding: "fedcba9876543210", record: "r3", round: "r4" }],
+			}),
+		);
+		expect(await dismissed.gate()).toBe(0);
+		expect(dismissed.err()).toContain("dismissed at revision base..one\\u001b[2J, and");
+		const dismiss = (finding: string) => [
+			"melian",
+			"dismiss",
+			"#12",
+			finding,
+			"--reason",
+			"<text>",
+			"--records",
+			"git:melian/state",
+		];
+		expect(commands(dismissed.err())).toEqual([dismiss("0123456789abcdef"), dismiss("fedcba9876543210")]);
+		vi.restoreAllMocks();
+		const unreviewed = await pullRequest({ number: 12 });
+		expect(await unreviewed.gate()).toBe(2);
+		expect(commands(unreviewed.err())).toEqual([
+			["gh", "workflow", "run", "melian-round.yml", "-f", "pull_request=12"],
+		]);
 	});
 
 	it("says no round reviewed the merge, and how to review it, when melian/state holds none", async () => {

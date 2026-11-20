@@ -6,10 +6,11 @@ import {
 	Rendering,
 	reviewPayloads,
 	TierAccount,
+	visibleText,
 } from "@melian-agent/core";
 import { ChangeLenses, RecordGate } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
-import { type Io, ReviewSource, reviewExitCodes, terminalEmoji } from "./commands.ts";
+import { type Io, ReviewSource, reviewExitCodes, shellQuote, terminalEmoji } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
 import { checkExpected, fetchedPullRequest, gitHubFor, parseTarget } from "./target.ts";
 
@@ -67,17 +68,20 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	for (const round of outcome.rounds)
 		io.stderr(
 			"refused" in round.covers
-				? `melian: round ${round.id} counts for its findings and covers no check: it ${round.covers.refused}\n`
-				: `melian: round ${round.id} counts, and covers ${round.covers.length} checks\n`,
+				? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}\n`
+				: `melian: round ${visibleText(round.id)} counts, and covers ${round.covers.length} checks\n`,
 		);
-	for (const reason of outcome.failures) io.stderr(`melian: the records cannot decide the merge: ${reason}\n`);
+	for (const reason of outcome.failures)
+		io.stderr(`melian: the records cannot decide the merge: ${visibleText(reason)}\n`);
+	const dismiss = (finding: string) =>
+		command("melian", "dismiss", argument, finding, "--reason", "<text>", "--records", "git:melian/state");
 	for (const ended of outcome.ended)
 		io.stderr(
-			`melian: finding ${ended.finding} is live: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}. To dismiss it at this head: melian dismiss ${argument} ${ended.finding} --reason <text> --records git:melian/state\n`,
+			`melian: finding ${visibleText(ended.finding)} is live: it was dismissed at revision ${visibleText(ended.madeAt)}, and round ${visibleText(ended.round)} reviewed ${visibleText(ended.at)}. To dismiss it at this head: ${dismiss(ended.finding)}\n`,
 		);
 	for (const unjudged of outcome.unjudged)
 		io.stderr(
-			`melian: finding ${unjudged.finding} is live: dismissal ${unjudged.record} cannot be judged, since round ${unjudged.round} names a record or round the store does not hold. To dismiss it again: melian dismiss ${argument} ${unjudged.finding} --reason <text> --records git:melian/state\n`,
+			`melian: finding ${visibleText(unjudged.finding)} is live: dismissal ${visibleText(unjudged.record)} cannot be judged, since round ${visibleText(unjudged.round)} names a record or round the store does not hold. To dismiss it again: ${dismiss(unjudged.finding)}\n`,
 		);
 	if (outcome.verdict.status === "not-reviewed") {
 		const stale = outcome.rounds.every(({ covers }) => "refused" in covers);
@@ -88,7 +92,7 @@ export async function gate(io: Io, argument: string): Promise<number> {
 					? "no counted round stands as reviewed of the merge's diff as it stands"
 					: "no round that stands as reviewed ran every check the base tip's tier requires";
 		io.stderr(
-			`melian: ${why}. To review it again: gh workflow run melian-round.yml -f pull_request=${target.number}\n`,
+			`melian: ${why}. To review it again: ${command("gh", "workflow", "run", "melian-round.yml", "-f", `pull_request=${target.number}`)}\n`,
 		);
 	}
 	const render = new Rendering({
@@ -102,4 +106,9 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	io.stdout(outcome.verdict.render(render));
 	if (outcome.passes()) return reviewExitCodes.passed;
 	return outcome.verdict.status === "not-reviewed" ? reviewExitCodes.notReviewed : reviewExitCodes.blocking;
+}
+
+// A command to paste into a shell: each word escaped for the terminal, then quoted, since `#` starts a comment and `<` a redirect.
+function command(...words: string[]): string {
+	return words.map((word) => shellQuote(visibleText(word))).join(" ");
 }
