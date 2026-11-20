@@ -1279,6 +1279,29 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(read.stdout).toContain(id);
 	});
 
+	it("quotes the target and the store in the command that dismisses a finding again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "#12", trustingPolicy);
+		const target = "#12...HEAD";
+		const store = `dir:${join(scratch, "shared records")}`;
+		melian(repo, ["review", target, "--records", store], env);
+		const stored = JSON.parse(melian(repo, ["findings", target, "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(melian(repo, ["dismiss", target, id, "--reason", reason, "--records", store], env).status).toBe(0);
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", target, "--records", store], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", target, "--records", store], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).toContain(
+			`dismiss it again: melian dismiss "#12...HEAD" ${id} --reason <text> --records "${store}"`,
+		);
+	});
+
 	it.each([
 		["sets trust.writers: false", "trust:\n  writers: false\n"],
 		["leaves trust.writers at its default", ""],
