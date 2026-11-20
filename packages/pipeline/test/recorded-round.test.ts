@@ -1203,6 +1203,17 @@ describe("the dismissal records a reader applies", () => {
 		expect("refused" in contents ? contents.refused : contents.dismissals.length).toBe(1);
 	});
 
+	it("reopens a dismissal a round since at the revision read met citing a hunk that revision lacks, with no checkout", async () => {
+		const { first, roundOn, citingAt, handedAfter, proof, revision } = await citedAcross(
+			"lens",
+			revisionOf("0", "1"),
+		);
+		const cited = citingAt(Revision.key(revision), [...proof, { file: "src/b.ts", hash: "0".repeat(64) }]);
+		const since = roundOn(revision.base, revision.head, [cited], [first]);
+		const contents = await handedAfter([since], [first, since, cited], [first]);
+		expect("refused" in contents ? contents.refused : contents.dismissals).toEqual([]);
+	});
+
 	it("applies no dismissal past a chain that ends before it reaches a round its writer held", async () => {
 		const { id, first, roundAt, readAfter, handedAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		const severed = roundAt("1", "2", [], []);
