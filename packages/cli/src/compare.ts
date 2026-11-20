@@ -306,7 +306,7 @@ export async function exportComparison(
 
 /**
  * Writes every valid miss of the stored comparisons with one of the reasons asked for as the misses file the measurement tool reads, naming on standard
- * error each one it leaves out and why. It refuses to write a file with no miss, which the tool would refuse to read.
+ * error, once the file is written, each one it leaves out and why. It refuses to write a file with no miss, which the tool would refuse to read.
  */
 export async function exportMisses(
 	io: Io,
@@ -327,14 +327,19 @@ export async function exportMisses(
 		misses = new ComparisonExport(entries, argument).misses(repoRoot, options.reasons);
 	}
 	misses = await placed(misses);
-	for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
-	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
-	if (misses.cases.length === 0)
+	const left = () => {
+		for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
+	};
+	if (misses.cases.length === 0) {
+		left();
 		throw new CliError(
 			`no valid miss of ${argument} ruled ${options.reasons.join(" or ")} names its lines at its compared head; adjudicate one valid with melian compare adjudicate`,
 		);
+	}
 	const json = `${JSON.stringify(misses.cases, null, 2).split("\n").map(visibleText).join("\n")}\n`;
 	await written(io, json, options.out, `${misses.cases.length} ${misses.cases.length === 1 ? "miss" : "misses"}`);
+	left();
+	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
 	return 0;
 }
 

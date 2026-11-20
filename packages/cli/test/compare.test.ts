@@ -983,6 +983,37 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("warns of the misses it left out only once the file is written", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" },
+					{ file: "src/user.ts", line: 400, title: "Past the end", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { external: Record<string, unknown> };
+		for (const id of Object.keys(stored.external))
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "absent", "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+
+		expect(result.status).not.toBe(0);
+		expect(result.stderr).not.toContain("Not exported");
+		expect(existsSync(output)).toBe(false);
+	});
+
 	it("writes a miss on a file's last line and names one a line past it, with or without a closing newline", () => {
 		const { repo, files, env } = checkout();
 		writeFileSync(join(repo, "src", "ends.ts"), "export const a = 1;\nexport const b = 2;\nexport const c = 3;\n");
