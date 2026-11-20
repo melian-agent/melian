@@ -14,11 +14,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/comparison-adjudication.ts": "0f88c3f91b1cede518c9e8d9cdd72f496fee5ebffb6fa6f453f826f2c6727562",
 
-	"packages/core/src/comparison-export.ts": "a4da6c92cd06f236d21848b7ebd02c367000ed5b79eaa2c2184ce30baa880cc8",
+	"packages/core/src/comparison-export.ts": "fdb64d95a487ce0f7f73f2da614ee01105e244d0d58b38faca222ea342d2e5e7",
 
 	"packages/core/src/comparison-set.ts": "8f56f2e3e5a3846bc66820bf95540f8a77da4cfaf63a402aa43df998a8497ade",
 
-	"packages/core/src/comparison.ts": "7c471d513165dd59853659d95e569f189f4dc74614913a14bb659ee8872a6858",
+	"packages/core/src/comparison.ts": "f1d64f5edcca6450f40367d02a2d0d12f7c5166b45d80269db325a826c6d9558",
 
 	"packages/core/src/config.ts": "7bdeeb890b93c90f520e2bb603b6965bf0188f69c94dabd315258fe276a77dde",
 
