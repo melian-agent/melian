@@ -332,7 +332,7 @@ describe("built-in lenses", () => {
 		expect(unexcluded).toEqual([]);
 	});
 
-	// Seven of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
+	// Eight of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
 	it("runs a lens that reads the standards in every tier of Melian's root melian.yaml that runs a lens", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		const own = ["melian.yaml", ...melianLensFiles(melian)];
