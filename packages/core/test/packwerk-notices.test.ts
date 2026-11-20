@@ -171,6 +171,16 @@ describe("packwerkNotices", () => {
 		const { findings: own } = await evaluateGuardrails(input);
 		expect(own.filter((finding) => finding.properties.path === "packs/a/package.yml")).toEqual([]);
 	});
+
+	it.each([
+		["Enola's table blocks while the guardrails table quietens", "static.enola", "guardrails"],
+		["the guardrails table blocks while Enola's quietens", "guardrails", "static.enola"],
+	])("resolves under its own check and the guardrail's both, the stricter standing: %s", async (_, blocks, quiet) => {
+		const policy = lines("resolution:", "  checks:", `    ${blocks}: { P2: block }`, `    ${quiet}: { P2: silent }`);
+		const head = { "packs/a/package.yml": lines("enforce_dependencies: false") };
+		const { findings, input } = await notices({ ...packages, "melian.yaml": policy }, head);
+		expect(await resolveAt(findings[0]!, "packs/a/package.yml", input.revision.base)).toBe("block");
+	});
 });
 
 describe("EnolaFacts.packwerkFiles", () => {
