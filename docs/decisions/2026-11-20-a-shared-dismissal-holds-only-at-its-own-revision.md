@@ -2,8 +2,9 @@
 
 Supersedes: [the decision that a dismissal record names the rounds its writer held](2026-11-19-a-dismissal-record-names-the-rounds-its-writer-held.md)
 Amends: [the decision that a shared reader remembers the hunks cited since a dismissal](2026-11-18-a-shared-reader-remembers-every-cited-hunk.md), everything but its rule that a round names the store's frontier in `before`
-Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 7's reopen from every sighting in the set, with each revision's proving hunks from git, and its late round of an older revision; and rule 7's "the record reaches the store with the host's next add", for a dismissal made with no store
-Amends: [the decision that a dismissal record is written once](2026-11-18-a-dismissal-record-is-written-once.md), "A dismissal made with no store gets its record at the next review that exports"
+Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 7's reopen from every sighting in the set, with each revision's proving hunks from git, and its late round of an older revision; and rule 7's "the record reaches the store with the host's next add", for a dismissal made with no store; and rule 9's inheritance the reader computes from the dismissal records and git
+Amends: [the decision that a dismissal record is written once](2026-11-18-a-dismissal-record-is-written-once.md), "A dismissal made with no store gets its record at the next review that exports", and "When the store fails", as a reader of shared records now reads that window
+Amends: [the decision that a dismissal carries to a restatement](2026-11-08-dismissal-carries-to-restatement.md), inheritance in a reader of shared records
 
 Status: for [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575). The maintainer ruled on 2026-11-20, in the coordinator's session, and the ruling is recorded on the pull request in [this comment](https://github.com/melian-agent/melian/pull/575#issuecomment-7030586727).
 
@@ -24,6 +25,16 @@ The guarantee: the reader never keeps a dismissal that any host would reopen. Th
 At one revision every genuine sighting cites only that revision's hunks, so a host that held the dismissal reopens it whenever a sighting there fails the trigger. The reader applies the same test, and fails closed on everything else. So it is never looser than any host.
 
 `contents(revision)` hands an ended dismissal over in `ended`, with the round that ended it and that round's revision. `melian findings --records` prints one line for each: the finding is live again in that round, it was dismissed at another revision, a round reviewed another as after a push, and the command that dismisses it again.
+
+## Inheritance
+
+A reader of shared records computes no inheritance. A finding the host holds dismissed because it restates a dismissed finding reads as live there, new and blocking where the host passes it. Problem: the host decides an inheritance from what it remembers of earlier rounds, the defect merge, the severity fence and the floors. A reader that sees only one revision's records would have to rebuild that memory, which this decision removes. Example: a maintainer dismisses finding A, and a later round at the same revision words the same defect as finding B. The host shows B dismissed, inherited from A. A reader of the shared records shows B blocking.
+
+The cost: a restated finding needs a shared dismissal of its own, though the host already passes it. `restatement.test.ts` pins both sides: the host reads B as inherited, and the reader reads it live. [Issue #506](https://github.com/melian-agent/melian/issues/506) holds the gap open.
+
+## When the store fails
+
+The written-once decision's one gap stands under this reader, narrowed to one revision. A record can reach the store while the host that wrote it records nothing. A reader of a round at the dismissed revision then reads the finding dismissed, while the writing host blocks until `melian dismiss` is run again. A round at any other revision ends the dismissal for the reader too, so the window holds only at the revision it was made at.
 
 ## What stays
 

@@ -2,6 +2,7 @@ import { rmSync } from "node:fs";
 import {
 	Changeset,
 	defaultConfig,
+	everyRecordCounts,
 	Finding,
 	injectionAttemptRuleId,
 	Lens,
@@ -18,6 +19,7 @@ import {
 	createReviewRegistry,
 	type Harness,
 	openHarness,
+	RecordedRound,
 	type Review,
 	readFindings,
 	recordDismissal,
@@ -349,6 +351,48 @@ describe("a dismissal carrying to a restatement", () => {
 			at: dismissal.at,
 			inheritedFrom: root,
 		});
+	});
+
+	// The shared reader computes no inheritance, by the one-revision decision's amendment of the restatement decision: a
+	// restated finding needs a shared dismissal of its own, though the host passes it as inherited.
+	it("reads a restated finding the host holds dismissed by inheritance as live in the shared records", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const root = await dismissedRoot(nullDeref, store);
+		lenses = lenses.map((lens) => (lens.name === "correctness" ? withBudget(lens, { findings: 9 }) : lens));
+		const worded = {
+			...restatement,
+			explanation: { ...restatement.explanation, what: "managerName dereferences an optional manager." },
+		};
+		script([worded]);
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const second = await reviewChangeset({
+			harness,
+			changeset,
+			config,
+			lenses,
+			standards: [],
+			models: fake.review,
+			checks: [...deterministicRan],
+			records: store,
+			policy: { kind: "worktree" },
+		});
+		const [restated] = second.findings;
+		expect(restated!.id).not.toBe(root);
+		expect(second.verdict.attention()).toEqual([]);
+		expect(second.verdict.dismissed.find((each) => each.id === restated!.id)!.properties.dismissal).toMatchObject({
+			inheritedFrom: root,
+		});
+
+		const stored = await store.list(changeset.id);
+		const rounds = stored.filter(({ kind }) => kind === "round");
+		const read = await RecordedRound.of(
+			stored,
+			SharedRecord.parseEnvelope(rounds.at(-1)!).id,
+			everyRecordCounts,
+		).verdict({ revision: changeset.revision, config, repoRoot: repo, policy: { kind: "worktree" } });
+
+		expect(read.attention().map(({ id }) => id)).toEqual([restated!.id]);
+		expect(read.dismissed.map(({ id }) => id)).not.toContain(restated!.id);
 	});
 
 	// Review A waits on its lens run or its verifier until review B, which replaced that run, has finished; A must not
