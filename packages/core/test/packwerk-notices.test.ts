@@ -104,6 +104,18 @@ describe("packwerkNotices", () => {
 		]);
 	});
 
+	it("notices each changed file once, in path order, whatever order Enola's facts gave", async () => {
+		const { findings } = await notices(
+			packages,
+			{
+				"packwerk.yml": lines('package_paths: ["components/*"]'),
+				"packs/b/package.yml": lines("enforce_dependencies: false"),
+			},
+			{ read: ["packwerk.yml", "packs/b/package.yml", "packwerk.yml"] },
+		);
+		expect(findings.map((finding) => finding.properties.path)).toEqual(["packs/b/package.yml", "packwerk.yml"]);
+	});
+
 	it("draws nothing in a repository with no Packwerk module, or for a file Enola did not read", async () => {
 		const none = await notices(
 			packages,
