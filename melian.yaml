@@ -31,6 +31,9 @@ models:
 
 tiers:
   fast: [guardrails, static.biome, static.tsc, static.enola]
+  # Eight repository lenses get no standards, so conventions owns them here as in full
+  # (decisions/2026-11-19-lenses-get-only-the-standards-they-cite.md).
+  standard: [fast, lens.correctness, lens.conventions]
   # The default full tier plus Melian's own repository lenses under .melian/lenses/. static.mutation is off this
   # repository's rounds from 2026-10-24 (decisions/2026-10-24-stryker-off-the-hot-path.md); opt in with
   # tiers: { full: [static.mutation] } in an uncommitted melian.local.yaml.
