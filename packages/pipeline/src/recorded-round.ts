@@ -353,12 +353,14 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 			.map((record) => [record.id, record]),
 	);
 	const held = new Set(frontier);
-	for (const pending = [...frontier]; pending.length > 0; )
-		for (const id of rounds.get(pending.pop()!)?.manifest()!.before ?? [])
+	for (const pending = [...frontier]; pending.length > 0; ) {
+		const each = rounds.get(pending.pop()!);
+		for (const id of each === undefined ? [] : each.manifest()!.before)
 			if (!held.has(id)) {
 				held.add(id);
 				pending.push(id);
 			}
+	}
 	const tested = [...rounds.values()].filter((each) => !held.has(each.id));
 	const known = [round, ...tested].every(
 		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
