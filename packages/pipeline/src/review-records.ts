@@ -34,6 +34,7 @@ import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
 import type { FindingsState } from "./findings.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
+import type { StaticProof } from "./static-proof.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
 
@@ -81,7 +82,8 @@ export type DismissalFacts = {
 	readonly reason: string;
 	readonly at: string;
 	readonly severity: Severity;
-	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
+	// `run` is the request key the sighting's check run stamped when it was dismissed, which no payload carries.
+	readonly sighting: { readonly revision: string; readonly finding: StoredFinding; readonly run?: string };
 	readonly rounds: readonly string[];
 	// The rounds of the changeset the writer's store held as the dismissal was made, which only `made` knows.
 	readonly frontier?: readonly string[];
@@ -120,6 +122,7 @@ const codes: ReadonlySet<string> = new Set([
 	"no record",
 	"unexpected",
 	"withheld",
+	"unkeyed",
 ]);
 const shared = (text: string): string => (codes.has(text) ? text : withheld);
 // A tool's version comes from its installed manifest, which the head can write, so only a version in semver's own
@@ -358,14 +361,19 @@ export class ReviewRecords {
 	 * `madeWithoutStore` when `held` holds no such record: only the writer, as it dismissed, could name the rounds its
 	 * store held then.
 	 */
-	dismissalOf(state: FindingsState, id: string, held: readonly RecordEnvelope[]): SharedRecord | undefined {
+	dismissalOf(
+		state: FindingsState,
+		id: string,
+		held: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
 		const facts = ReviewRecords.#dismissalFacts(state, id);
-		return facts === undefined ? undefined : this.dismissal(facts, held);
+		return facts === undefined ? undefined : this.dismissal(facts, held, proof);
 	}
 
 	/** The record `held` holds of the dismissal `facts` describe, as for `dismissalOf`. */
-	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[]): SharedRecord {
-		const copy = this.#heldCopy(this.#dismissalEnvelope(facts), held);
+	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
+		const copy = this.#heldCopy(this.#dismissalEnvelope(facts, proof), held);
 		if (copy !== undefined) return copy;
 		throw new DismissError(
 			"madeWithoutStore",
@@ -387,9 +395,14 @@ export class ReviewRecords {
 	}
 
 	/** The record `made` writes for the dismissal of `id` that `state` holds, or `undefined` as for `dismissalOf`. */
-	madeOf(state: FindingsState, id: string, listing: readonly RecordEnvelope[]): SharedRecord | undefined {
+	madeOf(
+		state: FindingsState,
+		id: string,
+		listing: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
 		const facts = ReviewRecords.#dismissalFacts(state, id);
-		return facts === undefined ? undefined : this.made(facts, listing);
+		return facts === undefined ? undefined : this.made(facts, listing, proof);
 	}
 
 	static #dismissalFacts(state: FindingsState, id: string): DismissalFacts | undefined {
@@ -406,6 +419,7 @@ export class ReviewRecords {
 			sighting: {
 				revision: sighting.revision,
 				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+				...(sighting.run === undefined ? {} : { run: sighting.run }),
 			},
 			rounds: [],
 			trigger: lifecycle.dismissedTrigger!,
@@ -419,11 +433,11 @@ export class ReviewRecords {
 	 * dismissal of its finding that stands there. The record `listing` already holds for this dismissal is returned as
 	 * it is, so a dismissal made again writes nothing new.
 	 */
-	made(facts: DismissalFacts, listing: readonly RecordEnvelope[]): SharedRecord {
+	made(facts: DismissalFacts, listing: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
 		const frontier = listing
 			.filter((each) => each.kind === "round" && each.changeset === this.changeset)
 			.map((each) => SharedRecord.parseEnvelope(each).id);
-		const envelope = this.#dismissalEnvelope({ ...facts, frontier });
+		const envelope = this.#dismissalEnvelope({ ...facts, frontier }, proof);
 		const copy = this.#heldCopy(envelope, listing);
 		if (copy !== undefined) return copy;
 		const own = SharedRecord.parse(envelope, reviewPayloads).id;
@@ -460,13 +474,14 @@ export class ReviewRecords {
 		return SharedRecord.parseEnvelope({ ...rest, payload: kept as RecordJson }).id;
 	}
 
-	#dismissalEnvelope(facts: DismissalFacts): RecordEnvelope {
+	// A static finding's dismissal is shared only when `proof` shows the run its sighting was stamped with stored none of
+	// its tool's text.
+	#dismissalEnvelope(facts: DismissalFacts, proof?: StaticProof): RecordEnvelope {
 		const { id, source } = facts.sighting.finding.properties;
 		// A reader refuses a set holding such a record, so writing one would cost every round that reads it.
 		if (id !== facts.finding) throw new Error(`a dismissal of ${facts.finding} holds a sighting of ${id}`);
 		const { check } = source;
-		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
-		if (check.startsWith("static."))
+		if (check.startsWith("static.") && proof?.asks(check, facts.sighting.run) !== true)
 			throw new DismissError(
 				"unprovenRun",
 				`The dismissed ${check} finding carries no proof that the run which sighted it stored none of its tool's text, so its dismissal is not shared.`,

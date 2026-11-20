@@ -45,6 +45,7 @@ import { DismissError } from "../src/errors.ts";
 import { dismissFinding, FindingsDocument } from "../src/findings.ts";
 import { type ConversationId, StorageRejected, type Tx } from "../src/harness.ts";
 import { ReviewRecords } from "../src/review-records.ts";
+import { provenRun } from "./fixtures/proven-run.ts";
 import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -104,7 +105,7 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: CheckRun; readonly policy?: RepositorySource } = {},
+	run: { readonly checkRun?: CheckRun; readonly proven?: true; readonly policy?: RepositorySource } = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
@@ -132,6 +133,7 @@ async function review(
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
+	const checkRun = run.proven ? await provenRun(harness, changeset, given) : run.checkRun;
 	const open = harness;
 	const summarize = (origin: "pull-request" | "range") =>
 		summarizeReview({
@@ -157,13 +159,13 @@ async function review(
 		lenses: (await Lens.builtins()).filter(({ name }) => named.includes(name)),
 		standards: [],
 		models: fake.review,
-		...(run.checkRun === undefined
+		...(checkRun === undefined
 			? { checks: given }
 			: // A run built here names this review's revision, as a review refuses one that names another.
 				{
 					checkRun: {
-						...run.checkRun,
-						identity: { ...run.checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
+						...checkRun,
+						identity: { ...checkRun.identity, base: changeset.revision.base, head: changeset.revision.head },
 					},
 				}),
 		...(store === undefined ? {} : { records: store }),
@@ -279,14 +281,15 @@ describe("a review that names a record store", () => {
 	it("exports a host's record that names an absent field as undefined", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const given = checks.map((check) =>
-			check.name === "static.biome" ? { ...check, notes: undefined as never, error: undefined } : check,
+			check.name === "guardrails" ? { ...check, notes: undefined as never, error: undefined } : check,
 		);
+		// A static check's record is the one its run stored, so only a check outside the run takes the host's.
 		const { stored } = await review(store, given);
-		const biome = stored.find(
+		const guardrails = stored.find(
 			({ kind, payload }) =>
-				kind === "check" && (payload as { result: { name: string } }).result.name === "static.biome",
+				kind === "check" && (payload as { result: { name: string } }).result.name === "guardrails",
 		)!.payload as { result: { notes: string[] } };
-		expect(biome.result.notes).toEqual([]);
+		expect(guardrails.result.notes).toEqual([]);
 	});
 
 	it("names no round as replaced, though another host's blocking round is stored, which leaves what blocks unchanged", async () => {

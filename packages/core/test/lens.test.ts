@@ -254,27 +254,27 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "ac79e2affc42",
-			conventions: "e5f0c8075927",
-			correctness: "2ada4940e253",
-			design: "0f2e72de3c2d",
-			durability: "2d013afa303b",
-			"removed-behaviour": "32db6552d78d",
-			tests: "32e8090b617b",
-			"trust-boundary": "e78af31b1e01",
-			"trust-boundary-probes": "3c1046d5364f",
+			contracts: "673f22fef8bf",
+			conventions: "d883d0302825",
+			correctness: "618597d6618f",
+			design: "65446f20955f",
+			durability: "1e550119fd86",
+			"removed-behaviour": "20ff1c063855",
+			tests: "8b0a459e19af",
+			"trust-boundary": "e936904763f9",
+			"trust-boundary-probes": "01f95ca4c999",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "3a16d09447aa",
-			conventions: "a97206229c6c",
-			correctness: "2c762bea062a",
-			design: "a766d8d4346f",
-			"removed-behaviour": "4348907c4c79",
-			tests: "3cd6d87f2b68",
-			"trust-boundary": "5be761e59afa",
-			"trust-boundary-probes": "91442d54881b",
+			contracts: "7cd7b6972f22",
+			conventions: "1ac990cc3573",
+			correctness: "216bd925eb58",
+			design: "ded3ca370849",
+			"removed-behaviour": "8b30961c639e",
+			tests: "e58f29aa8e2c",
+			"trust-boundary": "80eb412b03e3",
+			"trust-boundary-probes": "d72b9bbaa5ce",
 		});
 	});
 
@@ -398,7 +398,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 16, tokens: 5_000_000, tools: 400 },
+				budget: { findings: 16, tokens: 10_000_000, tools: 400 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);
@@ -1140,6 +1140,50 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 				`.melian/lenses/tests/LENS.md: lens tests, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
 			);
 		}
+	});
+
+	// An eval turns probing on in memory, and asks the loader's own rule whether the lens may probe.
+	it("says why a loaded lens may not probe, as loading a level that set probe would refuse it", async () => {
+		const builtins = await Lens.builtins();
+		const builtin = (name: string) => builtins.find((lens) => lens.name === name)!;
+		expect(builtin("trust-boundary").probeRefusal()).toBeUndefined();
+		expect(builtin("correctness").probeRefusal()).toBeUndefined();
+		expect(builtin("tests").probeRefusal()).toBe(
+			'"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
+		);
+		expect(builtin("contracts").probeRefusal()).toBe(
+			'"probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens\'s words',
+		);
+		// A lens of another name probes in the words of the built-in it extends.
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary-probes/LENS.md": lensFile([
+				"name: trust-boundary-probes",
+				"extends: trust-boundary",
+				"levels:",
+				"  deep: { probe: {} }",
+			]),
+		});
+		const loaded = (await load(["src/index.ts"])).find((lens) => lens.name === "trust-boundary-probes")!;
+		expect(loaded.probeRefusal()).toBeUndefined();
+	});
+
+	it("refuses probing to a loaded lens that takes a built-in's name without extending it, though it does not probe", async () => {
+		writeFiles(repo, {
+			".melian/lenses/trust-boundary/LENS.md": lensFile(
+				security.map((line) => line.replace("name: security", "name: trust-boundary")),
+			),
+			".melian/lenses/correctness/LENS.md": lensFile(["name: correctness", "extends: correctness"]),
+		});
+		const loaded = await load(["src/index.ts"]);
+		const named = (name: string) => loaded.find((lens) => lens.name === name)!;
+		expect(named("trust-boundary").probeRefusal()).toBe(
+			'"probe" takes its wording from the built-in lens a lens extends, and this lens takes the built-in trust-boundary lens\'s name without extending it; give it and every farther trust-boundary lens "extends: trust-boundary"',
+		);
+		expect(named("correctness").probeRefusal()).toBeUndefined();
+		// The version the code before shadowsBuiltin gave this lens, so marking it reviews nothing again.
+		expect(named("trust-boundary").version).toBe("efdecea8e615");
+		expect(Lens.from(named("trust-boundary").toJSON()).probeRefusal()).toBe(named("trust-boundary").probeRefusal());
+		expect(Object.keys(named("correctness").toJSON())).not.toContain("shadowsBuiltin");
 	});
 
 	// A lens that takes a built-in's name without extending it has a purpose of its own, which the built-in's probing

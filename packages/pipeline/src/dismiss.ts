@@ -11,10 +11,12 @@ import {
 	type AdjudicationResult,
 	AdjudicationTask,
 	type AdjudicationTaskInput,
+	adjudicationKey,
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -32,6 +34,7 @@ import type { UnsharedDismissal } from "./review.ts";
 import { attachable, ReviewIndex, undecided } from "./review-index.ts";
 import { ReviewRecords } from "./review-records.ts";
 import { RoundWriter } from "./rounds.ts";
+import { StaticProof } from "./static-proof.ts";
 
 // The adjudication task alone, so a dismissal decides the verdict again without resuming a review a crash interrupted.
 const adjudicationExtension = defineExtension({ name: "melian.adjudication", tasks: [AdjudicationTask] });
@@ -157,6 +160,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 		});
 	const { records: target } = options;
 	const listing = target && (await refusing(() => target.store.list(target.changeset)));
+	// Read before the commit: a static finding's dismissal is shared only when a stored request proves its run.
+	const proof = target && (await StaticProof.read(harness, root.id, context));
 	const unshared: UnsharedDismissal[] = [];
 	const { replaced, also, live, task } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
@@ -212,7 +217,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			const made: RecordEnvelope[] = [];
 			for (const report of dismissed) {
 				try {
-					const record = records.madeOf(state, report, listing!);
+					const record = records.madeOf(state, report, listing!, proof);
 					if (record !== undefined) made.push(record.toJSON());
 				} catch (error) {
 					if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
@@ -221,8 +226,8 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			}
 			await refusing(() => target.store.add(made));
 		}
-		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
-		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
+		// The review's own input with the findings version the dismissal moved to, so a later review that computes the same
+		// input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
@@ -231,8 +236,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			checks: previous.checks.map(withLegacyCaveats),
 			repoRoot: checkout,
 			findingsVersion,
+			code: codeVersion("adjudication"),
 		};
-		const key = JSON.stringify(input);
+		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = found.members
 			.filter((other) => other.id !== own && dismissed.includes(other.id))

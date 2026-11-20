@@ -1,0 +1,163 @@
+{
+ "mutants": [
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 112,
+   "column": 20,
+   "endLine": 112,
+   "endColumn": 63,
+   "mutatorName": "MethodExpression",
+   "replacement": "lenses",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 112,
+   "column": 34,
+   "endLine": 112,
+   "endColumn": 62,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 112,
+   "column": 44,
+   "endLine": 112,
+   "endColumn": 62,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 112,
+   "column": 44,
+   "endLine": 112,
+   "endColumn": 62,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 112,
+   "column": 44,
+   "endLine": 112,
+   "endColumn": 62,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.name !== name",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 113,
+   "column": 7,
+   "endLine": 113,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 113,
+   "column": 7,
+   "endLine": 113,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a lens core would not let probe, and one the policy does not load, naming each",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 113,
+   "column": 7,
+   "endLine": 113,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "variants.length !== 0",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 117,
+   "column": 32,
+   "endLine": 117,
+   "endColumn": 61,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a lens core would not let probe, and one the policy does not load, naming each",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 117,
+   "column": 68,
+   "endLine": 117,
+   "endColumn": 100,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a lens core would not let probe, and one the policy does not load, naming each",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 117,
+   "column": 80,
+   "endLine": 117,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a named lens when any variant of it cannot probe, not only the first",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 117,
+   "column": 80,
+   "endLine": 117,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a lens core would not let probe, and one the policy does not load, naming each",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 117,
+   "column": 80,
+   "endLine": 117,
+   "endColumn": 100,
+   "mutatorName": "EqualityOperator",
+   "replacement": "reason === undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > ProbingCombination > refuses a lens core would not let probe, and one the policy does not load, naming each",
+   "survivorClasses": []
+  }
+ ],
+ "total": 13,
+ "omitted": 0,
+ "unmutated": []
+}
