@@ -140,8 +140,7 @@ class TreeWalk {
 		try {
 			for await (const entry of await opendir(join(this.root, path))) {
 				this.#walked += 1;
-				if (this.#walked > relayLimits.entries)
-					throw new RelayRefusal("tooManyEntries", path === "." ? entry.name : `${path}/${entry.name}`);
+				if (this.#walked > relayLimits.entries) throw new RelayRefusal("tooManyEntries", `${path}/${entry.name}`);
 				listed.push(entry);
 			}
 		} catch (error) {
