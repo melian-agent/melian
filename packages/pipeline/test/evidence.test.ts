@@ -13,15 +13,18 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import { Finding, type StoredFinding } from "@melian-agent/core";
+import { Adjudication, defaultConfig, ExternalFinding, Finding, type StoredFinding } from "@melian-agent/core";
 import {
+	createMemoryStorage,
 	type EntryRecord,
 	type EvidenceConversation,
 	type EvidencePointer,
 	EvidenceStore,
 	evidenceLimits,
 	MissEvidence,
+	Round,
 	type Stage,
+	type Storage,
 } from "@melian-agent/pipeline";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -303,6 +306,7 @@ describe("EvidenceStore", () => {
 			writeFileSync(pointerAt(state, "r1", second), readFileSync(pointerAt(state, "r1", first)));
 			await expect(EvidenceStore.open(state).read(changeset, round, second)).rejects.toMatchObject({
 				code: "unreadable",
+				message: expect.stringContaining("is not this miss's evidence"),
 			});
 		});
 
@@ -312,6 +316,7 @@ describe("EvidenceStore", () => {
 			writeFileSync(pointerAt(state, "r2", first), readFileSync(pointerAt(state, "r1", first)));
 			await expect(EvidenceStore.open(state).read(changeset, `${changeset}.r2`, first)).rejects.toMatchObject({
 				code: "unreadable",
+				message: expect.stringContaining("is not this miss's evidence"),
 			});
 		});
 
@@ -321,6 +326,7 @@ describe("EvidenceStore", () => {
 			writeFileSync(pointerAt(state, "r1", first), JSON.stringify({ ...pointer, version: 2 }));
 			await expect(EvidenceStore.open(state).read(changeset, round, first)).rejects.toMatchObject({
 				code: "unreadable",
+				message: expect.stringContaining("is not this miss's evidence"),
 			});
 		});
 
@@ -485,6 +491,10 @@ describe("MissEvidence.stagesAt", () => {
 	});
 	const ids = (stages: readonly Stage[]) => stages.map((each) => each.id);
 
+	it("keeps no run for a miss with no site", () => {
+		expect(MissEvidence.stagesAt([lens(1)], [reported({})], undefined)).toEqual([]);
+	});
+
 	it("keeps each lens run whose coverage holds the file, and no other run", () => {
 		const stages = [
 			lens(1),
@@ -538,5 +548,93 @@ describe("MissEvidence.stagesAt", () => {
 			{ ...verifier(6, finding.properties.id), conversation: undefined },
 		];
 		expect(ids(MissEvidence.stagesAt(stages, [finding], site))).toEqual(["conversation:1", "conversation:3"]);
+	});
+});
+
+describe("MissEvidence", () => {
+	const miss = ExternalFinding.create({
+		reviewer: { name: "codex" },
+		file: "src/user.ts",
+		line: 10,
+		title: "a miss",
+		body: "body",
+		source: { kind: "file", path: "codex.json", position: 0 },
+	});
+	const verdict = () =>
+		new Adjudication({ findings: [], manifest: [], checks: [], config: defaultConfig }).adjudicate();
+	const decided = (provenance?: { policy: string }) =>
+		new Round(round, {
+			base: "b".repeat(40),
+			head: "c".repeat(40),
+			tasks: [4],
+			verdict: verdict().toJSON(),
+			...(provenance === undefined ? {} : { provenance }),
+		} as Round["stored"]);
+
+	it.each([
+		["the round's policy", { policy: `revision:${"d".repeat(40)}` }, `revision:${"d".repeat(40)}`],
+		["config, for a round that records no provenance", undefined, "config"],
+	])(
+		"gathers a pointer to the round's commits with %s, and nothing a clone without its run holds",
+		async (_, provenance, policy) => {
+			const gathered = await MissEvidence.gather(createMemoryStorage(), {
+				round: decided(provenance),
+				verdict: verdict(),
+				finding: miss,
+			});
+
+			expect({ pointer: gathered.pointer, stages: gathered.stages }).toEqual({
+				pointer: {
+					version: 1,
+					changeset,
+					round,
+					external: miss.id,
+					base: "b".repeat(40),
+					head: "c".repeat(40),
+					policy,
+					lensFiles: [],
+					stages: [],
+				},
+				stages: [],
+			});
+		},
+	);
+
+	it("reads every page of a stage's conversation, oldest first, asking only for that conversation", async () => {
+		const all = Array.from({ length: 450 }, (_, index) => entry(9, index + 1));
+		const asked: unknown[] = [];
+		const storage = {
+			scanEntries: async (query: unknown, limit: number, cursor: number | undefined) => {
+				asked.push(cursor);
+				expect({ query, limit }).toEqual({ query: { conversationId: 9, order: "ascending" }, limit: 200 });
+				const start = cursor ?? 0;
+				const next = start + limit < all.length ? start + limit : undefined;
+				return { items: all.slice(start, start + limit), next };
+			},
+		} as unknown as Storage;
+
+		const read = await MissEvidence.conversation(storage, stage(9));
+
+		expect(read).toEqual({ stage: stage(9), entries: all });
+		expect(asked).toEqual([undefined, 200, 400]);
+	});
+
+	it("names each lens of its lens runs once, by name and version, and no verifier", () => {
+		const verifier = { stage: { ...stage(3), name: "melian.verification.candidate", subject: "a@b@c" }, entries: [] };
+		const tests = { stage: { ...stage(4), subject: "tests@2@quick" }, entries: [] };
+
+		expect(evidence(first, conversation(1), conversation(2), verifier, tests).lenses()).toEqual([
+			"correctness@1",
+			"tests@2",
+		]);
+	});
+
+	it("takes the lens files it is given in place of the pointer's, as copies", () => {
+		const files = [{ lens: "correctness@1", file: ".melian/lenses/correctness/LENS.md", blob: "e".repeat(40) }];
+		const kept = evidence(first, conversation(1)).withLensFiles(files);
+		files[0]!.blob = "f".repeat(40);
+
+		expect(kept.pointer.lensFiles).toEqual([{ ...files[0], blob: "e".repeat(40) }]);
+		expect(kept.pointer.stages).toEqual(["conversation:1"]);
 	});
 });

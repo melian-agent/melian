@@ -8,7 +8,6 @@ import {
 	type Finding,
 	isChangesetId,
 	lensCovers,
-	Revision,
 	type Verdict,
 } from "@melian-agent/core";
 import { backgroundContext, type Context, type ConversationId, type EntryRecord, type Storage } from "./harness.ts";
@@ -86,14 +85,11 @@ export class MissEvidence {
 		context: Context = backgroundContext,
 	): Promise<MissEvidence> {
 		const { round, verdict, finding } = options;
-		const site = finding.site();
-		const revision = round.revisionKey();
-		const telemetry = await TelemetryReader.open(storage).read(revision, undefined, context);
+		const telemetry = await TelemetryReader.open(storage).read(round.revisionKey(), undefined, context);
 		const stages: EvidenceConversation[] = [];
-		if (site !== undefined)
-			for (const stage of MissEvidence.stagesAt(telemetry.stages, verdict.all(), site))
-				stages.push(await MissEvidence.conversation(storage, stage, context));
-		const { base, head } = Revision.parseKey(revision) ?? { base: round.stored.base, head: round.stored.head };
+		for (const stage of MissEvidence.stagesAt(telemetry.stages, verdict.all(), finding.site()))
+			stages.push(await MissEvidence.conversation(storage, stage, context));
+		const { base, head } = round.stored;
 		return MissEvidence.from(
 			{
 				version: 1,
@@ -112,9 +108,10 @@ export class MissEvidence {
 
 	/**
 	 * The stages behind a miss at `site`: each lens run whose coverage held its file, and each candidate verifier that
-	 * judged a lens finding of `findings` at that file on lines overlapping the site, or a claim reported with one.
+	 * judged a lens finding of `findings` at that file on lines overlapping the site, or a claim reported with one. A miss with no site has none.
 	 */
-	static stagesAt(telemetry: readonly Stage[], findings: readonly Finding[], site: ExternalSite): Stage[] {
+	static stagesAt(telemetry: readonly Stage[], findings: readonly Finding[], site: ExternalSite | undefined): Stage[] {
+		if (site === undefined) return [];
 		const sighted = new Set<string>();
 		for (const finding of findings) {
 			const [start, end] = finding.lines();
@@ -139,7 +136,12 @@ export class MissEvidence {
 		);
 	}
 
-	private static async conversation(storage: Storage, stage: Stage, context: Context): Promise<EvidenceConversation> {
+	/** Every entry of `stage`'s conversation, oldest first, read page by page. */
+	static async conversation(
+		storage: Storage,
+		stage: Stage,
+		context: Context = backgroundContext,
+	): Promise<EvidenceConversation> {
 		const conversationId = stage.conversation as ConversationId;
 		const entries: EntryRecord[] = [];
 		let page = await storage.scanEntries({ conversationId, order: "ascending" }, 200, undefined, context);
