@@ -299,6 +299,64 @@ describe("Install.read", () => {
 		]);
 	});
 
+	it("walks a linked scope's packages where they really are", () => {
+		mkdirSync(join(scratch, "store", "scope", "tool"), { recursive: true });
+		writeFileSync(
+			join(scratch, "store", "scope", "tool", "package.json"),
+			JSON.stringify({ name: "@scope/tool", version: "3.0.0" }),
+		);
+		symlinkSync(join(scratch, "store", "scope"), join(scratch, "node_modules", "@scope"));
+		expect(read().entries).toEqual([
+			["node_modules/@scope", "links", "store/scope"],
+			["node_modules/pi", "release", "pi", "1.1.0"],
+			["node_modules/sdk", "release", "sdk", "2.0.0"],
+			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			["store/scope/tool", "release", "@scope/tool", "3.0.0"],
+		]);
+	});
+
+	it("walks a package's linked node_modules where it really is", () => {
+		mkdirSync(join(scratch, "store", "pi-modules", "sdk"), { recursive: true });
+		writeFileSync(
+			join(scratch, "store", "pi-modules", "sdk", "package.json"),
+			JSON.stringify({ name: "sdk", version: "3.0.0" }),
+		);
+		symlinkSync(join(scratch, "store", "pi-modules"), join(scratch, "node_modules", "pi", "node_modules"));
+		expect(read().entries).toEqual([
+			["node_modules/pi", "release", "pi", "1.1.0"],
+			["node_modules/pi/node_modules", "links", "store/pi-modules"],
+			["node_modules/sdk", "release", "sdk", "2.0.0"],
+			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			["store/pi-modules/sdk", "release", "sdk", "3.0.0"],
+		]);
+	});
+
+	it("fails, naming the place, when a scope links to a file", () => {
+		mkdirSync(join(scratch, "store"));
+		writeFileSync(join(scratch, "store", "file"), "");
+		symlinkSync(join(scratch, "store", "file"), join(scratch, "node_modules", "@scope"));
+		expect(failure(() => read())).toBe("Melian cannot read store/file in its install.");
+	});
+
+	it("keys a directory named like a scope inside a package as no package", () => {
+		install("pi/lib/@inner/thing", { name: "thing", version: "1.0.0" });
+		expect(read().entries).toEqual([
+			["node_modules/pi", "release", "pi", "1.1.0"],
+			["node_modules/sdk", "release", "sdk", "2.0.0"],
+			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+		]);
+	});
+
+	it("keys a slot named like a scope inside a scope as a package", () => {
+		install("@scope/@odd", { name: "@scope/@odd", version: "1.0.0" });
+		expect(read().entries).toEqual([
+			["node_modules/@scope/@odd", "release", "@scope/@odd", "1.0.0"],
+			["node_modules/pi", "release", "pi", "1.1.0"],
+			["node_modules/sdk", "release", "sdk", "2.0.0"],
+			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+		]);
+	});
+
 	it("keys a link that names no directory", () => {
 		symlinkSync(join(scratch, "gone"), join(scratch, "node_modules", "gone"));
 		expect(read()).toMatchObject({
@@ -386,6 +444,16 @@ describe("Install.read", () => {
 				outside: ["node_modules/sdk"],
 				identified: false,
 			});
+		});
+
+		it("sorts the places that link out, though a nearer node_modules is walked first", () => {
+			mkdirSync(join(scratch, "packages", "app", "node_modules"), { recursive: true });
+			writeFileSync(join(scratch, "packages", "app", "main.js"), "");
+			symlinkSync(outside, join(scratch, "packages", "app", "node_modules", "late"));
+			expect(Install.read(join(scratch, "packages", "app", "main.js")).outside).toEqual([
+				"node_modules/sdk",
+				"packages/app/node_modules/late",
+			]);
 		});
 
 		it("names each place that links out once, sorted", () => {
