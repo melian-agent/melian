@@ -198,7 +198,6 @@ export class EnolaRun {
 		};
 	}
 
-	// The Packwerk files Enola's facts for one revision name.
 	async #packwerk(output: string): Promise<string[]> {
 		const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
 		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola generated no facts.jsonl");

@@ -154,7 +154,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/credentials.ts": "6c2e84358b4f90ae4454bf819b79bf8bd4e018f894dadbc9efdb31415b0d0595",
 
-	"packages/pipeline/src/enola-static.ts": "d587a77ba70100a0797bfcc165fdd86726010bd6e89aaa70d413c2ac460314e6",
+	"packages/pipeline/src/enola-static.ts": "8d9fadb5c8d72d31527374c59e86d131ef0fb5204c175b77ac7057741b9456d9",
 
 	"packages/pipeline/src/errors.ts": "7e1b0fad0c2cf88c60e8d071aa775d256fbb2c1471a55210aa98c97af9dd0105",
 
