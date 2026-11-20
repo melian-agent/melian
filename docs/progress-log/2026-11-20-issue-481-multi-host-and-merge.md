@@ -32,3 +32,9 @@ The new tests, each written for a mutant that survived the suite:
 - `review-records-unproven-run.test.ts`: a dismissed static finding whose run the store proves is recorded, exported by a later round and read back as dismissed.
 - `review-records.test.ts`: makes and shares no dismissal record for a finding whose state froze no dismissed sighting.
 - `recorded-round.test.ts`: keeps a dismissal whose frontier names a round its writer held and this set does not; tests no round its writer held two rounds before its frontier; keeps one whose writer held the round read and a later round of another revision; counts for nothing one whose frontier names only a round this set lacks, before a round that follows none; meets a round since at the read revision from that revision's own files, with no checkout; and reopens a dismissal when such a round cites a hunk that revision lacks.
+
+## The second merge of `main`
+
+Merging `main` again brought [pull request #551](https://github.com/melian-agent/melian/pull/551)'s stricter record schemas. The merge's own lines in trust code are three. The dismissal payload keeps this branch's `frontier` beside main's stricter `trigger`. The dismissal check reads `frontier` with main's `at`, and runs main's stamped-time check before the frontier's order check. `review.ts` keeps `predecessors` beside main's `verificationOutcome`. Tests now stamp `at` to the millisecond, as Melian does, and a listing holding a lens record under a finding's key is built as an envelope, since main refuses such a record on parse.
+
+The frontier check's six mutants were claimed before the merge rewrote the function around them, so each ran again at `6637ca750` against its named test, which passed unmutated and failed mutated: `2026-11-20-issue-481-second-merge-mutant-runs.json`. The merge's other mutants in those files are main's, proved by its own pull request, or this branch's, proved above on lines the merge left alone.
