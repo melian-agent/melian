@@ -783,7 +783,7 @@ describe("policy-change-review", () => {
 	describe("this repository's macOS test list and comparator", () => {
 		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
 		const scripts = ["scripts/compare-platform-reports.mjs", "scripts/macos-tests.json"];
-		const notices = (findings: Finding[]) =>
+		const notices = (findings: readonly Finding[]) =>
 			findings
 				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
 				.map((finding) => [finding.properties.path, finding.properties.severity]);
