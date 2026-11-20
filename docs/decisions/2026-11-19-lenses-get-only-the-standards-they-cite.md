@@ -22,7 +22,7 @@ The change applies to Melian's own repository. A repository with its own lenses 
 
 ## Why
 
-A lens's budget is for the change. On #532, turning the standards off cut `removed-behaviour`'s first request from 231,553 to 61,791 uncached tokens, and the capped review's cost from $7.86 to $3.56.
+A lens's budget is for the change. On [pull request #532](https://github.com/melian-agent/melian/pull/532), turning the standards off cut `removed-behaviour`'s first request from 231,553 to 61,791 uncached tokens, and the capped review's cost from $7.86 to $3.56.
 
 ## Limit
 
