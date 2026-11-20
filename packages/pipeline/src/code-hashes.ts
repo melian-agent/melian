@@ -210,7 +210,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/spans.ts": "cea8de44b60c2dbb45768ffe2db937a250605b33014d8b003a70c614aeac6f95",
 
-	"packages/pipeline/src/static.ts": "ceafab44b1dbae42b3baddc5c723f39311a1645799418ce4e7b2996279cad40a",
+	"packages/pipeline/src/static.ts": "44f2e46ace5a4acfb28ba88187a68fce432281283a3f03006c40632303db71e3",
 
 	"packages/pipeline/src/summarize.ts": "a2efff4992c69a6f4dea9441aaa4393aac05a4171a98fc6001b944b6b6f70936",
 
