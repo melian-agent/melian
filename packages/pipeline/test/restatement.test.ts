@@ -1330,7 +1330,7 @@ describe("a dismissal carrying to a restatement", () => {
 			settings: { retry: { enabled: false } },
 		});
 		await other.root(context, { agent: { model: fake.ref("orchestrator") } });
-		const reviewOn = async (on: Harness, extra: Partial<Parameters<typeof reviewChangeset>[0]> = {}) =>
+		const reviewOn = async (on: Harness, extra: { records?: MemoryRecordStore; imported?: ImportedRecords } = {}) =>
 			reviewChangeset({
 				harness: on,
 				changeset: await Changeset.resolve(repo, "main...feature"),
