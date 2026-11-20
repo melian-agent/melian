@@ -2,7 +2,7 @@
 
 Amends: [a lens's token budget fits the requests a review makes](2026-11-18-lens-budgets-fit-the-requests-a-review-makes.md), the quick level's tool-call budget.
 
-Status: proposed for [issue #595](https://github.com/melian-agent/melian/issues/595), awaiting the maintainer's ruling. The coordinator answered on 2026-11-20 to change only this number; that answer is not a ruling, and [pull request #598](https://github.com/melian-agent/melian/pull/598) stays a draft until the maintainer agrees it.
+Status: the maintainer ruled on 2026-11-20, in the coordinator's session, to raise each quick level's tool calls from 10 to 30, for [issue #595](https://github.com/melian-agent/melian/issues/595). [Pull request #598](https://github.com/melian-agent/melian/pull/598#issuecomment-7029467662) records it.
 
 ## Problem
 
