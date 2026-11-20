@@ -888,7 +888,7 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 });
 
 describe("melian compare misses", { timeout: 60_000 }, () => {
-	it("writes each valid miss as a misses file, and names one it cannot place", () => {
+	it("writes each valid miss as a misses file, and names each one it cannot place at its compared head", () => {
 		const { repo, files, env } = reviewed();
 		const path = join(files, "claude.json");
 		writeFileSync(
@@ -896,7 +896,9 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 			JSON.stringify({
 				reviewer: { name: "claude-code" },
 				findings: [
-					{ file: "src/user.ts", line: 400, title: "Unchecked token", body: "b" },
+					{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" },
+					{ file: "src/user.ts", line: 400, title: "Past the end", body: "b" },
+					{ file: "src/org-chart.ts", line: 2, title: "Unchanged file", body: "b" },
 					{ title: "No line", body: "b" },
 				],
 			}),
@@ -910,10 +912,12 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 			external: Record<string, { title: string }>;
 		};
 		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
-		const [missed, unplaced] = [idOf("Unchecked token"), idOf("No line")];
-		for (const id of [missed, unplaced])
+		const [missed, past, unchanged, unplaced] = ["Unchecked token", "Past the end", "Unchanged file", "No line"].map(
+			idOf,
+		);
+		for (const id of [missed, past, unchanged, unplaced])
 			expect(
-				melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--reason", "owned-missed"], env)
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
 					.status,
 			).toBe(0);
 		const output = join(files, "misses.json");
@@ -921,11 +925,15 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		const changeset = /^range-[0-9a-f]{16}/.exec(
 			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
 		)![0];
-		expect(result).toMatchObject({
-			status: 0,
-			stdout: `Exported 1 miss to ${output}.\n`,
-			stderr: `Not exported: ${changeset}-${unplaced} names no file and line.\n`,
-		});
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${past} lines 400-400 run past src/user.ts, which has 9 lines at ${stored.head}.`,
+				`Not exported: ${changeset}-${unchanged} src/org-chart.ts is not among the files ${stored.base}...${stored.head} changes.`,
+				`Not exported: ${changeset}-${unplaced} names no file and line.`,
+			].sort(),
+		);
 		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
 			{
 				name: `${changeset}-${missed}`,
@@ -933,7 +941,7 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 				base: stored.base,
 				head: stored.head,
 				file: "src/user.ts",
-				lines: [400, 400],
+				lines: [2, 2],
 			},
 		]);
 	});

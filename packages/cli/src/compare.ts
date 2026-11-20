@@ -2,14 +2,19 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+	Changeset,
+	ChangesetError,
 	ComparisonError,
 	ComparisonExport,
 	ComparisonSet,
 	type ExternalImporter,
 	Lens,
 	LensError,
+	type MissCase,
 	type MissesExport,
 	Revision,
+	RevisionError,
+	readRevisionFile,
 	type StoredComparisonAdjudication,
 	type Verdict,
 	visibleText,
@@ -313,6 +318,7 @@ export async function exportMisses(io: Io, argument: string, options: { readonly
 		const { entries, repoRoot } = await rangeComparisons(io, argument);
 		misses = new ComparisonExport(entries, argument).misses(repoRoot);
 	}
+	misses = await placed(misses);
 	for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
 	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
 	if (misses.cases.length === 0)
@@ -322,6 +328,42 @@ export async function exportMisses(io: Io, argument: string, options: { readonly
 	const json = `${JSON.stringify(misses.cases, null, 2).split("\n").map(visibleText).join("\n")}\n`;
 	await written(io, json, options.out, `${misses.cases.length} ${misses.cases.length === 1 ? "miss" : "misses"}`);
 	return 0;
+}
+
+// The measurement tool refuses the whole file for one miss it cannot place, so each is checked here as it checks it.
+async function placed({ cases, skipped }: MissesExport): Promise<MissesExport> {
+	const kept: MissCase[] = [];
+	const refused = [...skipped];
+	for (const each of cases) {
+		const reason = await unplaced(each);
+		if (reason === undefined) kept.push(each);
+		else refused.push({ name: each.name, reason });
+	}
+	return { cases: kept, skipped: refused };
+}
+
+async function unplaced({ repo, base, head, file, lines: [first, last] }: MissCase): Promise<string | undefined> {
+	const range = `${base}...${head}`;
+	const changeset = await Changeset.resolve(repo, range).catch((error: unknown) => {
+		if (error instanceof ChangesetError && error.code === "unknownRef") return error;
+		throw error;
+	});
+	if (changeset instanceof ChangesetError) return `cannot be placed, since ${changeset.message} in this clone`;
+	if (!changeset.revision.files.some(({ path }) => path === file))
+		return `${file} is not among the files ${range} changes`;
+	const read = await readRevisionFile(repo, head, file).catch((error: unknown) => {
+		if (error instanceof RevisionError && ["notFound", "notAFile", "symlink", "binary"].includes(error.code))
+			return error;
+		throw error;
+	});
+	if (read instanceof RevisionError) return `${read.message}${read.code === "notFound" ? "" : ` at ${head}`}`;
+	if (read.content === "") return `${file} is empty at ${head}`;
+	const lines = read.content.split("\n");
+	if (read.truncated || lines.at(-1) === "") lines.pop();
+	if (last <= lines.length) return undefined;
+	return read.truncated
+		? `a lens reads only the first ${lines.length} lines of ${file} at ${head}`
+		: `lines ${first}-${last} run past ${file}, which has ${lines.length} lines at ${head}`;
 }
 
 async function rangeComparisons(io: Io, argument: string) {
