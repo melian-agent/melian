@@ -26,7 +26,7 @@ process.exit(
 			range: runRange,
 			graph: (target) => buildGraph(target),
 			graphCached,
-			commit: checkoutCommit,
+			commit: (artefacts) => checkoutCommit(import.meta.dirname, artefacts),
 			host: () => probingHost(Probe.sandbox),
 		},
 		console.log,

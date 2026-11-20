@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import type * as pipeline from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -58,7 +59,11 @@ it("measures with the host's probe availability, live models, the range runner, 
 	expect(print).toBe(console.log);
 	expect(printError).toBe(console.error);
 	expect(runners.range).toBe(runRange);
-	expect(runners.commit).toBe(checkoutCommit);
+	vi.mocked(checkoutCommit).mockReturnValue("c".repeat(40));
+	expect(runners.commit(["/results/parity.json"])).toBe("c".repeat(40));
+	expect(checkoutCommit).toHaveBeenCalledExactlyOnceWith(join(import.meta.dirname, "..", "src"), [
+		"/results/parity.json",
+	]);
 	expect(runners.graphCached).toBe(graphCached);
 	vi.mocked(buildGraph).mockResolvedValue("sha256:graph");
 	const target = { range: "a...b" } as Parameters<typeof runners.graph>[0];

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -648,6 +648,41 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(elsewhere.models).not.toHaveBeenCalled();
 	});
 
+	it("stops and resumes with its results and misses files beside the checkout, and refuses either inside it before any model", async () => {
+		const { repo: checkout } = buildGoldenRepository(failOpen);
+		try {
+			const commit = (artefacts: readonly string[]) => checkoutCommit(checkout, artefacts);
+			expect(
+				(await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners(undefined, { commit }))).status,
+			).toBe(3);
+			expect(existsSync(`${env.MELIAN_EVAL_PARITY_OUT}.stores`)).toBe(true);
+			const resumed = runners(undefined, { commit });
+			expect((await measure(env, resumed)).status).toBe(1);
+			expect(resumed.range).toHaveBeenCalledTimes(2);
+			expect(results().stopped).toBeUndefined();
+			const out = join(checkout, "parity.json");
+			const misses = join(checkout, "misses.json");
+			for (const [settings, inside] of [
+				[{ MELIAN_EVAL_PARITY_OUT: out }, out],
+				[{ MELIAN_EVAL_MISSES: misses }, misses],
+			] as const) {
+				if (inside === misses) writeFileSync(misses, readFileSync(env.MELIAN_EVAL_MISSES!, "utf8"));
+				const refused = runners(undefined, { commit });
+				expect(await measure({ ...env, ...settings, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, refused)).toMatchObject({
+					status: 2,
+					errors: [
+						`${inside} is inside the checkout ${checkout}, which the run must leave unchanged; name a path outside it`,
+					],
+				});
+				expect(refused.models).not.toHaveBeenCalled();
+				expect(refused.range).not.toHaveBeenCalled();
+			}
+			expect(existsSync(out)).toBe(false);
+		} finally {
+			rmSync(checkout, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses to resume on another probe host, whichever of its fields changed, or from another version or arm", async () => {
 		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
 		expect(results()).toMatchObject({ version: 2, host: probeHost });
@@ -1189,14 +1224,56 @@ describe("checkoutCommit", () => {
 		const { repo } = buildGoldenRepository(failOpen);
 		try {
 			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-			expect(checkoutCommit(repo)).toBe(head);
+			expect(checkoutCommit(repo, [])).toBe(head);
 			writeFileSync(join(repo, "stray.txt"), "untracked\n");
-			expect(() => checkoutCommit(repo)).toThrow(/^The checkout has changes no commit holds, .*\n\?\? stray\.txt$/s);
+			expect(() => checkoutCommit(repo, [])).toThrow(
+				/^The checkout has changes no commit holds, .*\n\?\? stray\.txt$/s,
+			);
 			rmSync(join(repo, "stray.txt"));
 			writeFileSync(join(repo, "src/scan.ts"), "changed\n");
-			expect(() => checkoutCommit(repo)).toThrow(/ M src\/scan\.ts$/);
+			expect(() => checkoutCommit(repo, [])).toThrow(/ M src\/scan\.ts$/);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses an artefact inside the checkout, whatever path names it, and accepts one beside it", () => {
+		const { repo } = buildGoldenRepository(failOpen);
+		try {
+			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+			const beside = `${repo}-results`;
+			expect(
+				checkoutCommit(repo, [join(beside, "parity.json"), join(scratch, "misses.json"), join(repo, "..")]),
+			).toBe(head);
+			symlinkSync(repo, join(scratch, "link"));
+			for (const [named, inside] of [
+				[join(repo, "src", "parity.json"), join(repo, "src", "parity.json")],
+				[join(repo, "..parity.json"), join(repo, "..parity.json")],
+				[repo, repo],
+				[join(scratch, "link", "parity.json"), join(repo, "parity.json")],
+			])
+				expect(() => checkoutCommit(repo, [join(scratch, "misses.json"), named])).toThrow(
+					`${inside} is inside the checkout ${repo}, which the run must leave unchanged; name a path outside it`,
+				);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reads its own checkout, whatever repository GIT_DIR and GIT_WORK_TREE name", () => {
+		const { repo } = buildGoldenRepository(failOpen);
+		const { repo: other } = buildGoldenRepository(failOpen);
+		try {
+			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+			writeFileSync(join(other, "stray.txt"), "untracked\n");
+			execFileSync("git", ["-C", other, "commit", "--allow-empty", "-qm", "another"]);
+			vi.stubEnv("GIT_DIR", join(other, ".git"));
+			vi.stubEnv("GIT_WORK_TREE", other);
+			expect(checkoutCommit(repo, [])).toBe(head);
+		} finally {
+			vi.unstubAllEnvs();
+			rmSync(repo, { recursive: true, force: true });
+			rmSync(other, { recursive: true, force: true });
 		}
 	});
 });

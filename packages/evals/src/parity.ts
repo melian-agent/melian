@@ -1,10 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
 	type ChangedFile,
 	Changeset,
 	checksOfTier,
+	gitEnvironment,
 	Lens,
 	type LensLevel,
 	type LensLevels,
@@ -281,7 +282,8 @@ export interface ParityRunners {
 	readonly graph: (target: ReviewTarget) => Promise<string>;
 	/** Whether the target's graph is already cached, for the dry run. */
 	readonly graphCached: (target: ReviewTarget) => Promise<boolean>;
-	readonly commit: () => string;
+	/** The checkout's commit, refusing a checkout that holds uncommitted changes or one of `artefacts`. */
+	readonly commit: (artefacts: readonly string[]) => string;
 	/** The host this process's probes run on. */
 	readonly host: () => ProbingHost;
 }
@@ -514,7 +516,7 @@ export async function measureParity(
 		}
 		const availability = await runners.availability();
 		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
-		const commit = runners.commit();
+		const commit = runners.commit([out, env.MELIAN_EVAL_MISSES]);
 		const host = runners.host();
 		const identities = Object.fromEntries(
 			misses.map(({ miss, target }) => [
@@ -847,10 +849,25 @@ function parityLabel(arm: "committed" | "parity"): string {
 
 /**
  * The checkout's commit, which a results file is tied to so a resumed run measures the same code. Throws when the
- * checkout has changes no commit holds, since then no commit names the code that ran.
+ * checkout has changes no commit holds, since then no commit names the code that ran, or when one of `artefacts`, the
+ * files the run reads and writes, lies inside it, since writing them would leave such changes.
  */
-export function checkoutCommit(directory: string = import.meta.dirname): string {
-	const git = (...args: string[]) => execFileSync("git", ["-C", directory, ...args], { encoding: "utf8" });
+export function checkoutCommit(directory: string, artefacts: readonly string[]): string {
+	const git = (...args: string[]) =>
+		execFileSync("git", ["-C", directory, ...args], { encoding: "utf8", env: gitEnvironment() });
+	const root = git("rev-parse", "--show-toplevel").trim();
+	for (const artefact of artefacts) {
+		const path = resolve(artefact);
+		let real = path;
+		try {
+			real = join(realpathSync(dirname(path)), basename(path));
+		} catch {}
+		const from = relative(root, real);
+		if (from !== ".." && !from.startsWith(`..${sep}`) && !isAbsolute(from))
+			throw new Error(
+				`${real} is inside the checkout ${root}, which the run must leave unchanged; name a path outside it`,
+			);
+	}
 	const dirty = git("status", "--porcelain", "--untracked-files=normal").trimEnd();
 	if (dirty !== "")
 		throw new Error(`The checkout has changes no commit holds, so no commit names the code that ran:\n${dirty}`);
