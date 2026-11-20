@@ -467,3 +467,33 @@ describe("a dismissed static finding, made with the store", () => {
 		expect(add).not.toHaveBeenCalled();
 	});
 });
+
+describe("a dismissed static finding whose run the store proves", () => {
+	const dismissal = { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" };
+
+	it("is recorded in the store, exported by a later round, and read back as dismissed", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, { checkRun: runUnder(current) }, undefined, proven);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+
+		expect(made.unshared).toEqual([]);
+		const recorded = (await store.list(first.changeset.id)).filter(({ kind }) => kind === "dismissal");
+		expect(recorded.map(({ key }) => key)).toEqual([id]);
+
+		const second = await review(store, { checkRun: runUnder(current) }, undefined, proven);
+
+		expect(second.unshared).toEqual([]);
+		expect(second.stored.filter(({ kind }) => kind === "dismissal")).toEqual(recorded);
+		const read = await readBack(second);
+		expect(read.dismissed.map(({ properties }) => properties.id)).toEqual([id]);
+	});
+});

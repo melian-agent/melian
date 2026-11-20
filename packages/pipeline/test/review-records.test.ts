@@ -172,6 +172,15 @@ describe("ReviewRecords", () => {
 		expect(records().dismissalIdentity(state, "undismissed", [])).toBeUndefined();
 	});
 
+	it("makes and shares no dismissal record for a finding whose state froze no dismissed sighting", () => {
+		const state = {
+			items: { undismissed: { lifecycle: { status: "new" } } },
+			revisions: [],
+		} as unknown as FindingsState;
+		expect(records().madeOf(state, "undismissed", [])).toBeUndefined();
+		expect(records().dismissalOf(state, "undismissed", [])).toBeUndefined();
+	});
+
 	it("names the head of the dismissal's own sighting, not the head of the records that write it", () => {
 		const sighting = finding("lens.security", "abc@careful", "one");
 		const earlier = "e".repeat(40);

@@ -910,6 +910,14 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(read)).toEqual(dismissedOf(id));
 	});
 
+	it("keeps a dismissal whose frontier names a round its writer held and this set does not", async () => {
+		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		// Another host's store held `unshared` beside `first`; the reader was handed only `first`.
+		const unshared = roundAt("1", "2", [elsewhere], [first]);
+		const read = await readAfter([first], [first], [first, unshared]);
+		expect(standingOf(read)).toEqual(dismissedOf(id));
+	});
+
 	// The reader cannot yet see that Y lacked h, since no record holds Y's hunks; the fix waits on the maintainer.
 	it("reopens a dismissal a round since met at a revision that lacked a hunk it accepted, as the host does", async () => {
 		// X changes both files and the dismissal accepts both hunks. Y reverts src/a.ts, so the host reopens the finding
