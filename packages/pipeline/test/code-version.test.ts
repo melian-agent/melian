@@ -16,6 +16,7 @@ const table = vi.hoisted(() => ({
 }));
 vi.mock("../src/code-hashes.ts", () => table);
 const digested = vi.hoisted(() => [] as unknown[]);
+const outsideOf = vi.hoisted(() => new Map<string, string[]>());
 vi.mock("../src/installed-packages.ts", async (original) => {
 	const real = await original<typeof Installed>();
 	return {
@@ -24,10 +25,12 @@ vi.mock("../src/installed-packages.ts", async (original) => {
 			digested.push(roots);
 			return real.installedPackagesDigest(roots);
 		},
+		packagesOutsideInstall: (roots: Parameters<typeof Installed.packagesOutsideInstall>[0]) =>
+			outsideOf.get(roots.map((root) => `${root.by} ${root.name}`).join(",")) ?? real.packagesOutsideInstall(roots),
 	};
 });
 
-import { codeVersion, packagesVersion } from "../src/code-version.ts";
+import { codeVersion, packagesVersion, unidentifiedPackages } from "../src/code-version.ts";
 import { installedPackagesDigest } from "../src/installed-packages.ts";
 
 describe("codeVersion", () => {
@@ -101,5 +104,38 @@ describe("packagesVersion", () => {
 			"Melian cannot find the installed package left-pad, which @melian-agent/core needs.",
 		);
 		expect(() => packagesVersion("uninstalled")).toThrow("left-pad");
+	});
+});
+
+describe("unidentifiedPackages", () => {
+	it("names nothing for an install that holds every package", () => {
+		const { unowned, uninstalled, ...installed } = table.producerPackages;
+		const before = table.producerPackages;
+		table.producerPackages = installed;
+		try {
+			expect(unidentifiedPackages()).toEqual([]);
+		} finally {
+			table.producerPackages = before;
+		}
+	});
+
+	it("names each release a link takes out of the install once, sorted, across every producer", () => {
+		const before = table.producerPackages;
+		table.producerPackages = {
+			lens: { "@melian-agent/core": ["yaml"], "@melian-agent/pipeline": ["typescript"] },
+			read: { "@melian-agent/core": ["yaml"] },
+		};
+		outsideOf.set("@melian-agent/core yaml,@melian-agent/pipeline typescript", ["yaml@2.9.1", "typescript@6.0.3"]);
+		outsideOf.set("@melian-agent/core yaml", ["yaml@2.9.1"]);
+		try {
+			expect(unidentifiedPackages()).toEqual(["typescript@6.0.3", "yaml@2.9.1"]);
+		} finally {
+			table.producerPackages = before;
+			outsideOf.clear();
+		}
+	});
+
+	it("fails, naming it, on an importing package Melian cannot find", () => {
+		expect(() => unidentifiedPackages()).toThrow("Melian cannot find its own package @melian-agent/absent.");
 	});
 });

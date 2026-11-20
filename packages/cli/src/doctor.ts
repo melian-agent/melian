@@ -24,6 +24,7 @@ import {
 	piAuthPath,
 	providersWithCredentials,
 	staticToolSource,
+	unidentifiedPackages,
 } from "@melian-agent/pipeline";
 import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
@@ -213,6 +214,24 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
 		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
 	};
+}
+
+// A package Melian runs that a link takes out of its install, as `npm link` does, leaves the install unidentified: the
+// review still runs, and reuses no run.
+function packagesCheck(): Check {
+	let outside: string[];
+	try {
+		outside = unidentifiedPackages();
+	} catch (error) {
+		return { name: "packages", state: "fail", detail: visibleText((error as Error).message) };
+	}
+	return outside.length === 0
+		? { name: "packages", state: "ok", detail: "every package Melian runs is inside its install" }
+		: {
+				name: "packages",
+				state: "warn",
+				detail: `${visibleText(outside.join(", "))} ${outside.length === 1 ? "links" : "link"} outside Melian's install, so no review reuses a run`,
+			};
 }
 
 // Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
@@ -635,6 +654,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await recordStoreCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
+			packagesCheck(),
 			await mutationCheck(io.cwd, io.env),
 			await probeCheck(),
 			await standardsCheck(io.cwd),

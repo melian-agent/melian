@@ -143,7 +143,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/checks.ts": "4c8e3f33c0ff10557857a73e877ba49b51765f9fdd79e4353c101001a5511584",
 
-	"packages/pipeline/src/code-version.ts": "1531e2fe1b6e75381cee4fda41f93b82a73bebb425c4395be969859501789bcb",
+	"packages/pipeline/src/code-version.ts": "d3d10f52f2ee9320daa48f68eb6aa2a3dbc48d7cf4101d403bf3f6a8ecdd5cad",
 
 	"packages/pipeline/src/compare.ts": "92259fab884ae2da5cefd8a990dc534f2b6d16bbb41fe1ce9c48b2046998ef51",
 
@@ -167,7 +167,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/harness.ts": "61a9b0bccfa9b0b03338a160268f43fb1b802b0e819faf63b376b1f8db55454f",
 
-	"packages/pipeline/src/installed-packages.ts": "afc4b3ee99935794098a60b1a3598f28be07ad242bd91c4fdd5a6fcb5abbfdba",
+	"packages/pipeline/src/installed-packages.ts": "250daba0356115825856a0f3eb20b47de1be3e7fdb679941b2c2dd11892de462",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 

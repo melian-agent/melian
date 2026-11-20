@@ -590,6 +590,36 @@ describe("doctor clone check", () => {
 	});
 });
 
+describe("doctor packages", () => {
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}packages\s+/.test(each));
+
+	it("says every package is inside the install when no link leaves it", async () => {
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^ok {4}packages\s+every package Melian runs is inside its install$/);
+	});
+
+	it.each([
+		[["yaml@2.9.1"], "yaml@2.9.1 links"],
+		[["typescript@6.0.3", "yaml@2.9.1"], "typescript@6.0.3, yaml@2.9.1 link"],
+	])("warns, without failing, which releases %j leave the install unidentified", async (outside, named) => {
+		vi.spyOn(pipeline, "unidentifiedPackages").mockReturnValue(outside);
+		const { status, stdout } = await run(github());
+		expect(line(stdout)?.replace(/^warn {2}packages {2,}/, "")).toBe(
+			`${named} outside Melian's install, so no review reuses a run`,
+		);
+		expect(status).toBe(0);
+	});
+
+	it("fails with the reason when a package cannot be read", async () => {
+		vi.spyOn(pipeline, "unidentifiedPackages").mockImplementation(() => {
+			throw new pipeline.InstalledPackagesError("Melian cannot read the installed package \u001b[2Jyaml.");
+		});
+		const { status, stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^fail {2}packages\s+Melian cannot read the installed package \\u001b\[2Jyaml\.$/);
+		expect(status).toBe(1);
+	});
+});
+
 describe("doctor probes", () => {
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}probes\s+/.test(each));
 

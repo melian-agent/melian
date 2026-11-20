@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,6 +10,7 @@ import {
 	installedPackages,
 	installedPackagesDigest,
 	type PackageRoot,
+	packagesOutsideInstall,
 } from "../src/installed-packages.ts";
 
 let scratch: string;
@@ -217,21 +219,82 @@ describe("installedPackages", () => {
 			JSON.stringify({ name: "sdk", version: "2.5.0" }),
 		);
 		symlinkSync(join("..", "packages", "pi"), join(scratch, "node_modules", "pi"));
-		expect(installedPackages(roots)).toEqual(["packages/pi pi@1.1.0", "packages/pi/node_modules/sdk sdk@2.5.0"]);
+		expect(installedPackages(roots)).toEqual([
+			"node_modules/pi links packages/pi",
+			"packages/pi pi@1.1.0",
+			"packages/pi/node_modules/sdk sdk@2.5.0",
+		]);
 	});
 
-	it("fails, naming the package, when it resolves outside the install root", () => {
-		const outside = mkdtempSync(join(tmpdir(), "melian-installed-packages-outside-"));
-		try {
+	it("moves when two links swap which release each resolves, though the real places hold", () => {
+		const layout = (one: string, two: string) => {
+			for (const parent of ["a", "b"]) {
+				rmSync(join(scratch, "node_modules", parent), { recursive: true, force: true });
+				install(parent, { name: parent, version: "1.0.0", dependencies: { sdk: "^2" } });
+				mkdirSync(join(scratch, "node_modules", parent, "node_modules"));
+			}
+			symlinkSync(join(scratch, "store", one), join(scratch, "node_modules", "a", "node_modules", "sdk"));
+			symlinkSync(join(scratch, "store", two), join(scratch, "node_modules", "b", "node_modules", "sdk"));
+			return installedPackagesDigest(roots);
+		};
+		for (const [store, version] of [
+			["sdk-one", "2.0.0"],
+			["sdk-two", "2.1.0"],
+		] as const) {
+			mkdirSync(join(scratch, "store", store), { recursive: true });
+			writeFileSync(join(scratch, "store", store, "package.json"), JSON.stringify({ name: "sdk", version }));
+		}
+		const from = roots[0]!.from;
+		roots = [
+			{ name: "a", from, by: "melian-app" },
+			{ name: "b", from, by: "melian-app" },
+		];
+		const before = layout("sdk-one", "sdk-two");
+		expect(installedPackages(roots)).toEqual([
+			"node_modules/a a@1.0.0",
+			"node_modules/a/node_modules/sdk links store/sdk-one",
+			"node_modules/b b@1.0.0",
+			"node_modules/b/node_modules/sdk links store/sdk-two",
+			"store/sdk-one sdk@2.0.0",
+			"store/sdk-two sdk@2.1.0",
+		]);
+		expect(layout("sdk-two", "sdk-one")).not.toBe(before);
+	});
+
+	describe("a link out of the install, as npm link makes", () => {
+		let outside: string;
+		beforeEach(() => {
+			outside = mkdtempSync(join(tmpdir(), "melian-installed-packages-outside-"));
 			writeFileSync(join(outside, "package.json"), JSON.stringify({ name: "sdk", version: "2.0.0" }));
 			rmSync(join(scratch, "node_modules", "sdk"), { recursive: true });
 			symlinkSync(outside, join(scratch, "node_modules", "sdk"));
-			expect(failure(() => installedPackages(roots))).toBe(
-				"Melian cannot key the installed package sdk, which pi@1.1.0 needs: it is not beneath the install's node_modules.",
-			);
-		} finally {
-			rmSync(outside, { recursive: true, force: true });
-		}
+		});
+		afterEach(() => rmSync(outside, { recursive: true, force: true }));
+
+		it("keys the link, naming no place outside, and names the release it reaches", () => {
+			expect(installedPackages(roots)).toEqual([
+				"node_modules/pi pi@1.1.0",
+				"node_modules/sdk links outside the install",
+			]);
+			expect(packagesOutsideInstall(roots)).toEqual(["sdk@2.0.0"]);
+		});
+
+		it("gives one process one digest, and two processes none in common, so no run is reused", () => {
+			expect(installedPackagesDigest(roots)).toBe(installedPackagesDigest(roots));
+			const digest = () =>
+				execFileSync(
+					process.execPath,
+					[
+						"--conditions=@melian-agent/source",
+						new URL("fixtures/installed-digest.ts", import.meta.url).pathname,
+						JSON.stringify(roots),
+					],
+					{ encoding: "utf8" },
+				);
+			const one = digest();
+			expect(one).toMatch(/^[0-9a-f]{64}$/);
+			expect(digest()).not.toBe(one);
+		});
 	});
 
 	it("fails, naming the root, when Node finds it beneath no node_modules, as a package naming itself is", () => {
@@ -391,6 +454,10 @@ describe("installedPackages", () => {
 		expect(failure(() => installedPackages(roots))).toBe(
 			"Melian cannot read the installed package sdk, which pi@1.1.0 needs.",
 		);
+	});
+
+	it("names no release outside an install that holds every copy", () => {
+		expect(packagesOutsideInstall(roots)).toEqual([]);
 	});
 
 	it("lists nothing for no roots", () => {

@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { findPackageJSON } from "node:module";
 import { moduleHashes, producerModules, producerPackages } from "./code-hashes.ts";
-import { InstalledPackagesError, installedPackagesDigest } from "./installed-packages.ts";
+import {
+	InstalledPackagesError,
+	installedPackagesDigest,
+	type PackageRoot,
+	packagesOutsideInstall,
+} from "./installed-packages.ts";
 
 /**
  * The version of the code that decides `producer`'s result: a SHA-256 over the recorded path and hash of each module its
@@ -33,7 +38,23 @@ export function packagesVersion(producer: string): string {
 	if (known !== undefined) return known;
 	const imports = Object.hasOwn(producerPackages, producer) ? producerPackages[producer] : undefined;
 	if (imports === undefined) throw new Error(`no packages are recorded for the producer ${producer}`);
-	const roots = Object.entries(imports).flatMap(([by, names]) => {
+	const digest = installedPackagesDigest(rootsOf(imports));
+	packagesRead.set(producer, digest);
+	return digest;
+}
+
+/**
+ * The releases any producer reaches through a link out of Melian's install, such as one `npm link` made, each of which
+ * leaves the install unidentified, so no run is reused. Throws for a package Melian cannot read.
+ */
+export function unidentifiedPackages(): string[] {
+	return [
+		...new Set(Object.values(producerPackages).flatMap((imports) => packagesOutsideInstall(rootsOf(imports)))),
+	].sort();
+}
+
+function rootsOf(imports: Readonly<Record<string, readonly string[]>>): PackageRoot[] {
+	return Object.entries(imports).flatMap(([by, names]) => {
 		let manifest: string | undefined;
 		try {
 			manifest = findPackageJSON(by, import.meta.url);
@@ -43,7 +64,4 @@ export function packagesVersion(producer: string): string {
 		if (manifest === undefined) throw new InstalledPackagesError(`Melian cannot find its own package ${by}.`);
 		return names.map((name) => ({ name, from: manifest, by }));
 	});
-	const digest = installedPackagesDigest(roots);
-	packagesRead.set(producer, digest);
-	return digest;
 }
