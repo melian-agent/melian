@@ -27,4 +27,4 @@ This changes the notice's words, not what blocks. The notice on a changed `packa
 
 A head that adds `precheck` changes what `npm run check` does, and the notice does not name it, as the issue asked. A person still reads that diff, because the notice blocks. Reporting added `pre` and `post` scripts would be a follow-up.
 
-A `package.json` outside the root and the workspaces draws no notice at all, so its scripts go unnamed. A workflow that runs `npm run check` in such a directory can still be switched off silently. Covering it would make those files block where they never blocked before, so it waits for a ruling.
+A `package.json` outside the root and the workspaces draws no notice at all, so its scripts go unnamed. A workflow that runs `npm run check` in such a directory can still be switched off silently. Covering it would make those files block where they never blocked before, so it waits for a ruling on [issue #600](https://github.com/melian-agent/melian/issues/600), which weighs every `package.json` against only those a workflow runs a script in.
