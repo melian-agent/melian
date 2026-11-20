@@ -8,7 +8,6 @@ import {
 	gitEnvironment,
 	Lens,
 	type LensLevel,
-	type LensLevels,
 	lensCovers,
 	lensGraphToolNames,
 	type MelianConfig,
@@ -96,7 +95,9 @@ export class CommittedArm implements ProbingRoute {
 
 /**
  * The parity arm: every lens the review's tier runs gets the graph tools and their guidance, `high` thinking on its
- * route, its `deep` level, which probes wherever core allows, a findings budget of at least {@link parityFindings}, and
+ * route, and one level in place of its own, declared as both `careful` and `deep` and never `quick`, so whichever level
+ * triage picks, the floor raises it to, or escalation reaches runs the same settings once: its `deep` level, which
+ * probes wherever core allows, with a findings budget of at least {@link parityFindings} and
  * {@link parityToolCeiling} tool calls. Tokens are what bind: `total` is shared between the lenses, half equally and
  * half by the changed lines of the files each selects, and a lens that probes splits its share between its planner
  * and its prober, since each conversation spends against its level's budget. A lens its share ends counts, with its
@@ -152,27 +153,13 @@ export class ParityArm implements ProbingRoute {
 		files: readonly ChangedFile[],
 	): { config: MelianConfig; lenses: readonly Lens[] } {
 		const shares = this.shares(config, lenses, files);
-		const pinnedLenses = pinnedConfig(config, "high");
-		const routedConfig: MelianConfig = {
-			...pinnedLenses,
-			lenses: {
-				...pinnedLenses.lenses,
-				...Object.fromEntries(
-					[...new Set(lenses.filter((lens) => shares.has(this.keyOf(lens))).map((lens) => lens.name))].map(
-						(name) => {
-							const own = Object.hasOwn(pinnedLenses.lenses, name) ? pinnedLenses.lenses[name] : undefined;
-							return [name, { ...own, level: { floor: "deep", ceiling: "deep" } }];
-						},
-					),
-				),
-			},
-		};
+		const routedConfig = pinnedConfig(config, "high");
 		const routedLenses = lenses.map((lens) => {
 			const share = shares.get(this.keyOf(lens));
 			if (share === undefined) return lens;
 			const base = lens.levels.deep ?? lens.levels.careful;
 			const probe = base.probe ?? (lens.probeRefusal() === undefined ? {} : undefined);
-			const deep: LensLevel = {
+			const parity: LensLevel = {
 				...base,
 				budget: {
 					findings: Math.max(base.budget.findings, parityFindings),
@@ -188,7 +175,7 @@ export class ParityArm implements ProbingRoute {
 				...fields,
 				tools: [...new Set([...lens.tools, ...lensGraphToolNames])],
 				instructions: graphed ? fields.instructions : `${fields.instructions}\n\n${graphGuidance}`,
-				levels: { ...lens.levels, deep } as LensLevels,
+				levels: { careful: parity, deep: parity },
 			});
 		});
 		return { config: routedConfig, lenses: routedLenses };
@@ -199,6 +186,11 @@ export class ParityArm implements ProbingRoute {
 export interface ParityStage {
 	readonly name: string;
 	readonly subject: string;
+	/**
+	 * For a lens, the level triage picked, as its subject names it. In the parity arm the name is nominal: every level
+	 * the arm declares runs the same settings, which `limit`, `toolLimit` and `effort` record.
+	 */
+	readonly level?: string;
 	readonly role?: "planner" | "prober";
 	readonly outcome: string;
 	/** The models that answered it; more than one means a model failed over, which stops the run. */
@@ -213,6 +205,7 @@ export interface ParityStage {
 	readonly tools?: number;
 	readonly minutes?: number;
 	readonly limit?: number;
+	readonly toolLimit?: number;
 	readonly ended?: "tokens" | "tools";
 	/** For a lens its budget ended, the changed files it covered that it was neither shown nor read. */
 	readonly unread?: readonly string[];
@@ -332,6 +325,7 @@ function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): Pa
 		return {
 			name: stage.name,
 			subject: stage.subject,
+			...(stage.name === "melian.lens" ? { level: stage.subject.slice(stage.subject.lastIndexOf("@") + 1) } : {}),
 			...(stage.role === undefined ? {} : { role: stage.role }),
 			outcome: stage.outcome,
 			models: Object.keys(stage.usage?.models ?? {}),
@@ -345,6 +339,7 @@ function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): Pa
 			...(stage.tools === undefined ? {} : { tools: stage.tools }),
 			...(stage.durationMs === undefined ? {} : { minutes: stage.durationMs / 60_000 }),
 			...(stage.limits?.tokens === undefined ? {} : { limit: stage.limits.tokens }),
+			...(stage.limits?.tools === undefined ? {} : { toolLimit: stage.limits.tools }),
 			...(stage.ended === undefined ? {} : { ended: stage.ended }),
 			...(unread === undefined ? {} : { unread }),
 			...(openAttacks === undefined ? {} : { openAttacks }),

@@ -20,7 +20,12 @@ import {
 	TelemetryReader,
 	TokenUsage,
 } from "@melian-agent/pipeline";
-import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@melian-agent/pipeline/testing";
+import {
+	createFakeModels,
+	fauxAssistantMessage,
+	fauxToolCall,
+	scriptConversations,
+} from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	buildGoldenRepository,
@@ -164,14 +169,16 @@ describe("ParityArm", () => {
 		expect(arm.routed(config, lenses, files).lenses.map((lens) => lens.level("deep").budget.tokens)).toEqual([
 			250, 125, 125,
 		]);
-		expect(Object.keys(arm.routed(config, lenses, files).config.lenses)).toEqual(["a", "b"]);
+		expect(arm.routed(config, lenses, files).config.lenses).toEqual({
+			a: { route: { model: "r/route", thinking: "high" } },
+		});
 	});
 
 	it("leaves a configured lens with no route on its tier's route, which carries the high thinking", async () => {
 		const lenses = [await named("a", ["src/**"]), await named("b", ["**"])];
 		const withPaths: MelianConfig = { ...config, lenses: { ...config.lenses, b: { paths: ["**"] } } };
 		const routed = new ParityArm(1000).routed(withPaths, lenses, [file("src/x.ts", 0, 3)]);
-		expect(routed.config.lenses.b).toEqual({ paths: ["**"], level: { floor: "deep", ceiling: "deep" } });
+		expect(routed.config.lenses.b).toEqual({ paths: ["**"] });
 		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", thinking: "high" });
 	});
 
@@ -198,10 +205,7 @@ describe("ParityArm", () => {
 			light: { model: "l/light", thinking: "high" },
 			verifier: { model: "v/verify" },
 		});
-		expect(routed.config.lenses).toEqual({
-			a: { route: { model: "r/route", thinking: "high" }, level: { floor: "deep", ceiling: "deep" } },
-			b: { level: { floor: "deep", ceiling: "deep" } },
-		});
+		expect(routed.config.lenses).toEqual({ a: { route: { model: "r/route", thinking: "high" } } });
 		const [routedA, routedB, routedOff] = routed.lenses;
 		expect(routedOff).toBe(off);
 		expect(routedA!.tools).toEqual([...new Set([...a.tools, ...lensGraphToolNames])]);
@@ -209,7 +213,7 @@ describe("ParityArm", () => {
 		expect(routedB!.tools).toEqual(graphed.tools);
 		expect(routedB!.instructions).toBe(graphed.instructions);
 		const base = a.levels.deep ?? a.levels.careful;
-		expect(routedA!.level("deep")).toEqual({
+		const parity = {
 			...base,
 			budget: {
 				findings: Math.max(base.budget.findings, 16),
@@ -218,8 +222,9 @@ describe("ParityArm", () => {
 				ended: "count",
 			},
 			probe: base.probe ?? {},
-		});
-		expect(routedA!.level("careful")).toEqual(a.level("careful"));
+		};
+		expect(a.levels.quick).toBeDefined();
+		expect(routedA!.levels).toEqual({ careful: parity, deep: parity });
 		const unprobed = await named("b", ["**"], unprobing[0]);
 		const [, again] = arm.routed(config, [a, unprobed], files).lenses;
 		expect(again!.level("deep").probe).toBeUndefined();
@@ -276,6 +281,103 @@ function ran(stages: readonly StageFields[]): RangeRun {
 		tiers: {},
 	};
 }
+
+describe("the arms through a real review", { timeout: 120_000 }, () => {
+	const lensNames = [
+		"trust-boundary",
+		"correctness",
+		"contracts",
+		"removed-behaviour",
+		"tests",
+		"conventions",
+		"design",
+	];
+
+	// Reviews the fail-open golden's range through `arm` on a scripted model, without the graph the arm asks for, and
+	// returns what the arm was given and returned, and every lens stage the review recorded.
+	async function reviewThrough(arm: ParityArm | CommittedArm, probes: readonly string[] = []) {
+		const built = buildGoldenRepository(failOpen);
+		try {
+			const fake = createFakeModels();
+			const planned = [
+				fauxAssistantMessage([fauxToolCall("record_plan", { attacks: [] })], { stopReason: "toolUse" }),
+				fauxAssistantMessage("Planned no attacks."),
+			];
+			scriptConversations(
+				fake,
+				lensNames.map((lens) => ({
+					match: `You are the ${lens} reviewer`,
+					replies: probes.includes(lens) ? planned : [fauxAssistantMessage("Reported 0 findings.")],
+				})),
+			);
+			const ref = fake.ref();
+			let given!: { config: MelianConfig; lenses: readonly Lens[]; files: readonly ChangedFile[] };
+			let routed!: { config: MelianConfig; lenses: readonly Lens[] };
+			const target = {
+				repo: built.repo,
+				base: built.base,
+				range: `${built.base}...${built.head}`,
+				writer: { trusted: true, by: "reviewer" },
+			} as const;
+			const run = await runRange(target, {
+				kind: "live",
+				models: fake.review,
+				model: `${ref.provider}/${ref.modelId}`,
+				probing: {
+					routed: (config, lenses, files) => {
+						given = { config, lenses, files };
+						routed = arm.routed(config, lenses, files);
+						return routed;
+					},
+				},
+			});
+			const stages = run.telemetry.stages.filter((stage) => stage.name === "melian.lens");
+			return { given, routed, stages };
+		} finally {
+			rmSync(built.repo, { recursive: true, force: true });
+		}
+	}
+
+	const nameOf = (subject: string) => subject.split("@")[0]!;
+	const levelOf = (subject: string) => subject.split("@").at(-1)!;
+
+	it("runs every lens of the parity arm at high thinking, its share, the tool ceiling and probes, and never at quick", async () => {
+		const arm = new ParityArm(1_000_000);
+		const { given, stages } = await reviewThrough(arm, ["correctness", "trust-boundary"]);
+		const shares = arm.shares(given.config, given.lenses, given.files);
+		expect(stages.length).toBeGreaterThan(0);
+		for (const stage of stages) {
+			const lens = given.lenses.find((each) => each.name === nameOf(stage.subject))!;
+			const share = shares.get(lens.name)!;
+			const probes = lens.probeRefusal() === undefined;
+			expect(levelOf(stage.subject)).not.toBe("quick");
+			expect(stage.limits).toEqual({ tokens: probes ? Math.floor(share / 2) : share, tools: 400 });
+			expect(new Set(stage.usage!.requests!.map(({ reasoning }) => reasoning.requested))).toEqual(new Set(["high"]));
+		}
+		// A planner that plans no attacks spawns no prober, so a planner stage is what shows a lens's level probes.
+		const probing = given.lenses.filter((lens) => lens.probeRefusal() === undefined).map((lens) => lens.name);
+		expect(probing.sort()).toEqual(["correctness", "trust-boundary"]);
+		expect(
+			stages.map((stage) => [nameOf(stage.subject), stage.role ?? "lens"]).sort(([a], [b]) => a!.localeCompare(b!)),
+		).toEqual([...shares.keys()].sort().map((name) => [name, probing.includes(name) ? "planner" : "lens"]));
+		expect(stages.reduce((sum, stage) => sum + stage.limits!.tokens!, 0)).toBeLessThanOrEqual(arm.total);
+	});
+
+	it("runs the committed arm at the policy commit's own levels and budgets, quick included", async () => {
+		const { given, routed, stages } = await reviewThrough(new CommittedArm());
+		expect(routed.lenses).toBe(given.lenses);
+		expect(given.lenses.some((lens) => lens.levels.quick !== undefined)).toBe(true);
+		for (const name of Object.keys(given.config.lenses))
+			expect(routed.config.lenses[name]?.level).toEqual(given.config.lenses[name]?.level);
+		expect(stages.length).toBeGreaterThan(0);
+		for (const stage of stages) {
+			const lens = given.lenses.find((each) => each.name === nameOf(stage.subject))!;
+			const settings = Object.hasOwn(given.config.lenses, lens.name) ? given.config.lenses[lens.name] : undefined;
+			const { budget } = lens.configured(settings).level(levelOf(stage.subject) as "careful");
+			expect(stage.limits).toEqual({ tokens: budget.tokens, tools: budget.tools });
+		}
+	});
+});
 
 describe("measureParity", { timeout: 60_000 }, () => {
 	let repo: string;
@@ -421,6 +523,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(written.attempts[0]!.stages[0]).toEqual({
 			name: "melian.lens",
 			subject: "correctness@1@deep",
+			level: "deep",
 			outcome: "completed",
 			models: ["model"],
 			effort: { requested: [], reported: [] },
@@ -489,6 +592,22 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			{ models: ["openai-codex/gpt-5.6-sol"], effort: { requested: ["high"], reported: ["medium", "high"] } },
 			{ models: ["model"], effort: { requested: [], reported: [] } },
 		]);
+	});
+
+	it("records the level triage picked for each lens and the token and tool limits that ran, and none for another stage", async () => {
+		const using = runners([
+			[
+				lensStage({ subject: "correctness@1@careful", limits: { tokens: 500, tools: 400 } }),
+				lensStage({ id: "t", name: "melian.triage", subject: "triage@1@deep", usage: usage({ model: 10 }, 0) }),
+			],
+		]);
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using);
+		expect(results().attempts[0]!.stages.map(({ level, limit, toolLimit }) => ({ level, limit, toolLimit }))).toEqual(
+			[
+				{ level: "careful", limit: 500, toolLimit: 400 },
+				{ level: undefined, limit: undefined, toolLimit: undefined },
+			],
+		);
 	});
 
 	it("builds Enola's graph of each miss's head once, before its reviews, and records its snapshot in each attempt", async () => {
