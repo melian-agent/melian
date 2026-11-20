@@ -61,6 +61,12 @@ A root, or a required dependency, that does not resolve fails the key with the p
 - **An undeclared import.** A package that imports one its manifest does not declare, relying on hoisting, is missed. The walk can't see that edge without loading the module.
 - **The instrumenter beneath the checks.** The checks reach the mutation code, which resolves the instrumenter at run time, not by import, so the checks' set does not hold it. `static.mutation` keys Stryker's own installation.
 
+## Melian's own packages
+
+The digest holds no Melian package. A producer's code version hashes the source of every module it reaches, `packages/core/src` included, so in a checkout the code version covers them. A published install is another matter. Each workspace package named the others as `"*"`, so a fresh install could pair `@melian-agent/pipeline` 1.0, whose recorded code version is a constant from its build, with `@melian-agent/core` 1.1. The checks and adjudication keys would then match runs made under the old core. Melian's own round at c6acaadb5 found it.
+
+Each workspace package now names the others at their exact version, as AGENTS.md already asks of every direct dependency. A release of the pipeline then fixes which core and decisions it runs, and its recorded code version covers them. `scripts/check-pinned-deps.mjs` used to let `"*"` through for a workspace name, on purpose, since npm links it locally either way; it now fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
+
 ## What it costs
 
 Every stored lens run, check run and adjudication misses once. A lens run costs tokens, about $5 a full round here; a check run costs minutes and no tokens; an adjudication costs no model call. After that, a set moves only when an install moves a package in it. In this repository, `package-lock.json` changed in 21 of the 303 first-parent commits on `main` since 2026-10-03; four moved the model request set, two of them with Pi itself, and two moved the instrumenter's.
