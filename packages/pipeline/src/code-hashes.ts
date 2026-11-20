@@ -32,7 +32,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/emoji.ts": "cbf8ab55136e4bcf1f2fe81a1cfc4f69432e3d33d898da8882750c517bc19040",
 
-	"packages/core/src/enola-graph.ts": "8c5f7f08bb595420b144b00606cb1f53d8e071ce55b900cb44e97b7266d027bc",
+	"packages/core/src/enola-graph.ts": "ad7a54c9f6d70c445dae7285c3a2221f4e9d9ce0e63d0b69952345bca36bd42a",
 
 	"packages/core/src/enola-paths.ts": "f00ea3f6e859c967fe588201b9644ce94e874e477c964ceea8f39365d5cb3108",
 

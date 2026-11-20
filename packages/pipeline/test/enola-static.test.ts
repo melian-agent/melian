@@ -718,7 +718,7 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
 	});
-	it("names the Packwerk files Enola's facts list at base or head, and none where it found no package", async () => {
+	it("names the Packwerk files Enola's facts list at base or head, and only packwerk.yml where it found no package", async () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",
 			"packwerk.yml": 'package_paths: ["packs/*"]\n',
@@ -751,7 +751,32 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		const plain = commit(repo, { "src/a.ts": "export const a = 3;\n" }, ["packs/b/package.yml", "packwerk.yml"]);
 		const after = await runStaticTool(input(plain, commit(repo, { "src/a.ts": "export const a = 4;\n" })), context);
 		if (after.status !== "ran") throw new Error("Enola did not run");
-		expect(after.packwerk).toEqual([]);
+		expect(after.packwerk).toEqual(["packwerk.yml"]);
+	});
+	it("names packwerk.yml when a head's configuration selects no package on either side", async () => {
+		const base = commit(repo, {
+			"src/a.ts": "export const a = 1;\n",
+			"packwerk.yml": 'package_paths: ["packs/*"]\n',
+		});
+		const head = commit(repo, {
+			"src/a.ts": "export const a = 2;\n",
+			"packwerk.yml": "cache: false\n",
+			"components/a/package.yml": "enforce_dependencies: true\n",
+		});
+		const result = await runStaticTool(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				tools: await fake(0),
+			},
+			context,
+		);
+		if (result.status !== "ran") throw new Error("Enola did not run");
+		expect(result.packwerk).toEqual(["packwerk.yml"]);
 	});
 	it("records exit one with empty SARIF as clean with an explicit note", async () => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

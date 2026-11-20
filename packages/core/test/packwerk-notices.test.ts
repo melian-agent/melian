@@ -444,7 +444,7 @@ describe("packwerkNotices", () => {
 
 describe("EnolaFacts.packwerkFiles", () => {
 	const fact = (fields: Record<string, unknown>) => JSON.stringify({ id: String(Math.random()), ...fields });
-	it("names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml, and nothing without one", () => {
+	it("names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml even without one", () => {
 		const facts = EnolaFacts.parse(
 			[
 				fact({ kind: "module", name: "packs/b", file: "packs/b/package.yml", props: { packwerk: true } }),
@@ -466,6 +466,6 @@ describe("EnolaFacts.packwerkFiles", () => {
 			EnolaFacts.parse(
 				fact({ kind: "module", name: "src", file: "src/a.ts", props: { packwerk: "yes" } }),
 			).packwerkFiles(),
-		).toEqual([]);
+		).toEqual(["packwerk.yml"]);
 	});
 });

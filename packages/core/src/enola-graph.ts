@@ -75,8 +75,9 @@ export class EnolaFacts {
 		return new EnolaFacts(facts);
 	}
 	/**
-	 * The `package.yml` of each package Enola's Packwerk check read, from its `module` facts marked `packwerk`, with
-	 * `packwerk.yml` when there is one: Enola reads Packwerk's configuration from the root `packwerk.yml` alone.
+	 * The `package.yml` of each package Enola's Packwerk check read, from its `module` facts marked `packwerk`, and
+	 * `packwerk.yml`, from which alone Enola reads Packwerk's configuration. It is named even when it selects no package,
+	 * so a head cannot hide a change to it by making it select none.
 	 */
 	packwerkFiles(): string[] {
 		const packages = this.#facts.flatMap((fact) =>
@@ -86,7 +87,7 @@ export class EnolaFacts {
 				? [fact.file, posix.join(posix.dirname(fact.file), packwerkTodo)]
 				: [],
 		);
-		return packages.length === 0 ? [] : [...new Set([...packages, packwerkConfig])].sort();
+		return [...new Set([...packages, packwerkConfig])].sort();
 	}
 	/** Returns symbol facts with exact declaration identity; anonymous functions have no guessed name. */
 	symbols(site: SymbolSite): EnolaFact[] {
