@@ -24,7 +24,31 @@ A person reads a listed file's flagged text as a notice. It is never silent to t
 
 ## Which files a repository lists
 
-A listed file draws a notice on every change to it, and a notice is a read a person owes. On the host a read is a dismissal. So a repository lists a file only when it is mostly wording, or when it rarely changes. Melian's root `melian.yaml` drops a source file that more than about one merged pull request in ten touches. Over the 100 pull requests merged before this one, from [pull request #308](https://github.com/melian-agent/melian/pull/308) to [pull request #579](https://github.com/melian-agent/melian/pull/579), `packages/pipeline/src/review.ts` was touched by 23, mostly for code, so it is left off. No other listed source file was touched by more than 8. This rule is the coordinator's, given on 2026-11-20 in its session, not a ruling. `AGENTS.md` already draws a notice on every change as a policy file, so listing it adds no read.
+A listed file draws a notice on every change to it, and a notice is a read a person owes. On the host a read is a dismissal. So a repository lists a file only when it is mostly wording, or when it rarely changes, and keeps the pull requests that touch any listed file at about one in five. This rule is the coordinator's, given on 2026-11-20 in its session, not a ruling.
+
+Melian's root `melian.yaml` was measured over the 100 pull requests merged before this one, from [pull request #308](https://github.com/melian-agent/melian/pull/308) to [pull request #579](https://github.com/melian-agent/melian/pull/579), diffing each merge against its first parent:
+
+| File | Pull requests that touched it | Listed |
+|---|---|---|
+| `packages/pipeline/src/review.ts` | 23 | no |
+| `packages/pipeline/src/lens-tools.ts` | 8 | no |
+| `packages/pipeline/src/verification.ts` | 8 | no |
+| `packages/pipeline/src/probing.ts` | 7 | no |
+| `packages/core/src/lens.ts` | 5 | yes |
+| `packages/pipeline/src/lens-request.ts` | 4 | yes |
+| `packages/pipeline/src/summarize.ts` | 4 | yes |
+| `docs/review-of-record.md` | 4 | yes |
+| `packages/core/src/adjudication.ts` | 3 | yes |
+| `packages/pipeline/src/untrusted.ts` | 3 | yes |
+| `packages/pipeline/src/verification-instructions.ts` | 3 | yes |
+| `packages/core/src/probing-wording.ts` | 2 | yes |
+| `packages/pipeline/src/callers.ts` | 2 | yes |
+| `packages/decisions/src/fallback.ts` | 1 | yes |
+| each of the four `SKILL.md` files | 1 | yes |
+| `packages/pipeline/src/enclosing-functions.ts` | 0 | yes |
+| `AGENTS.md` | 50 | yes |
+
+Of those 100, 20 touched at least one listed file other than `AGENTS.md`; with `lens-tools.ts`, `verification.ts` and `probing.ts` listed as well it was 24. `AGENTS.md` already draws a notice on every change as a policy file, so listing it adds no read.
 
 An injection finding on prompt text in a file the list leaves off is reported as before, at P1. The fix is to move that prompt into a wording file, which then joins the list.
 
