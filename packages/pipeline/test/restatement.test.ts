@@ -18,6 +18,7 @@ import {
 	createMemoryStorage,
 	createReviewRegistry,
 	type Harness,
+	ImportedRecords,
 	openHarness,
 	RecordedRound,
 	type Review,
@@ -1319,6 +1320,46 @@ describe("a dismissal carrying to a restatement", () => {
 		);
 		expect(judged).toBe(true);
 		expect(state!.inherited?.[at]).toBeUndefined();
+	});
+
+	it("asks its own verifier when it imports a verification made against another host's dismissal of the root", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const other = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+			settings: { retry: { enabled: false } },
+		});
+		await other.root(context, { agent: { model: fake.ref("orchestrator") } });
+		const reviewOn = async (on: Harness, extra: Partial<Parameters<typeof reviewChangeset>[0]> = {}) =>
+			reviewChangeset({
+				harness: on,
+				changeset: await Changeset.resolve(repo, "main...feature"),
+				config,
+				lenses,
+				standards: [],
+				models: fake.review,
+				checks: [...deterministicRan],
+				...extra,
+			});
+		try {
+			const root = await dismissedRoot(nullDeref, store);
+			script([nullDeref]);
+			await reviewOn(other);
+			await recordDismissal({ harness: other, revision: await revision(), id: root, dismissal, repoRoot: repo });
+			pushElsewhere("other");
+			script([restatement]);
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			await reviewOn(harness, { records: store });
+			const exported = await store.list(changeset.id);
+			expect(exported.filter(({ kind }) => kind === "verification")).toHaveLength(1);
+
+			const requests = script([restatement]);
+			const imported = await reviewOn(other, { imported: ImportedRecords.from(changeset.id, exported) });
+			expect(judgements(requests[verifierMarker] ?? [])).toBeGreaterThan(0);
+			expect(imported.verdict.attention()).toEqual([]);
+		} finally {
+			await other.close(context);
+		}
 	});
 });
 
