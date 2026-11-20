@@ -607,6 +607,21 @@ describe("Install.read", () => {
 			expect(read()).toMatchObject({ unrecognised: ["node_modules/store"], identified: false });
 		});
 
+		it("leaves the install unidentified for a node_modules link to a directory a tree scan reached first", () => {
+			install("a", { name: "a", version: "1.0.0" });
+			mkdirSync(join(scratch, "node_modules", ".shared", "deps", "b"), { recursive: true });
+			const b = join(scratch, "node_modules", ".shared", "deps", "b", "package.json");
+			symlinkSync(join("..", ".shared", "deps"), join(scratch, "node_modules", "a", "node_modules"));
+			writeFileSync(b, JSON.stringify({ name: "b", version: "1.0.0" }));
+			const first = read();
+			writeFileSync(b, JSON.stringify({ name: "b", version: "2.0.0" }));
+			const second = read();
+			// The walk does not key b, so the two versions share a digest, and neither may stand for the other.
+			expect(second.digest).toBe(first.digest);
+			for (const install of [first, second])
+				expect(install).toMatchObject({ unrecognised: ["node_modules/.shared/deps"], identified: false });
+		});
+
 		it("names each unrecognised place once, sorted", () => {
 			mkdirSync(join(scratch, "node_modules", "pi", "vendor.zip"));
 			writeFileSync(join(scratch, ".pnp.cjs"), "");
