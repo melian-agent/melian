@@ -19,7 +19,7 @@ Every script counts, not only those a workflow or another script runs. The issue
 
 Following the authority would mean re-deriving npm's and the shell's rules by hand. So the rule counts every script the base had.
 
-The notice quotes only script names, as JSON strings, and takes them from the base. No text from the head reaches the stored finding: a head's script value, or a name the head adds, never appears in it. JSON quoting keeps a newline or quote in a base name from reading as prose.
+The notice quotes only script names, as JSON strings, and takes them from the base. No text from the head reaches the stored finding: a head's script value, or a name the head adds, never appears in it. JSON quoting keeps a newline or quote in a base name from reading as prose. Each sentence quotes at most ten names of at most 100 characters and counts the rest, since one guardrails record holds every changed manifest's notice and the record store takes at most 4 MiB.
 
 This changes the notice's words, not what blocks. The notice on a changed `package.json` already blocks at `analyserSeverity`.
 

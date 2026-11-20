@@ -164,8 +164,15 @@ function scriptChanges(before: unknown, after: unknown): string[] {
 	const changed = names.filter(
 		(name) => Object.hasOwn(now, name) && JSON.stringify(now[name]) !== JSON.stringify((was as Json)[name]),
 	);
-	const sentence = (verb: string, list: string[]) =>
-		`It ${verb} the npm script${list.length > 1 ? "s" : ""} ${list.map((name) => JSON.stringify(name)).join(", ")}.`;
+	// A guardrails record holds every changed manifest's notice and the store takes at most 4 MiB, so quote few names.
+	const sentence = (verb: string, list: string[]) => {
+		const quoted = list.filter((name) => name.length <= 100).slice(0, 10);
+		const more = list.length - quoted.length;
+		if (quoted.length === 0)
+			return `It ${verb} ${more} npm script${more > 1 ? "s whose names are" : " whose name is"} too long to quote.`;
+		const rest = more > 0 ? `, and ${more} more` : "";
+		return `It ${verb} the npm script${list.length > 1 ? "s" : ""} ${quoted.map((name) => JSON.stringify(name)).join(", ")}${rest}.`;
+	};
 	return [
 		...(changed.length > 0 ? [sentence("changes", changed)] : []),
 		...(removed.length > 0 ? [sentence("removes", removed)] : []),

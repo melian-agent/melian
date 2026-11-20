@@ -211,6 +211,35 @@ describe("npm scripts", () => {
 		]);
 	});
 
+	it("names at most ten scripts and counts the rest", () => {
+		const names = (count: number) => Array.from({ length: count }, (_, index) => `s${index}`);
+		const scripts = (count: number) => Object.fromEntries(names(count).map((name) => [name, "x"]));
+		const quoted = (count: number) =>
+			names(count)
+				.map((name) => JSON.stringify(name))
+				.join(", ");
+		expect(switchOffs("package.json", manifest(scripts(10)), manifest({}), [])).toEqual([
+			`It removes the npm scripts ${quoted(10)}.`,
+		]);
+		expect(switchOffs("package.json", manifest(scripts(11)), manifest({}), [])).toEqual([
+			`It removes the npm scripts ${quoted(10)}, and 1 more.`,
+		]);
+	});
+
+	it("counts a script name past 100 characters rather than quoting it", () => {
+		const at = "a".repeat(100);
+		const past = "b".repeat(101);
+		expect(switchOffs("package.json", manifest({ [at]: "x" }), manifest({}), [])).toEqual([
+			`It removes the npm script "${at}".`,
+		]);
+		expect(switchOffs("package.json", manifest({ [past]: "x", lint: "x" }), manifest({}), [])).toEqual([
+			'It removes the npm scripts "lint", and 1 more.',
+		]);
+		expect(switchOffs("package.json", manifest({ [past]: "x" }), manifest({}), [])).toEqual([
+			"It removes 1 npm script whose name is too long to quote.",
+		]);
+	});
+
 	it("quotes a base script's name as JSON, so no newline or quote in it reads as prose", () => {
 		const odd = 'a"\nb';
 		expect(switchOffs("package.json", manifest({ [odd]: "x" }), manifest({}), [])).toEqual([
