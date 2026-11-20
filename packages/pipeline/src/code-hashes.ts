@@ -42,7 +42,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "d35edbf1a17c3b438fd1abe65674ab8367d75759d015c09bd2cf2c628dd8b848",
+	"packages/core/src/findings.ts": "7f13e4bbf9db61879f20e3f7b65c79a8fabcacd00d78cff4c39aec9591c3ca90",
 
 	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
@@ -164,7 +164,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "7d6c665e1493d955cdaf92adef5f2fc901a57a17e66202fd934c1e94050e0ff9",
+	"packages/pipeline/src/harness.ts": "0d20c62adf957b5f8fcd759c3c558b36ddc92b35677fd622d17bc372fda16c32",
 
 	"packages/pipeline/src/installed-packages.ts": "7f99414374dca0500ab796eabad5c465c9aac48e42e08b07be938c6f66f610c6",
 
