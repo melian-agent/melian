@@ -98,6 +98,7 @@ Surveyed at `a045356a` on 2026-11-13. A pull request that adds or changes a key 
 | Coverage producer index | `pipeline/src/coverage-cache.ts` | reads cached coverage under a graph | Nothing |
 | State directory hash | `pipeline/src/tool-provisioning.ts` | gives a clone its state directory | Nothing |
 | Tool cache directory | `pipeline/src/tool-cache.ts` | reuses a materialised tool | Nothing |
+| Miss evidence stage file, `EvidenceStore.stageFile` | `pipeline/src/evidence.ts` | does not write a conversation's evidence again when `evidence/<changeset>/<round>/stages/conversation-<id>.json.gz` exists, so two valid misses in one round share one copy, by [the decision of 2026-11-20](../decisions/2026-11-20-miss-evidence-is-kept.md). The changeset ID, the round and the conversation's ID in the clone's storage are the key | The conversation's entries, since evidence is copied only from a round that has a verdict, whose conversations are finished. The miss, which its own pointer under `misses/` names. Telemetry's `Stage` fields beside the ID, which the file holds as payload |
 
 ### State branch
 
