@@ -11,7 +11,7 @@ src/prompts.ts
   P2 | Needs acknowledgement | Guardrails: policy-change-review | New in this change
     Decided by: the built-in table
   Review policy and standards changed in this revision.
-    What: This revision changes src/prompts.ts, which the root melian.yaml lists as holding model prompts or reviewer instructions. A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: melian/injection-attempt at line 1, "melian/injection-attempt, as lens.correctness reports it.".
+    What: This revision changes src/prompts.ts, which the root melian.yaml lists as holding model prompts or reviewer instructions. A lens flagged a prompt-injection attempt that names this file, which this notice reports in its place: melian/injection-attempt at src/prompts.ts line 1, "melian/injection-attempt, as lens.correctness reports it.".
     Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
     What to do: Have a maintainer read the change to src/prompts.ts before merging.
     Rule guardrail/policy-change-review | Line 1 | Status new

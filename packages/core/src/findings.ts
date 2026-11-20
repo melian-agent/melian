@@ -1933,14 +1933,14 @@ export class Finding {
 	}
 
 	/**
-	 * The notice with what a lens flagged in its file added to its `what`: the rule, lines and headline of each finding in
+	 * The notice with what a lens flagged added to its `what`: the rule, path, lines and headline of each finding in
 	 * `replaced`, which the notice reports in their place, so the maintainer who reads the notice reads them too.
 	 */
 	quoting(replaced: readonly Finding[]): Finding {
 		const quotes = replaced.map((finding) => {
 			const [start, end] = finding.lines();
 			const lines = start === end ? `line ${start}` : `lines ${start}-${end}`;
-			return `${finding.ruleId} at ${lines}, ${JSON.stringify(finding.message.text)}`;
+			return `${finding.ruleId} at ${finding.properties.path} ${lines}, ${JSON.stringify(finding.message.text)}`;
 		});
 		const { explanation } = this.properties;
 		return Finding.from({
@@ -1949,7 +1949,7 @@ export class Finding {
 				...this.properties,
 				explanation: {
 					...explanation,
-					what: `${explanation.what} A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: ${quotes.join("; ")}.`,
+					what: `${explanation.what} A lens flagged a prompt-injection attempt that names this file, which this notice reports in its place: ${quotes.join("; ")}.`,
 				},
 			},
 		});

@@ -42,7 +42,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "60e3b99ad2faf7f79b9d45ee48f8a8f9e1274a8e74cd4d820b5a3826387e6968",
+	"packages/core/src/findings.ts": "560f9a3c884290e90597ca9e70dc55467101d7e165b9c6643389a33c788571bd",
 
 	"packages/core/src/git.ts": "2d9688ae4087985f2928a35dcfd86bfe9edfbf2e83fa9c54732d7f7c1afbc70f",
 

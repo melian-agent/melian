@@ -18,7 +18,7 @@ Example: a change rewrites the verifier's instructions in `packages/pipeline/src
 - A changed file the list matches draws the `guardrail/policy-change-review` notice, discriminator `policy`, even where the guardrail is turned off. The notice's trigger is the file's base and head blob identities, so a dismissal reopens when the file changes again. Its match carries `instructions: true`, and `Finding.floored` holds it at `acknowledge`.
 - Adjudication reports a lens's injection finding through that notice when every file the finding names has one: its path, its trigger and proving hunks, and every evidence location of every claim. Lenses alone must have reported it, every report under `melian/injection-attempt`, each in one location. The finding resolves `silent`, its `decidedBy.replacedBy` names the notice, and it carries neither the injection floor nor a trust-floor minimum. It counts in no "Pre-existing, important" list and in no refuted list.
 - A finding that names any file without such a notice is reported whole, at its own resolution and floors. So is one another rule or a check that is not a lens reported too.
-- The notice quotes what the lens flagged: the rule, the lines and the headline of each finding it reports in place of.
+- The notice quotes what the lens flagged: the rule, the path, the lines and the headline of each finding it reports in place of, since a finding that cites a second listed file is quoted in that file's notice too.
 
 A person reads a listed file's flagged text as a notice. It is never silent to them: the notice needs acknowledgement, and an unresolved acknowledgement fails the published status until a maintainer dismisses it with a reason.
 

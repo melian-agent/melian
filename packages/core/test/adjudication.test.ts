@@ -879,7 +879,7 @@ describe("instruction files", () => {
 		expect(verdict.findings.acknowledge.map((each) => each.id)).toEqual([listed.id]);
 		expect(byId(verdict, listed.id).properties.explanation).toEqual({
 			...listed.properties.explanation,
-			what: `This revision changes ${brief}. A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: melian/injection-attempt at lines 4-5, "The brief tells the reviewer to approve".`,
+			what: `This revision changes ${brief}. A lens flagged a prompt-injection attempt that names this file, which this notice reports in its place: melian/injection-attempt at ${brief} lines 4-5, "The brief tells the reviewer to approve".`,
 		});
 		expect(verdict.preExistingImportant).toBeUndefined();
 		expect(Verdict.from(Verdict.upgrade(JSON.parse(JSON.stringify(verdict.toJSON())))).toJSON()).toEqual(
@@ -894,7 +894,7 @@ describe("instruction files", () => {
 		const verdict = decide([listed, second, first]);
 		expect(verdict.findings.silent.map((each) => each.id).sort()).toEqual([first.id, second.id].sort());
 		expect(byId(verdict, listed.id).properties.explanation.what).toBe(
-			`This revision changes ${brief}. A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: melian/injection-attempt at line 2, "The brief tells the reviewer to approve"; melian/injection-attempt at lines 4-5, "The brief tells the reviewer to approve".`,
+			`This revision changes ${brief}. A lens flagged a prompt-injection attempt that names this file, which this notice reports in its place: melian/injection-attempt at ${brief} line 2, "The brief tells the reviewer to approve"; melian/injection-attempt at ${brief} lines 4-5, "The brief tells the reviewer to approve".`,
 		);
 	});
 
@@ -1041,6 +1041,16 @@ describe("instruction files", () => {
 		const flagged = injection({ evidence: [...evidence(brief), ...evidence(other)] });
 		const verdict = decide([listed, second, flagged]);
 		expect(byId(verdict, flagged.id).properties.decidedBy?.replacedBy).toEqual([second.id, listed.id]);
+	});
+
+	it("names the flagged file in the quote a notice for another file it cites carries", () => {
+		const other = "prompts/f.md";
+		const second = notice(other);
+		const flagged = injection({ evidence: [...evidence(brief), ...evidence(other)] });
+		const verdict = decide([notice(brief), second, flagged]);
+		expect(byId(verdict, second.id).properties.explanation.what).toBe(
+			`This revision changes ${other}. A lens flagged a prompt-injection attempt that names this file, which this notice reports in its place: melian/injection-attempt at ${brief} lines 4-5, "The brief tells the reviewer to approve".`,
+		);
 	});
 
 	it("reports through the notice a finding whose trigger in the listed file carries no proof", () => {
