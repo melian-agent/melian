@@ -1243,6 +1243,61 @@ describe("the dismissal records a reader applies", () => {
 		expect("refused" in contents ? contents.refused : contents.dismissals).toEqual([]);
 	});
 
+	it("reopens an introduced dismissal once a round since sights it as affected with a new trigger, as the host does", async () => {
+		const { id, proof, first, roundOn, citingAt, readAfter, revision } = await citedAcross(
+			"lens",
+			revisionOf("0", "1"),
+			() => ({ hash: "f".repeat(64), proof: [] }),
+		);
+		const key = Revision.key(revision);
+		const record = citingAt(key, proof);
+		const affected = (record.payload as { sightings: StoredFinding[] }).sightings[0]!;
+		const introduced = structuredClone(affected);
+		introduced.properties.cause = "introduced";
+		const { proof: _, ...trigger } = affected.properties.trigger!;
+		introduced.properties.trigger = { ...trigger, hash: "f".repeat(64) };
+		const seen = { revision: key, sighting: affected, hunks: proof };
+		expect(await hostStands(id, { revision: key, sighting: introduced, hunks: proof }, [seen, seen])).toBe(false);
+		const since = roundOn(revision.base, revision.head, [record], []);
+		const read = await readAfter([since], [since, record], [first]);
+		expect([read.status, read.blocking]).toEqual(["findings", true]);
+		expect(standingOf(read)).toEqual([[id, "new", undefined]]);
+	});
+
+	it("keeps a dismissal at an earlier round's revision when a later round cites one more hunk there, as the host does", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;"), "src/b.ts": lines("export const b = 1;") },
+			{ "src/a.ts": lines("export const a = 2;"), "src/b.ts": lines("export const b = 2;") },
+		);
+		const base = gitIn(repo, "rev-parse", "main");
+		const y = gitIn(repo, "rev-parse", "feature");
+		gitIn(repo, "checkout", "--quiet", "--detach", base);
+		writeFileSync(join(repo, "src/a.ts"), lines("export const a = 2;"));
+		gitIn(repo, "commit", "--quiet", "--all", "-m", "x");
+		const x = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "checkout", "--quiet", "feature");
+		const hunksX = reviewFiles(
+			(await Changeset.resolve(repo, { mode: "twoDot", base, head: x })).revision.files,
+		).flatMap((file) => file.hunks.map(provingHunk));
+		const chain = await citedAcross("lens", `${base}..${x}`, (proof) => ({
+			hash: "f".repeat(64),
+			proof: proof.filter(({ file }) => file === "src/a.ts"),
+		}));
+		const onlyA = chain.proof.filter(({ file }) => file === "src/a.ts");
+		expect(onlyA).toEqual(hunksX);
+		const atXRecord = chain.citingAt(`${base}..${x}`, onlyA);
+		const atYRecord = chain.citingAt(`${base}..${y}`, chain.proof);
+		const atX = chain.roundOn(base, x, [atXRecord], []);
+		const atY = chain.roundOn(base, y, [atYRecord], [atX]);
+		const sightingOf = (record: SharedRecord) => (record.payload as { sightings: StoredFinding[] }).sightings[0]!;
+		const seenAtX = { revision: `${base}..${x}`, sighting: sightingOf(atXRecord), hunks: hunksX };
+		const seenAtY = { revision: `${base}..${y}`, sighting: sightingOf(atYRecord), hunks: chain.proof };
+		expect(await hostStands(chain.id, seenAtX, [seenAtX, seenAtY, seenAtY])).toBe(true);
+		const read = await chain.readAfter([atY], [atX, atY, atXRecord, atYRecord], [chain.first]);
+		expect(standingOf(read)).toEqual(dismissedOf(chain.id));
+	});
+
 	it("tests a round that follows none as one since the dismissal, and keeps the dismissal while it cites nothing new", async () => {
 		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		const severed = roundAt("1", "2", [], []);
