@@ -1,8 +1,9 @@
 # A head's change to a Packwerk file Enola read draws a policy notice
 
 Amends: [Enola's policy paths come from Enola](2026-11-16-enola-policy-paths-come-from-enola.md), the Packwerk files it leaves to the head
+Amends: [Analyser configuration changes](2026-10-03-analyser-configuration-changes.md), a change to a Packwerk file Enola read acknowledges rather than blocks
 
-Status: the maintainer ruled on 2026-11-18, on [issue #538](https://github.com/melian-agent/melian/issues/538), for the first option there: a head that changes `packwerk.yml` or a `package.yml` gets a policy notice at acknowledge, and the head's copies still run. How the notice is raised is the coordinator's answer on approach, given in its session; it is not a ruling.
+Status: the maintainer ruled on 2026-11-18, on [issue #538](https://github.com/melian-agent/melian/issues/538), for the first option there. A head that changes `packwerk.yml` or a `package.yml` gets a policy notice at acknowledge. The head's copies still run. How the notice is raised is the coordinator's answer on approach, given in its session, not a ruling.
 
 Problem: Enola 0.4.40's Packwerk check reads `packwerk.yml` and each package's `package.yml` from the head. A head that sets `enforce_dependencies: false` in a `package.yml` turns the check off for that package, and the review said nothing. The review of record on [pull request #534](https://github.com/melian-agent/melian/pull/534) showed it. Replacing the files with the base's copies, as Melian does for Enola's other policy, would judge a head that adds or moves a package by packages it no longer has.
 
@@ -12,7 +13,7 @@ Why the Enola check raises it, and not the guardrails check: only Enola knows wh
 
 The notice is the guardrails check's in everything that decides it. It carries the guardrail match an analyser's configuration notice carries, so resolution reads `resolution.checks.guardrails` and the rule's `analyser` class, never `checks.static.enola`. Its ID is the guardrail's, which ignores the producing check, so a dismissal matches it as it would the guardrails check's. The policy-change floor keys on the rule and the path, so it treats both alike; a `package.yml` is not a `melian.yaml`, so no floor applies. It is stored under `static.enola`, so a later Enola run replaces it and a guardrails run leaves it alone. `melian findings` shows it with Enola's mark beside the guardrail's rule, since Enola raised it. Stored findings carry no tool text, by [the decision of 2026-11-16](2026-11-16-shared-static-findings-carry-no-tool-text.md): the notice is Melian's fixed sentence and the path.
 
-Its severity is the guardrail's `severity`, not `analyserSeverity`, which blocks a change to an analyser's configuration at P1. The ruling chose acknowledge: a Packwerk file is ordinary project structure, which a head adds whenever it adds a package.
+Its severity is the guardrail's `severity`, not `analyserSeverity`, which blocks a change to an analyser's configuration at P1. This narrows the 2026-10-03 decision that an analyser's configuration change blocks, for these files alone, and the ruling made that choice: a Packwerk file is ordinary project structure, which a head adds whenever it adds a package, so a block would stop every pull request that adds one.
 
 The check request keys the checks' code by its recorded hashes, which this change moves, so no run a build stored before the notice existed is reused for a head that changes a Packwerk file.
 
