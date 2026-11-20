@@ -406,7 +406,7 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 
 // Main's key names no code or package version, so this build's first review of main's store decides again, as
 // adjudication-key-reopen.test.ts shows. The tests below are about the round an attachment keeps, so they give the
-// stored key this build's code and packages before they review.
+// stored key this build's code, packages and identification before they review.
 async function withCurrentKey(harness: Harness) {
 	const root = await harness.root(context);
 	await root.commit(async (tx) => {
@@ -416,6 +416,7 @@ async function withCurrentKey(harness: Harness) {
 			...input,
 			code: codeVersion("adjudication"),
 			packages: melianInstall().digest,
+			identified: melianInstall().identified,
 		});
 	}, context);
 }
