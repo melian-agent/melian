@@ -31,6 +31,7 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	type Storage,
+	type SubmissionId,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
@@ -2650,6 +2651,380 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(textOf(requests[prober]![2]!.at(-1)!)).toContain(
 			"The model reviewing this change failed, and you take over.",
 		);
+	});
+
+	// The refusal Codex gave the planner on pull requests #532 and #576, on 2026-11-20.
+	const flagged = () =>
+		fauxAssistantMessage("", {
+			stopReason: "error",
+			errorMessage:
+				"Codex error: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.",
+		});
+
+	it("moves a planner whose model's content filter refused the change to its next model, after its tool calls", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const reads = Array.from({ length: 13 }, () => on(call("read_file", { path: "src/load.ts" })));
+		const provider = fake.ref("first").provider;
+		const { run, requests } = await review(
+			{
+				planner: [...reads, on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual([...Array(14).fill("first"), "second", "second"]);
+		// The first model's reads stand, so the next is told to take over rather than start again.
+		expect(textOf(requests[planner]![14]!.at(-1)!)).toBe(handoverWording.continue);
+		expect(ran.reason).toContain(`${provider}/first refused the content, so ${provider}/second answered`);
+	});
+
+	it("fails a lens whose planner's every model refused the content, saying each refused", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const error = await failure(run);
+		expect(error.code).toBe("allModelsFailed");
+		const failed = record(error.verdict!);
+		expect(failed.status).toBe("failed");
+		expect(failed.reason).toContain(
+			`every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+		);
+	});
+
+	it("names the model that refused apart from one that hit its limit, when every model failed", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [flagged, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier failed; ${provider}/first refused the content`,
+		});
+	});
+
+	it("says nothing of a refusal when a lens moved on from a provider's limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{
+				planner: [limited, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+	});
+
+	it("says only that every model failed when every model hit its limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [limited, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({ status: "failed", reason: "every model of its tier failed" });
+	});
+
+	it("says which model answered the prober after its first model's content filter refused the plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [flagged, call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toContain(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered`,
+		);
+		expect(ran.reason).not.toContain(`; ${provider}/first refused`);
+	});
+
+	it("moves a planner's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [on(fauxAssistantMessage("Nothing.")), on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second", "second"]);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("moves a prober's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					fauxAssistantMessage("Done."),
+					flagged,
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("names an earlier refusal when the next model fails in a way that does not move on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, malformed], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; ${provider}/first refused the content`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when its prober then fails without moving on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, ...plan], prober: [malformed] },
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when the model that answered recorded no plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, fauxAssistantMessage("Nothing."), fauxAssistantMessage("Nothing.")], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "the planner recorded no attack plan",
+		});
+	});
+
+	it("keeps a reminder's own request ID, and adds the attempt only for a model it moved on to", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [fauxAssistantMessage("Nothing."), flagged, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		await run;
+		const ids: string[] = [];
+		for (let id = 1; id < 100; id++) {
+			const submission = await (await harness!.harness.submission(id as SubmissionId, backgroundContext))?.status(
+				backgroundContext,
+			);
+			if (submission?.requestId?.startsWith("lens:") === true) ids.push(submission.requestId);
+		}
+		const key = ids[0]!.replace(/:0$/, "");
+		expect(ids).toEqual([`${key}:0`, `${key}:plan`, `${key}:plan:1`, `${key}/prober:0`]);
+	});
+
+	it("still names a planner's refusal when its reminder goes to the model that answered", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [flagged, fauxAssistantMessage("Nothing."), ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("fails a lens whose planner's reminder every model refused, with the last model's own words", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [fauxAssistantMessage("Nothing."), flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+			error: `tried ${provider}/first, ${provider}/second; the last said: ${flagged().errorMessage}`,
+		});
+	});
+
+	it("counts a reminder's moves apart from its conversation's, from the model it moved on to", async () => {
+		const fake = createFakeModels({
+			models: [{ id: "first" }, { id: "second" }, { id: "third" }, { id: "probing" }],
+		});
+		const provider = fake.ref("first").provider;
+		let release: () => void = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let asked: () => void = () => {};
+		const reached = new Promise<void>((resolve) => {
+			asked = resolve;
+		});
+		const { run } = await review(
+			{
+				planner: [
+					flagged,
+					fauxAssistantMessage("Nothing."),
+					flagged,
+					async () => {
+						asked();
+						await held;
+						return plan[0]!;
+					},
+					plan[1]!,
+				],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`, `${provider}/third`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		try {
+			await reached;
+			const { tasks } = await harness!.harness.inspect(backgroundContext);
+			const attempts = tasks
+				.map(({ record }) => (record.state as { checkpoint?: { attempts?: Record<string, number> } }).checkpoint)
+				.find((checkpoint) => checkpoint?.attempts !== undefined)?.attempts;
+			const key = Object.keys(attempts ?? {}).find((each) => !each.endsWith(":plan"))!;
+			expect(attempts).toEqual({ [key]: 1, [`lens:${key}:plan`]: 2 });
+		} finally {
+			release();
+		}
+		expect(record((await run).verdict).status).toBe("ran");
 	});
 
 	it("fails a lens whose prober's every model failed, naming them", async () => {

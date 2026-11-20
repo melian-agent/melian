@@ -164,7 +164,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "21827ea77d7c5aec9a43f7597fd73b482b34266853876c89ae149aafabe79c64",
+	"packages/pipeline/src/harness.ts": "99c28ec36193e13203e6e971ceedc92ea3ae9f1bbcbeb1107ffecf108e863552",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 

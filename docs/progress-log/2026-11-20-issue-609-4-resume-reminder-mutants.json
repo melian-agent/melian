@@ -1,0 +1,312 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "1441d73fa633185b3e4c20b1d10a294c47030c42",
+    "head": "23c7e26dec2ad9833342162e21505cf3865f70a3"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1139,
+      "column": 17,
+      "endLine": 1140,
+      "endColumn": 80,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "9eb0b9db91d1268c637c9f9a1e338b763cb75ae791f278ef31c6e84cd40474a7",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-crash.test.ts",
+          "path": [
+            "a level that probes across a crash",
+            "unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1140,
+      "column": 5,
+      "endLine": 1140,
+      "endColumn": 80,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(started?.attempts[`lens:${key}:${reminder}`] ?? started?.attempts[key]) && 0",
+      "status": "generated",
+      "id": "df2fd88f679dadbd3a2daebf95841d3bcbb23a6bf695c63b3c97e491ca2ee297",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-crash.test.ts",
+          "path": [
+            "a level that probes across a crash",
+            "unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1140,
+      "column": 5,
+      "endLine": 1140,
+      "endColumn": 75,
+      "mutatorName": "LogicalOperator",
+      "replacement": "started?.attempts[`lens:${key}:${reminder}`] && started?.attempts[key]",
+      "status": "generated",
+      "id": "887756ae71dad6e357afc67dd17f0232c48635d4fccd3b7087ca84252b5cb196",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-crash.test.ts",
+          "path": [
+            "a level that probes across a crash",
+            "unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1140,
+      "column": 5,
+      "endLine": 1140,
+      "endColumn": 22,
+      "mutatorName": "OptionalChaining",
+      "replacement": "started.attempts",
+      "status": "generated",
+      "id": "d77be04948102c7e727a8b969a0ec7b619c9f598c2b60d64e1a4d11ba6c786f8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "resumed providers of a stored route",
+            "drops a lens provider the task already failed over from, and keeps the ones it can still reach"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1140,
+      "column": 23,
+      "endLine": 1140,
+      "endColumn": 48,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7f37c153764bd1059cbfd4ca7b69a96ec09eb62c26500322231f1644c7f1171d"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1140,
+      "column": 53,
+      "endLine": 1140,
+      "endColumn": 70,
+      "mutatorName": "OptionalChaining",
+      "replacement": "started.attempts",
+      "status": "generated",
+      "id": "0efda8510163b0355540f1fcfac44928f3a689e5249c3ee9d6dbc5683582a455",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "resumed providers of a stored route",
+            "drops a lens provider the task already failed over from, and keeps the ones it can still reach"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1142,
+      "column": 8,
+      "endLine": 1142,
+      "endColumn": 46,
+      "mutatorName": "MethodExpression",
+      "replacement": "run.route",
+      "status": "generated",
+      "id": "6d9286ad4388be15ea79284c5b738c4c07e309a8921c02814773a08798a3f030",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-crash.test.ts",
+          "path": [
+            "a level that probes across a crash",
+            "unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1142,
+      "column": 38,
+      "endLine": 1142,
+      "endColumn": 44,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f7219649f8179e43b10a27351dab96da6b84c3de916465adea93dcf3f8a9e3eb"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 9,
+      "endLine": 1143,
+      "endColumn": 74,
+      "mutatorName": "LogicalOperator",
+      "replacement": "run.probe?.route.slice(from(`${run.key}/prober`, \"answer\")) && []",
+      "status": "generated",
+      "id": "f4c7e4bf2a204fa886242ca53242e1127e6b4e5b5b7f8557c80096c2f54f9aae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 9,
+      "endLine": 1143,
+      "endColumn": 68,
+      "mutatorName": "MethodExpression",
+      "replacement": "run.probe?.route",
+      "status": "generated",
+      "id": "aeec079e17f81d8c16841bed16326acebd7e0383568c6e21fc29e47fa017c225",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-crash.test.ts",
+          "path": [
+            "a level that probes across a crash",
+            "unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 9,
+      "endLine": 1143,
+      "endColumn": 25,
+      "mutatorName": "OptionalChaining",
+      "replacement": "run.probe.route",
+      "status": "generated",
+      "id": "39a2442e5a16877ee66a50b0faef38c5358f4f26f251c7056e15d87b42c6a4d0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 37,
+      "endLine": 1143,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "75dd0274a81023d636c42c206622360c4ff55edd99ba0b8ef433cb6e8c34f4b4"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 58,
+      "endLine": 1143,
+      "endColumn": 66,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e360091f9807a7c6e9a8860692748655537c5e2aa0955a83e0993a08afa24415"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 1143,
+      "column": 72,
+      "endLine": 1143,
+      "endColumn": 74,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "171ab5dcad57407a7fdc60ad28521166733e96318221f22911d3e535f05ab607",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-crash.test.ts",
+          "path": [
+            "report_finding across a crash",
+            "says a crashed lens task resumes a model, before anything resumes it, and a finished review none"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    }
+  ],
+  "total": 14,
+  "omitted": 0,
+  "unmutated": []
+}
