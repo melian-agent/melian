@@ -270,6 +270,46 @@ describe("compare", () => {
 		]);
 	});
 
+	it("counts a test that failed under one of two identical names and passed under the later one as not passed", () => {
+		const whole = drop(macWhole(), gated, "spells the path as the disk does");
+		const mac = report(
+			{ file: gated, title: "spells the path as the disk does", status: "failed" },
+			{ file: gated, title: "spells the path as the disk does" },
+			...rows(whole),
+		);
+		expect(compare({ linux: linux(), mac: [mac, macTagged()], list }).errors).toEqual([
+			`skipped on Linux, not passed on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
+			`did not pass on macOS: ${gated} > a suite > spells the path as the disk does: failed`,
+		]);
+	});
+
+	it("counts each tagged file's own tagged tests, not another tagged file's", () => {
+		const other = "packages/pipeline/test/probe.test.ts";
+		const twoFiles = { ...list, tagged: [tagged, other] };
+		const linuxOther = report(...rows(linux()), { file: other, title: "plans a probe" });
+		const { errors } = compare({ linux: linuxOther, mac: [macWhole(), macTagged()], list: twoFiles });
+		expect(errors).toEqual([`tagged tests did not all pass on macOS: ${other}: 0 of 0 tests tagged macos passed`]);
+	});
+
+	it("fails a tagged file one of whose tagged tests macOS never ran, though another passed", () => {
+		const linuxTwo = report(...rows(linux()), { file: tagged, title: "times a probe", tags: ["macos"] });
+		const { errors } = compare({ linux: linuxTwo, mac: [macWhole(), macTagged()], list });
+		expect(errors).toEqual([`tagged tests did not all pass on macOS: ${tagged}: 1 of 2 tests tagged macos passed`]);
+	});
+
+	it("prints no summary line when a check failed", () => {
+		const { lines } = compare({
+			linux: linux(),
+			mac: [drop(macWhole(), gated, "spells the path as the disk does"), macTagged()],
+			list,
+		});
+		expect(lines).toEqual([
+			`Linux skipped tests in: packages/core/test/secrets.test.ts, ${gated}, ${suite}`,
+			`${suite}: 1 of 1 passed`,
+			`${tagged}: 1 of 1 tests tagged macos passed`,
+		]);
+	});
+
 	it("names a file by its path from the checkout's packages or scripts folder", () => {
 		const nested = {
 			testResults: [
@@ -325,12 +365,28 @@ describe("the command", () => {
 		}
 	});
 
-	it("refuses to run without a Linux report, a macOS report and a list", () => {
-		const result = run(["--linux", "a.json"]);
-		expect([result.status, result.stderr]).toEqual([
+	it.each([
+		["a Linux report", ["--mac", "b.json", "--list", "c.json"]],
+		["a macOS report", ["--linux", "a.json", "--list", "c.json"]],
+		["a list", ["--linux", "a.json", "--mac", "b.json"]],
+	])("refuses to run without %s", (_, args) => {
+		const result = run(args);
+		expect([result.status, result.stdout, result.stderr]).toEqual([
 			2,
+			"",
 			"usage: compare-platform-reports.mjs --linux <report> --mac <report>... --list <list>\n",
 		]);
+	});
+
+	it("runs nothing when another module imports it", () => {
+		const result = spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", `await import(${JSON.stringify(script)})`],
+			{
+				encoding: "utf8",
+			},
+		);
+		expect([result.status, result.stdout, result.stderr]).toEqual([0, "", ""]);
 	});
 });
 
