@@ -1155,7 +1155,7 @@ describe("the dismissal records a reader applies", () => {
 		const records = chain.after([since], [chain.first, since, cited], [chain.first]);
 		const round = RecordedRound.of(...records, everyRecordCounts);
 		expect(await round.contents(chain.revision)).toEqual({
-			refused: `follows round ${since.id} of revision ${revisionOf("1", "2")}, and is read with no checkout to resolve it in`,
+			refused: `tests a dismissal at round ${since.id} of revision ${revisionOf("1", "2")}, and is read with no checkout to resolve it in`,
 		});
 		expect(await round.contents(chain.revision, repo)).toHaveProperty("dismissals");
 	});

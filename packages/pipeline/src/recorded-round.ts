@@ -376,12 +376,12 @@ async function hunksAt(
 ): Promise<{ readonly hunks: readonly ProvingHunk[] } | { readonly refused: string }> {
 	const sides = revision === undefined ? undefined : Revision.parseKey(revision);
 	if (revision === undefined || sides === undefined)
-		return { refused: `follows round ${round}, which names no revision a reader can resolve` };
+		return { refused: `tests a dismissal at round ${round}, which names no revision a reader can resolve` };
 	const held = known.get(revision);
 	if (held !== undefined) return { hunks: held };
 	if (repoRoot === undefined)
 		return {
-			refused: `follows round ${round} of revision ${revision}, and is read with no checkout to resolve it in`,
+			refused: `tests a dismissal at round ${round} of revision ${revision}, and is read with no checkout to resolve it in`,
 		};
 	let resolved: Changeset;
 	try {
@@ -389,7 +389,7 @@ async function hunksAt(
 	} catch (error) {
 		if (!(error instanceof ChangesetError)) throw error;
 		return {
-			refused: `follows round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need. Fetch it, such as with git fetch --unshallow, or dismiss the finding again with --records, so its chain starts after this round`,
+			refused: `tests a dismissal at round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need. Fetch it, such as with git fetch --unshallow, or dismiss the finding again with --records, so its frontier holds this round`,
 		};
 	}
 	const hunks = hunksOf(resolved.revision.files);
