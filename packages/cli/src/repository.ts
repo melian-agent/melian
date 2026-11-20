@@ -1,13 +1,12 @@
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { isChangesetId, withoutReplacements } from "@melian-agent/core";
+import { gitEnvironment, isChangesetId } from "@melian-agent/core";
 import { CacheLocation, openSqliteStorage } from "@melian-agent/pipeline";
 
 export function git(cwd: string, args: readonly string[]): Promise<string> {
 	return new Promise((done, fail) => {
-		const env = withoutReplacements(process.env);
-		execFile("git", args, { cwd, env, maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+		execFile("git", args, { cwd, env: gitEnvironment(), maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
 			if (error === null) done(stdout.trim());
 			else fail(new CliError(`git ${args[0]} failed: ${stderr.trim() || error.message}`));
 		});

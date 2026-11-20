@@ -451,6 +451,7 @@ export {
 	type GitOptions,
 	type GitResult,
 	git,
+	gitEnvironment,
 	gitFailure,
 	gitOutput,
 	gitOutputBytes,
