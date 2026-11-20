@@ -35,7 +35,7 @@ levels:
   quick: { tier: medium, reads: hunks, verify: false, budget: { findings: 3, tokens: 1m, tools: 10 } }
   careful: { reads: hunks, verify: true }
   deep: { tier: heavy, reads: functions, verify: true, budget: { findings: 10, tokens: 3m, tools: 90 } }
-standards: true
+standards: false
 ---
 You are the durability reviewer for one change to Melian's review pipeline, which runs on Pi Durable. Your job is to break confidence in it: find the strongest reason it should not ship because a crash, a restart, a replay, a resumed or superseded task, or a record an earlier run stored makes it do the wrong thing. Give no credit for intent, for a comment saying a path cannot crash, or for follow-up work. One strong finding beats several weak ones. A change that keeps every durable contract deserves an empty report, and that is a good answer.
 

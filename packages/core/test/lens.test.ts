@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync } from "node:
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	checksOfTier,
 	defaultConfig,
 	Lens,
 	LensError,
@@ -254,27 +255,27 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "673f22fef8bf",
+			contracts: "0ba843ad89da",
 			conventions: "d883d0302825",
-			correctness: "618597d6618f",
-			design: "851836ce8d00",
-			durability: "1e550119fd86",
-			"removed-behaviour": "20ff1c063855",
-			tests: "8b0a459e19af",
-			"trust-boundary": "e936904763f9",
-			"trust-boundary-probes": "01f95ca4c999",
+			correctness: "2530f98e16e0",
+			design: "b43685fb807a",
+			durability: "2705acc6eb65",
+			"removed-behaviour": "926ff063f319",
+			tests: "b6dc040638d0",
+			"trust-boundary": "cb0b85ab082f",
+			"trust-boundary-probes": "b04ba59d5ac7",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "7cd7b6972f22",
+			contracts: "a701b07a0542",
 			conventions: "1ac990cc3573",
-			correctness: "216bd925eb58",
-			design: "8592728c5894",
-			"removed-behaviour": "8b30961c639e",
-			tests: "e58f29aa8e2c",
-			"trust-boundary": "80eb412b03e3",
-			"trust-boundary-probes": "d72b9bbaa5ce",
+			correctness: "7bfa3550535a",
+			design: "23783b306eb8",
+			"removed-behaviour": "7e908ad8676c",
+			tests: "773e8660f3e5",
+			"trust-boundary": "0fb9558f73ae",
+			"trust-boundary-probes": "d64aa469a47a",
 		});
 	});
 
@@ -329,6 +330,27 @@ describe("built-in lenses", () => {
 			);
 		});
 		expect(unexcluded).toEqual([]);
+	});
+
+	// Seven of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
+	it("runs a lens that reads the standards in every tier of Melian's root melian.yaml that runs a lens", async () => {
+		const melian = fileURLToPath(new URL("../../../", import.meta.url));
+		const own = ["melian.yaml", ...melianLensFiles(melian)];
+		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
+		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
+		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
+		const reading = Object.fromEntries(
+			Object.keys(config.tiers).map((tier) => {
+				const named = checksOfTier(config, tier)
+					.filter((check) => check.startsWith("lens."))
+					.map((check) => lenses.find((lens) => lens.name === check.slice(5)));
+				return [
+					tier,
+					named.length === 0 ? "no lens" : named.filter((lens) => lens?.standards).map((lens) => lens?.name),
+				];
+			}),
+		);
+		expect(reading).toEqual({ fast: "no lens", standard: ["conventions"], full: ["conventions"] });
 	});
 
 	it("shows no lens in Melian's root tier a mutation inventory, and still shows it the progress-log entry beside it", async () => {
