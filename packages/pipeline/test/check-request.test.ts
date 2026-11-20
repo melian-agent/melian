@@ -91,6 +91,11 @@ describe("checkRequest", () => {
 		expect(checks["static.enola"]).toBeGreaterThanOrEqual(3);
 	});
 
+	it("keys guardrails past the build whose package.json notice named no npm script", () => {
+		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
+		expect(checks.guardrails).toBeGreaterThanOrEqual(2);
+	});
+
 	it("keys Enola past the build that dropped a base policy file with a newline in its name", () => {
 		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
 		expect(checks["static.enola"]).toBe(5);

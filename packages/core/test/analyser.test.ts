@@ -168,6 +168,7 @@ describe("npm scripts", () => {
 		["only an added script", manifest({ check: "vitest --run", lint: "biome lint", precheck: "true" }), []],
 		["a head that does not parse", "{", []],
 		["a head that is an array", "[]", []],
+		["a head that is null", "null", []],
 	])("reports %s", (_, head, expected) => {
 		expect(switchOffs("package.json", base, head, [])).toEqual(expected);
 	});

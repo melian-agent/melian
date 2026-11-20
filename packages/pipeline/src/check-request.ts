@@ -48,8 +48,9 @@ export const maxKeyedPolicyBytes = 1024 * 1024;
 // text, and tsc 3 asks tsc --showConfig for its projects. Enola 2 and mutation 2 keep no tool text in a discriminator,
 // and Enola 2 hashes a rule no policy declares. Enola 3 replaces a head's recipes with the base's, and Enola 4 restores a
 // base policy file with a newline in its name. Biome 3, tsc 4, Enola 5 and mutation 3 stamp their sightings with the run.
+// Guardrails 2 names each npm script a head changes or removes.
 const checkVersions: Readonly<Record<DeterministicCheck, number>> = {
-	guardrails: 1,
+	guardrails: 2,
 	"static.biome": 3,
 	"static.tsc": 4,
 	"static.enola": 5,
