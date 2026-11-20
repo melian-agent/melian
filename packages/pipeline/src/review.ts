@@ -1134,10 +1134,13 @@ export class ReviewHarness {
 					(checkpoint as LensCheckpoint | undefined)?.phase === "review"
 						? (checkpoint as ReviewCheckpoint)
 						: undefined;
-				// A probing run's prober counts too, from its own attempt.
+				// A probing run's prober counts too, from its own attempt. A reminder's counter, once it has one, is where its
+				// conversation is, since the conversation it follows has finished.
+				const from = (key: string, reminder: string) =>
+					started?.attempts[`lens:${key}:${reminder}`] ?? started?.attempts[key] ?? 0;
 				const remaining = (run: LensRun) => [
-					...run.route.slice(started?.attempts[run.key] ?? 0),
-					...(run.probe?.route.slice(started?.attempts[`${run.key}/prober`] ?? 0) ?? []),
+					...run.route.slice(from(run.key, "plan")),
+					...(run.probe?.route.slice(from(`${run.key}/prober`, "answer")) ?? []),
 				];
 				// A copied lens asks no model.
 				return input.lenses.flatMap((first) => {
