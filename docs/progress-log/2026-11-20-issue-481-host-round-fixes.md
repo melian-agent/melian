@@ -9,3 +9,9 @@ The host round on [pull request #575](https://github.com/melian-agent/melian/pul
 - The progress-log entries of this pull request link the issues they name.
 
 No file this pass changes guards trust or durability: `shellQuote` shapes a suggested command, and the rest is documentation.
+
+## The proof for `shellQuote`
+
+The coordinator counted `shellQuote` as trust code on 2026-11-20, as its reading and not a ruling: a maintainer pastes the command it prints into a shell that holds credentials, and a record or a head controls part of it. So this pass proves the whole function. `melian mutants list b2a8d0998...623a69828 --claims-in packages/cli/src/commands.ts --json --all` lists one mutant, an ignored string on line 854, since the lines this pass changed hold nothing else Stryker mutates. The instrumenter, run on the file directly, makes 14 mutants inside the function, and a fifteenth by hand drops its `visibleText` call.
+
+All 15 were run at `623a69828`, each against its named test alone, which passed unmutated and failed mutated. `2026-11-20-issue-481-shell-quote-runs.json` records each run with the text it replaced. No existing test held an argument with a single quote, so the mutant that empties the `'\''` escape survived them all. `packages/cli/test/shell-quote.test.ts` is new: it round-trips five arguments through bash, a single quote among them, and kills it.
