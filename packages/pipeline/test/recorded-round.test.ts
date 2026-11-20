@@ -1468,6 +1468,61 @@ describe("a round decided under another policy", () => {
 		);
 	});
 
+	it("decides the round's findings under the policy the reader holds, while its verdict refuses that policy", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: block"));
+		const reviewed = await review(exported(), { policy: worktree });
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const context = {
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: worktree,
+		};
+		expect((await round.verdict(context)).status).toBe("not-reviewed");
+		const decided = (await round.findingsUnder(context)) as Verdict;
+		expect(decided.findings.block).toEqual([]);
+		expect(decided.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+	});
+
+	it("decides the findings of a round that read no policy source under the reader's", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: block"));
+		const reviewed = await review(exported(), { policy: null });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const decided = (await round.findingsUnder({
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: worktree,
+		})) as Verdict;
+		expect(decided.findings.block.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+	});
+
+	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>]>([
+		["no checkout", { policy: worktree }],
+		["no policy source", { repoRoot: "." }],
+	])("decides no findings for a reader with %s", async (_, given) => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		expect(
+			await round.findingsUnder({
+				revision: reviewed.changeset.revision,
+				config: reviewed.config,
+				...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
+				...(given.policy === undefined ? {} : { policy: given.policy }),
+			}),
+		).toEqual({ refused: "is read with no resolution policy to decide under" });
+	});
+
+	it("decides no findings for a round its records cannot stand for at the revision asked", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const other = Revision.from({ base: "a".repeat(40), head: "b".repeat(40), files: [] });
+		expect(
+			await round.findingsUnder({ revision: other, config: reviewed.config, repoRoot: repo, policy: worktree }),
+		).toEqual({ refused: `reviewed ${Revision.key(reviewed.changeset.revision)}, not ${Revision.key(other)}` });
+	});
+
 	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>, boolean]>([
 		["no checkout and no policy source", {}, false],
 		["a checkout and no policy source", { repoRoot: "." }, false],

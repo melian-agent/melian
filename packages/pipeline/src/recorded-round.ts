@@ -171,8 +171,39 @@ export class RecordedRound {
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
+		const decided = await this.#decided(context);
+		if ("refused" in decided) return notReviewed(this.id, decided.refused, context);
+		const { pieces, policies } = decided;
+		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
+		const decidedUnder = pieces.account.resolutionPolicy;
+		if (decidedUnder === null)
+			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
+		if (policies === undefined)
+			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
+		if (decidedUnder !== policies.fingerprint)
+			return notReviewed(
+				this.id,
+				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
+				context,
+			);
+		return adjudicated(decided, policies, context);
+	}
+
+	/**
+	 * The round's findings decided under the policy `context` reads, whatever policy the round's account names, or why
+	 * its records cannot stand for it. A reader that counts a round's findings under its own policy takes them from here,
+	 * and takes the round as reviewed only from {@link verdict}.
+	 */
+	async findingsUnder(context: RecordedRoundContext): Promise<Verdict | { readonly refused: string }> {
+		const decided = await this.#decided(context);
+		if ("refused" in decided) return decided;
+		if (decided.policies === undefined) return { refused: "is read with no resolution policy to decide under" };
+		return adjudicated(decided, decided.policies, context);
+	}
+
+	async #decided(context: RecordedRoundContext): Promise<Merged | { readonly refused: string }> {
 		const contents = this.contents(context.revision);
-		if ("refused" in contents) return notReviewed(this.id, contents.refused, context);
+		if ("refused" in contents) return contents;
 		// `contents` refuses whatever the pieces refuse.
 		const pieces = this.#pieces as Decided;
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
@@ -190,31 +221,32 @@ export class RecordedRound {
 		const { repoRoot, policy } = context;
 		const policies =
 			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
-		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
-		const decidedUnder = pieces.account.resolutionPolicy;
-		if (decidedUnder === null)
-			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
-		if (policies === undefined)
-			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
-		if (decidedUnder !== policies.fingerprint)
-			return notReviewed(
-				this.id,
-				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
-				context,
-			);
-		return new Adjudication({
-			findings,
-			manifest: pieces.account.checks,
-			checks: pieces.checks,
-			config: policies,
-			allowSkip: pieces.account.allowSkip,
-			// The host's round runs no verifier when every finding is dismissed, and its records then carry no claim of an
-			// earlier round's verification, so a finding whose dismissal does not count here stays uncapped.
-			verificationRan: pieces.account.checks.includes("verifier"),
-			...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
-			revision: context.revision,
-		}).adjudicate();
+		return { pieces, findings, policies };
 	}
+}
+
+// A round's findings merged from its records, with the policy the reader's checkout reads for them, if any.
+type Merged = {
+	readonly pieces: Decided;
+	readonly findings: ReturnType<typeof mergeSightings>;
+	readonly policies: Policies | undefined;
+};
+
+type Policies = Awaited<ReturnType<typeof configsFor>>;
+
+function adjudicated({ pieces, findings }: Merged, policies: Policies, context: RecordedRoundContext): Verdict {
+	return new Adjudication({
+		findings,
+		manifest: pieces.account.checks,
+		checks: pieces.checks,
+		config: policies,
+		allowSkip: pieces.account.allowSkip,
+		// The host's round runs no verifier when every finding is dismissed, and its records then carry no claim of an
+		// earlier round's verification, so a finding whose dismissal does not count here stays uncapped.
+		verificationRan: pieces.account.checks.includes("verifier"),
+		...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
+		revision: context.revision,
+	}).adjudicate();
 }
 
 // A verdict of not reviewed that says why the round's records cannot stand for it.
