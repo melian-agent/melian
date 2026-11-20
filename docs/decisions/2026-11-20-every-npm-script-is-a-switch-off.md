@@ -10,7 +10,7 @@ Example: a head changes `"check": "biome check … && vitest --run"` to `"check"
 
 ## Rule
 
-`switchOffs` in `packages/core/src/analyser.ts` names each script the base's `package.json` had that the head changes or removes. It does this at any depth and in any letter case of the name. A script whose value differs as JSON is changed. A script missing from the head's `scripts`, or every script when the head's `scripts` is absent or not an object, is removed. A script the head only adds, and a change to any other field, add nothing. It reads both revisions as npm's `json-parse-even-better-errors` does: it strips one leading byte order mark, then calls `JSON.parse`. It does not use the JSON-with-comments reader of the tsconfig and Biome checks. That reader drops a comma before `}` or `]` even inside a string, so `"echo ,}"` and `"echo }"` read as the same script. When the head's file does not parse as a JSON object, nothing is added, since npm then cannot run any script and the gate fails on its own.
+`switchOffs` in `packages/core/src/analyser.ts` names each script the base's `package.json` had that the head changes or removes. It reads any `package.json` in any letter case of the name, but guardrails passes it only the manifests its notice already covers: the root's and each workspace package's. A script whose value differs as JSON is changed. A script missing from the head's `scripts`, or every script when the head's `scripts` is absent or not an object, is removed. A script the head only adds, and a change to any other field, add nothing. It reads both revisions as npm's `json-parse-even-better-errors` does: it strips one leading byte order mark, then calls `JSON.parse`. It does not use the JSON-with-comments reader of the tsconfig and Biome checks. That reader drops a comma before `}` or `]` even inside a string, so `"echo ,}"` and `"echo }"` read as the same script. When the head's file does not parse as a JSON object, nothing is added, since npm then cannot run any script and the gate fails on its own.
 
 Every script counts, not only those a workflow or another script runs. The issue asked that this be read from the authority, the workflows and the scripts, rather than a hand-kept list of names. No such reading is complete:
 - `npm run check` also runs `precheck` and `postcheck`;
@@ -26,3 +26,5 @@ This changes the notice's words, not what blocks. The notice on a changed `packa
 ## Limit
 
 A head that adds `precheck` changes what `npm run check` does, and the notice does not name it, as the issue asked. A person still reads that diff, because the notice blocks. Reporting added `pre` and `post` scripts would be a follow-up.
+
+A `package.json` outside the root and the workspaces draws no notice at all, so its scripts go unnamed. A workflow that runs `npm run check` in such a directory can still be switched off silently. Covering it would make those files block where they never blocked before, so it waits for a ruling.
