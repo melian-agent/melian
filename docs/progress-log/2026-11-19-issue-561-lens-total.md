@@ -1,0 +1,7 @@
+# Issue 561: the parity total holds only the lenses' spend
+
+Round 44621434515 on [pull request #582](https://github.com/melian-agent/melian/pull/582) found that the parity arm's total took in more than the committed arm's lenses spent. The run subtracted stages named `melian.verification` and probers from the whole review, but a review's verifier records each claim as `melian.verification.candidate`, and triage and the walkthrough record stages of their own. So every one of them added to the parity arm's total, and the parity arm could outspend the committed arm's lenses, which is the one promise the run makes.
+
+The total now counts only `melian.lens` stages that are not a prober's, a probing lens's planner included. After every review the run prints the review's spend by kind, lenses, probers, triage, verification and walkthrough, by Melian's budget count, so the maintainer sees the whole review's cost beside the yardstick. The guideline and the run record template say which stages the total holds, and the template gives the whole review a table.
+
+The coordinator directed the fix on 2026-11-19. A new test in `packages/evals/test/parity.test.ts` reviews a committed arm whose triage, candidate verification, verifier, walkthrough and prober stages all spend. Against b05c3eb5 it failed with `expected 100 to be 60`; it passes now. Nine hand mutants of the new code ran against it, through `$S/mut561h.py` in the builder's scratch directory, and all nine fail.

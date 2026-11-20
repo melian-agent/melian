@@ -1,0 +1,657 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "441defb390b4ebc846b98ddca3c8c440a7b898f2",
+    "head": "a4b50d55c2371667f8b3e26d5905d4acee0101be"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/record-relay.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 60,
+      "column": 17,
+      "endLine": 60,
+      "endColumn": 77,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "28ede8fcd1a6f58c1533ee4fa155ab1f6a592fa9b007408c7476f1ad5ea2fa0b"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 134,
+      "column": 27,
+      "endLine": 136,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "51b1f887cb35b4ec1e1da55f228346211b1cec37cf02b4ba0fdd9d93486b7acd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 139,
+      "column": 27,
+      "endLine": 139,
+      "endColumn": 29,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "eebef9fc2a2110856da977850d9eff87f2b3214ef6f8fc6da5a32136f0619a56",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 140,
+      "column": 6,
+      "endLine": 146,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ed810ed3e94da8f02cfd4326c0db7b4af60fd51152e938d54ae4a4ac87cb590a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 141,
+      "column": 67,
+      "endLine": 145,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c094a6513ece728becc480d1371932f41100e9a22e8466d016d1ee00f5a1b689",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 142,
+      "column": 4,
+      "endLine": 142,
+      "endColumn": 21,
+      "mutatorName": "AssignmentOperator",
+      "replacement": "this.#walked -= 1",
+      "status": "generated",
+      "id": "1d30199dd61f29ad54dc573bcb4ea8036f01529a313ce03097ae16b6867f8378",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 8,
+      "endLine": 143,
+      "endColumn": 42,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "85b010f60d58c290b70619d60076547c3317723c9ea60adb644e10dbdebff623",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 8,
+      "endLine": 143,
+      "endColumn": 42,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8cdc8b187f44cd6e1833983f36143a2c481d8b15ba581b0cd56c4639edfb78c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 8,
+      "endLine": 143,
+      "endColumn": 42,
+      "mutatorName": "EqualityOperator",
+      "replacement": "this.#walked >= relayLimits.entries",
+      "status": "generated",
+      "id": "55c1ef94eb1fd2758636a38399ca5f80ccdf2b383b3e7e297486d1f0807b6bf2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 8,
+      "endLine": 143,
+      "endColumn": 42,
+      "mutatorName": "EqualityOperator",
+      "replacement": "this.#walked <= relayLimits.entries",
+      "status": "generated",
+      "id": "931cd38f8292f041ae16ad05a8d98fdb9ab6fb145cdfc5ed0f90df2a51de8bdf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 44,
+      "endLine": 143,
+      "endColumn": 110,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "128070b9b435fb9804a1ef15a28b1b884939a3a86d9cba11f78569f6834b6bc4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 67,
+      "endLine": 143,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "16bf0f1d5dfc412f83f4fcab1ff64dd29237f3b1cdb17371c4b906dbc708d1a7"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 143,
+      "column": 85,
+      "endLine": 143,
+      "endColumn": 108,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e4633f01dd14384e09316f6afd1e4c7faab2904678026310bac5a53f32c6de68"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 144,
+      "column": 4,
+      "endLine": 144,
+      "endColumn": 23,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "9559c3c2ec6571d082ce7db9461e2305064c23e9fabc2a3eb1a787a7f181abfd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 146,
+      "column": 18,
+      "endLine": 149,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f39d22502a4b53ceabf884b0608a3473756d6b667e306bd186793cba2ddd0811",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 147,
+      "column": 7,
+      "endLine": 147,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "efed6a9d0955186ed0f0c11af185744e9bac211a10316fd451ab34a9a2715439",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a root it cannot list as unreadable"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 147,
+      "column": 7,
+      "endLine": 147,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9dce7bd567fbb720fb2f0e54ebef5d873b9cd01b94d8590cb1de5e836d3a5c41",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 148,
+      "column": 3,
+      "endLine": 148,
+      "endColumn": 46,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "1e9deb76071bd5a55d72d1da454791761cb77f3de9a0ba6295aa1ae290e3903f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a root it cannot list as unreadable"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 148,
+      "column": 26,
+      "endLine": 148,
+      "endColumn": 38,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "82630dbe10936e761fc16442a44dad6313c7d30880d08acf6d055d13fd8291b4"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 254,
+      "column": 39,
+      "endLine": 254,
+      "endColumn": 42,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ba21ddd9884eed2f091e1982148570a3d7b8f59ad2a41ef812627b871a677785"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b9a623fb1031e0af723e40841f15f110bd3af0265402d368801dac321db1e734",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses a link, a cell and a file the store never writes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cf33a7a27c2cf698ec9214a87256f0f306ce53461c2ff02a09137285254d4484",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 90,
+      "mutatorName": "LogicalOperator",
+      "replacement": "top.name === \"tmp\" && top.isDirectory() || (await walk.entries(\"tmp\")).length === 0",
+      "status": "generated",
+      "id": "e23aa50a12dc6dbdb9cfc66fa7990836e98807f4c5f115f08a0d8d0016d53747",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5fda7bb3b89a8b621b1514c44de6bb5c651fe10e44406fd00526baf4cd2fe3cb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "LogicalOperator",
+      "replacement": "top.name === \"tmp\" || top.isDirectory()",
+      "status": "generated",
+      "id": "757dc6d873093acc1f4fdc63f725f2a1c68366a5d299723541759da18092ef36",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c1d768c75ed75d9f93cc7048969604c05d037c22624ed5b48921016856e8f7b9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay-io.test.ts",
+          "path": [
+            "RelayBatch on a folder with more entries than it walks",
+            "stops reading the folder at the entry past its bound"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 7,
+      "endLine": 255,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "top.name !== \"tmp\"",
+      "status": "generated",
+      "id": "3cdd64720b956e23f8f39dc21f2f8fbf52f405dafe36fb27eb5e803bcd4c76be",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 20,
+      "endLine": 255,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4ad0155b061c73b619e17c9c56867514b92963376e25dacb7a3cb3c9c55cac5e"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 50,
+      "endLine": 255,
+      "endColumn": 90,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "afe5396dd74444e5b99e0d25d23495ec54013f4d0253e9464191c24795492659",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/record-relay.test.ts",
+          "path": [
+            "RelayBatch",
+            "refuses an entry the store's tree never holds",
+            "a file in tmp"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 50,
+      "endLine": 255,
+      "endColumn": 90,
+      "mutatorName": "EqualityOperator",
+      "replacement": "(await walk.entries(\"tmp\")).length !== 0",
+      "status": "generated",
+      "id": "e31d62c04d61c99dd0081238099662868cff1016114415d7e4fa4f2ed5755636",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay.test.ts",
+          "path": [
+            "melian records relay",
+            "adds a writer's round and the records it reads to melian/state"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 255,
+      "column": 70,
+      "endLine": 255,
+      "endColumn": 75,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "159aca3b7b18faf88d80aa925d553fcc29f964fe40e7f84b5f6d299a12436312"
+    },
+    {
+      "file": "packages/pipeline/src/record-relay.ts",
+      "line": 258,
+      "column": 42,
+      "endLine": 258,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6e761420536a594bfcfda9ba6103b2b2d2842714eb376fa1058c3ff907325e12"
+    }
+  ],
+  "total": 32,
+  "omitted": 0,
+  "unmutated": []
+}

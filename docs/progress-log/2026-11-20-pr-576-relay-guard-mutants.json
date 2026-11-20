@@ -1,0 +1,986 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "299439dd8c1f4cd7e1f1c9bc228843113a19787f",
+    "head": "2b898374d71be9c9c6b51fb72b8a2d7797fe02c8"
+  },
+  "claimsIn": [
+    "packages/cli/src/target.ts",
+    "packages/cli/src/relay.ts",
+    "packages/github/src/provider.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/cli/src/relay.ts",
+      "line": 28,
+      "column": 61,
+      "endLine": 28,
+      "endColumn": 82,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5fa2fb04e4a65a6ff5a8e5c51a049e3589fea81f850866541145450ac35e9949"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 108,
+      "column": 17,
+      "endLine": 108,
+      "endColumn": 33,
+      "mutatorName": "Regex",
+      "replacement": "/[0-9a-f]{40}$/",
+      "status": "generated",
+      "id": "24aee3db9afb595441859b203be014be899a96e4bf8e726206d3067ec114aacd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses an approved base with a character before it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 108,
+      "column": 17,
+      "endLine": 108,
+      "endColumn": 33,
+      "mutatorName": "Regex",
+      "replacement": "/^[0-9a-f]{40}/",
+      "status": "generated",
+      "id": "46f53b377d1fa3aba435cf7191080f532363c1977ea5f46ca56f6f4b89840e9e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses an approved base with a character after it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 108,
+      "column": 17,
+      "endLine": 108,
+      "endColumn": 33,
+      "mutatorName": "Regex",
+      "replacement": "/^[0-9a-f]$/",
+      "status": "generated",
+      "id": "a464d6d411bfe26fc47dba1fc4fb7a83be0a5150df63e837d0783f3f2dcfdc8b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 108,
+      "column": 17,
+      "endLine": 108,
+      "endColumn": 33,
+      "mutatorName": "Regex",
+      "replacement": "/^[^0-9a-f]{40}$/",
+      "status": "generated",
+      "id": "02f72e173b6d694fd5c8b5a7db553147e6acb0bd29041664481d757311d71365",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 140,
+      "column": 17,
+      "endLine": 165,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "1376a55fa2240900173f25153f7c16711d29a7a4dbe1c9ff53d72355ff672953",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when the head moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 141,
+      "column": 5,
+      "endLine": 141,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "751a364c2607b21a41244e242fb9a98fb649d3e696c2a78a5cf76950de5c7585",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 141,
+      "column": 5,
+      "endLine": 141,
+      "endColumn": 63,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9df1c9444184f7f988f66fb48c17f21877f4c9c16709c6b3887cf702cd612bcd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses an approved base with a character before it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 141,
+      "column": 5,
+      "endLine": 141,
+      "endColumn": 63,
+      "mutatorName": "LogicalOperator",
+      "replacement": "!commitId.test(expect.base) && !commitId.test(expect.head)",
+      "status": "generated",
+      "id": "0d44677a846fc95ea48be18d353d12e3eb8f9d001cee2011cd6e1eebfffaa62b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses an approved base with a character before it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 141,
+      "column": 5,
+      "endLine": 141,
+      "endColumn": 32,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "commitId.test(expect.base)",
+      "status": "generated",
+      "id": "8c9b165160f4d08940422bf343440e8edb02cb78bd90272bb02d7fde51e24c51",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 141,
+      "column": 36,
+      "endLine": 141,
+      "endColumn": 63,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "commitId.test(expect.head)",
+      "status": "generated",
+      "id": "16784d9420a4a564cd1a01edc8f1174c659a5143a11296db906d0dba4a4233e0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 142,
+      "column": 2,
+      "endLine": 142,
+      "endColumn": 91,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "ff4fa64491cddbf1e987c4eaf6612dc614d801256342fa7f7828cd35fc20e401",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses an approved base with a character before it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 142,
+      "column": 21,
+      "endLine": 142,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9c54ed886e39cb61ea515076a5667015f86b2fe57b0bbc4740ad1609f600cb46"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 5,
+      "endLine": 143,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f45929724ca951c496e4ccae1b04a55b6dc6f6690f2909033e0d186bb3853f4c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 5,
+      "endLine": 143,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "08ea213967c24f49aa7356c953b5db04d16b26c50564ed7ae575ec866afe88e9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when the head moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 5,
+      "endLine": 143,
+      "endColumn": 82,
+      "mutatorName": "LogicalOperator",
+      "replacement": "pullRequest.head.sha !== expect.head && fetched.revision.head !== expect.head",
+      "status": "generated",
+      "id": "ea7d19a6a1db2b64e8f34338124491771873fe74def2077684814ec086ee6e3f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses when only the pull request's head moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 5,
+      "endLine": 143,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "df7f89cd9abd3e40f4a49e490109d6006a2ee7702918c87b1a201cd5802c5543",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses when only the pull request's head moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 5,
+      "endLine": 143,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "pullRequest.head.sha === expect.head",
+      "status": "generated",
+      "id": "0926a5a90fdb45bc59f8cde833a4710aa6e71efe13ef8fd8f8fc745adf51ffca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 45,
+      "endLine": 143,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "383d4e4a8d01c9ba93dd0f6fbd5b4cca5a8a317c0db2de5d06d9a3d2a3bba739",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "each part of the guard decides alone",
+            "refuses when only the fetched head differs"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 143,
+      "column": 45,
+      "endLine": 143,
+      "endColumn": 82,
+      "mutatorName": "EqualityOperator",
+      "replacement": "fetched.revision.head === expect.head",
+      "status": "generated",
+      "id": "ea3e90d89e61fb0479bf84275d1b99bb38dffc8a0c120e7d3704ba7433c6def1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 144,
+      "column": 2,
+      "endLine": 146,
+      "endColumn": 4,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "862eaa889b4b202f487109f31ba49490cba9d02e1e1fed3c136c48a5a0d09d6b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when the head moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 145,
+      "column": 3,
+      "endLine": 145,
+      "endColumn": 178,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "197452d747f57a9146e370dd5ade1cbfabb56633e8a3e10748015888b3755fa1"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 147,
+      "column": 5,
+      "endLine": 147,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "aede936fd7b9aa27941de6a9538e07dd7d3871a53576361ac7d81656e64d3f41",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 147,
+      "column": 5,
+      "endLine": 147,
+      "endColumn": 60,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "64ef132b2ae451886e9bae67b852259e8df436052369986fcdee43a5a45591ee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when the base was retargeted to a branch that contains the approved base"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 147,
+      "column": 5,
+      "endLine": 147,
+      "endColumn": 60,
+      "mutatorName": "EqualityOperator",
+      "replacement": "pullRequest.base.ref === pullRequest.base.defaultBranch",
+      "status": "generated",
+      "id": "309965200cf960d70ac60f92bad5d7dc514229f0d3a5029e2167ee9a4f320e6f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 149,
+      "column": 3,
+      "endLine": 149,
+      "endColumn": 253,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "46675172a0add40101d2574a97199940624e79fd10c8febf9c934ff266144f01"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 149,
+      "column": 102,
+      "endLine": 149,
+      "endColumn": 152,
+      "mutatorName": "LogicalOperator",
+      "replacement": "pullRequest.base.defaultBranch && \"(not reported)\"",
+      "status": "generated",
+      "id": "3759d1819f1112ec34644ebb88d0c72b7b6f343b0ce4097ecb780311dbad167d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when the base was retargeted to a branch that contains the approved base"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 149,
+      "column": 136,
+      "endLine": 149,
+      "endColumn": 152,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d73f102dbd4f144f1d19cae33b03e43901728961604d83feab547b41aceb3588"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 152,
+      "column": 38,
+      "endLine": 152,
+      "endColumn": 104,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "9c30f9532692c44c1bc17967af8c1cc88bea9f3942c0bcf97f8561ac3c8c0527",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 152,
+      "column": 39,
+      "endLine": 152,
+      "endColumn": 51,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dc321d9e0e0281a29cbd5ee2ba6e8b10986a70037b3ff950a7b28407af5b67e2"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 152,
+      "column": 53,
+      "endLine": 152,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8f8188291c2d05ff93102410e35b5c226d94785ed5a4c6ae5dcf1b801e331265"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 153,
+      "column": 2,
+      "endLine": 153,
+      "endColumn": 12,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "f7a318ced3d69cc3842f5734ceebb0cd2e75246f32c3aeefb58aa8c2813d500d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 153,
+      "column": 8,
+      "endLine": 153,
+      "endColumn": 12,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "false",
+      "status": "generated",
+      "id": "797db59897216afecaf836e03bcaa285ffaa1e1f91ba9973c3e21862645573a6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 154,
+      "column": 2,
+      "endLine": 154,
+      "endColumn": 13,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "47e59953e882fcc3e35052ac0528fa6369e5ecaaa50f7d573dc5bd100e5c9bdd",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "git failing in the ancestry check yields undefined instead of false, and !undefined refuses exactly as !false does"
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 154,
+      "column": 8,
+      "endLine": 154,
+      "endColumn": 13,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3b690f539bdb803e24c88fb6518f8f7e653d902eb16ce2712c6331755ac0b4e7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses an approved base absent from the repository"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 156,
+      "column": 5,
+      "endLine": 156,
+      "endColumn": 14,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "descends",
+      "status": "generated",
+      "id": "b47011d8b6bdc69777744f89273dda562832a3ed225890c0c7de63f2184ada3f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 156,
+      "column": 5,
+      "endLine": 156,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "9fb75d2c1b21759f882e108a6f6fb89bf05404130c4358228a35691bcec6a393",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 156,
+      "column": 5,
+      "endLine": 156,
+      "endColumn": 14,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "794fbc99178f8b95cf67455c8fe7553d33f48c9861ba908b220cf13cac9b4f83",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses an approved base absent from the repository"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 157,
+      "column": 2,
+      "endLine": 159,
+      "endColumn": 4,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "78cb4c21a3bab3667f42ba1d05154c914f327a4917828c8b2a677247ccb2882a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses an approved base absent from the repository"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 158,
+      "column": 3,
+      "endLine": 158,
+      "endColumn": 148,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2aeb129b5fbd8d6816fe7b9145a63a70a31487b63003cce67824bfb6e91abe7c"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 160,
+      "column": 39,
+      "endLine": 160,
+      "endColumn": 79,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "0cc7d6dcf732d066c062f7643ab1b4689122cd3e8fa2f0474fc5de2071b31fc8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 160,
+      "column": 40,
+      "endLine": 160,
+      "endColumn": 52,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5c6ed7bebd9e1f619996b98acf3da2b00c10e53f855ee1fa044d7500845f4320"
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 161,
+      "column": 5,
+      "endLine": 161,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "295942860f50f168ba1f11ed3050df9b74022e5d748f2a71fbe2286bed1b4709",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 161,
+      "column": 5,
+      "endLine": 161,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d1a1c293c47f2a95e6e6def09cbcb5a2389f1edf1628f7c4f9982eb9e78a2207",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when main merged the head's first commit, so the merge base moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 161,
+      "column": 5,
+      "endLine": 161,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "fetched.revision.base === mergeBase",
+      "status": "generated",
+      "id": "67022903f3b7520b6bf7b879d5b248f77343a80967868283aadfa6e705211e8b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "relays when nothing moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 162,
+      "column": 2,
+      "endLine": 164,
+      "endColumn": 4,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "890f9026f92b2b79fb868b92f693afc61837c6d40326b84d5477d2d670ae8082",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/relay-approved.test.ts",
+          "path": [
+            "checkApproved",
+            "refuses when main merged the head's first commit, so the merge base moved"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/target.ts",
+      "line": 163,
+      "column": 3,
+      "endLine": 163,
+      "endColumn": 158,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "80eb6833b8d540ce90a30fcead25ad00679feb3ede387dd9187855cafa7f513a"
+    },
+    {
+      "file": "packages/github/src/provider.ts",
+      "line": 268,
+      "column": 9,
+      "endLine": 268,
+      "endColumn": 97,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2e91ca1a36d8df40948a68b8c0c57d9b51857924d77f9055b7007eb5b764e901",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/github/test/provider.test.ts",
+          "path": [
+            "provider identity",
+            "reads the repository's default branch beside the pull request's base"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 48,
+  "omitted": 0,
+  "unmutated": []
+}

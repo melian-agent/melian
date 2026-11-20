@@ -817,6 +817,64 @@ describe("runChecks feeding reviewChangeset", () => {
 		}
 	});
 
+	it("stores a policy notice for a Packwerk file Enola read that the head changes, beside the guardrails check's own", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, {
+			"melian.yaml": lines(
+				"tiers:",
+				"  fast: [guardrails, static.enola]",
+				"static:",
+				"  enola:",
+				"    enabled: true",
+			),
+			"packwerk.yml": lines('package_paths: ["packs/*"]'),
+			"packs/a/package.yml": lines("enforce_dependencies: true"),
+			"packs/b/package.yml": lines("enforce_dependencies: true"),
+		});
+		const head = commit(repo, {
+			"packs/a/package.yml": lines("enforce_dependencies: false"),
+			"packs/c/package.yml": lines("enforce_dependencies: false"),
+		});
+		const log = normaliseEnolaSarif(
+			'{"version":"2.1.0","runs":[{"results":[]}]}',
+			{ root: repo, version: "0.0.1" },
+			new Set(),
+		);
+		vi.spyOn(staticRunner, "runStaticTool").mockResolvedValue({
+			status: "ran",
+			log,
+			baseLog: log,
+			notes: [],
+			packwerk: ["packs/a/package.yml", "packs/b/package.yml", "packwerk.yml"],
+		});
+		const { harness, root, run } = await checks(base, head);
+		expect(
+			run.records.map((record) => [record.name, "findings" in record ? record.findings : record.status]),
+		).toEqual([
+			["guardrails", 0],
+			["static.enola", 1],
+		]);
+		const findings = await readFindings(harness, root.id, Revision.key({ base, head }), context);
+		expect(
+			findings.map((finding) => [
+				finding.ruleId,
+				finding.properties.path,
+				finding.properties.severity,
+				finding.properties.source,
+				finding.message.text,
+			]),
+		).toEqual([
+			[
+				"guardrail/policy-change-review",
+				"packs/a/package.yml",
+				"P2",
+				{ check: "static.enola", version: "0.0.1" },
+				"Review the change to packs/a/package.yml, which configures Enola's Packwerk check.",
+			],
+		]);
+	});
+
 	it("passes a clean change under the default fast tier and counts a static finding once the head adds one", {
 		timeout: 120_000,
 	}, async () => {

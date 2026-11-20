@@ -31,6 +31,7 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	type Storage,
+	type SubmissionId,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
@@ -1027,7 +1028,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record((await run).verdict).reason).toMatch(/, and skipped attacks 1, 3$/);
 	});
 
-	it("runs a round's probes one at a time, so each writes its head's tree alone", async () => {
+	it("runs a round's probes one at a time, so each writes its head's tree alone", { tags: ["macos"] }, async () => {
 		// Each probe logs when it starts, and takes long enough that two at once would start together. Its command ends in
 		// exec, so nothing after it runs.
 		const log = join(mkdtempSync(join(tmpdir(), "melian-probe-order-")), "log");
@@ -1118,7 +1119,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(requests[planner]).toEqual([]);
 	});
 
-	it("runs the prober on its own tier, model and time limit, and the planner on the level's", async () => {
+	it("runs the prober on its own tier, model and time limit, and the planner on the level's", {
+		tags: ["macos"],
+	}, async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "probing" }] });
 		const seen: { role: string; model: string }[] = [];
 		const on =
@@ -1692,7 +1695,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(heads).toHaveLength(2);
 	});
 
-	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", async () => {
+	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", {
+		tags: ["macos"],
+	}, async () => {
 		let id = "p0";
 		let heads = 0;
 		const { run } = await review(
@@ -2656,7 +2661,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.status).toBe("ran");
 	});
 
-	it("says a probe whose runner wrote no record of how it ended shows nothing", async () => {
+	it("says a probe whose runner wrote no record of how it ended shows nothing", { tags: ["macos"] }, async () => {
 		const { run, requests } = await review(
 			{
 				planner: plan,
@@ -2676,7 +2681,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(unrecorded).toMatch(/probe p[0-9]+ ended with no record of how, which shows nothing/);
 	});
 
-	it("says how a probe ended: timed out, cut, ended by a signal, or silent", async () => {
+	it("says how a probe ended: timed out, cut, ended by a signal, or silent", { tags: ["macos"] }, async () => {
 		const { run, requests } = await review(
 			{
 				planner: plan,
@@ -2844,7 +2849,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ended).not.toHaveProperty("budgetEnded");
 	});
 
-	it("counts the probes' time in seconds", async () => {
+	it("counts the probes' time in seconds", { tags: ["macos"] }, async () => {
 		const slow = `await new Promise((resolve) => setTimeout(resolve, 200));\n${failing}`;
 		const { run } = await review({ planner: plan, prober: probing(slow) });
 		const seconds = Number(/ran 1 probe in ([0-9.]+) s/.exec(record((await run).verdict).reason!)![1]);
@@ -3055,6 +3060,380 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(textOf(requests[prober]![2]!.at(-1)!)).toContain(
 			"The model reviewing this change failed, and you take over.",
 		);
+	});
+
+	// The refusal Codex gave the planner on pull requests #532 and #576, on 2026-11-20.
+	const flagged = () =>
+		fauxAssistantMessage("", {
+			stopReason: "error",
+			errorMessage:
+				"Codex error: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.",
+		});
+
+	it("moves a planner whose model's content filter refused the change to its next model, after its tool calls", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const reads = Array.from({ length: 13 }, () => on(call("read_file", { path: "src/load.ts" })));
+		const provider = fake.ref("first").provider;
+		const { run, requests } = await review(
+			{
+				planner: [...reads, on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual([...Array(14).fill("first"), "second", "second"]);
+		// The first model's reads stand, so the next is told to take over rather than start again.
+		expect(textOf(requests[planner]![14]!.at(-1)!)).toBe(handoverWording.continue);
+		expect(ran.reason).toContain(`${provider}/first refused the content, so ${provider}/second answered`);
+	});
+
+	it("fails a lens whose planner's every model refused the content, saying each refused", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const error = await failure(run);
+		expect(error.code).toBe("allModelsFailed");
+		const failed = record(error.verdict!);
+		expect(failed.status).toBe("failed");
+		expect(failed.reason).toContain(
+			`every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+		);
+	});
+
+	it("names the model that refused apart from one that hit its limit, when every model failed", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [flagged, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier failed; ${provider}/first refused the content`,
+		});
+	});
+
+	it("says nothing of a refusal when a lens moved on from a provider's limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{
+				planner: [limited, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+	});
+
+	it("says only that every model failed when every model hit its limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [limited, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({ status: "failed", reason: "every model of its tier failed" });
+	});
+
+	it("says which model answered the prober after its first model's content filter refused the plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [flagged, call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toContain(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered`,
+		);
+		expect(ran.reason).not.toContain(`; ${provider}/first refused`);
+	});
+
+	it("moves a planner's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [on(fauxAssistantMessage("Nothing.")), on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second", "second"]);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("moves a prober's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					fauxAssistantMessage("Done."),
+					flagged,
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("names an earlier refusal when the next model fails in a way that does not move on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, malformed], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; ${provider}/first refused the content`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when its prober then fails without moving on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, ...plan], prober: [malformed] },
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when the model that answered recorded no plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, fauxAssistantMessage("Nothing."), fauxAssistantMessage("Nothing.")], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "the planner recorded no attack plan",
+		});
+	});
+
+	it("keeps a reminder's own request ID, and adds the attempt only for a model it moved on to", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [fauxAssistantMessage("Nothing."), flagged, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		await run;
+		const ids: string[] = [];
+		for (let id = 1; id < 100; id++) {
+			const submission = await (await harness!.harness.submission(id as SubmissionId, backgroundContext))?.status(
+				backgroundContext,
+			);
+			if (submission?.requestId?.startsWith("lens:") === true) ids.push(submission.requestId);
+		}
+		const key = ids[0]!.replace(/:0$/, "");
+		expect(ids).toEqual([`${key}:0`, `${key}:plan`, `${key}:plan:1`, `${key}/prober:0`]);
+	});
+
+	it("still names a planner's refusal when its reminder goes to the model that answered", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [flagged, fauxAssistantMessage("Nothing."), ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("fails a lens whose planner's reminder every model refused, with the last model's own words", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [fauxAssistantMessage("Nothing."), flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+			error: `tried ${provider}/first, ${provider}/second; the last said: ${flagged().errorMessage}`,
+		});
+	});
+
+	it("counts a reminder's moves apart from its conversation's, from the model it moved on to", async () => {
+		const fake = createFakeModels({
+			models: [{ id: "first" }, { id: "second" }, { id: "third" }, { id: "probing" }],
+		});
+		const provider = fake.ref("first").provider;
+		let release: () => void = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let asked: () => void = () => {};
+		const reached = new Promise<void>((resolve) => {
+			asked = resolve;
+		});
+		const { run } = await review(
+			{
+				planner: [
+					flagged,
+					fauxAssistantMessage("Nothing."),
+					flagged,
+					async () => {
+						asked();
+						await held;
+						return plan[0]!;
+					},
+					plan[1]!,
+				],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`, `${provider}/third`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		try {
+			await reached;
+			const { tasks } = await harness!.harness.inspect(backgroundContext);
+			const attempts = tasks
+				.map(({ record }) => (record.state as { checkpoint?: { attempts?: Record<string, number> } }).checkpoint)
+				.find((checkpoint) => checkpoint?.attempts !== undefined)?.attempts;
+			const key = Object.keys(attempts ?? {}).find((each) => !each.endsWith(":plan"))!;
+			expect(attempts).toEqual({ [key]: 1, [`lens:${key}:plan`]: 2 });
+		} finally {
+			release();
+		}
+		expect(record((await run).verdict).status).toBe("ran");
 	});
 
 	it("fails a lens whose prober's every model failed, naming them", async () => {
@@ -4573,7 +4952,7 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		["was cut at its output limit", "yes x | head -c 40000"],
 		["was ended by a signal", "kill -9 $$"],
 		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
-	])("fails a level whose only probe of an attack %s", async (_, rewrite) => {
+	])("fails a level whose only probe of an attack %s", { tags: ["macos"] }, async (_, rewrite) => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(
 			passing,
@@ -4589,7 +4968,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
 	});
 
-	it("fails a level that answered one attack while every probe of another showed nothing", async () => {
+	it("fails a level that answered one attack while every probe of another showed nothing", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		let heads = 0;
 		const { run } = await review(
@@ -4648,7 +5029,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([]);
 	});
 
-	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", async () => {
+	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		const { run } = await ending(
 			passing,
@@ -4660,7 +5043,9 @@ describe("a review that requires probes", { timeout: 60_000 }, () => {
 		expect(gaps).toEqual([]);
 	});
 
-	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", async () => {
+	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", {
+		tags: ["macos"],
+	}, async () => {
 		const gaps: unknown[] = [];
 		let heads = 0;
 		const { run } = await review(

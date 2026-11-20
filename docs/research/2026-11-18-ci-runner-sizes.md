@@ -65,3 +65,16 @@ A shard is no faster than one 16 vCPU job and costs more. It would also change t
 ## Follow-up
 
 Two changes to the macOS job could shorten a run further, and neither is made here. It could wait for `check (24)` alone, which saves under a minute on 16 vCPU. Or it could start beside the Linux jobs, which would save its whole wait, about four minutes, but needs its file list chosen without the Linux report.
+
+## Measured afterwards
+
+Measured on 2026-11-20 for [issue #599](https://github.com/melian-agent/melian/issues/599#issuecomment-7030043903), from the Actions API's job and step times. This section corrects the time saved that Cost gives above. Medians are over successful `pull_request` runs: 484 on 4 vCPU, and 42 on 16 vCPU from 2026-11-13 to 2026-11-19.
+
+| | 4 vCPU | 16 vCPU |
+|---|---|---|
+| `check (24)` | 8.4 min | 4.7 min |
+| `check (22)` and `check (26)` | 8.7 and 8.2 | 4.2 and 3.9 |
+| `check (macos, 24)` | 3.0 | 5.9 |
+| Whole run, first job created to last job done | 12.2 (p90 20.1) | 11.1 (p90 12.4) |
+
+The Linux jobs sped up as this record measured, but a run saved about a minute, not 7.8, so a merge waits about two minutes less, not 15.6. The macOS job runs after every Linux job, so a run's time is the slowest Linux job's plus the macOS job's. On 2026-11-16, two days before this change landed, [issue #495](https://github.com/melian-agent/melian/issues/495) added `packages/pipeline/test/probing-level.test.ts` to the macOS job's files. The job's test step then grew from a daily median of 2.2 minutes to 5.4. The two changes landed in the same week, so the measured whole run barely moved. The 18.2-minute median above came from 30 runs of every kind, and this table counts successful pull request runs alone, so the two baselines differ. [The decision of 2026-11-20](../decisions/2026-11-20-macos-tests-run-beside-linux.md) starts the macOS tests beside the Linux jobs, the follow-up below.

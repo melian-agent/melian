@@ -5,6 +5,7 @@ export {
 	type CheckRunRecord,
 	checksExtension,
 	checksExtensionFor,
+	headCodeChecks,
 	type RunChecksInput,
 	type RunIdentity,
 	readCheckRecords,
@@ -140,12 +141,15 @@ export {
 	RuntimeSandbox,
 	type SandboxRuntime,
 } from "./probe.ts";
+export { type ProbingHost, probingHost } from "./probing.ts";
 export {
+	byMinting,
 	MembershipReader,
 	PullRequestRoundHistory,
 	type PullRequestRoundMember,
 	type PullRequestRoundSnapshot,
 } from "./pull-request-rounds.ts";
+export { RelayBatch, RelayRefusal, type RelayRefusalCode, type RelayRun, relayLimits } from "./record-relay.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";

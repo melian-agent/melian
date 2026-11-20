@@ -1,0 +1,103 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "9c07a791eef634f4dfa952eddde2043f96bb8366",
+    "head": "e51362a3fb4902f5aa43b0bafe3606d3848887eb"
+  },
+  "claimsIn": [
+    "packages/core/src/enola-graph.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/core/src/enola-graph.ts",
+      "line": 90,
+      "column": 9,
+      "endLine": 90,
+      "endColumn": 59,
+      "mutatorName": "MethodExpression",
+      "replacement": "[...new Set([...packages, packwerkConfig])]",
+      "status": "generated",
+      "id": "dc5976bd22e2579fd8b71f4511f73d1067d46e8fc19a9eb02465eb85523e7d49",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/packwerk-notices.test.ts",
+          "path": [
+            "EnolaFacts.packwerkFiles",
+            "names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml even without one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/enola-graph.ts",
+      "line": 90,
+      "column": 9,
+      "endLine": 90,
+      "endColumn": 52,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "dd44866d748e9f49947cce2906f1324c073a84f35066d4452e0cd36719e67845",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/packwerk-notices.test.ts",
+          "path": [
+            "EnolaFacts.packwerkFiles",
+            "names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml even without one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/enola-graph.ts",
+      "line": 90,
+      "column": 21,
+      "endLine": 90,
+      "endColumn": 50,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "cce5175943e9cb86c127cc2659eb4925434f23a337edb430aa6f91bb438a1652",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/packwerk-notices.test.ts",
+          "path": [
+            "EnolaFacts.packwerkFiles",
+            "names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml even without one"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 35,
+      "column": 37,
+      "endLine": 35,
+      "endColumn": 103,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4ee8069c22b6b2c5eb0eca18b2fae81676570ccca2019534538c221d6b068393"
+    }
+  ],
+  "total": 4,
+  "omitted": 0,
+  "unmutated": []
+}

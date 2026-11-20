@@ -45,6 +45,7 @@ export {
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
+	type ComparisonMiss,
 	type ComparisonUnmatch,
 	codexReviewSchema,
 	comparisonSchema,
@@ -249,6 +250,7 @@ export {
 	type GuardrailInput,
 	type GuardrailName,
 	guardrailLimits,
+	packwerkNotices,
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
@@ -414,10 +416,12 @@ export {
 	Adjudication as ComparisonAdjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
+	exportedMissReasons,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
-export { ComparisonExport } from "./comparison-export.ts";
+export { ComparisonExport, type MissCase, type MissesExport } from "./comparison-export.ts";
 export {
 	type ComparisonEntry,
 	ComparisonSet,
@@ -450,6 +454,7 @@ export {
 	type GitOptions,
 	type GitResult,
 	git,
+	gitEnvironment,
 	gitFailure,
 	gitOutput,
 	gitOutputBytes,

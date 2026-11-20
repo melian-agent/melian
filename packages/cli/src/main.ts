@@ -3,6 +3,8 @@ import {
 	ComparisonAdjudication,
 	ComparisonError,
 	dismissalReason,
+	type ExportedMissReason,
+	exportedMissReasons,
 	FindingError,
 	type StoredComparisonAdjudication,
 	visibleText,
@@ -15,6 +17,7 @@ import {
 	comparisonBacklog,
 	comparisonStats,
 	exportComparison,
+	exportMisses,
 	matchByHand,
 	parseImportSource,
 } from "./compare.ts";
@@ -23,6 +26,7 @@ import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
+import { relayRecords } from "./relay.ts";
 import { storePrune } from "./store.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
@@ -44,6 +48,10 @@ Commands:
   findings <range|#pr> --records dir:<path>
                          Decide each round a record store holds at the target's revision from its records alone,
                          under the base's policy, when that policy sets trust.writers: true.
+  records relay <#pr> --from dir:<path> --expect-base <sha> --expect-head <sha> [--check]
+                         Add the records a round of the pull request left in a directory store to melian/state,
+                         refusing the whole batch unless the head's job may hand over every record in it. --check
+                         checks the batch the same way and writes nothing.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -69,6 +77,10 @@ Commands:
                          List owed goldens by lens; --markdown prints BACKLOG.md's generated section.
   compare export <range|#pr> [--out <path>] [--json]
                          Write the local comparison record as markdown, or its whole document as JSON.
+  compare misses <range|#pr> [--reason <reason>]... [--out <path>]
+                         Write each valid miss with a reason --reason names, needs-execution by default, as a
+                         misses file for MELIAN_EVAL_MISSES: needs-execution for the probing measurement,
+                         owned-missed for lens parity or a lens's goldens, no-owner for a new rule or lens.
   tools [fetch <name>]   List pinned tool readiness, or fetch and verify one tool. Exits 0 success, 1 failure.
   mutants list <range|#pr> [<file>...] [--claims-in <file>]... [--json] [--limit N|--all]
                          Enumerate changed production lines without running tests or head code. --claims-in records a
@@ -115,8 +127,13 @@ Options:
   --apply               Remove what the dry run lists (store prune).
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
+                         compare misses takes it again for each miss reason to write. It keeps each round's
+                         misses from a reviewer's file, so a withdrawn one stays and a repeated one appears once
+                         per round; only a GitHub thread a later round compares replaces its earlier miss. Read
+                         the misses and enter each one's lines by hand before a measurement uses them.
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
-  --from <source>        Where to import external findings from; repeat it for several (compare).
+  --from <source>        Where to import external findings from; repeat it for several (compare). records relay
+                         takes one, the directory store its round wrote.
   --verdict <value>     valid, noise, or duplicate (compare adjudicate).
   --severity <value>    P0, P1, P2, P3, or nit (compare adjudicate).
   --of <finding-id>    The finding duplicated (compare adjudicate).
@@ -126,7 +143,7 @@ Options:
   --since <date>        Comparisons recorded since this ISO date (compare stats).
   --last <n>            The last n changesets compared (compare stats).
   --markdown            Print BACKLOG.md's generated section (compare backlog).
-  --out <path>          Write the export to this path (compare export).
+  --out <path>          Write the export to this path (compare export, compare misses).
   --limit <N>           List at most N mutants (default 200); --all lists every mutant (mutants list).
   --timeout <seconds>    End the probe after this many seconds, at most 600 (default 30) (probe).
   --no-walkthrough       Omit the walkthrough (review, publish).
@@ -146,6 +163,24 @@ function readableReason(reason: string): string {
 		if (error instanceof FindingError) throw new UsageError(error.message);
 		throw error;
 	}
+}
+
+function single(values: readonly string[] | undefined, command: string): string | undefined {
+	if (values !== undefined && values.length > 1) throw new UsageError(`${command} takes one --reason`);
+	return values?.[0];
+}
+
+function missesReasons(values: readonly string[] | undefined): ExportedMissReason[] {
+	if (values === undefined) return ["needs-execution"];
+	for (const value of values) {
+		if (value === "out-of-scope")
+			throw new UsageError("compare misses never writes an out-of-scope miss, since no lens owed it");
+		if (!(exportedMissReasons as readonly string[]).includes(value))
+			throw new UsageError(
+				`${value} is not a miss reason; compare misses takes owned-missed, no-owner or needs-execution`,
+			);
+	}
+	return [...new Set(values as ExportedMissReason[])];
 }
 
 function one(positionals: readonly string[], command: string, what: string): string {
@@ -183,12 +218,13 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				"require-probes": { type: "boolean", default: false },
 				"probe-gaps": { type: "string" },
 				records: { type: "string" },
+				check: { type: "boolean", default: false },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
 				timeout: { type: "string" },
 				notes: { type: "boolean", default: false },
-				reason: { type: "string" },
+				reason: { type: "string", multiple: true },
 				verdict: { type: "string" },
 				severity: { type: "string" },
 				out: { type: "string" },
@@ -239,10 +275,11 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
-		if (name !== "review" && (expectBase !== undefined || expectHead !== undefined))
-			throw new UsageError("--expect-base and --expect-head are only available for review");
+		if (name !== "records" && values.check) throw new UsageError("--check is only available for records relay");
+		if (name !== "review" && name !== "records" && (expectBase !== undefined || expectHead !== undefined))
+			throw new UsageError("--expect-base and --expect-head are only available for review and records relay");
 		if ((expectBase === undefined) !== (expectHead === undefined))
-			throw new UsageError("review takes --expect-base and --expect-head together");
+			throw new UsageError(`${name} takes --expect-base and --expect-head together`);
 		const expected =
 			expectBase === undefined || expectHead === undefined ? undefined : { base: expectBase, head: expectHead };
 		switch (name) {
@@ -304,6 +341,21 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					},
 				);
 			}
+			case "records": {
+				const [subcommand, ...targets] = rest;
+				if (subcommand !== "relay") throw new UsageError("records takes a subcommand: relay");
+				const target = one(targets, "records relay", "pull request");
+				if (parseTarget(target).kind !== "pullRequest")
+					throw new UsageError('records relay takes a pull request such as "#12", not a range');
+				const [from, ...more] = values.from;
+				if (from === undefined || more.length > 0 || !/^dir:./.test(from))
+					throw new UsageError('records relay takes one --from, a store such as "dir:<path>"');
+				if (expected === undefined)
+					throw new UsageError(
+						"records relay takes --expect-base and --expect-head, the base and head its round reviewed",
+					);
+				return await relayRecords(scoped, target, { from, expect: expected, check: values.check });
+			}
 			case "status":
 				if (one(rest, name, "subcommand") !== "merge-group") throw new UsageError("status takes merge-group");
 				return await (
@@ -339,14 +391,16 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (!/^[0-9a-f]{16}$/.test(id)) {
 					throw new UsageError(`${id} is not a finding ID; an ID is 16 hex digits, as melian findings prints it`);
 				}
-				if (values.reason === undefined) throw new UsageError("dismiss needs --reason <text>");
-				return await dismiss(scoped, target, id, readableReason(values.reason), { only: values.only });
+				const reason = single(values.reason, "dismiss");
+				if (reason === undefined) throw new UsageError("dismiss needs --reason <text>");
+				return await dismiss(scoped, target, id, readableReason(reason), { only: values.only });
 			}
 			case "compare": {
 				const [first, ...others] = rest;
 				if (
 					values.round !== undefined &&
-					(["export", "stats", "backlog"].includes(first ?? "") || rest.some((target) => /^#\d+$/.test(target)))
+					(["export", "misses", "stats", "backlog"].includes(first ?? "") ||
+						rest.some((target) => /^#\d+$/.test(target)))
 				)
 					throw new UsageError("--round is available for range comparison writes only");
 				if (first === "refresh") {
@@ -360,6 +414,13 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				if (first === "export") {
 					return await exportComparison(scoped, one(others, "compare export", "range or pull request"), {
 						json: values.json,
+						...(values.out === undefined ? {} : { out: values.out }),
+					});
+				}
+				if (first === "misses") {
+					if (values.json) throw new UsageError("compare misses always writes JSON; it takes no --json");
+					return await exportMisses(scoped, one(others, "compare misses", "range or pull request"), {
+						reasons: missesReasons(values.reason),
 						...(values.out === undefined ? {} : { out: values.out }),
 					});
 				}
@@ -399,7 +460,7 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						fields = ComparisonAdjudication.create({
 							verdict: values.verdict,
 							severity: values.severity,
-							reason: values.reason,
+							reason: single(values.reason, "compare adjudicate"),
 							golden: values.golden,
 							of: values.of,
 							rule: values.rule,

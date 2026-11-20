@@ -1,11 +1,13 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
+	type ChangedFile,
 	Changeset,
 	checksOfTier,
 	type Finding,
 	type FindingEvidence,
 	type FindingSource,
+	gitEnvironment,
 	Lens,
 	type LensLevels,
 	type LensTier,
@@ -104,9 +106,14 @@ export class ProbingCombination implements ProbingRoute {
 		return this.prober !== undefined;
 	}
 
-	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] } {
+	routed(
+		config: MelianConfig,
+		lenses: readonly Lens[],
+		files: readonly ChangedFile[],
+	): { config: MelianConfig; lenses: readonly Lens[] } {
 		const tier = config.stages["pull-request"] ?? "full";
 		const runs = checksOfTier(config, tier);
+		const paths = files.flatMap((file) => (file.oldPath === undefined ? [file.path] : [file.oldPath, file.path]));
 		for (const name of this.lenses) {
 			// `Lens.load` returns one lens of a name for each folder that defines it, and every one is rewritten below.
 			const variants = lenses.filter((each) => each.name === name);
@@ -120,6 +127,10 @@ export class ProbingCombination implements ProbingRoute {
 			if (!runs.includes(`lens.${name}`))
 				throw new ProbeLensRefusal(
 					`MELIAN_EVAL_PROBE_LENSES names ${name}, which the review's ${tier} tier does not run`,
+				);
+			if (Lens.select(variants, config, paths).length === 0)
+				throw new ProbeLensRefusal(
+					`MELIAN_EVAL_PROBE_LENSES names ${name}, which reviews none of the changed files`,
 				);
 		}
 		// A lens whose level already probes follows the combination too, or the arm without probes would still probe.
@@ -251,6 +262,12 @@ export interface MissUnseen {
 	readonly why: "not run" | "never shown";
 }
 
+/** Why a miss cannot be scored, and which of the checks {@link Miss.reviewers} makes refused it. */
+export interface MissRefusal {
+	readonly check: "file unchanged" | "file uncovered" | "rule undeclared" | "head unreadable" | "lines unreadable";
+	readonly refusal: string;
+}
+
 /** A `needs-execution` miss: a finding a review missed in a range of a clone, which only running code would catch. */
 export class Miss {
 	readonly name: string;
@@ -285,7 +302,10 @@ export class Miss {
 			throw new Error(
 				`${path} must be a JSON array of misses, each { name, repo, base, head, file, rule?, alternativeRules?, fix?, lines? }`,
 			);
+		const names = new Set<string>();
 		for (const { name, rule, alternativeRules, lines } of parsed) {
+			if (names.has(name)) throw new Error(`${path} names more than one miss called ${visibleText(name)}`);
+			names.add(name);
 			if (rule === undefined && lines === undefined)
 				throw new Error(`${path}: ${visibleText(name)} names no rule, so it needs lines`);
 			if (rule === undefined && alternativeRules !== undefined)
@@ -327,14 +347,19 @@ export class Miss {
 	 * lenses are those the review runs that cover the file and declare one of its rules, or all of them when it names none.
 	 */
 	async reviewers(
-		target: Pick<ReviewTarget, "range" | "base"> & { readonly head: string },
+		target: Pick<ReviewTarget, "range" | "base" | "policy"> & { readonly head: string },
 		review: MissReview,
-	): Promise<{ readonly lenses: readonly string[] } | { readonly refusal: string }> {
-		const refused = (refusal: string) => ({ refusal: `${this.name}: ${refusal}` });
+	): Promise<{ readonly lenses: readonly string[] } | MissRefusal> {
+		const refused = (check: MissRefusal["check"], refusal: string) => ({
+			check,
+			refusal: `${this.name}: ${refusal}`,
+		});
 		const { revision } = await Changeset.resolve(this.repo, target.range);
 		const changed = revision.files.find((file) => file.path === this.file);
-		if (changed === undefined) return refused(`${this.file} is not among the files ${target.range} changes`);
-		const policy = { kind: "revision", commit: target.base } as const;
+		if (changed === undefined)
+			return refused("file unchanged", `${this.file} is not among the files ${target.range} changes`);
+		const policy = { kind: "revision", commit: target.policy ?? target.base } as const;
+		const whose = target.policy === undefined ? "the base's" : `${target.policy}'s`;
 		const paths = revision.paths();
 		const config = (await loadConfig(this.repo, policy, ".")).config;
 		const tier = checksOfTier(config, "full");
@@ -347,28 +372,33 @@ export class Miss {
 			)
 			.map(({ lens }) => lens);
 		const covering = reviewable.filter(({ name }) => review === "whole" || name === probingLens);
-		const reviewing = review === "lens" ? `the ${probingLens} lens` : "a lens in the base's full tier";
-		if (covering.length === 0) return refused(`the base's policy does not let ${reviewing} review ${this.file}`);
+		const reviewing = review === "lens" ? `the ${probingLens} lens` : `a lens in ${whose} full tier`;
+		if (covering.length === 0)
+			return refused("file uncovered", `${whose} policy does not let ${reviewing} review ${this.file}`);
 		const declares = (lens: Lens, rule: string) => lens.rules.some(({ id }) => id === rule);
 		// Each mode checks the spelling against the whole tier, so one misses file serves both.
 		const undeclared = this.rules.find((rule) => !reviewable.some((lens) => declares(lens, rule)));
 		if (undeclared !== undefined)
 			return refused(
-				`${undeclared} is not a rule any lens in the base's full tier that reviews ${this.file} declares`,
+				"rule undeclared",
+				`${undeclared} is not a rule any lens in ${whose} full tier that reviews ${this.file} declares`,
 			);
 		const responsible = covering.filter(
 			(lens) => this.rules.length === 0 || this.rules.some((rule) => declares(lens, rule)),
 		);
 		if (responsible.length === 0)
-			return refused(`${this.rules.join(" or ")} is not a rule the base's ${probingLens} lens declares`);
+			return refused(
+				"rule undeclared",
+				`${this.rules.join(" or ")} is not a rule ${whose} ${probingLens} lens declares`,
+			);
 		const read = await readRevisionFile(this.repo, target.head, this.file).catch((error: unknown) => {
 			if (error instanceof RevisionError && unreadable.includes(error.code)) return error;
 			throw error;
 		});
 		if (read instanceof RevisionError)
-			return refused(`${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`);
+			return refused("head unreadable", `${read.message}${read.code === "notFound" ? "" : ` at ${target.head}`}`);
 		const { content, truncated } = read;
-		if (content === "") return refused(`${this.file} is empty at ${target.head}`);
+		if (content === "") return refused("head unreadable", `${this.file} is empty at ${target.head}`);
 		const lines = content.split("\n");
 		if (truncated || lines.at(-1) === "") lines.pop();
 		if (this.lines === undefined ? !truncated || lines.length > 0 : this.lines[1] <= lines.length)
@@ -377,9 +407,11 @@ export class Miss {
 			};
 		if (truncated)
 			return refused(
+				"lines unreadable",
 				`a lens reads only the first ${lines.length} lines of ${this.file} at ${target.head}, which it cuts at ${revisionLimits.fileBytes} bytes`,
 			);
 		return refused(
+			"lines unreadable",
 			`lines ${this.lines![0]}-${this.lines![1]} run past ${this.file}, which has ${lines.length} lines at ${target.head}`,
 		);
 	}
@@ -438,6 +470,36 @@ export class Miss {
 		return unseen;
 	}
 
+	/**
+	 * Whether a review found the miss, by `match`: found or missed, or no verdict when no responsible lens saw the miss or
+	 * only a sighting outside hand-entered lines answered it, with the line a measurement prints.
+	 */
+	async judge(
+		run: RangeRun,
+		match: MissMatch,
+		target: ReviewTarget,
+		location: MissLocation,
+		lenses: readonly string[],
+	): Promise<{ readonly said: string; readonly found?: boolean; readonly unseen?: readonly MissUnseen[] }> {
+		const hit = match.hits.length > 0;
+		const unseen = await this.unscoped(run, target, location, lenses);
+		const unscoped = unseen === undefined ? undefined : this.unseenReason(unseen, location);
+		const seen = unseen === undefined ? {} : { unseen };
+		if (unscoped !== undefined) return { said: `unadjudicated, no score: ${unscoped}`, ...seen };
+		// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
+		if (match.matched === "lines" || (!hit && match.near.length === 0))
+			return { said: hit ? "found" : "missed", found: hit, ...seen };
+		if (match.matched !== "fix hunks")
+			return { said: "unadjudicated, no score: matched by file and rule alone", ...seen };
+		const span = (ranges: readonly (readonly [number, number])[]) =>
+			ranges.map(([first, last]) => `${first}-${last}`).join(", ");
+		const overlaps = match.hunks.filter((hunk) => match.hits.some((each) => each.hunks.includes(hunk)));
+		return {
+			said: `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${this.file} (${span(match.hunks)}), and the sightings overlap ${overlaps.length === 0 ? "none of them" : span(overlaps)}`,
+			...seen,
+		};
+	}
+
 	/** Why the miss has no score, from what {@link unscoped} found of each lens. */
 	unseenReason(unseen: readonly MissUnseen[], location: MissLocation): string {
 		const what =
@@ -461,6 +523,7 @@ export class Miss {
 	private commit(name: string): string {
 		return execFileSync("git", ["-C", this.repo, "rev-parse", "--verify", "--end-of-options", `${name}^{commit}`], {
 			encoding: "utf8",
+			env: gitEnvironment(),
 			// Unpiped, git's stderr reaches the terminal raw, and a misses file's path can carry escapes.
 			stdio: ["ignore", "pipe", "pipe"],
 		}).trim();
@@ -468,20 +531,23 @@ export class Miss {
 
 	/**
 	 * The range to review, between the commits its base and head resolve to now, so every pass reviews the same code,
-	 * under the base's policy: in `lens` mode `trust-boundary` alone, and in `whole` mode the base's `full` tier. Every
-	 * level of a lens that probes is its `deep`, `trust-boundary` alone in `lens` mode and each of `probeLenses` in
-	 * `whole`. Its head is the reviewer's own only when `trust` vouches for both commits, since the base's policy decides
-	 * what a probe may read.
+	 * under the base's policy, or that of the commit `policyName` resolves to in the clone: in `lens` mode
+	 * `trust-boundary` alone, and in `whole` mode the policy's `full` tier. Every level of a lens that probes is its
+	 * `deep`, `trust-boundary` alone in `lens` mode and each of `probeLenses` in `whole`. Its head is the reviewer's own
+	 * only when `trust` vouches for the base, the head and the policy commit, since the policy decides what a probe may
+	 * read. Throws when `policyName` names no commit in the clone.
 	 */
 	target(
 		trust: ProbeTrust,
 		review: MissReview = "lens",
 		probeLenses: readonly string[] = [probingLens],
+		policyName?: string,
 	): ReviewTarget & { readonly head: string } {
 		const probes = review === "lens" ? [probingLens] : probeLenses;
 		const base = this.commit(this.base);
 		const head = this.headCommit();
-		const unvouched = [base, head].filter((commit) => !trust.vouches(commit));
+		const policy = policyName === undefined ? undefined : this.commit(policyName);
+		const unvouched = [...new Set([base, head, policy ?? base])].filter((commit) => !trust.vouches(commit));
 		const writer: WriterTrust =
 			unvouched.length === 0
 				? { trusted: true, by: "reviewer" }
@@ -492,6 +558,7 @@ export class Miss {
 			head,
 			range: `${base}...${head}`,
 			writer,
+			...(policy === undefined ? {} : { policy }),
 			scope: (config, lenses) => ({
 				config: {
 					...config,
@@ -625,6 +692,8 @@ export class ProbingSettings {
 	readonly missReview: MissReview;
 	readonly trust: ProbeTrust;
 	readonly out: string | undefined;
+	/** The commit whose policy reviews every miss, as `MELIAN_EVAL_POLICY_COMMIT` names it, or each miss's base. */
+	readonly policy: string | undefined;
 
 	private constructor(fields: {
 		combinations: readonly ProbingCombination[];
@@ -639,6 +708,7 @@ export class ProbingSettings {
 		missReview: MissReview;
 		trust: ProbeTrust;
 		out: string | undefined;
+		policy: string | undefined;
 	}) {
 		this.combinations = fields.combinations;
 		this.probeLenses = fields.probeLenses;
@@ -652,6 +722,7 @@ export class ProbingSettings {
 		this.missReview = fields.missReview;
 		this.trust = fields.trust;
 		this.out = fields.out;
+		this.policy = fields.policy;
 	}
 
 	/** Parses the settings, throwing on any malformed one, before anything reaches a provider. */
@@ -694,6 +765,10 @@ export class ProbingSettings {
 			);
 		if (set !== "goldens" && misses === undefined)
 			throw new Error(`MELIAN_EVAL_PROBE_SET=${set} needs MELIAN_EVAL_MISSES`);
+		if (set !== "misses" && (probeLenses.length !== 1 || probeLenses[0] !== probingLens))
+			throw new Error(
+				`MELIAN_EVAL_PROBE_LENSES names ${probeLenses.map(visibleText).join(", ")}, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses`,
+			);
 		const model = env.MELIAN_EVAL_MODEL || undefined;
 		if (model !== undefined) parseModelReference(model, "every tier", "MELIAN_EVAL_MODEL");
 		return new ProbingSettings({
@@ -709,6 +784,7 @@ export class ProbingSettings {
 			missReview,
 			trust: ProbeTrust.parse(env.MELIAN_EVAL_PROBE_TRUST),
 			out: env.MELIAN_EVAL_PROBE_OUT || undefined,
+			policy: env.MELIAN_EVAL_POLICY_COMMIT || undefined,
 		});
 	}
 
@@ -868,7 +944,7 @@ async function measured(
 			);
 		const assessed = await Promise.all(
 			loaded.map(async (miss) => {
-				const target = miss.target(settings.trust, review, settings.probeLenses);
+				const target = miss.target(settings.trust, review, settings.probeLenses, settings.policy);
 				return { miss, target, reviewers: await miss.reviewers(target, review) };
 			}),
 		);
@@ -884,7 +960,7 @@ async function measured(
 		const unvouched = misses.filter(({ target }) => !target.writer.trusted).map(({ miss }) => miss.name);
 		if (settings.probes && unvouched.length > 0)
 			throw new Error(
-				`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head of ${unvouched.join(", ")}, so their probes cannot run`,
+				`MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head${settings.policy === undefined ? "" : " and policy commit"} of ${unvouched.join(", ")}, so their probes cannot run`,
 			);
 		if (settings.probes) {
 			const availability = await runners.availability();
@@ -911,6 +987,7 @@ async function measured(
 				fix: miss.fix,
 				lines: miss.lines,
 				baseCommit: target.base,
+				...(target.policy === undefined ? {} : { policyCommit: target.policy }),
 				headCommit: target.head,
 				location,
 			})),
@@ -1042,29 +1119,9 @@ async function measured(
 				});
 				if (scored === undefined) continue;
 				const { run, match } = scored;
-				const hit = match.hits.length > 0;
-				const unseen = await miss.unscoped(run, target, location, lenses);
-				const unscoped = unseen === undefined ? undefined : miss.unseenReason(unseen, location);
-				// Only a hand-entered range decides; elsewhere any sighting at the file under the rule may be another defect's.
-				const unadjudicated =
-					unscoped !== undefined || (match.matched !== "lines" && (hit || match.near.length > 0));
-				if (unadjudicated) failed.push(miss.name);
+				const { said, found: hit, unseen } = await miss.judge(run, match, target, location, lenses);
+				if (hit === undefined) failed.push(miss.name);
 				else if (hit) found += 1;
-				const span = (ranges: readonly (readonly [number, number])[]) =>
-					ranges.map(([first, last]) => `${first}-${last}`).join(", ");
-				const overlapped = ({ hunks, hits }: Extract<MissMatch, { matched: "fix hunks" }>) => {
-					const overlaps = hunks.filter((hunk) => hits.some((each) => each.hunks.includes(hunk)));
-					return overlaps.length === 0 ? "none of them" : span(overlaps);
-				};
-				const said = !unadjudicated
-					? hit
-						? "found"
-						: "missed"
-					: unscoped !== undefined
-						? `unadjudicated, no score: ${unscoped}`
-						: match.matched === "fix hunks"
-							? `unadjudicated, no score: the fix changed ${match.hunks.length === 1 ? "1 hunk" : `${match.hunks.length} hunks`} in ${miss.file} (${span(match.hunks)}), and the sightings overlap ${overlapped(match)}`
-							: "unadjudicated, no score: matched by file and rule alone";
 				const foundBy = new Map(match.hits.map(({ sightedBy }) => [JSON.stringify(sightedBy), sightedBy]));
 				const probedBy = run.telemetry.stages
 					.filter((stage) => stage.role === "prober" && stage.outcome === "completed")
@@ -1072,9 +1129,9 @@ async function measured(
 				record(run, `${combination.label} pass ${pass} ${miss.name}: ${said}`, {
 					name: miss.name,
 					kind: "miss",
-					...(unadjudicated ? {} : { found: hit }),
+					...(hit === undefined ? {} : { found: hit }),
 					...match,
-					...(hit && !unadjudicated ? { foundBy: [...foundBy.values()] } : {}),
+					...(hit === true ? { foundBy: [...foundBy.values()] } : {}),
 					probedBy: [...new Set(probedBy)].sort(),
 					...(unseen === undefined ? {} : { unseen }),
 				});

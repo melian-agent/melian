@@ -5,6 +5,7 @@ import { dirname, posix } from "node:path";
 import {
 	CheckError,
 	type EnolaSnapshot,
+	gitEnvironment,
 	type MutationSettings,
 	type MutationSkipCause,
 	mutationSkips,
@@ -83,6 +84,8 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
+			/** The Packwerk files Enola read at the base or the head, whose change draws a policy notice. */
+			readonly packwerk?: readonly string[];
 	  }
 	| {
 			readonly status: "skipped";
@@ -493,7 +496,10 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	if (tool === "enola") return { from: "missing" };
 	const { bin, melian } = toolBinaries[tool];
 	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
-	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
+	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], {
+		encoding: "utf8",
+		env: gitEnvironment(),
+	});
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
 	try {
 		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch, as a missing install does.
