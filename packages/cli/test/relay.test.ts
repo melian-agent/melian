@@ -273,6 +273,22 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 			expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
 		});
 
+		it.each([false, true])(
+			"relays the approved base's round when the tip, trusting writers too, adds a check, with --check %s",
+			async (checkOnly) => {
+				const { check, account, round, relay, onState } = await pullRequest({
+					mainMoved: { "melian.yaml": trusting.replace("[static.biome]", "[static.biome, static.tsc]") },
+				});
+				const code = await relay(
+					await artefact(check, account, round),
+					undefined,
+					...(checkOnly ? ["--check"] : []),
+				);
+				expect(code).toBe(0);
+				if (!checkOnly) expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+			},
+		);
+
 		it("refuses when only the base's tip trusts writers", async () => {
 			const { check, account, round, relay, onState, err } = await pullRequest({
 				policy: "tiers:\n  full: [static.biome]\n",
