@@ -45,7 +45,6 @@ import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import {
-	citedProof,
 	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
@@ -486,7 +485,7 @@ describe("the findings document", () => {
 			expect((await lifecycle(harness, atX.properties.id))?.status).toBe("new");
 		});
 
-		it("reopens a dismissal the host's accumulated proof no longer holds, as a reader of the shared dismissal does", async () => {
+		it("reopens a dismissal the host's accumulated proof no longer holds", async () => {
 			const lib = snippetHash("+export const run = eval;");
 			const util = snippetHash("+export const parse = JSON.parse;");
 			const affected = (proof: { file: string; hash: string }[]) =>
@@ -518,34 +517,6 @@ describe("the findings document", () => {
 			const last = affected([a]);
 			await root.commit((tx) => upsertFinding(tx, root.id, last, "rev3", changed), context);
 			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
-
-			// A reader holds the rounds it was shared, each sighting as its record stored it.
-			const stored = (finding: Finding) => {
-				const { status: _, ...properties } = finding.properties;
-				return { ...finding.toJSON(), properties } as StoredFinding;
-			};
-			const readWith = (shared: readonly Finding[]) =>
-				mergeSightings(
-					[stored(last)],
-					[],
-					[input.source],
-					new Map([
-						[
-							first.properties.id,
-							[
-								{
-									...dismissal,
-									trigger: trigger!,
-									cited: citedProof(shared.map(stored)).get(first.properties.id) ?? [],
-								},
-							],
-						],
-					]),
-					changed,
-				).map((each) => each.properties.status);
-			expect(readWith([first, second, last])).toEqual(["new"]);
-			// A round that was never shared cannot be remembered, so without the second the reader keeps the dismissal.
-			expect(readWith([first, last])).toEqual(["dismissed"]);
 		});
 
 		it("reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger", async () => {
@@ -579,12 +550,11 @@ describe("the findings document", () => {
 			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
 
 			const { status: _, ...properties } = second.properties;
-			// No round since the dismissal but the one read, so the reader holds no cited hunk, as the host held none.
 			const read = mergeSightings(
 				[{ ...second.toJSON(), properties } as StoredFinding],
 				[],
 				[input.source],
-				new Map([[first.properties.id, [{ ...dismissal, trigger: trigger!, cited: [] }]]]),
+				new Map([[first.properties.id, [{ ...dismissal, trigger: trigger! }]]]),
 				[a],
 			);
 			expect(read.map((each) => each.properties.status)).toEqual(["new"]);

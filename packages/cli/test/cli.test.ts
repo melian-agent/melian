@@ -1237,6 +1237,34 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(written.map(({ key, payload }) => [key, (payload as { reason: string }).reason])).toEqual([[id, reason]]);
 	});
 
+	it("says a push ended a shared dismissal, and to dismiss it again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(
+			melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", `dir:${store}`], env).status,
+		).toBe(0);
+		const dismissedAt = `${git(repo, "merge-base", "trusting", "HEAD")}..${git(repo, "rev-parse", "HEAD")}`;
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).toContain(`it was dismissed at revision ${dismissedAt}`);
+		expect(notices[0]).toContain("as after a push");
+		expect(notices[0]).toContain(
+			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason <text> --records dir:${store}`,
+		);
+		expect(read.stdout).toContain(id);
+	});
+
 	it.each([
 		["sets trust.writers: false", "trust:\n  writers: false\n"],
 		["leaves trust.writers at its default", ""],

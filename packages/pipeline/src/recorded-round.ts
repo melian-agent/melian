@@ -2,8 +2,6 @@ import {
 	type AccountPayload,
 	Adjudication,
 	type ChangedFile,
-	Changeset,
-	ChangesetError,
 	type CheckPayload,
 	type CheckRecord,
 	type ConfigFor,
@@ -25,7 +23,6 @@ import {
 } from "@melian-agent/core";
 import { configsFor } from "./configurations.ts";
 import {
-	citedProof,
 	mergeSightings,
 	type Producer,
 	type SharedDismissal,
@@ -71,8 +68,27 @@ export type RecordedRoundContents = {
 	readonly sightings: readonly StoredFinding[];
 	/** The proving hunks of the revision, which a dismissal's trigger is met against. */
 	readonly hunks: readonly ProvingHunk[];
-	/** Every dismissal record of the round's changeset that counts and that no other supersedes, in record ID order. */
+	/**
+	 * Every dismissal record of the round's changeset that counts, that no other supersedes, and that still holds, in
+	 * record ID order.
+	 */
 	readonly dismissals: readonly SharedDismissalRecord[];
+	/** Every such dismissal a round at another revision than the one it was made at ended, in record ID order. */
+	readonly ended: readonly EndedDismissal[];
+};
+
+/** A shared dismissal that a round at another revision ended, as a push does, until someone dismisses again. */
+export type EndedDismissal = {
+	/** The ID of the finding it dismissed. */
+	readonly finding: string;
+	/** The dismissal record's ID. */
+	readonly record: string;
+	/** The revision it was made at, the only one it holds for. */
+	readonly madeAt: string;
+	/** The round that reviewed another revision. */
+	readonly round: string;
+	/** The revision that round reviewed, if it names one. */
+	readonly at: string | undefined;
 };
 
 // The decided pieces a round's records hold, or why they cannot stand for the round.
@@ -89,21 +105,19 @@ type Pieces =
 
 type Decided = Exclude<Pieces, { readonly refused: string }>;
 
-// A dismissal record with what each round since it sighted of its finding, which the revision that round reviewed
-// decides before the dismissal can stand.
-type PendingDismissal = { readonly dismissal: SharedDismissalRecord; readonly since: readonly SinceRound[] };
-type SinceRound = {
-	readonly round: string;
-	readonly revision: string | undefined;
-	readonly sightings: readonly StoredFinding[];
-};
+// A dismissal record with every sighting of its finding in the rounds since it, all at the revision it was made at, or
+// the round since it that reviewed another revision and so ended it.
+type PendingDismissal =
+	| { readonly dismissal: SharedDismissalRecord; readonly sightings: readonly StoredFinding[] }
+	| { readonly ended: EndedDismissal };
 
 /**
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
  * verdict is decided from the records the round names by ID and nothing else, so it never passes a round the review
  * that wrote it would not. A round whose records are missing, refused, or do not account for every check reads as
  * not reviewed. A finding reads as dismissed when a dismissal record of the changeset that counts, and that no other
- * record of its finding supersedes, still meets every sighting by the host's reopen rule, and as new otherwise. A finding the host holds dismissed by
+ * record of its finding supersedes, was made at the revision the round reviewed, no round since it reviewed another,
+ * and every sighting since meets it by the host's reopen rule; it reads as new otherwise. A finding the host holds dismissed by
  * inheritance from another finding's dismissal reads as new here, so it blocks where the host's verdict would not.
  */
 export class RecordedRound {
@@ -137,38 +151,27 @@ export class RecordedRound {
 
 	/**
 	 * What the round's records hold at `revision`, or why they cannot stand for the round there: a round is read only at
-	 * the revision it reviewed, since a dismissal's trigger is met against that revision's hunks. A dismissal stands only
-	 * if every sighting of its finding in a round since it still meets it at the revision that round reviewed, as the
-	 * host tested each when it was seen. Each such revision is read from the checkout at `repoRoot` by its base and
-	 * head, so a checkout that lacks one of their commits, as a shallow clone may, refuses the round and names it.
+	 * the revision it reviewed, since a dismissal's trigger is met against that revision's hunks. A dismissal holds only
+	 * for a round at the revision it was made at, and only while every round since it reviewed that revision and sighted
+	 * its finding as the host's reopen rule keeps it, so a reader reads no other revision and needs no history.
 	 */
-	async contents(
-		revision: Revision,
-		repoRoot?: string,
-	): Promise<RecordedRoundContents | { readonly refused: string }> {
+	contents(revision: Revision): RecordedRoundContents | { readonly refused: string } {
 		const pieces = this.#pieces;
 		if ("refused" in pieces) return pieces;
 		const asked = Revision.key(revision);
 		if (asked !== pieces.revision) return { refused: `reviewed ${pieces.revision}, not ${asked}` };
-		const hunks = new Map([[asked, hunksOf(revision.files)]]);
+		const hunks = hunksOf(revision.files);
 		const dismissals: SharedDismissalRecord[] = [];
-		for (const { dismissal, since } of pieces.dismissals) {
-			let holds = true;
-			for (const { round, revision: reviewed, sightings } of since) {
-				if (!holds) break;
-				if (sightings.length === 0) continue;
-				const at = await hunksAt(round, reviewed, hunks, repoRoot);
-				if ("refused" in at) return at;
-				holds = sharedDismissalHolds(dismissal, sightings, at.hunks);
-			}
-			if (holds) dismissals.push(dismissal);
-		}
-		return { revision: asked, sightings: pieces.sightings, hunks: hunks.get(asked)!, dismissals };
+		const ended: EndedDismissal[] = [];
+		for (const pending of pieces.dismissals)
+			if ("ended" in pending) ended.push(pending.ended);
+			else if (sharedDismissalHolds(pending.dismissal, pending.sightings, hunks)) dismissals.push(pending.dismissal);
+		return { revision: asked, sightings: pieces.sightings, hunks, dismissals, ended };
 	}
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
-		const contents = await this.contents(context.revision, context.repoRoot);
+		const contents = this.contents(context.revision);
 		if ("refused" in contents) return notReviewed(this.id, contents.refused, context);
 		// `contents` refuses whatever the pieces refuse.
 		const pieces = this.#pieces as Decided;
@@ -296,27 +299,28 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 
 // The set's dismissal records of `round`'s changeset that no other supersedes, in ID order. A dismissal record names
 // no round to apply to, so every round of the changeset reads it. Superseding only removes a dismissal, so it can only
-// make a round stricter. Each carries every proving hunk a sighting of its finding cites in the records of the rounds
-// since it was made, so a hunk one of them cited and the revision has since changed reopens it, as the host's memory
-// does. A dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live, and so does
+// make a round stricter. A dismissal holds only for the revision it was made at: `round`, or any round since it, at
+// another revision ends it, as a push does, whatever that round sighted, so no host's memory of another revision is
+// needed. A dismissal whose rounds since cannot be known counts for nothing, which leaves its finding live, and so does
 // one whose record names no frontier: no record written before the field held one, and no shared store holds such a
 // record yet.
 function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 	return set
 		.unsuperseded()
 		.filter((record) => record.kind === "dismissal" && record.changeset === round.changeset)
-		.flatMap((record) => {
+		.flatMap((record): PendingDismissal[] => {
 			const { by, reason, at, trigger, sighting, frontier } = record.payload as DismissalPayload;
 			if (frontier === undefined) return [];
 			const since = roundsSince(set, round, frontier);
 			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
-			const seen = since.map((each) => ({
-				round: each.id,
-				revision: each.revision,
-				sightings: sightingsOf(set, each).filter(({ properties }) => properties.id === key),
-			}));
-			const cited = citedProof(seen.flatMap((each) => each.sightings)).get(key) ?? [];
+			const moved = [round, ...since].find((each) => each.revision !== sighting.revision);
+			if (moved !== undefined)
+				return [
+					{
+						ended: { finding: key, record: id, madeAt: sighting.revision, round: moved.id, at: moved.revision },
+					},
+				];
 			const dismissal = {
 				record: id,
 				finding: key,
@@ -326,17 +330,18 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 				reason,
 				at,
 				trigger,
-				cited,
 			};
-			return [{ dismissal, since: seen }];
+			const sightings = since
+				.flatMap((each) => sightingsOf(set, each))
+				.filter(({ properties }) => properties.id === key);
+			return [{ dismissal, sightings }];
 		});
 }
 
 // The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, short of `round`
 // itself: every round of the changeset in the set that is neither in `frontier` nor an ancestor of one there, in the
-// set's ID order and whatever its revision or place, so a round another host wrote without the frontier, which
-// `round` never names, reopens what it would have reopened on time. `before` serves only to find the frontier's
-// ancestors.
+// set's ID order and whatever its place, so a round another host wrote without the frontier, which `round` never
+// names, ends or reopens what it would have on time. `before` serves only to find the frontier's ancestors.
 // `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round the set does
 // not hold that the writer did not, since what that round cited is unknown.
 function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
@@ -366,38 +371,6 @@ function hunksOf(files: readonly ChangedFile[]): ProvingHunk[] {
 	return reviewFiles(files).flatMap((file) => file.hunks.map(provingHunk));
 }
 
-// The proving hunks of the revision `round` reviewed, from `known` or else resolved from the checkout at `repoRoot` by
-// its base and head with `Changeset.resolve`, the diff every review is read from. A key that names no base and head, a
-// reader with no checkout, and a checkout that cannot resolve the revision each refuse the round, naming why.
-async function hunksAt(
-	round: string,
-	revision: string | undefined,
-	known: Map<string, ProvingHunk[]>,
-	repoRoot: string | undefined,
-): Promise<{ readonly hunks: readonly ProvingHunk[] } | { readonly refused: string }> {
-	const sides = revision === undefined ? undefined : Revision.parseKey(revision);
-	if (revision === undefined || sides === undefined)
-		return { refused: `tests a dismissal at round ${round}, which names no revision a reader can resolve` };
-	const held = known.get(revision);
-	if (held !== undefined) return { hunks: held };
-	if (repoRoot === undefined)
-		return {
-			refused: `tests a dismissal at round ${round} of revision ${revision}, and is read with no checkout to resolve it in`,
-		};
-	let resolved: Changeset;
-	try {
-		resolved = await Changeset.resolve(repoRoot, { mode: "twoDot", base: sides.base, head: sides.head });
-	} catch (error) {
-		if (!(error instanceof ChangesetError)) throw error;
-		return {
-			refused: `tests a dismissal at round ${round} of revision ${revision}, which this checkout cannot resolve: ${error.message}; a shallow clone lacks the history the records need. Fetch it, such as with git fetch --unshallow, or dismiss the finding again with --records, so its frontier holds this round`,
-		};
-	}
-	const hunks = hunksOf(resolved.revision.files);
-	known.set(revision, hunks);
-	return { hunks };
-}
-
 // The sightings of the lens and check records `round` names. A dismissal record's own sighting adds none: its trigger's
 // proof already holds every hunk that sighting cites.
 function sightingsOf(set: RecordSet, round: SharedRecord): StoredFinding[] {
@@ -411,8 +384,8 @@ function sightingsOf(set: RecordSet, round: SharedRecord): StoredFinding[] {
 // The standing dismissals of each finding, in ID order, so of two made at one time the greater ID stands.
 function byFinding(dismissals: readonly SharedDismissalRecord[]): Map<string, SharedDismissal[]> {
 	const standing = new Map<string, SharedDismissal[]>();
-	for (const { finding, by, reason, at, trigger, cited } of dismissals)
-		standing.set(finding, [...(standing.get(finding) ?? []), { by, reason, at, trigger, cited }]);
+	for (const { finding, by, reason, at, trigger } of dismissals)
+		standing.set(finding, [...(standing.get(finding) ?? []), { by, reason, at, trigger }]);
 	return standing;
 }
 

@@ -1,8 +1,10 @@
 import { rmSync } from "node:fs";
 import {
 	Changeset,
+	type DismissalPayload,
 	defaultConfig,
 	everyRecordCounts,
+	Finding,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
@@ -14,6 +16,7 @@ import {
 	Revision,
 	reviewPayloads,
 	SharedRecord,
+	type StoredFinding,
 } from "@melian-agent/core";
 import {
 	type CheckRun,
@@ -30,6 +33,7 @@ import {
 	recordDismissal,
 	reviewChangeset,
 	summarizeReview,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -44,6 +48,7 @@ import type { CheckRunRecord } from "../src/checks.ts";
 import { DismissError } from "../src/errors.ts";
 import { dismissFinding, FindingsDocument } from "../src/findings.ts";
 import { type ConversationId, StorageRejected, type Tx } from "../src/harness.ts";
+import { provingHunk, reviewFiles } from "../src/lens-tools.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
 import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
@@ -724,7 +729,7 @@ describe("a review that names a record store, when a dismissal's run is unproven
 });
 
 describe("a dismissal shared across hosts", () => {
-	it("still counts in a round a third host, with no history of the changeset, exports after a second", async () => {
+	it("ends at a round a third host, with no history of the changeset, exports after a second at another revision", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		await dismissedReview(store);
 		await review(store);
@@ -742,9 +747,9 @@ describe("a dismissal shared across hosts", () => {
 			.at(-1)!;
 		const contents = (await RecordedRound.of(held, round, everyRecordCounts).contents(
 			changeset.revision,
-			repo,
 		)) as RecordedRoundContents;
-		expect(contents.dismissals.map(({ finding }) => finding)).toHaveLength(1);
+		expect(contents.dismissals).toEqual([]);
+		expect(contents.ended).toHaveLength(1);
 	});
 });
 
@@ -1220,26 +1225,70 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 			for (const each of [...hosts, oracle]) await each.harness?.close(context);
 		}
 	}
+	// The proving hunks of the revision `base..head`, as a lens cites them.
+	async function hunksAt(revision: string) {
+		const [base, head] = revision.split("..") as [string, string];
+		const { files } = (await Changeset.resolve(repo, { mode: "twoDot", base, head })).revision;
+		return reviewFiles(files).flatMap((file) => file.hunks.map(provingHunk));
+	}
+
+	// Whether a host that holds `dismissal`, and then meets every round in `order` its writer did not hold, through its
+	// own lifecycle, still holds the finding dismissed: the host of the maintainer's guarantee of 2026-11-20.
+	async function replayHolds(
+		set: RecordSet,
+		dismissal: SharedRecord,
+		order: readonly string[],
+		held: ReadonlySet<string>,
+	) {
+		const { sighting, by, reason, at } = dismissal.payload as DismissalPayload;
+		const finding = Finding.parse(sighting.finding);
+		const records = new Map(set.records().map((each) => [each.id, each]));
+		const fake = createFakeModels();
+		const replay = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		try {
+			const root = await replay.root(context, { agent: { model: fake.ref() } });
+			const meet = async (seen: Finding, revision: string) => {
+				const hunks = await hunksAt(revision);
+				await root.commit((tx) => upsertFinding(tx, root.id, seen, revision, hunks), context);
+			};
+			await meet(finding, sighting.revision);
+			await root.commit(
+				(tx) => dismissFinding(tx, root.id, finding.id, { by, reason, at }, sighting.revision),
+				context,
+			);
+			for (const id of order.filter((each) => !held.has(each))) {
+				const round = records.get(id)!;
+				for (const { id: read } of round.manifest()!.read)
+					for (const seen of (records.get(read)!.payload as { sightings?: StoredFinding[] }).sightings ?? [])
+						if (seen.properties.id === finding.id) await meet(Finding.parse(seen), round.revision!);
+			}
+			return (await statusOn(replay, finding.id)) === "dismissed";
+		} finally {
+			await replay.close(context);
+		}
+	}
+
 	// Hosts that each keep a store of their own and copy another's into it now and then, so a host can write a round
-	// without having seen another's, or dismiss with a frontier that lacks one. The oracle is rule 7 read over the set
-	// every store holds at the end: a dismissal no other supersedes keeps the finding dismissed when every round of the
-	// changeset its writer did not hold, the round read among them, reviewed the line beside the finding as the
-	// dismissed revision had it. No host need hold that set, so the host that wrote the round read may pass what the
-	// reader blocks.
+	// without having seen another's, or dismiss with a frontier that lacks one. The oracle is the maintainer's guarantee
+	// of 2026-11-20: for every dismissal the reader keeps, a host that holds it and then meets every round its writer did
+	// not hold still holds it, and so does the host that wrote it.
 	async function setOutcomeOf(steps: readonly Step[]) {
 		rmSync(repo, { recursive: true, force: true });
 		repo = baseAndHead(
 			{ "src/a.ts": lines("export const a = 1;") },
 			{ "src/a.ts": lines("export const a = 2;", "export const k = 0;") },
 		);
-		const hosts: (Host & { readonly store: MemoryRecordStore; k: number })[] = [0, 1, 2].map(() => ({
+		const hosts: (Host & { readonly store: MemoryRecordStore })[] = [0, 1, 2].map(() => ({
 			harness: undefined,
 			store: new MemoryRecordStore({ payloads: reviewPayloads }),
-			k: 0,
 		}));
-		// The line beside the finding as each round reviewed it, and what each dismissal's writer held.
-		const roundK = new Map<string, number>();
-		const made = new Map<string, { readonly k: number; readonly held: ReadonlySet<string> }>();
+		// What each dismissal's writer held.
+		const made = new Map<string, { readonly host: number; readonly held: ReadonlySet<string> }>();
+		// Every round in the order a host wrote it.
+		const order: string[] = [];
 		let changeset: string | undefined;
 		let read: string | undefined;
 		let edits = 0;
@@ -1267,14 +1316,13 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 						harness = undefined;
 					}
 					changeset = reviewed.changeset.id;
-					host.k = k;
 					host.latest = reviewed;
 					// A review that reuses its stored verdict writes no new round, so the host's latest at the revision is the one.
 					const at = (await ids(host.store)).filter(
 						({ kind, revision }) => kind === "round" && revision === Revision.key(reviewed.changeset.revision),
 					);
 					read = (at.find(({ id }) => !had.has(id)) ?? at.at(-1)!).id;
-					roundK.set(read, k);
+					if (!order.includes(read)) order.push(read);
 				}
 				if (step.kind === "dismiss" && host.latest !== undefined) {
 					const before = await ids(host.store);
@@ -1284,7 +1332,7 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 					);
 					if (written !== undefined)
 						made.set(written.id, {
-							k: host.k,
+							host: step.host,
 							held: new Set(before.filter(({ kind }) => kind === "round").map(({ id }) => id)),
 						});
 				}
@@ -1296,14 +1344,16 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 			for (const each of hosts) await everyStore.add(await each.store.list(changeset!));
 			const held = await everyStore.list(changeset!);
 			const set = RecordSet.of(held, { counts: everyRecordCounts, payloads: reviewPayloads });
-			const oracle = set
-				.unsuperseded()
-				.filter(({ kind }) => kind === "dismissal")
-				.some((each) => {
-					const { k: dismissedAt, held: writer } = made.get(each.id)!;
-					return [...roundK].every(([round, at]) => writer.has(round) || at === dismissedAt);
-				});
-			const verdict = await RecordedRound.of(held, read!, everyRecordCounts).verdict({
+			const round = RecordedRound.of(held, read!, everyRecordCounts);
+			const contents = round.contents(last.latest!.changeset.revision) as RecordedRoundContents;
+			let guarantee = true;
+			for (const kept of contents.dismissals.filter(({ finding }) => finding === id)) {
+				const { host: writerOf, held: writerHeld } = made.get(kept.record)!;
+				const dismissal = set.records().find((each) => each.id === kept.record)!;
+				const writerHolds = (await statusOn(hosts[writerOf]!.harness!, id)) === "dismissed";
+				guarantee &&= writerHolds && (await replayHolds(set, dismissal, order, writerHeld));
+			}
+			const verdict = await round.verdict({
 				revision: last.latest!.changeset.revision,
 				config: defaultConfig,
 				repoRoot: repo,
@@ -1313,7 +1363,7 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 			if (refused !== undefined) throw new Error(`the reader refused the round: ${refused.reason}`);
 			const reader = verdict.dismissed.some(({ properties }) => properties.id === id);
 			const writer = (await statusOn(last.harness!, id)) === "dismissed";
-			return { reader, oracle, writer };
+			return { reader, guarantee, writer };
 		} finally {
 			for (const each of hosts) await each.harness?.close(context);
 		}
@@ -1321,14 +1371,14 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 
 	// Seed 112 let a reader that followed only the read round's chain keep a dismissal the set reopens: a host wrote a
 	// round without the frontier, citing a changed hunk, and the round read never names it. The host that wrote the round
-	// read never saw that round, so it holds the finding dismissed where the reader reopens it, as rule 7 reads the set.
-	it("keeps seed 112: a round written without the frontier reopens the dismissal, though the round read never names it", async () => {
+	// read never saw that round, so it holds the finding dismissed where the reader reads it live.
+	it("keeps seed 112: a round written without the frontier ends the dismissal, though the round read never names it", async () => {
 		const outcome = await setOutcomeOf(historyOf(112, true));
-		expect(outcome).toEqual({ reader: false, oracle: false, writer: true });
+		expect(outcome).toEqual({ reader: false, guarantee: true, writer: true });
 	});
 
 	const syncSeeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
-	it("reads a dismissal as rule 7 reads the set, when hosts keep stores of their own that sync late", {
+	it("keeps no dismissal a host would reopen, when hosts keep stores of their own that sync late", {
 		timeout: 60_000 + syncSeeds * 5_000,
 	}, async () => {
 		const outcomes: Record<string, number[]> = {};
@@ -1339,13 +1389,13 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 			const name =
 				outcome === "absent"
 					? outcome
-					: `${outcome.reader === outcome.oracle ? "agree" : "disagree"}:${outcome.reader ? "kept" : "reopened"}${outcome.writer === outcome.reader ? "" : ",writer differs"}`;
+					: `${outcome.reader && !outcome.guarantee ? "broken" : "held"}:${outcome.reader ? "kept" : "live"}${outcome.writer === outcome.reader ? "" : ",writer differs"}`;
 			outcomes[name] = [...(outcomes[name] ?? []), seed];
 		}
 		process.stderr.write(`property seeds, separate stores: ${JSON.stringify(outcomes)}\n`);
-		expect(Object.keys(outcomes).filter((name) => name.startsWith("disagree"))).toEqual([]);
-		expect(Object.keys(outcomes).some((name) => name.startsWith("agree:kept"))).toBe(true);
-		expect(Object.keys(outcomes).some((name) => name.startsWith("agree:reopened"))).toBe(true);
+		expect(Object.keys(outcomes).filter((name) => name.startsWith("broken"))).toEqual([]);
+		expect(Object.keys(outcomes).some((name) => name.startsWith("held:kept"))).toBe(true);
+		expect(Object.keys(outcomes).some((name) => name.startsWith("held:live"))).toBe(true);
 	});
 
 	// Seeds that once found a defect, each kept as a named case. Seed 9 let a reader that skipped each round's own

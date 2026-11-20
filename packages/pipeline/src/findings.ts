@@ -817,28 +817,16 @@ export function verificationClaims(
 		});
 }
 
-/**
- * A dismissal shared as a record: who made it, why, when, and the trigger it accepted, with every proving hunk a shared
- * sighting of its finding cites at any revision, which stands in for what the host remembers of the sightings since.
- */
+/** A dismissal shared as a record: who made it, why, when, and the trigger it accepted. */
 export type SharedDismissal = Readonly<Pick<FindingDismissal, "by" | "reason" | "at">> & {
 	readonly trigger: { readonly hash: string; readonly proof: readonly ProvingHunk[] };
-	readonly cited: readonly ProvingHunk[];
 };
 
-/** Every proving hunk `sightings` cite, by finding ID, as a host that recorded each of them remembers it. */
-export function citedProof(sightings: Iterable<StoredFinding>): Map<string, ProvingHunk[]> {
-	const cited = new Map<string, ProvingHunk[]>();
-	for (const { properties } of sightings)
-		cited.set(properties.id, [...(cited.get(properties.id) ?? []), ...proofOf(properties.cause, properties.trigger)]);
-	return new Map([...cited].map(([id, proof]) => [id, unionOf(proof)]));
-}
-
 /**
- * Whether `shared` still holds for a finding sighted as `sightings` at a revision of `hunks`, by the rule that reopens a
- * dismissal on the host: a hunk any shared sighting cited that the revision no longer holds reopens it. A sighting is
- * tested against the accepted proof and `cited` alone, never its own proof, as the host tests it against what it held
- * before it.
+ * Whether `shared` still holds for a finding sighted as `sightings` at the revision it was made at, of `hunks`, by the
+ * rule that reopens a dismissal on the host, tested against the trigger it accepted alone. A host also remembers each
+ * sighting's hunks and tests later sightings against them, so a sighting citing a hunk the revision lacks reopens it
+ * here at once; any other hunk it remembers is the revision's own, which reopens nothing.
  */
 export function sharedDismissalHolds(
 	shared: SharedDismissal,
@@ -847,12 +835,9 @@ export function sharedDismissalHolds(
 ): boolean {
 	return [...sightings].every(
 		({ properties: { cause, trigger } }) =>
-			!reopens(
-				shared.trigger.hash,
-				unionOf([...shared.trigger.proof, ...shared.cited]),
-				cause,
-				triggerCode(trigger),
-				hunks,
+			!reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks) &&
+			proofOf(cause, trigger).every((each) =>
+				hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash),
 			),
 	);
 }

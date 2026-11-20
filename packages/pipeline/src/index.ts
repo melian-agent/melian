@@ -89,6 +89,7 @@ export {
 	type SupersededPublication,
 } from "./publish.ts";
 export {
+	type EndedDismissal,
 	RecordedRound,
 	type RecordedRoundContents,
 	type RecordedRoundContext,
