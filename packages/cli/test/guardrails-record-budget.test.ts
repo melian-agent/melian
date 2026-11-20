@@ -105,7 +105,9 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 		expect(left.length).toBeGreaterThan(0);
 		expect(left.length).toBeLessThan(packages);
 		expect(new Set(left.map(({ properties }) => properties.explanation.whyHere))).toEqual(
-			new Set([`Melian left out the detail for ${left.length} more files to keep this record under its limit.`]),
+			new Set([
+				`Melian left out the detail for ${left.length} more files to keep this record under its limit; \`git diff\` shows those files.`,
+			]),
 		);
 		// The record beside its sightings is the envelope and the check's result, which the allowance must cover.
 		const sighted = Buffer.byteLength(canonicalJson((record.payload as { sightings: unknown }).sightings));

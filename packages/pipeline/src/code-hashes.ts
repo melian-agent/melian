@@ -42,7 +42,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "19d39862b2d77ab69359c2e18ff786691706450350274414d45a4abf23d0456c",
+	"packages/core/src/findings.ts": "2e11438323e5475eb997a6c12886066a2bb2b81ca6bd5eb8985bea2449bd7242",
 
 	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
@@ -102,7 +102,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
 
-	"packages/core/src/sighting-budget.ts": "d04b0e681831c537508f25aa1f42f67da28dec1be0bae9198a3b55b37b7f3b75",
+	"packages/core/src/sighting-budget.ts": "bae3d9336aa62be0ab5717718b7e2043c368dd3d4b7cade6870f7853c88c22bd",
 
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 

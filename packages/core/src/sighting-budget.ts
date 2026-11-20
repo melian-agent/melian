@@ -13,7 +13,8 @@ function bytes(value: unknown): number {
 }
 
 function note(files: number): string {
-	return `Melian left out the detail for ${files} more ${files === 1 ? "file" : "files"} to keep this record under its limit.`;
+	const [file, those] = files === 1 ? ["file", "that file"] : ["files", "those files"];
+	return `Melian left out the detail for ${files} more ${file} to keep this record under its limit; \`git diff\` shows ${those}.`;
 }
 
 /** The bytes one record's sightings may take, and how a check's findings are cut to fit them. */
@@ -31,9 +32,10 @@ export class SightingBudget {
 	/**
 	 * `findings`, in their order, cut to fit the budget. Under it nothing changes. Past it, in ID order, a finding keeps
 	 * its detail while the full findings so far and every later one abridged fit; every later one is
-	 * {@link Finding.abridged} with one note that counts their files. The same findings always give the same result, and
-	 * no ID, severity or resolution changes. Findings whose canonical JSON core cannot write are returned unchanged, and
-	 * the store refuses their record as it always has.
+	 * {@link Finding.abridged} with one note that counts their files. A finding that abridging would not make smaller
+	 * keeps its detail wherever it falls, so no finding grows. The same findings always give the same result, and no ID,
+	 * severity or resolution changes. Findings whose canonical JSON core cannot write are returned unchanged, and the
+	 * store refuses their record as it always has.
 	 */
 	fit(findings: readonly Finding[]): Finding[] {
 		const ordered = [...findings].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -47,25 +49,36 @@ export class SightingBudget {
 			throw error;
 		}
 		const count = ordered.length;
-		// From each index on: how many files the findings name, the N of the note, and their abridged bytes without it.
+		// No note is longer than the one naming every file, so a finding smaller under it is smaller under any.
+		const longest = note(new Set(ordered.map((finding) => finding.properties.path)).size).length;
+		const shrinks = ordered.map((_, index) => bare[index]! + longest < full[index]!);
+		// From each index on: how many files the findings that shrink name, the N of the note, how many shrink, and the
+		// bytes of all of them without the note.
 		const files: number[] = new Array(count + 1).fill(0);
+		const shrinking: number[] = new Array(count + 1).fill(0);
 		const abridged: number[] = new Array(count + 1).fill(0);
 		const seen = new Set<string>();
 		for (let index = count - 1; index >= 0; index--) {
-			seen.add(ordered[index]!.properties.path);
+			if (shrinks[index]) seen.add(ordered[index]!.properties.path);
 			files[index] = seen.size;
-			abridged[index] = abridged[index + 1]! + bare[index]!;
+			shrinking[index] = shrinking[index + 1]! + (shrinks[index] ? 1 : 0);
+			abridged[index] = abridged[index + 1]! + (shrinks[index] ? bare[index]! : full[index]!);
 		}
 		const kept = [0];
 		for (const size of full) kept.push(kept.at(-1)! + size);
-		// The bytes of the array when the findings before `cut` keep their detail and the rest are abridged.
+		// The bytes of the array when the findings before `cut` keep their detail and the rest that shrink are abridged.
 		const total = (cut: number) =>
-			2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! + (count - cut) * note(files[cut]!).length;
+			2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! + shrinking[cut]! * note(files[cut]!).length;
 		if (total(count) <= this.bytes) return [...findings];
 		let cut = 0;
 		while (cut < count && total(cut + 1) <= this.bytes) cut++;
 		// When even every finding abridged passes the budget, they stay abridged: issue #605's pending ruling decides the rest.
-		const shortened = new Map(ordered.slice(cut).map((finding) => [finding, finding.abridged(note(files[cut]!))]));
+		const shortened = new Map(
+			ordered
+				.slice(cut)
+				.filter((_, index) => shrinks[cut + index])
+				.map((finding) => [finding, finding.abridged(note(files[cut]!))]),
+		);
 		return findings.map((finding) => shortened.get(finding) ?? finding);
 	}
 }
