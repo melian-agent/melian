@@ -72,13 +72,15 @@ export function compare({ linux, mac, list }) {
 	];
 
 	for (const report of mac) {
-		// A hook or an unhandled error fails a run whose every test passed.
-		if (report.success !== true) {
-			const failed = report.testResults
-				.filter((entry) => entry.status === "failed")
-				.map((entry) => `${fileOf(entry.name)}: ${entry.message.split("\n")[0]}`);
+		// A hook or an unhandled error fails a run whose every test passed. Each file is read whatever success says, since
+		// a report that claims success over a failed file is no record of a run.
+		const failed = report.testResults
+			.filter((entry) => entry.status === "failed")
+			.map((entry) => `${fileOf(entry.name)}: ${entry.message.split("\n")[0]}`);
+		if (report.success !== true)
 			errors.push(`a macOS report did not succeed: ${failed.join("; ") || "no file failed"}`);
-		}
+		else if (failed.length > 0)
+			errors.push(`a macOS report says it succeeded, yet a file in it failed: ${failed.join("; ")}`);
 	}
 	if (skipped.length === 0) errors.push("the Linux report shows no skipped test, so it cannot be the whole run");
 	for (const file of skippedFiles) {

@@ -278,6 +278,25 @@ describe("compare", () => {
 		]);
 	});
 
+	it("refuses a macOS report that says it succeeded while a file in it failed", () => {
+		const whole = macWhole();
+		whole.testResults[1].status = "failed";
+		whole.testResults[1].message = "hook failed";
+		expect(compare({ linux: linux(), mac: [whole, macTagged()], list }).errors).toEqual([
+			`a macOS report says it succeeded, yet a file in it failed: ${suite}: hook failed`,
+		]);
+	});
+
+	it("does not let a macOS pass in one file answer a Linux skip of the same name in another", () => {
+		const other = "packages/core/test/secrets.test.ts";
+		const { errors } = compare({
+			linux: report(...rows(linux()), { file: gated, title: "names a twin", status: "skipped" }),
+			mac: [report(...rows(macWhole()), { file: other, title: "names a twin" }), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([`skipped on Linux, not passed on macOS: ${gated} > a suite > names a twin: missing`]);
+	});
+
 	it("refuses two macOS tests of one name, one failed and the later passed", () => {
 		const whole = drop(macWhole(), gated, "spells the path as the disk does");
 		const mac = report(
