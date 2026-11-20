@@ -1073,6 +1073,22 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(results().stopped).toBe(
 			"committed on one met no model with credentials in correctness@1@deep: deep ran without probes, since its prober runs on heavy, and none of h/heavy is known with credentials",
 		);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const other = ran([lensStage({ error: "the lens did not finish" })]);
+		const skipped = {
+			...other,
+			verdict: new Verdict({
+				status: "passed",
+				blocking: false,
+				findings: { block: [], acknowledge: [], advisory: [], silent: [] },
+				dismissed: [],
+				notRun: [{ name: "guardrails", status: "skipped", reason: "a golden runs its lenses alone" }],
+			}),
+		};
+		const going = runners(undefined, { range: vi.fn(async () => skipped) });
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, going);
+		expect(results().stopped).toBeUndefined();
+		expect(results().attempts.map(({ arm }) => arm)).toEqual(["committed", "parity"]);
 	});
 
 	it("keeps a stopped attempt's spend on resume, and reviews its arm again", async () => {

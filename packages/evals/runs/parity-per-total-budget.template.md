@@ -55,4 +55,6 @@ Run totals over every attempt, stopped ones included: `<tokens>` Spend, `<budget
 - Today's standards judged old code, so a finding outside a miss's lines says little about how that code was reviewed.
 - The stores, which hold the head's code and the models' words, stay on the host and are not committed.
 - The run counts only what each review's telemetry recorded. A review the run ended during counts what its store recorded by then, and a turn the process died in the middle of may be missing from it.
+- In the parity arm the level an attempt records is the one triage picked, a name only: every level the arm declares ran the same settings, which the attempt's token limit, tool limit and requested effort record.
+- A resume does not compare the models a stored attempt answered on with those a resumed review uses. The results file pins the checkout's commit and the policy commit, which fix every route, a route without credentials stops the run, and a stage that answered on a second model stops it too; a provider that serves another model under the same ID would go unseen.
 - `<anything else: a stop, a model answering at a level other than requested, a miss unscored>`
