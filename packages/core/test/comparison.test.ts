@@ -1826,6 +1826,17 @@ describe("Comparison misses", () => {
 		]);
 	});
 
+	it("leaves out a valid finding that became a miss after its match was undone, until a reason is recorded", () => {
+		const finding = melian();
+		const report = external();
+		const comparison = compared({ externals: [report], findings: [finding] });
+		comparison.adjudicate(report.id, { ...by, verdict: "valid" });
+		comparison.unmatch(report.id, finding.id, "M", "2026-10-05T00:00:00Z");
+		expect(comparison.misses()).toEqual([]);
+		comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		expect(comparison.misses()).toEqual([{ id: report.id, file: "src/run.ts", lines: [12, 12] }]);
+	});
+
 	it("says why a valid miss names no lines at the compared head", () => {
 		const unplaced = external({ file: undefined, line: undefined });
 		const lineless = external({ file: "src/other.ts", line: undefined });

@@ -1015,13 +1015,14 @@ export class Comparison {
 
 	/**
 	 * Each valid external finding no Melian finding matches, with the lines it names at the compared head, or why it names
-	 * none there. A miss a person ruled out of scope is left out, since no lens owed it.
+	 * none there. A miss a person ruled out of scope is left out, since no lens owed it, and so is one still awaiting a
+	 * reason.
 	 */
 	misses(): ComparisonMiss[] {
 		return this.externalOnly()
 			.flatMap((group) => group.external)
 			.filter((finding) => {
-				const current = this.adjudication(finding.id)?.current;
+				const current = this.judgement(finding.id);
 				return current?.verdict === "valid" && current.reason !== "out-of-scope";
 			})
 			.map(({ id, file, line, endLine, revision, outdated, commit }): ComparisonMiss => {
