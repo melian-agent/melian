@@ -659,6 +659,17 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 		expect((await review(offered)).asked).toEqual(["contracts"]);
 	});
 
+	it("reuses every lens run on a repeat review when no instrumenter can be found", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockRejectedValue(
+			new MutationEnumerationError("instrumenter", "Stryker's instrumenter is unavailable"),
+		);
+		const first = await review(offered);
+		const again = await review(offered);
+		expect(again.asked).toEqual([]);
+		expect(again.task).toBe(first.task);
+	});
+
 	it("fails the review on any other failure to resolve the instrumenter", async () => {
 		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
 		const refusal = new MutationEnumerationError("policy", "the base's policy cannot be read");
