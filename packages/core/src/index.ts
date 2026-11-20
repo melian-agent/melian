@@ -540,6 +540,7 @@ export {
 	type RecordJson,
 	RecordSet,
 	type RoundManifest,
+	recordLimit,
 	SharedRecord,
 } from "./record.ts";
 export {
@@ -601,6 +602,7 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
+export { envelopeAllowance, SightingBudget } from "./sighting-budget.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

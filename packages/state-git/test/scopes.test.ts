@@ -1,7 +1,7 @@
-import { RecordError, type RecordStore } from "@melian-agent/core";
+import { RecordError, type RecordStore, recordLimit } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RecordRepository } from "../src/repository.ts";
-import { cellBytes, fileLimit } from "../src/state-tree.ts";
+import { cellBytes } from "../src/state-tree.ts";
 import { changeset, check, filed, keys, other, type Planted, Remote } from "./fixtures/remote.ts";
 
 let remote: Remote;
@@ -260,20 +260,20 @@ describe("a record's size", { timeout: 60_000 }, () => {
 
 	it("takes a record of the limit, and refuses one a byte past it before reaching the remote", async () => {
 		const store = await remote.open();
-		expect(filed(sized(fileLimit)).bytes.length).toBe(fileLimit);
-		await store.add([sized(fileLimit)]);
+		expect(filed(sized(recordLimit)).bytes.length).toBe(recordLimit);
+		await store.add([sized(recordLimit)]);
 		expect(keys(await store.list(changeset))).toEqual(["big"]);
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		await expect(store.add([sized(fileLimit + 1)])).rejects.toMatchObject({ code: "invalidRecord" });
+		await expect(store.add([sized(recordLimit + 1)])).rejects.toMatchObject({ code: "invalidRecord" });
 		expect(fetch).not.toHaveBeenCalled();
 	});
 
 	it("counts a record's size in UTF-8 bytes, not characters", async () => {
 		const store = await remote.open();
 		const bare = filed(check("big", changeset, { pad: "" })).bytes.length;
-		const wide = check("big", changeset, { pad: `\u00e9${"x".repeat(fileLimit - bare - 1)}` });
+		const wide = check("big", changeset, { pad: `\u00e9${"x".repeat(recordLimit - bare - 1)}` });
 		const { bytes } = filed(wide);
-		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([fileLimit, fileLimit + 1]);
+		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([recordLimit, recordLimit + 1]);
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
 		await expect(store.add([wide])).rejects.toMatchObject({ code: "invalidRecord" });
 		expect(fetch).not.toHaveBeenCalled();
@@ -281,10 +281,10 @@ describe("a record's size", { timeout: 60_000 }, () => {
 
 	it("reads a file of the limit, and leaves one a byte past it unread as a stray", async () => {
 		const store = await remote.open();
-		const atLimit = filed(sized(fileLimit));
+		const atLimit = filed(sized(recordLimit));
 		remote.plant({ [atLimit.path]: { bytes: atLimit.bytes } });
 		expect(keys(await store.list(changeset))).toEqual(["big"]);
-		const past = filed(sized(fileLimit + 1));
+		const past = filed(sized(recordLimit + 1));
 		remote.plant({ [atLimit.path]: null, [past.path]: { bytes: past.bytes } });
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		const reader = await remote.open();
@@ -302,24 +302,24 @@ describe("a cell's size", { timeout: 60_000 }, () => {
 
 	it("takes a cell of the limit, and refuses one a byte past it before reaching the remote", async () => {
 		const store = await remote.open();
-		expect(cellBytes({ value: sized(fileLimit), version: crypto.randomUUID() }).length).toBe(fileLimit);
-		expect(await store.writeCell(changeset, undefined, sized(fileLimit))).toBe(true);
+		expect(cellBytes({ value: sized(recordLimit), version: crypto.randomUUID() }).length).toBe(recordLimit);
+		expect(await store.writeCell(changeset, undefined, sized(recordLimit))).toBe(true);
 		const reader = await remote.open();
 		const { value, version } = await reader.readCell(changeset);
-		expect(value).toBe(sized(fileLimit));
+		expect(value).toBe(sized(recordLimit));
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		await expect(store.writeCell(changeset, version, sized(fileLimit + 1))).rejects.toMatchObject({
+		await expect(store.writeCell(changeset, version, sized(recordLimit + 1))).rejects.toMatchObject({
 			code: "invalidCell",
 		});
 		expect(fetch).not.toHaveBeenCalled();
-		expect((await reader.readCell(changeset)).value).toBe(sized(fileLimit));
+		expect((await reader.readCell(changeset)).value).toBe(sized(recordLimit));
 	});
 
 	it("counts a cell's size in UTF-8 bytes, not characters", async () => {
 		const store = await remote.open();
-		const wide = sized(fileLimit).replace("x", "\u00e9");
+		const wide = sized(recordLimit).replace("x", "\u00e9");
 		const bytes = cellBytes({ value: wide, version: crypto.randomUUID() });
-		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([fileLimit, fileLimit + 1]);
+		expect([bytes.length, Buffer.byteLength(bytes)]).toEqual([recordLimit, recordLimit + 1]);
 		await expect(store.writeCell(changeset, undefined, wide)).rejects.toMatchObject({ code: "invalidCell" });
 	});
 });

@@ -12,6 +12,7 @@ import {
 	RecordError,
 	RecordSet,
 	type RecordStore,
+	recordLimit,
 	SharedRecord,
 } from "@melian-agent/core";
 import {
@@ -190,6 +191,40 @@ const breakages: [string, string, Breaks, ("directory" | "memory")?][] = [
 				});
 			},
 		}),
+	],
+	[
+		"add refuses a record at the record limit",
+		"add: takes a record of the record limit, and refuses one a byte past it, which never lists",
+		(inner, _shared, payloads) => ({
+			add: async (records) => {
+				if (records.some((record) => SharedRecord.parse(record, payloads).bytes.length >= recordLimit))
+					throw new RecordError("invalidRecord", "a record is under the record limit");
+				await inner.add(records);
+			},
+		}),
+	],
+	[
+		"add drops a record at the record limit without refusing it",
+		"add: takes a record of the record limit, and refuses one a byte past it, which never lists",
+		(inner, _shared, payloads) => ({
+			add: (records) =>
+				inner.add(records.filter((record) => SharedRecord.parse(record, payloads).bytes.length !== recordLimit)),
+		}),
+	],
+	[
+		"add takes a record a byte past the record limit",
+		"add: takes a record of the record limit, and refuses one a byte past it, which never lists",
+		(inner, _shared, payloads) => {
+			const kept: RecordEnvelope[] = [];
+			return {
+				add: async (records) => {
+					const over = records.filter((record) => SharedRecord.parse(record, payloads).bytes.length > recordLimit);
+					kept.push(...over);
+					await inner.add(records.filter((record) => !over.includes(record)));
+				},
+				list: async (name) => [...(await inner.list(name)), ...kept.filter((each) => each.changeset === name)],
+			};
+		},
 	],
 	[
 		"list shows a record add refused, until another add lands",
@@ -747,6 +782,19 @@ describe("the conformance suite asks no more than rule 3", () => {
 	it("passes a store that lands a refused batch's valid records, as rule 3 allows", async () => {
 		const target = recordStoreConformance.find((each) =>
 			each.name.startsWith("add: refuses a batch's invalid record"),
+		);
+		expect(target).toBeDefined();
+		const inOrder: Breaks = (inner) => ({
+			add: async (records) => {
+				for (const record of records) await inner.add([record]);
+			},
+		});
+		await expect(target?.run(brokenFixture(inOrder, memoryRecordStoreFixture()))).resolves.toBeUndefined();
+	});
+
+	it("passes a store that lands the records of a batch before the one past the record limit, as rule 3 allows", async () => {
+		const target = recordStoreConformance.find((each) =>
+			each.name.startsWith("add: takes a record of the record limit"),
 		);
 		expect(target).toBeDefined();
 		const inOrder: Breaks = (inner) => ({

@@ -1,0 +1,59 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "452d2305c52837ce285b4f22cf3a3e87c52e40b1",
+		"head": "317c48f9eed5cf48dd381092263486651e130907"
+	},
+	"claimsIn": [
+		"packages/core/src/testing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 184,
+			"column": 8,
+			"endLine": 184,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d04196ec0f9b4487add47cf763f7799627046da7b66716691b72725a5c24e524"
+		},
+		{
+			"file": "packages/core/src/testing.ts",
+			"line": 192,
+			"column": 14,
+			"endLine": 192,
+			"endColumn": 73,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "ids(await store.list(changeset)).includes(idsOf(past)[0]!)",
+			"status": "generated",
+			"id": "53c07c85338d1d741f4404d5f78f68ee2439b4cca772920320bc74bcfc783126",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/record-store.test.ts",
+					"path": [
+						"the record store conformance suite on the memory adapter",
+						"add: takes a record of the record limit, and refuses one a byte past it, which never lists"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 2,
+	"omitted": 0,
+	"unmutated": []
+}

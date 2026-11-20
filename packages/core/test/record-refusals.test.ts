@@ -497,15 +497,20 @@ describe("a shared record's refusal", () => {
 
 	// A kind is dot-joined segments of [a-z0-9-], so the one refusal that names a record's kind, of an unknown kind,
 	// repeats only those characters, and the sentinel's terminalEscape fails the pattern before it.
-	it.each([...payloads, ...sighted])("repeats no text from a %s record", (kind, payload) => {
-		for (const record of [...variants(envelope(kind, payload)), ...[envelope(kind, payload)]]) {
-			const refused = refusal(record) ?? "";
-			reached.add(refused);
-			expect(refused).not.toContain(marker);
-			expect(refused).not.toContain(terminalEscape);
-			expect(refused).not.toContain(override);
-		}
-	});
+	// A verification record has the most variants, and took past five seconds on a loaded runner on main too.
+	it.each([...payloads, ...sighted])(
+		"repeats no text from a %s record",
+		(kind, payload) => {
+			for (const record of [...variants(envelope(kind, payload)), ...[envelope(kind, payload)]]) {
+				const refused = refusal(record) ?? "";
+				reached.add(refused);
+				expect(refused).not.toContain(marker);
+				expect(refused).not.toContain(terminalEscape);
+				expect(refused).not.toContain(override);
+			}
+		},
+		30_000,
+	);
 
 	it("reaches the refusals that once named a producer, with the sentinel in the record", () => {
 		expect([...reached]).toEqual(
