@@ -2,6 +2,8 @@
 
 Status: the maintainer ruled, on [issue #605](https://github.com/melian-agent/melian/issues/605), that a guardrails record must fit the store's 4 MiB record limit, and that one which cannot fit even with every finding's detail left out fails closed. Trimming the check's own findings, rather than only the exported record, is the builder's choice, which the coordinator agreed on 2026-11-20; it is not a ruling.
 
+Amends: [2026-11-13-shared-record-behind-a-store-port.md](2026-11-13-shared-record-behind-a-store-port.md), the record-size limit. Every store refuses a record past `recordLimit`, and a refused record never lists; a batch may still land in part, as the port allows.
+
 ## Problem
 
 Every record store refuses a record past core's `recordLimit`, 4 MiB. A head that changes many workspace manifests makes one guardrails finding per manifest, each naming the scripts it changes, and their record can pass the limit. The store then refused the round's records after the harness had stored a verdict of findings, so the review threw a store error with that verdict standing.
