@@ -354,6 +354,7 @@ type LensOutcome =
 			readonly reason: string;
 			// The models whose content filter refused the conversation before it failed.
 			readonly refused?: readonly string[];
+			readonly planner?: PlannerRefusal;
 	  }
 	| {
 			readonly status: "exhausted";
@@ -361,7 +362,11 @@ type LensOutcome =
 			readonly reason: string;
 			// The models of `tried` whose content filter refused the conversation.
 			readonly refused?: readonly string[];
+			readonly planner?: PlannerRefusal;
 	  };
+
+// On a probing run that failed after its planner finished, the models that refused the planner and the one that answered.
+type PlannerRefusal = { readonly refused: readonly string[]; readonly model: string };
 
 // A conversation's end: on `done`, the model that answered, its place in the route, and the models that refused before.
 type Conversed =
@@ -843,7 +848,10 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					if (planned.status !== "done") return planned;
 				}
 				const probed = lens.probe === undefined ? undefined : await probe(lens, id, carried);
-				if (probed !== undefined && "status" in probed) return probed;
+				if (probed !== undefined && "status" in probed)
+					return planned.refused === undefined
+						? probed
+						: { ...probed, planner: { refused: planned.refused, model: planned.model } };
 				const conversations = [id, ...(probed?.prober === undefined ? [] : [probed.prober])];
 				let ended: StoredBudgetEnd | undefined;
 				let refused: number | undefined;
@@ -2215,7 +2223,7 @@ function lensRecord(
 					...refusalNote("", outcome.refused, outcome.model),
 					...refusalNote("for its prober, ", probing?.refused, probing?.model),
 				]
-			: [];
+			: refusalNote("for its planner, ", outcome?.planner?.refused, outcome?.planner?.model);
 	const notes = [...given, ...refusals, ...(probing === undefined ? [] : [probingNote(probing)])];
 	const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
 	const failed = (why: string) => [why, ...notes].join("; ");

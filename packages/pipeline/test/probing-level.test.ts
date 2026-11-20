@@ -2863,6 +2863,46 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it("names the planner's refusal when its prober then fails without moving on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, ...plan], prober: [malformed] },
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when the model that answered recorded no plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, fauxAssistantMessage("Nothing."), fauxAssistantMessage("Nothing.")], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "the planner recorded no attack plan",
+		});
+	});
+
 	it("keeps a reminder's own request ID, and adds the attempt only for a model it moved on to", async () => {
 		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
 		const provider = fake.ref("first").provider;
