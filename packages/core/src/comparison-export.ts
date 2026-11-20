@@ -69,16 +69,37 @@ export class ComparisonExport {
 	/**
 	 * Every valid miss of the comparisons, in the shape the measurement tool's misses file takes, `{ name, repo, base,
 	 * head, file, lines }`, with each miss that names no lines at its compared head beside them and why. A finding
-	 * compared in several rounds is kept from the last. `repo` is the clone the misses are reviewed in again.
+	 * compared in several rounds is kept from the last. A finding an unattributed comparison shares with another is
+	 * left out with its reason, since no order places that comparison among the rounds. `repo` is the clone the misses are
+	 * reviewed in again.
 	 */
 	misses(repo: string): MissesExport {
 		const latest = new Map<string, { readonly entry: ComparisonEntry; readonly miss: ComparisonMiss }>();
+		// An unattributed comparison has no place among the rounds, so a finding it shares with another is never ordered.
+		const comparedIn = new Map<string, { changeset: string; unattributed: boolean; count: number }>();
 		for (const entry of this.entries) {
-			for (const group of entry.comparison.groups()) for (const finding of group.external) latest.delete(finding.id);
+			for (const group of entry.comparison.groups())
+				for (const finding of group.external) {
+					latest.delete(finding.id);
+					const seen = comparedIn.get(finding.id) ?? { unattributed: false, count: 0 };
+					comparedIn.set(finding.id, {
+						changeset: entry.changeset,
+						unattributed: seen.unattributed || entry.unattributed !== undefined,
+						count: seen.count + 1,
+					});
+				}
 			for (const miss of entry.comparison.misses()) latest.set(miss.id, { entry, miss });
 		}
 		const cases: MissCase[] = [];
 		const skipped: { readonly name: string; readonly reason: string }[] = [];
+		for (const [id, { changeset, unattributed, count }] of comparedIn)
+			if (unattributed && count > 1) {
+				latest.delete(id);
+				skipped.push({
+					name: `${changeset}-${id}`,
+					reason: "was compared in an unattributed comparison and in another, so which came last is unknown",
+				});
+			}
 		for (const { entry, miss } of latest.values()) {
 			const name = `${entry.changeset}-${miss.id}`;
 			if ("skipped" in miss) skipped.push({ name, reason: miss.skipped });

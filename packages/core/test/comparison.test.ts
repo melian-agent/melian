@@ -1874,6 +1874,38 @@ describe("Comparison misses", () => {
 		expect(exported).toEqual({ cases: [], skipped: [] });
 	});
 
+	it("exports the same misses whichever side of the rounds an unattributed comparison sits, and names each finding it cannot order", () => {
+		const conflicted = external();
+		const alone = external({ line: 130 });
+		const attributed = compared({ externals: [conflicted], findings: [melian()] });
+		attributed.adjudicate(conflicted.id, { ...by, verdict: "valid" });
+		const unattributed = compared({ externals: [conflicted, alone], findings: [] });
+		unattributed.adjudicate(conflicted.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		unattributed.adjudicate(alone.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const round = { changeset: "pull-7", round: "pull-7.r1", comparison: attributed };
+		const legacy = { changeset: "pull-7", unattributed: revision.head, comparison: unattributed };
+		const expected = {
+			cases: [
+				{
+					name: `pull-7-${alone.id}`,
+					repo: "/clone",
+					base: revision.base,
+					head: revision.head,
+					file: "src/run.ts",
+					lines: [130, 130],
+				},
+			],
+			skipped: [
+				{
+					name: `pull-7-${conflicted.id}`,
+					reason: "was compared in an unattributed comparison and in another, so which came last is unknown",
+				},
+			],
+		};
+		expect(new ComparisonExport([round, legacy], "#7").misses("/clone")).toEqual(expected);
+		expect(new ComparisonExport([legacy, round], "#7").misses("/clone")).toEqual(expected);
+	});
+
 	it("exports each miss as a case of the measurement tool, keeping a finding compared again from its last round", () => {
 		const missed = external({ line: 90 });
 		const skipped = external({ file: undefined, line: undefined });
