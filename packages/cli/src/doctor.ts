@@ -146,7 +146,7 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
 			...loaded.preferences.flatMap(({ file, keys }): Check[] => {
 				// Every review renders with `output` from the preference files, through `terminalEmoji` in commands.ts.
-				const ignored = keys.filter((key) => !key.startsWith("output."));
+				const ignored = keys.filter((key) => key.split(".")[0] !== "output");
 				return ignored.length === 0
 					? []
 					: [

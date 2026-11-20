@@ -106,6 +106,16 @@ describe("doctor's plan beside a preference a pull request's review ignores", { 
 		]);
 	});
 
+	it("leaves out an empty output too", async () => {
+		writeFileSync(join(repo, "melian.local.yaml"), `output: {}\nmodels:\n  heavy:\n    model: ${local}\n`);
+
+		const lines = await plan();
+
+		expect(lines.filter((line) => line.includes("review ignores"))).toEqual([
+			expect.stringMatching(ignored("melian.local.yaml", "models.heavy.model")),
+		]);
+	});
+
 	it("warns of nothing when no preference file sets anything", async () => {
 		const lines = await plan();
 
