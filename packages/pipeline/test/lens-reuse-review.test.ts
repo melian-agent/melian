@@ -573,11 +573,15 @@ describe("a repeat review copies a lens run only from a task shown the same call
 
 describe("a repeat review keys the instrumenter that answers list_mutants", () => {
 	const listing: LensToolName[] = ["read_file", "search", "list_mutants"];
-	const instrumenter = (toolVersion: string, source: "checkout" | "melian") =>
+	const instrumenter = (
+		toolVersion: string,
+		source: "checkout" | "melian",
+		packages = `packages beneath ${toolVersion}`,
+	) =>
 		vi.spyOn(TypeScriptMutationAdapter, "open").mockResolvedValue({
 			identity: { toolVersion },
 			source,
-			installedPackages: () => `packages beneath ${toolVersion}`,
+			installedPackages: () => packages,
 		} as unknown as TypeScriptMutationAdapter);
 
 	afterEach(() => {
@@ -592,6 +596,15 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 		instrumenter("10.1.0", "checkout");
 		expect((await review(offered)).asked).toEqual(["contracts"]);
 		instrumenter("10.1.0", "melian");
+		expect((await review(offered)).asked).toEqual(["contracts"]);
+	});
+
+	it("asks only the lens offered list_mutants again when only the packages beneath the instrumenter move", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		instrumenter("10.0.0", "checkout", "babel 7.28.0");
+		await review(offered);
+		expect((await review(offered)).asked).toEqual([]);
+		instrumenter("10.0.0", "checkout", "babel 7.28.1");
 		expect((await review(offered)).asked).toEqual(["contracts"]);
 	});
 
