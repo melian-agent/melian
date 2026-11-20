@@ -2945,6 +2945,42 @@ describe("an arm that needs the graph", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("builds and reads the graph under the policy commit's Enola settings, not the base's, when the two differ", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		const open = vi.spyOn(CallerContext, "open").mockResolvedValue({
+			coverageSource: () => ({ parts: [], paths: [], root: repo }),
+		} as unknown as CallerContext);
+		try {
+			git(repo, "checkout", "-q", "-b", "policy", base);
+			writeFileSync(join(repo, "melian.yaml"), "static:\n  enola: { enabled: false, timeout: 77 }\n");
+			git(repo, "add", "melian.yaml");
+			git(repo, "-c", "user.name=Policy", "-c", "user.email=policy@example.com", "commit", "-q", "-m", "policy");
+			const policy = git(repo, "rev-parse", "HEAD").trim();
+			const target = { ...targetOf(repo, base, head, `${base},${head}`), policy };
+			const { revision } = await Changeset.resolve(repo, target.range);
+			const run = vi.fn(
+				async (): Promise<StaticRun> => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.head, "h")],
+				}),
+			);
+			await buildGraph(target, run);
+			expect(await graphCached(target)).toBe(true);
+			const [built] = run.mock.calls[0] as unknown as [Record<string, unknown>];
+			for (const input of [built, open.mock.calls[0]![0]])
+				expect(input).toMatchObject({
+					base: revision.base,
+					policyCommit: policy,
+					settings: { enabled: true, timeout: 77, severity: {} },
+				});
+		} finally {
+			open.mockRestore();
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("refuses to build the graph of a head MELIAN_EVAL_PROBE_TRUST does not vouch for, before Enola runs", async () => {
 		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
 		try {
