@@ -178,7 +178,6 @@ export class StorePrune {
 		const changesets = { files: 0, bytes: 0 };
 		const evidence = { bytes: 0 };
 		const agedEvidence: PruneEntry[] = [];
-		let evidenceFolder = false;
 		const relative = (path: string) => path.slice(root.length + 1);
 		const add = async (kind: PruneKind, paths: string[]) => {
 			let bytes = 0;
@@ -195,7 +194,6 @@ export class StorePrune {
 					changesets.bytes += (await measure(node.path)).bytes;
 				} else if (node.name === "evidence" && node.directory && !node.link) {
 					evidence.bytes = (await measure(node.path)).bytes;
-					evidenceFolder = true;
 				} else if (
 					node.link ||
 					!node.directory ||
@@ -245,7 +243,7 @@ export class StorePrune {
 				else if (now - (await measure(node.path)).newest > mutationAgeDays * day)
 					await add("mutation partition", [`mutation/${node.name}`]);
 			}
-			for (const changeset of evidenceFolder ? await children(join(root, "evidence")) : []) {
+			for (const changeset of await children(join(root, "evidence"))) {
 				if (changeset.link || !changeset.directory || !isChangesetId(changeset.name)) {
 					kept.push(relative(changeset.path));
 					continue;
