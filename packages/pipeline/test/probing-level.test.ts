@@ -3013,14 +3013,17 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				},
 			},
 		);
-		await reached;
-		const { tasks } = await harness!.harness.inspect(backgroundContext);
-		const attempts = tasks
-			.map(({ record }) => (record.state as { checkpoint?: { attempts?: Record<string, number> } }).checkpoint)
-			.find((checkpoint) => checkpoint?.attempts !== undefined)?.attempts;
-		const key = Object.keys(attempts ?? {}).find((each) => !each.endsWith(":plan"))!;
-		expect(attempts).toEqual({ [key]: 1, [`lens:${key}:plan`]: 2 });
-		release();
+		try {
+			await reached;
+			const { tasks } = await harness!.harness.inspect(backgroundContext);
+			const attempts = tasks
+				.map(({ record }) => (record.state as { checkpoint?: { attempts?: Record<string, number> } }).checkpoint)
+				.find((checkpoint) => checkpoint?.attempts !== undefined)?.attempts;
+			const key = Object.keys(attempts ?? {}).find((each) => !each.endsWith(":plan"))!;
+			expect(attempts).toEqual({ [key]: 1, [`lens:${key}:plan`]: 2 });
+		} finally {
+			release();
+		}
 		expect(record((await run).verdict).status).toBe("ran");
 	});
 
