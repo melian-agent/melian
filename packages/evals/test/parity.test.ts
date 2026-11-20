@@ -1,5 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -12,6 +22,7 @@ import {
 	type MelianConfig,
 	Revision,
 	Verdict,
+	visibleText,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -51,7 +62,7 @@ import { GoldenRunError } from "../src/run-error.ts";
 
 let scratch: string;
 beforeEach(() => {
-	scratch = mkdtempSync(join(tmpdir(), "melian-parity-eval-"));
+	scratch = realpathSync(mkdtempSync(join(tmpdir(), "melian-parity-eval-")));
 });
 afterEach(() => rmSync(scratch, { recursive: true, force: true }));
 
@@ -841,6 +852,23 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(lines).toContain("    correctness@1@deep prober ended at its tokens share of no limit, 1 attacks open");
 	});
 
+	it("counts a covered file a cut lens read as seen, whichever other files it read, and one it read only beside as unread", async () => {
+		const cut = (id: string, read: string[]) =>
+			lensStage({
+				id,
+				ended: "tokens",
+				limits: { tokens: 50 },
+				coverage: { scope: "", paths: ["src/**"], nearer: [] },
+				shown: [],
+				read: read.map((path) => ({ path, ranges: [[1, 2]] as [number, number][] })),
+			});
+		await measure(
+			{ ...env, MELIAN_EVAL_PARITY_MISSES: "one" },
+			runners([[cut("s", ["README.md", "src/scan.ts"]), cut("b", ["README.md"])]]),
+		);
+		expect(results().attempts[0]!.stages.map(({ unread }) => unread)).toEqual([[], ["src/scan.ts"]]);
+	});
+
 	it("resumes from its results file, skipping what it finished, and refuses one another commit measured", async () => {
 		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
 		expect(results().stopped).toMatch(/the run's 360 tokens reached MELIAN_EVAL_PARITY_STOP_RUN, 200/);
@@ -942,19 +970,298 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		});
 	});
 
-	it("refuses to save through a file or link planted at its temporary path, and leaves the link's target alone", async () => {
+	it("refuses to save through a link, a dangling link, a FIFO or a directory planted at its temporary path, and leaves a link's target alone", async () => {
 		const sentinel = join(scratch, "sentinel");
 		const planted = `${env.MELIAN_EVAL_PARITY_OUT}.${process.pid}.tmp`;
 		writeFileSync(sentinel, "SAFE");
-		symlinkSync(sentinel, planted);
+		const plant: Record<string, () => void> = {
+			link: () => symlinkSync(sentinel, planted),
+			"dangling link": () => symlinkSync(join(scratch, "missing", "new.json"), planted),
+			FIFO: () => execFileSync("mkfifo", [planted]),
+			directory: () => mkdirSync(planted),
+		};
 		try {
-			await expect(measure(env, runners())).rejects.toThrow(/EEXIST/);
-			expect(readFileSync(sentinel, "utf8")).toBe("SAFE");
-			expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
+			for (const plantIt of Object.values(plant)) {
+				plantIt();
+				await expect(measure(env, runners())).rejects.toThrow(
+					`${planted} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+				);
+				expect(readFileSync(sentinel, "utf8")).toBe("SAFE");
+				expect(existsSync(join(scratch, "missing"))).toBe(false);
+				expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
+				rmSync(planted, { recursive: true });
+				rmSync(`${env.MELIAN_EVAL_PARITY_OUT}.lock`, { force: true });
+			}
 		} finally {
-			rmSync(planted, { force: true });
+			rmSync(planted, { recursive: true, force: true });
 			rmSync(sentinel, { force: true });
 		}
+	});
+
+	it("escapes a results path's control and bidi characters once, in the temporary path's refusal and the lock's", async () => {
+		const hostile = join(scratch, "e\u001b[31m\u202e");
+		mkdirSync(hostile);
+		const out = join(hostile, "parity.json");
+		const hostileEnv = { ...env, MELIAN_EVAL_PARITY_OUT: out };
+		const refusal = (path: string) =>
+			`${visibleText(path)} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`;
+		const planted = `${out}.${process.pid}.tmp`;
+		mkdirSync(planted);
+		const saving = measure(hostileEnv, runners());
+		await expect(saving).rejects.toThrow(refusal(planted));
+		await expect(saving).rejects.not.toThrow(/[\u001b\u202e]/);
+		rmSync(planted, { recursive: true });
+		rmSync(`${out}.lock`, { force: true });
+		mkdirSync(`${out}.lock`);
+		expect(await measure({ ...hostileEnv, MELIAN_EVAL_PARITY_MISSES: "two" }, runners())).toMatchObject({
+			status: 2,
+			errors: [refusal(`${out}.lock`)],
+		});
+	});
+
+	it("refuses a results path that is a link, a dangling link, a FIFO or a directory, before any model, and changes nothing there", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		const target = join(scratch, "target.json");
+		const plant: Record<string, () => void> = {
+			"link to a file": () => {
+				writeFileSync(target, "KEPT");
+				symlinkSync(target, out);
+			},
+			"dangling link": () => symlinkSync(join(scratch, "missing", "new.json"), out),
+			FIFO: () => execFileSync("mkfifo", [out]),
+			directory: () => mkdirSync(out),
+		};
+		for (const [kind, planted] of Object.entries(plant)) {
+			planted();
+			const using = runners();
+			expect([kind, await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)]).toMatchObject([
+				kind,
+				{
+					status: 2,
+					errors: [
+						`${out} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+					],
+				},
+			]);
+			expect(using.range).not.toHaveBeenCalled();
+			expect(existsSync(`${out}.lock`)).toBe(false);
+			expect(existsSync(join(scratch, "missing"))).toBe(false);
+			rmSync(out, { recursive: true });
+		}
+		expect(readFileSync(target, "utf8")).toBe("KEPT");
+	});
+
+	it("runs on a results path whose directory is a link, and saves in the directory it leads to", async () => {
+		const real = join(scratch, "real");
+		mkdirSync(real);
+		symlinkSync(real, join(scratch, "linked"));
+		const out = join(scratch, "linked", "parity.json");
+		const { status } = await measure(
+			{ ...env, MELIAN_EVAL_PARITY_OUT: out, MELIAN_EVAL_PARITY_MISSES: "two" },
+			runners(),
+		);
+		expect(status).toBe(1);
+		expect(lstatSync(join(real, "parity.json")).isFile()).toBe(true);
+		expect(existsSync(join(real, "parity.json.lock"))).toBe(false);
+	});
+
+	it("holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const first = runners(undefined, {
+			range: vi.fn(async () => {
+				entered();
+				await held;
+				return ran(committedStages);
+			}),
+		});
+		const running = measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, first);
+		await started;
+		const before = readFileSync(out, "utf8");
+		const second = runners();
+		const { status, errors } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, second);
+		expect(status).toBe(2);
+		expect(errors).toEqual([
+			`${out}.lock says run ${process.pid} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+		]);
+		expect(second.range).not.toHaveBeenCalled();
+		expect(readFileSync(out, "utf8")).toBe(before);
+		release();
+		expect((await running).status).toBe(1);
+		expect(existsSync(`${out}.lock`)).toBe(false);
+		expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
+			["two", "committed"],
+			["two", "parity"],
+		]);
+	});
+
+	it("reports a lock it cannot check or create as that error, not as a lock another run holds", async () => {
+		for (const [out, error] of [
+			[join(scratch, `${"p".repeat(251)}.json`), /^ENAMETOOLONG: name too long, lstat /],
+			[join(scratch, "missing", "parity.json"), /^ENOENT: no such file or directory, open /],
+		] as const) {
+			const using = runners();
+			const { status, errors } = await measure(
+				{ ...env, MELIAN_EVAL_PARITY_OUT: out, MELIAN_EVAL_PARITY_MISSES: "two" },
+				using,
+			);
+			expect(status).toBe(2);
+			expect(errors).toHaveLength(1);
+			expect(errors[0]).toMatch(error);
+			expect(using.range).not.toHaveBeenCalled();
+		}
+	});
+
+	it("refuses a second run that names the held results file through a link, because the path is a link", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		const alias = join(scratch, "alias.json");
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const first = runners(undefined, {
+			range: vi.fn(async () => {
+				entered();
+				await held;
+				return ran(committedStages);
+			}),
+		});
+		const running = measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, first);
+		await started;
+		symlinkSync(out, alias);
+		const before = readFileSync(out, "utf8");
+		const second = runners();
+		const { status, errors } = await measure(
+			{ ...env, MELIAN_EVAL_PARITY_OUT: alias, MELIAN_EVAL_PARITY_MISSES: "two" },
+			second,
+		);
+		expect(status).toBe(2);
+		expect(errors).toEqual([
+			`${alias} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+		]);
+		expect(second.range).not.toHaveBeenCalled();
+		expect(readFileSync(out, "utf8")).toBe(before);
+		release();
+		expect((await running).status).toBe(1);
+		const third = runners();
+		expect(
+			(await measure({ ...env, MELIAN_EVAL_PARITY_OUT: alias, MELIAN_EVAL_PARITY_MISSES: "two" }, third)).status,
+		).toBe(2);
+		expect(third.range).not.toHaveBeenCalled();
+		expect(lstatSync(alias).isSymbolicLink()).toBe(true);
+		expect(existsSync(`${alias}.lock`)).toBe(false);
+	});
+
+	it("refuses a lock path that is a link, a dangling link, a FIFO, a directory or a file of other text, and says nothing the path holds", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		const lock = `${out}.lock`;
+		const secret = join(scratch, "secret");
+		writeFileSync(secret, "PRIVATE_TOKEN_7f30a data\n");
+		const notFile = `${lock} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`;
+		const notLock = `${lock} is not a lock this measurement wrote, so it cannot say which run holds ${out}; if no run is using it, removing it lets this one start`;
+		const plant: Record<string, [() => void, string]> = {
+			link: [() => symlinkSync(secret, lock), notFile],
+			"dangling link": [() => symlinkSync(join(scratch, "missing", "new.json"), lock), notFile],
+			FIFO: [() => execFileSync("mkfifo", [lock]), notFile],
+			directory: [() => mkdirSync(lock), notFile],
+			text: [() => writeFileSync(lock, "PRIVATE_TOKEN_7f30a data\n"), notLock],
+			"claim after other text": [
+				() => writeFileSync(lock, "PRIVATE 4242 00000000-0000-4000-8000-000000000000\n"),
+				notLock,
+			],
+			"claim before other text": [
+				() => writeFileSync(lock, "4242 00000000-0000-4000-8000-000000000000\nPRIVATE\n"),
+				notLock,
+			],
+		};
+		for (const [kind, [planted, refusal]] of Object.entries(plant)) {
+			planted();
+			const using = runners();
+			expect([kind, await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)]).toMatchObject([
+				kind,
+				{ status: 2, errors: [refusal] },
+			]);
+			expect(using.range).not.toHaveBeenCalled();
+			expect(existsSync(out)).toBe(false);
+			expect(existsSync(join(scratch, "missing"))).toBe(false);
+			rmSync(lock, { recursive: true });
+		}
+		expect(readFileSync(secret, "utf8")).toBe("PRIVATE_TOKEN_7f30a data\n");
+	});
+
+	it("stops without saving or releasing when a claim of its own process but another run took its lock", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const other = `${process.pid} 00000000-0000-4000-8000-000000000000\n`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock);
+				writeFileSync(lock, other);
+				return ran(committedStages);
+			}),
+		});
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(readFileSync(lock, "utf8")).toBe(other);
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
+		]);
+	});
+
+	it("stops without saving or releasing when another run took its lock while it ran", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock);
+				writeFileSync(lock, "999 other\n");
+				return ran(committedStages);
+			}),
+		});
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(using.range).toHaveBeenCalledTimes(1);
+		expect(readFileSync(lock, "utf8")).toBe("999 other\n");
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
+		]);
+	});
+
+	it("stops without saving when its lock was removed while it ran", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock);
+				return ran(committedStages);
+			}),
+		});
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(existsSync(lock)).toBe(false);
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
+		]);
 	});
 
 	it("stops and resumes with its results and misses files beside the checkout, and refuses either inside it before any model", async () => {
@@ -1466,6 +1773,11 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			});
 			void measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using);
 			await reviewed;
+			// The dead run's lock is left, and refuses a resume until a person who knows no run is using it removes it.
+			const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+			expect(readFileSync(lock, "utf8")).toMatch(new RegExp(`^${process.pid} [0-9a-f-]{36}\\n$`));
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners())).status).toBe(2);
+			rmSync(lock);
 		}
 
 		const ended = {
@@ -1615,10 +1927,25 @@ describe("checkoutCommit", () => {
 		try {
 			const head = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 			const beside = `${repo}-results`;
+			mkdirSync(beside);
 			expect(
 				checkoutCommit(repo, [join(beside, "parity.json"), join(scratch, "misses.json"), join(repo, "..")]),
 			).toBe(head);
 			symlinkSync(repo, join(scratch, "link"));
+			writeFileSync(join(repo, "kept.json"), "{}\n");
+			execFileSync("git", ["-C", repo, "add", "kept.json"]);
+			execFileSync("git", [
+				"-C",
+				repo,
+				"-c",
+				"user.name=t",
+				"-c",
+				"user.email=t@example.com",
+				"commit",
+				"-qm",
+				"keep results",
+			]);
+			symlinkSync(join(repo, "kept.json"), join(scratch, "kept.json"));
 			for (const [named, inside] of [
 				[join(repo, "src", "parity.json"), join(repo, "src", "parity.json")],
 				[join(repo, "..parity.json"), join(repo, "..parity.json")],
@@ -1628,8 +1955,15 @@ describe("checkoutCommit", () => {
 				expect(() => checkoutCommit(repo, [join(scratch, "misses.json"), named])).toThrow(
 					`${inside} is inside the checkout ${repo}, which the run must leave unchanged; name a path outside it`,
 				);
+			// The last name is judged where it sits, and measureParity refuses it as a link before it is opened.
+			symlinkSync(join(repo, "new.json"), join(scratch, "dangling.json"));
+			expect(checkoutCommit(repo, [join(scratch, "kept.json"), join(scratch, "dangling.json")])).toBe(
+				execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+			);
+			expect(() => checkoutCommit(repo, [join(scratch, "missing", "parity.json")])).toThrow(/ENOENT/);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
+			rmSync(`${repo}-results`, { recursive: true, force: true });
 		}
 	});
 
