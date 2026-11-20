@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,8 +31,9 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(scratch, { recursive: true, force: true }));
 
-// The release lines alone, for a test about which releases are keyed rather than how they resolve.
-const releases = () => installedPackages(roots).filter((line) => !line.includes(" > "));
+// The releases alone, without the place of each copy, for a test about which releases are keyed rather than where.
+const releases = () =>
+	installedPackages(roots).map((line) => (line.includes(" absent, ") ? line : line.slice(line.indexOf(" ") + 1)));
 
 const failure = (run: () => unknown) => {
 	try {
@@ -45,16 +46,13 @@ const failure = (run: () => unknown) => {
 };
 
 describe("installedPackages", () => {
-	it("lists each root and every package beneath it, as name@version, sorted", () => {
+	it("lists each root and every copy beneath it as its place and release, sorted", () => {
 		install("pi", { name: "pi", version: "1.1.0", dependencies: { zod: "^4", sdk: "^2" } });
 		install("zod", { name: "zod", version: "4.0.0" });
 		expect(installedPackages(roots)).toEqual([
-			"melian-app > pi@1.1.0",
-			"pi@1.1.0",
-			"pi@1.1.0 > sdk@2.0.0",
-			"pi@1.1.0 > zod@4.0.0",
-			"sdk@2.0.0",
-			"zod@4.0.0",
+			"node_modules/pi pi@1.1.0",
+			"node_modules/sdk sdk@2.0.0",
+			"node_modules/zod zod@4.0.0",
 		]);
 	});
 
@@ -67,6 +65,20 @@ describe("installedPackages", () => {
 		const before = installedPackagesDigest(roots);
 		install("a/node_modules/parser", { name: "parser", version: "1.2.0" });
 		install("b/node_modules/parser", { name: "parser", version: "1.1.0" });
+		expect(installedPackagesDigest(roots)).not.toBe(before);
+	});
+
+	it("moves when two copies of one release swap which release of a dependency each resolves", () => {
+		install("pi", { name: "pi", version: "1.1.0", dependencies: { a: "^1", b: "^1" } });
+		install("a", { name: "a", version: "1.0.0", dependencies: { shared: "^1" } });
+		install("b", { name: "b", version: "1.0.0", dependencies: { shared: "^1" } });
+		install("a/node_modules/shared", { name: "shared", version: "1.0.0", dependencies: { parser: "*" } });
+		install("b/node_modules/shared", { name: "shared", version: "1.0.0", dependencies: { parser: "*" } });
+		install("a/node_modules/shared/node_modules/parser", { name: "parser", version: "1.0.0" });
+		install("b/node_modules/shared/node_modules/parser", { name: "parser", version: "2.0.0" });
+		const before = installedPackagesDigest(roots);
+		install("a/node_modules/shared/node_modules/parser", { name: "parser", version: "2.0.0" });
+		install("b/node_modules/shared/node_modules/parser", { name: "parser", version: "1.0.0" });
 		expect(installedPackagesDigest(roots)).not.toBe(before);
 	});
 
@@ -88,39 +100,100 @@ describe("installedPackages", () => {
 		expect(releases()).toEqual(["pi@1.1.0", "sdk@3.0.0"]);
 	});
 
-	it("lists two copies of one release once, and two releases of one package apiece", () => {
+	it("lists each copy of one release at its own place", () => {
 		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", tool: "^1" } });
 		install("tool", { name: "tool", version: "1.0.0", dependencies: { sdk: "^2" } });
 		install("tool/node_modules/sdk", { name: "sdk", version: "2.0.0" });
-		expect(releases()).toEqual(["pi@1.1.0", "sdk@2.0.0", "tool@1.0.0"]);
-		install("tool/node_modules/sdk", { name: "sdk", version: "2.1.0" });
-		expect(releases()).toEqual(["pi@1.1.0", "sdk@2.0.0", "sdk@2.1.0", "tool@1.0.0"]);
+		expect(installedPackages(roots)).toEqual([
+			"node_modules/pi pi@1.1.0",
+			"node_modules/sdk sdk@2.0.0",
+			"node_modules/tool tool@1.0.0",
+			"node_modules/tool/node_modules/sdk sdk@2.0.0",
+		]);
 	});
 
-	it("records each parent's resolution of one copy, so a second parent of it is keyed", () => {
+	it("lists a copy two parents resolve once", () => {
 		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", tool: "^1" } });
 		install("tool", { name: "tool", version: "1.0.0", dependencies: { sdk: "^2" } });
 		expect(installedPackages(roots)).toEqual([
-			"melian-app > pi@1.1.0",
-			"pi@1.1.0",
-			"pi@1.1.0 > sdk@2.0.0",
-			"pi@1.1.0 > tool@1.0.0",
-			"sdk@2.0.0",
-			"tool@1.0.0",
-			"tool@1.0.0 > sdk@2.0.0",
+			"node_modules/pi pi@1.1.0",
+			"node_modules/sdk sdk@2.0.0",
+			"node_modules/tool tool@1.0.0",
 		]);
 	});
 
-	it("records no resolution of a platform build left out, from any parent that pins it", () => {
+	it("leaves out a platform build every parent that reaches it pins exactly", () => {
 		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", bin: "1.0.0" } });
 		install("sdk", { name: "sdk", version: "2.0.0", dependencies: { bin: "1.0.0" } });
 		install("bin", { name: "bin", version: "1.0.0", cpu: ["x64"] });
-		expect(installedPackages(roots)).toEqual([
-			"melian-app > pi@1.1.0",
-			"pi@1.1.0",
-			"pi@1.1.0 > sdk@2.0.0",
-			"sdk@2.0.0",
-		]);
+		expect(installedPackages(roots)).toEqual(["node_modules/pi pi@1.1.0", "node_modules/sdk sdk@2.0.0"]);
+	});
+
+	it("gives one digest for one layout installed at two places, as one lockfile on two hosts does", () => {
+		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", tool: "^1" } });
+		install("tool", { name: "tool", version: "1.0.0", dependencies: { sdk: "^2" } });
+		install("tool/node_modules/sdk", { name: "sdk", version: "2.1.0" });
+		const here = installedPackagesDigest(roots);
+		const other = mkdtempSync(join(tmpdir(), "melian-installed-packages-other-"));
+		try {
+			cpSync(scratch, join(other, "deeper", "checkout"), { recursive: true });
+			const from = pathToFileURL(join(other, "deeper", "checkout", "package.json")).href;
+			expect(installedPackagesDigest([{ ...roots[0], from }])).toBe(here);
+		} finally {
+			rmSync(other, { recursive: true, force: true });
+		}
+	});
+
+	it("keys the install root at the outermost node_modules, as a global install nests its own", () => {
+		install("melian/node_modules/pi", { name: "pi", version: "1.1.0" });
+		install("melian", { name: "melian", version: "1.0.0" });
+		roots = [
+			{
+				name: "pi",
+				from: pathToFileURL(join(scratch, "node_modules", "melian", "package.json")).href,
+				by: "melian",
+			},
+		];
+		expect(installedPackages(roots)).toEqual(["node_modules/melian/node_modules/pi pi@1.1.0"]);
+	});
+
+	it("records a package reached through a link at the place it links to, and resolves beneath it from there", () => {
+		rmSync(join(scratch, "node_modules", "pi"), { recursive: true });
+		mkdirSync(join(scratch, "packages", "pi", "node_modules", "sdk"), { recursive: true });
+		writeFileSync(
+			join(scratch, "packages", "pi", "package.json"),
+			JSON.stringify({ name: "pi", version: "1.1.0", dependencies: { sdk: "^2" } }),
+		);
+		writeFileSync(
+			join(scratch, "packages", "pi", "node_modules", "sdk", "package.json"),
+			JSON.stringify({ name: "sdk", version: "2.5.0" }),
+		);
+		symlinkSync(join("..", "packages", "pi"), join(scratch, "node_modules", "pi"));
+		expect(installedPackages(roots)).toEqual(["packages/pi pi@1.1.0", "packages/pi/node_modules/sdk sdk@2.5.0"]);
+	});
+
+	it("fails, naming the package, when it resolves outside the install root", () => {
+		const outside = mkdtempSync(join(tmpdir(), "melian-installed-packages-outside-"));
+		try {
+			writeFileSync(join(outside, "package.json"), JSON.stringify({ name: "sdk", version: "2.0.0" }));
+			rmSync(join(scratch, "node_modules", "sdk"), { recursive: true });
+			symlinkSync(outside, join(scratch, "node_modules", "sdk"));
+			expect(failure(() => installedPackages(roots))).toBe(
+				"Melian cannot key the installed package sdk, which pi@1.1.0 needs: it is not beneath the install's node_modules.",
+			);
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
+
+	it("fails, naming the root, when Node finds it beneath no node_modules, as a package naming itself is", () => {
+		writeFileSync(
+			join(scratch, "package.json"),
+			JSON.stringify({ name: "pi", version: "1.1.0", exports: "./index.js" }),
+		);
+		expect(failure(() => installedPackages(roots))).toBe(
+			"Melian cannot key the installed package pi, which melian-app needs: it is not beneath the install's node_modules.",
+		);
 	});
 
 	it("ends on a cycle", () => {
@@ -201,29 +274,23 @@ describe("installedPackages", () => {
 		const from = roots[0].from;
 		roots = order.map((name) => ({ name, from, by: "melian-app" }));
 		expect(installedPackages(roots)).toEqual([
-			"bin@1.0.0",
-			"bin@1.0.0 > sdk@2.0.0",
-			"melian-app > bin@1.0.0",
-			"melian-app > pi@1.1.0",
-			"pi@1.1.0",
-			"sdk@2.0.0",
+			"node_modules/bin bin@1.0.0",
+			"node_modules/pi pi@1.1.0",
+			"node_modules/sdk sdk@2.0.0",
 		]);
 	});
 
 	it.each([
 		["the exact pin first", { bin: "1.0.0", sdk: "^2" }],
 		["the range first", { sdk: "^2", bin: "1.0.0" }],
-	])("keys a platform build another parent names by a range, only from that parent, with %s", (_, dependencies) => {
+	])("keys a platform build another parent names by a range, with %s", (_, dependencies) => {
 		install("pi", { name: "pi", version: "1.1.0", dependencies });
 		install("sdk", { name: "sdk", version: "2.0.0", dependencies: { bin: "^1" } });
 		install("bin", { name: "bin", version: "1.0.0", cpu: ["x64"] });
 		expect(installedPackages(roots)).toEqual([
-			"bin@1.0.0",
-			"melian-app > pi@1.1.0",
-			"pi@1.1.0",
-			"pi@1.1.0 > sdk@2.0.0",
-			"sdk@2.0.0",
-			"sdk@2.0.0 > bin@1.0.0",
+			"node_modules/bin bin@1.0.0",
+			"node_modules/pi pi@1.1.0",
+			"node_modules/sdk sdk@2.0.0",
 		]);
 	});
 
@@ -288,9 +355,7 @@ describe("installedPackagesDigest", () => {
 		install("sdk", { name: "sdk", version: "2.0.0", peerDependencies: { undici: "^7" } });
 		expect(installedPackagesDigest(roots)).toBe(
 			createHash("sha256")
-				.update(
-					"melian-app > pi@1.1.0\npi@1.1.0\npi@1.1.0 > sdk@2.0.0\nsdk@2.0.0\nundici absent, a peer of sdk@2.0.0\n",
-				)
+				.update("node_modules/pi pi@1.1.0\nnode_modules/sdk sdk@2.0.0\nundici absent, a peer of sdk@2.0.0\n")
 				.digest("hex"),
 		);
 	});
