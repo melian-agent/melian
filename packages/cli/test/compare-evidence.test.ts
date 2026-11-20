@@ -245,6 +245,14 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		]);
 	});
 
+	it("keeps nothing for an unmatched external finding judged noise", () => {
+		const { repo, env, external, evidence } = compared([30]);
+		const noise = melian(repo, ["compare", "adjudicate", range, external(30), "--verdict", "noise"], env);
+		expect(noise).toMatchObject({ status: 0, stderr: "" });
+		expect(noise.stdout).not.toContain("evidence");
+		expect(stored(evidence)).toEqual([]);
+	});
+
 	it("keeps nothing for a valid Melian finding or a match, which are not misses", () => {
 		const { repo, env, external, melianId, evidence } = compared([8]);
 		expect(melian(repo, valid(external(8)), env).stdout).not.toContain("evidence");
