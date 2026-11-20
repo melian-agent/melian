@@ -156,7 +156,7 @@ function strictJson(text: string | undefined): unknown {
 function scriptChanges(before: unknown, after: unknown): string[] {
 	const was = field(before, "scripts");
 	if (typeof after !== "object" || after === null || Array.isArray(after)) return [];
-	if (typeof was !== "object" || was === null || Array.isArray(was)) return [];
+	if (typeof was !== "object" || was === null) return [];
 	const is = field(after, "scripts");
 	const now = typeof is === "object" && is !== null ? (is as Json) : {};
 	const names = Object.keys(was);

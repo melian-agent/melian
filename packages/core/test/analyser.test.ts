@@ -197,8 +197,18 @@ describe("npm scripts", () => {
 
 	it("reports nothing when the base had no scripts, or scripts that are not an object", () => {
 		expect(switchOffs("package.json", JSON.stringify({}), manifest({ check: "true" }), [])).toEqual([]);
-		expect(switchOffs("package.json", manifest(["check"]), manifest({ check: "true" }), [])).toEqual([]);
+		expect(switchOffs("package.json", manifest("check"), manifest({ check: "true" }), [])).toEqual([]);
 		expect(switchOffs("package.json", manifest(null), manifest({}), [])).toEqual([]);
+	});
+
+	it("reads a base scripts array by its indexes too", () => {
+		expect(switchOffs("package.json", manifest(["vitest --run"]), manifest(["true"]), [])).toEqual([
+			'It changes the npm script "0".',
+		]);
+		expect(switchOffs("package.json", manifest(["vitest --run"]), undefined, [])).toEqual([
+			"The head deletes package.json.",
+			'It removes the npm script "0".',
+		]);
 	});
 
 	it("quotes a base script's name as JSON, so no newline or quote in it reads as prose", () => {

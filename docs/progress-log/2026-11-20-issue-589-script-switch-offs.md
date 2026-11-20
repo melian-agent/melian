@@ -21,3 +21,5 @@ The Actions round at 8b83d65e1 raised two acknowledge findings. Its `identity-mi
 Codex's fourth pass, at 973c53954, found that deleting a `package.json` gave only "The head deletes package.json" and named none of its scripts. A test of the deletion failed there, with that one sentence, and passes after the fix, which names every base script as removed. Both mutants of the new `manifest` guard, forced true and forced false, fail it.
 
 The own-build round at 973c53954 read not reviewed, since `lens.conventions` spent its findings budget. Its acknowledge, the progress log quoting the old fixture's instruction, is reworded. One advisory said a head `scripts` array hid a base script named `0`. npm's `@npmcli/package-json` keeps an array, since it is an object, so `npm run 0` runs its first entry, and Melian already reads it the same way. A test now records that.
+
+The Actions round at 0a750eb29 raised two acknowledge findings. A base `scripts` array was ignored, though the head's is read by index as npm reads it; a test of a base array failed there and passes now.
