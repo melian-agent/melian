@@ -113,6 +113,7 @@ import {
 	defineTask,
 	type Harness,
 	holdsWork,
+	isContentRefusal,
 	isFailoverError,
 	type JsonObject,
 	openHarness,
@@ -330,6 +331,8 @@ type LensOutcome =
 			readonly status: "done";
 			// The model the lens finished on, after any failover; absent from an outcome an older Melian stored.
 			readonly model?: string;
+			// The models whose content filter refused the lens's conversation before `model` answered.
+			readonly refused?: readonly string[];
 			readonly budgetEnded?: StoredBudgetEnd;
 			// The findings budget, when a report past it was refused.
 			readonly capped?: number;
@@ -347,7 +350,13 @@ type LensOutcome =
 			readonly reused?: number;
 	  }
 	| { readonly status: "unanswered"; readonly reason: string }
-	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
+	| {
+			readonly status: "exhausted";
+			readonly tried: string[];
+			readonly reason: string;
+			// The models of `tried` whose content filter refused the conversation.
+			readonly refused?: readonly string[];
+	  };
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
 // the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
@@ -392,6 +401,8 @@ type ProbeGapReason = { readonly cause: ProbeGapCause; readonly reason: string }
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
+	// The models whose content filter refused the prober's conversation before `model` answered.
+	readonly refused?: readonly string[];
 	readonly attacks: number;
 	readonly probes: number;
 	readonly milliseconds: number;
@@ -622,8 +633,25 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				route: readonly ModelReference[],
 				id: ConversationId,
 				prompt: string,
-			): Promise<{ readonly status: "done"; readonly model: string } | Exclude<LensOutcome, { status: "done" }>> => {
+			): Promise<
+				| { readonly status: "done"; readonly model: string; readonly refused?: string[] }
+				| Exclude<LensOutcome, { status: "done" }>
+			> => {
 				const child = (await runtime.conversation(id, context))!;
+				// The models before `attempt` whose content filter refused this conversation, read from each attempt's settled
+				// submission, so a resume after a crash names the refusals of attempts it did not see.
+				const refusedBefore = async (attempt: number) => {
+					const refused: string[] = [];
+					await runtime.commit(async (tx) => {
+						for (let at = 0; at < attempt; at++) {
+							const settled = await tx.submissionByRequest(id, `lens:${key}:${at}`);
+							if (settled?.reason === "model_error" && isContentRefusal(unsettled(settled)))
+								refused.push(modelName(route[at]!));
+						}
+						return undefined;
+					}, context);
+					return refused.length === 0 ? {} : { refused };
+				};
 				for (let attempt = started.attempts[key] ?? 0; ; attempt++) {
 					// A task a later review replaced asks no model again, even when a resume restarts it.
 					if (await superseded(runtime, input, runtime.taskId, context)) {
@@ -637,7 +665,8 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 								: handoverWording.fresh;
 					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
-					if (settled.status === "done") return { status: "done", model: modelName(route[attempt]!) };
+					if (settled.status === "done")
+						return { status: "done", model: modelName(route[attempt]!), ...(await refusedBefore(attempt)) };
 					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
@@ -645,7 +674,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const next = route[attempt + 1];
 					if (next === undefined) {
 						const tried = route.slice(0, attempt + 1).map(modelName);
-						return { status: "exhausted", tried, reason };
+						return { status: "exhausted", tried, reason, ...(await refusedBefore(attempt + 1)) };
 					}
 					await runtime.commit(async (tx, current) => {
 						await configure(tx, id, { model: next });
@@ -760,6 +789,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				return {
 					prober: prober!,
 					model: answered.model,
+					...(answered.refused === undefined ? {} : { refused: answered.refused }),
 					attacks: plan.length,
 					probes: probes.length,
 					milliseconds: probes.reduce((sum, each) => sum + each.milliseconds, 0),
@@ -802,6 +832,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				return {
 					status: "done",
 					model: planned.model,
+					...(planned.refused === undefined ? {} : { refused: planned.refused }),
 					usage,
 					...(ended === undefined ? {} : { budgetEnded: ended }),
 					...(capped === undefined ? {} : { capped }),
@@ -2145,7 +2176,14 @@ function lensRecord(
 	const name = `lens.${lens.name}`;
 	const { level } = lens;
 	const probing = outcome?.status === "done" ? outcome.probing : undefined;
-	const notes = probing === undefined ? given : [...given, probingNote(probing)];
+	const refusals =
+		outcome?.status === "done"
+			? [
+					...refusalNote("", outcome.refused, outcome.model),
+					...refusalNote("for its prober, ", probing?.refused, probing?.model),
+				]
+			: [];
+	const notes = [...given, ...refusals, ...(probing === undefined ? [] : [probingNote(probing)])];
 	const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
 	const failed = (why: string) => [why, ...notes].join("; ");
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
@@ -2185,10 +2223,25 @@ function lensRecord(
 	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
-		return { name, status: "failed", level, reason: failed("every model of its tier failed"), error };
+		const refused = outcome.refused ?? [];
+		const why =
+			refused.length === outcome.tried.length
+				? `every model of its tier refused the content: ${refused.join(", ")}`
+				: [
+						"every model of its tier failed",
+						...(refused.length === 0 ? [] : [`${refused.join(", ")} refused the content`]),
+					].join("; ");
+		return { name, status: "failed", level, reason: failed(why), error };
 	}
 	const error = outcome?.reason ?? "no outcome";
 	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
+}
+
+// What a lens record says of the models whose content filter refused a conversation, `whose` naming the conversation.
+function refusalNote(whose: string, refused: readonly string[] | undefined, model: string | undefined): string[] {
+	return refused === undefined || model === undefined
+		? []
+		: [`${whose}${refused.join(", ")} refused the content, so ${model} answered`];
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
