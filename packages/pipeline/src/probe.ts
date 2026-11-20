@@ -18,6 +18,7 @@ import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 // Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0 with no signal.
 // So the runner records exit 0 only when the probe's own exit handler, which no signal runs, said 0 on fd 4; otherwise
 // it records an ending with no record of how. A probe that writes 0 there itself gains no ending it could not exit with.
+// The runner keeps three characters of fd 4, enough to tell `0\n` from anything longer, so a flood cannot grow it.
 function runnerSource(): string {
 	return [
 		`import { spawn } from "node:child_process";`,
@@ -26,7 +27,7 @@ function runnerSource(): string {
 		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
 		`const exited = probe.stdio[4];`,
 		`let said = "";`,
-		`exited.setEncoding("utf8").on("data", (chunk) => { said += chunk; }).on("error", () => {});`,
+		`exited.setEncoding("utf8").on("data", (chunk) => { said = (said + chunk).slice(0, 3); }).on("error", () => {});`,
 		`probe.once("error", () => { process.exitCode = 127; });`,
 		`probe.once("exit", (code, signal) => {`,
 		`\tconst known = () => signal !== null || code !== 0 || said === "0\\n";`,

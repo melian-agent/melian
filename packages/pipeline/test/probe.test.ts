@@ -1157,6 +1157,43 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		}
 	});
 
+	// The run keeps the last 256 bytes of fd 3, so a record whose opening newline falls before them is no record.
+	it.each([
+		["at", 230, { exitCode: 3, signal: null }],
+		["one past", 231, { exitCode: null, signal: null }],
+	])("reads a record %s the 256 bytes a run keeps of fd 3", async (_, pad, expected) => {
+		const { sandbox } = passthrough({
+			wrap: (async (_command: string, policy: ProbePolicy) => [
+				"/bin/sh",
+				"-c",
+				`: > '${policy.write[0]}/started'; printf '\\n%${pad}s%s\\n' '' '{"code":3,"signal":null}' >&3; exit 3`,
+			]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			const result = await probe.run();
+			expect({ exitCode: result.exitCode, signal: result.signal }).toEqual(expected);
+		} finally {
+			await probe.close();
+		}
+	});
+
+	it("reads a short record after a long prefix on fd 3", async () => {
+		const { sandbox } = passthrough({
+			wrap: (async (_command: string, policy: ProbePolicy) => [
+				"/bin/sh",
+				"-c",
+				`: > '${policy.write[0]}/started'; printf '%4000s\\n%s\\n' '' '{"code":3,"signal":null}' >&3; exit 3`,
+			]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			expect((await probe.run()).exitCode).toBe(3);
+		} finally {
+			await probe.close();
+		}
+	});
+
 	it("refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started", async () => {
 		let runs = 0;
 		const { sandbox } = passthrough({

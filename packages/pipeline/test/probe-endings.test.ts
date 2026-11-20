@@ -111,6 +111,28 @@ describe.skipIf(!availability.available && !required)(
 			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
 		});
 
+		// The runner keeps only what tells `0\n` apart, so a probe that floods its exit pipe cannot grow the runner's memory.
+		it("reads the ending of a probe that floods its exit pipe past what a string can hold", async () => {
+			const result = await probed(
+				[
+					'import { writeSync } from "node:fs";',
+					"const block = Buffer.alloc(1 << 20, 48);",
+					"try { for (let i = 0; i < 640; i++) writeSync(4, block); } catch {}",
+					"process.exit(3);",
+					"",
+				].join("\n"),
+				{ timeout: 30_000 },
+			);
+			expect(ending(result)).toEqual({ exitCode: 3, signal: null, timedOut: false, truncated: false });
+		});
+
+		it("reads a probe whose exit pipe holds more than 0 as an ending with no record of how", async () => {
+			const result = await probed(
+				['import { writeSync } from "node:fs";', 'writeSync(4, "0\\nx");', "process.reallyExit(0);", ""].join("\n"),
+			);
+			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
+		});
+
 		it("reads a probe that exits 125 as one that could not test, which shows nothing", async () => {
 			const result = await probed("process.exit(125);\n");
 			expect(ending(result)).toEqual({ exitCode: 125, signal: null, timedOut: false, truncated: false });
