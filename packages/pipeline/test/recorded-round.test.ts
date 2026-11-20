@@ -948,6 +948,20 @@ describe("the dismissal records a reader applies", () => {
 		expect(standingOf(read)).toEqual(dismissedOf(id));
 	});
 
+	it("keeps a dismissal read at a round that follows one its writer held and this set does not", async () => {
+		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		// The writer held `unshared`, which the set lacks, and the round read follows it.
+		const unshared = roundAt("1", "2", [elsewhere], [first]);
+		expect(standingOf(await readAfter([unshared], [first], [first, unshared]))).toEqual(dismissedOf(id));
+	});
+
+	it("leaves a finding live past a round since that names a record this set does not hold", async () => {
+		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		// The sibling's lens record, which could cite a changed hunk, never reached the set.
+		const sibling = roundAt("1", "2", [elsewhere], []);
+		expect(standingOf(await readAfter([first], [first, sibling], [first]))).toEqual([[id, "new", undefined]]);
+	});
+
 	it("reopens a dismissal on a sibling round another host wrote without its frontier, though the round read never names it", async () => {
 		const { id, elsewhere, first, roundAt, readAfter } = await citedAcross("lens", revisionOf("0", "1"));
 		// Host B never held `first`, so its round follows none; its sighting cites a hunk the dismissal never accepted.
