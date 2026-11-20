@@ -1298,10 +1298,14 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
 		expect(notices).toHaveLength(1);
 		const command = notices[0]!.slice(notices[0]!.indexOf("melian dismiss "));
-		const words = spawnSync("bash", ["--noprofile", "--norc", "-c", `words() { printf '%s\\0' "$@"; }; words ${command}`], {
-			cwd: scratch,
-			encoding: "utf8",
-		});
+		const words = spawnSync(
+			"bash",
+			["--noprofile", "--norc", "-c", `words() { printf '%s\\0' "$@"; }; words ${command}`],
+			{
+				cwd: scratch,
+				encoding: "utf8",
+			},
+		);
 		expect(words).toMatchObject({ status: 0, stderr: "" });
 		expect(words.stdout.split("\0").slice(0, -1)).toEqual([
 			"melian",
