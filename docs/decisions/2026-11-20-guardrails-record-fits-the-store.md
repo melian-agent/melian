@@ -25,7 +25,7 @@ The shared check record carries that failure's reason as `unexpected`, since `re
 
 ## Known limits
 
-The budget measures a check's findings as the check forms its outcome, not the records the review exports. [Issue #626](https://github.com/melian-agent/melian/issues/626) would measure those instead. Until it lands, three cases remain, chosen by the coordinator on 2026-11-20 on issue #605. None lets a verdict pass that should block, since the verdict is decided from the local findings, which are complete:
+The budget measures a check's findings as the check forms its outcome, not the records the review exports. [Issue #626](https://github.com/melian-agent/melian/issues/626) would measure those instead. Until it lands, three cases remain, chosen by the coordinator on 2026-11-20 on [issue #605](https://github.com/melian-agent/melian/issues/605). None lets a verdict pass that should block, since the verdict is decided from the local findings, which are complete:
 
 - **The relay batch.** Each check's record fits the store alone, but the relay carries a round's records in one batch of at most 8 MiB. Three valid 3 MiB check records pass the store and the verdict, and the relay then refuses the batch. The reader sees a refused relay, and the round's records are lost.
 - **A projection smaller than the local findings.** The shared record replaces a static tool's text with fixed sentences. A check whose own text is long can fail as too large when its projected record would fit. The reader sees a failed check, and the review reads not reviewed.
