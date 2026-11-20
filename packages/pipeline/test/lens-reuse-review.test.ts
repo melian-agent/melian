@@ -40,6 +40,7 @@ import { blindCallers } from "../src/caveats.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { MutationEnumerationError, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -158,6 +159,7 @@ async function review(
 	const usage = Object.fromEntries(details.lenses.map(({ name, usage }) => [name, usage]));
 	return {
 		review: result,
+		run,
 		asked: [...asked].sort(),
 		lensStages,
 		copied,
@@ -194,6 +196,11 @@ describe("a repeat review copies each lens run whose request is unchanged", () =
 		expect(second.usage.correctness).toBeDefined();
 		expect(second.lensStages.correctness?.outcome).toBe("ran");
 		expect(second.lensStages.correctness?.tokens).toBeGreaterThan(0);
+		const records = ReviewRecords.of("c".repeat(64), { base: "a".repeat(40), head: "b".repeat(40) });
+		const exported = records.telemetry(records.round([], undefined, [], []), second.run).toJSON().payload as {
+			stages: { outcome: string }[];
+		};
+		expect(exported.stages.map(({ outcome }) => outcome)).toEqual(second.run.stages.map(({ outcome }) => outcome));
 	});
 
 	it("copies nothing from a lens task that ended without completing, and asks every lens again", async () => {

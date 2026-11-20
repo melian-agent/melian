@@ -678,6 +678,11 @@ export function snippetHash(snippet: string): string {
 	return createHash("sha256").update(normaliseSnippet(snippet)).digest("hex");
 }
 
+/** How many hex digits of its hash a finding's ID keeps. */
+export const findingIdDigits = 16;
+/** A finding's ID, which keys its dismissal. */
+export const findingIdPattern = `^[0-9a-f]{${findingIdDigits}}$`;
+
 /**
  * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule,
  * {@link normaliseSnippet} of the snippet, and the occurrence or discriminator.
@@ -710,7 +715,7 @@ export function findingId({ file, rule, snippet, occurrence, discriminator }: Fi
 	}
 	// Length-prefixed, so no character inside a field, NUL included, can move text from one field to the next.
 	const input = [file, rule, normalised, distinguisher].map((field) => `${field.length}:${field}`).join("");
-	return createHash("sha256").update(input).digest("hex").slice(0, 16);
+	return createHash("sha256").update(input).digest("hex").slice(0, findingIdDigits);
 }
 
 /** Where a snippet sits in a file: its first line and, optionally, its first column and last line. 1-based. */
