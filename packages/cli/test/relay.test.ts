@@ -1,7 +1,9 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
 	Changeset,
 	DirectoryRecordStore,
@@ -131,7 +133,7 @@ async function pullRequest(
 			return undefined;
 		}
 	};
-	return { changeset, check, account, round, relay, onState, out: () => stdout, err: () => stderr };
+	return { changeset, check, account, round, relay, onState, remote, out: () => stdout, err: () => stderr };
 }
 
 async function artefact(...written: SharedRecord[]): Promise<string> {
@@ -273,5 +275,90 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 		});
 		expect(code).toBe(64);
 		expect(stderr).toContain(said);
+	});
+});
+
+// GitHub's smart HTTP, as `git http-backend` serves it, behind basic authentication, so a push lands only when git
+// finds a credential. The record job's push finds one through the helper `gh auth setup-git` writes to the runner's
+// global git configuration.
+async function guardedRemote(root: () => string) {
+	const pushes: string[] = [];
+	const server = createServer((request, response) => {
+		const authorization = request.headers.authorization;
+		if (authorization !== `Basic ${Buffer.from("relay:s3cret").toString("base64")}`) {
+			response.writeHead(401, { "WWW-Authenticate": 'Basic realm="melian"' }).end();
+			return;
+		}
+		const url = new URL(request.url ?? "/", "http://localhost");
+		if (url.pathname.endsWith("/git-receive-pack")) pushes.push(url.pathname);
+		const backend = spawn("git", ["http-backend"], {
+			env: {
+				...process.env,
+				GIT_PROJECT_ROOT: root(),
+				GIT_HTTP_EXPORT_ALL: "1",
+				REMOTE_USER: "relay",
+				REQUEST_METHOD: request.method ?? "GET",
+				PATH_INFO: url.pathname,
+				QUERY_STRING: url.search.slice(1),
+				CONTENT_TYPE: request.headers["content-type"] ?? "",
+			},
+		});
+		request.pipe(backend.stdin);
+		const out: Buffer[] = [];
+		backend.stdout.on("data", (chunk: Buffer) => out.push(chunk));
+		backend.on("close", () => {
+			const whole = Buffer.concat(out);
+			const end = whole.indexOf("\r\n\r\n");
+			const headers = whole.subarray(0, end).toString().split("\r\n");
+			const status = headers.find((line) => line.startsWith("Status:"));
+			response.statusCode = status === undefined ? 200 : Number(status.split(" ")[1]);
+			for (const line of headers) {
+				const colon = line.indexOf(":");
+				if (!line.startsWith("Status:")) response.setHeader(line.slice(0, colon), line.slice(colon + 1).trim());
+			}
+			response.end(whole.subarray(end + 4));
+		});
+	});
+	await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+	const { port } = server.address() as AddressInfo;
+	return { url: `http://127.0.0.1:${port}`, pushes, close: () => new Promise((done) => server.close(done)) };
+}
+
+describe("the relay's push to an origin that needs a credential", { timeout: 60_000 }, () => {
+	// The runner's git reads $HOME/.gitconfig, which `gh auth setup-git` writes with `git config --global`.
+	async function relayWith(helper: boolean) {
+		let root = "";
+		const remote = await guardedRemote(() => root);
+		const home = scratch();
+		vi.stubEnv("HOME", home);
+		vi.stubEnv("GIT_CONFIG_GLOBAL", undefined);
+		if (helper) {
+			const key = `credential.${remote.url}.helper`;
+			execFileSync("git", ["config", "--global", "--add", key, ""]);
+			execFileSync("git", ["config", "--global", "--add", key, "!f() { echo username=relay; echo password=s3cret; }; f"]);
+		}
+		try {
+			const pr = await pullRequest({ origin: `${remote.url}/origin.git` });
+			root = dirname(pr.remote);
+			const code = await pr.relay(await artefact(pr.check, pr.account, pr.round));
+			return { code, pushes: remote.pushes, ...pr };
+		} finally {
+			await remote.close();
+		}
+	}
+
+	it("lands with the helper in the global configuration", async () => {
+		const { code, pushes, onState, check, account, round } = await relayWith(true);
+		expect(code).toBe(0);
+		expect(pushes).toEqual(["/origin.git/git-receive-pack"]);
+		expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+	});
+
+	it("says the store failed, and adds nothing, without one", async () => {
+		const { code, pushes, onState, err } = await relayWith(false);
+		expect(code).toBe(1);
+		expect(pushes).toEqual([]);
+		expect(onState()).toBeUndefined();
+		expect(err()).toContain("melian/state refused or failed the relay (unreachable)");
 	});
 });
