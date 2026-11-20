@@ -12,7 +12,8 @@ permissions:
 jobs:
   check:
     name: check (${{ matrix.node }})
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Four minutes against twelve on 4 vCPU, for about $0.10 more a run; docs/decisions/2026-11-18-check-runs-on-16-vcpu.md says why.
+    runs-on: blacksmith-16vcpu-ubuntu-2404
     strategy:
       fail-fast: false
       matrix:
@@ -42,6 +43,13 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
       - run: npm ci --ignore-scripts
+      # The round job runs probes on this image under Node 24, so the image proves the sandbox holds here first.
+      - if: matrix.node == 24
+        name: Prove a probe cannot reach the runner's secrets
+        # The commit checked out, so CI proves the change's own probe.read.
+        env:
+          MELIAN_PROBE_POLICY_COMMIT: ${{ github.sha }}
+        run: node --conditions=@melian-agent/source scripts/round-probe-containment.mjs
       # The triage gate compares questions.json with main's, at origin/main. A push run already has origin/main at the
       # pushed commit, so the gate has nothing to compare; fetching would be refused as a non-fast-forward once main
       # moved on, and would compare the commit with a later one. No --depth: it would make the clone shallow again.
@@ -85,6 +93,8 @@ jobs:
           grep -q '^enola@.*not yet fetched' "$RUNNER_TEMP/tools.out"
           node_modules/.bin/melian doctor > "$RUNNER_TEMP/doctor.out"
           grep -q 'tool enola.*not yet fetched' "$RUNNER_TEMP/doctor.out"
+          # The recorded code hashes are read from the built package, which ships no source to hash.
+          node --input-type=module -e "import { codeVersion } from '@melian-agent/pipeline'; if (!/^[0-9a-f]{64}\$/.test(codeVersion('adjudication'))) { console.error('codeVersion failed in the tarball'); process.exit(1); }"
       - name: Fail if check rewrote files
         run: git diff --exit-code
 
@@ -125,8 +135,9 @@ jobs:
               | $name | sub("^.*?/(?<p>(packages|scripts)/)"; "\(.p)")]
             + ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
                 "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
-                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probing-level.test.ts"]
-            | unique | if length > 6 then .[] else error("the Linux report shows no skipped test") end
+                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probing-level.test.ts",
+                "packages/state-git/test/sweep.test.ts"]
+            | unique | if length > 7 then .[] else error("the Linux report shows no skipped test") end
           ' "$RUNNER_TEMP/linux/vitest.json" > "$RUNNER_TEMP/files.txt"
           cat "$RUNNER_TEMP/files.txt"
       - name: Run those files
@@ -147,7 +158,8 @@ jobs:
             | ($tests | map({key: .id, value: .status}) | from_entries) as $status
             | ["scripts/codex-sandboxed.test.mjs", "packages/pipeline/test/mutation-process-real.test.ts",
                 "packages/pipeline/test/probe-sandbox.test.ts", "packages/cli/test/probe.test.ts",
-                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probing-level.test.ts"] as $suites
+                "packages/pipeline/test/probe-keychain.test.ts", "packages/pipeline/test/probing-level.test.ts",
+                "packages/state-git/test/sweep.test.ts"] as $suites
             # Only root can give a file to another user, and neither runner is root.
             | ["packages/core/test/secrets.test.ts > loadSecrets > refuses a command in a file another user owns, advising chown"] as $allowed
             | [$suites[] as $suite | [$tests[] | select(.file == $suite)]

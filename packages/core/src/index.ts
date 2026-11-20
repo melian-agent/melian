@@ -204,6 +204,8 @@ export {
 	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
+	findingIdDigits,
+	findingIdPattern,
 	findingLocationSchema,
 	findingPropertiesSchema,
 	findingSchema,
@@ -268,9 +270,11 @@ export {
 	lensFrontMatterSchema,
 	lensGraphToolNames,
 	lensLimits,
+	lensMutationToolNames,
 	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,
+	lensVersionDigits,
 	parseLensFile,
 	type ScrutinyLevel,
 	scrutinyLevels,
@@ -388,6 +392,13 @@ export {
 	toolResultSchema,
 } from "./static.ts";
 export {
+	type AccountClaim,
+	type RoundFacts,
+	TierAccount,
+	type TierAccountRefusal,
+	type TierLenses,
+} from "./tier-account.ts";
+export {
 	type EscalationEvidence,
 	EscalationRule,
 	type EscalationTrigger,
@@ -434,8 +445,18 @@ export {
 	type EnolaReach,
 	type EnolaReference,
 } from "./enola-graph.ts";
-export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes, stderrLimit } from "./git.ts";
+export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
+export {
+	type GitOptions,
+	type GitResult,
+	git,
+	gitEnvironment,
+	gitFailure,
+	gitOutput,
+	gitOutputBytes,
+	stderrLimit,
+	withoutReplacements,
+} from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -507,6 +528,7 @@ export {
 export {
 	canonicalJson,
 	everyRecordCounts,
+	hashPattern,
 	type NamedRecord,
 	type PayloadCheck,
 	type PayloadChecks,
@@ -519,25 +541,35 @@ export {
 export {
 	type AccountPayload,
 	accountPayloadSchema,
+	blindCallers,
 	type CheckPayload,
 	checkPayloadSchema,
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
+	isReceipt,
+	isToolVersion,
 	type LegacyAccountPayload,
 	type LensPayload,
 	legacyAccountPayloadSchema,
 	lensOutcomeSchema,
 	lensPayloadSchema,
+	lightTriage,
+	objectIdPattern,
+	recordCodes,
 	reviewPayloads,
+	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
+	telemetryOutcomes,
 	telemetryPayloadSchema,
 	triagePayloadSchema,
 	type VerificationPayload,
 	verificationPayloadSchema,
+	verifierVersionDigits,
 	type WalkthroughPayload,
 	walkthroughPayloadSchema,
+	withheld,
 } from "./record-payloads.ts";
 export {
 	checkCellValue,

@@ -2,6 +2,7 @@ import { Finding, type RecordEnvelope, RecordError, type StoredFinding } from "@
 import { describe, expect, it } from "vitest";
 import { ImportedRecords } from "../src/imported-records.ts";
 import { ReviewRecords } from "../src/review-records.ts";
+import { verifierVersion } from "../src/verification-instructions.ts";
 
 const base = "a".repeat(40);
 const head = "b".repeat(40);
@@ -9,7 +10,7 @@ const other = "e".repeat(40);
 const changeset = "c".repeat(64);
 const request = "d".repeat(64);
 const revision = `${base}..${head}`;
-const lensRun = { name: "security", version: "abc", level: "careful", request, probe: false } as const;
+const lensRun = { name: "security", version: "0123456789ab", level: "careful", request, probe: false } as const;
 const done = { status: "done", model: "openai/sol" } as const;
 
 function finding(rule: string): StoredFinding {
@@ -22,7 +23,7 @@ function finding(rule: string): StoredFinding {
 		occurrence: 0,
 		severity: "P1",
 		cause: "introduced",
-		source: { check: "lens.security", version: "abc@careful" },
+		source: { check: "lens.security", version: "0123456789ab@careful" },
 		explanation: { what: "Unsafe input", whyHere: "New input", whatToDo: "Validate it" },
 	}).toJSON();
 }
@@ -77,7 +78,7 @@ describe("ImportedRecords", () => {
 
 	it("sets aside a record of a kind no producer asks, before its payload is read", () => {
 		const round: RecordEnvelope = { v: 1, changeset, revision, kind: "account", key: request, payload: { v: 9 } };
-		const dismissal: RecordEnvelope = { v: 1, changeset, kind: "dismissal", key: request, payload: null };
+		const dismissal: RecordEnvelope = { v: 1, changeset, kind: "dismissal", key: "0123456789abcdef", payload: null };
 		const imported = ImportedRecords.from(changeset, [round, dismissal]);
 		expect(imported.records()).toEqual([]);
 	});
@@ -121,7 +122,7 @@ describe("ImportedRecords", () => {
 			.lens(lensRun, done, [finding("one")], {
 				name: "lens.security",
 				status: "ran",
-				version: "abc",
+				version: "0123456789ab",
 				level: "careful",
 			})
 			.toJSON();
@@ -140,10 +141,10 @@ describe("ImportedRecords.verification", () => {
 		reason: "It is.",
 		executor: "llm",
 		model: "openai/sol",
-		version: "v1",
+		version: verifierVersion,
 	} as const;
-	const claim = { id, source: { check: "lens.security", version: "abc@careful" }, verification: verdict };
-	const claimKey = `${id} lens.security@abc@careful`;
+	const claim = { id, source: { check: "lens.security", version: "0123456789ab@careful" }, verification: verdict };
+	const claimKey = `${id} lens.security@0123456789ab@careful`;
 	const verification = (
 		outcomes: {
 			candidate: string;
@@ -157,26 +158,26 @@ describe("ImportedRecords.verification", () => {
 		ReviewRecords.of(changeset, { base, head })
 			.verification(request, { claims, dismissals: [], outcomes, check: undefined })
 			.toJSON();
-	const one = [{ key: "k1", claims: [claimKey] }];
+	const one = [{ key: "1111111111111111", claims: [claimKey] }];
 
 	it("answers every candidate the record says is done, with the verdicts of their claims", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
 		expect(imported.verification(request, revision, one, () => false)).toEqual({
-			outcomes: { k1: done },
+			outcomes: { "1111111111111111": done },
 			claims: [claim],
 		});
 	});
 
 	it("names no version on a claim whose source the record holds with none", () => {
 		const bare = { id, source: { check: "static.biome" }, verification: verdict };
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }], [bare])]);
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }], [bare])]);
 		expect(
-			imported.verification(request, revision, [{ key: "k1", claims: [`${id} static.biome@`] }], () => false),
-		).toEqual({ outcomes: { k1: done }, claims: [bare] });
+			imported.verification(request, revision, [{ key: "1111111111111111", claims: [`${id} static.biome@`] }], () => false),
+		).toEqual({ outcomes: { "1111111111111111": done }, claims: [bare] });
 	});
 
 	it("answers nothing under another request or revision", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
 		expect(imported.verification("f".repeat(64), revision, one, () => false)).toBeUndefined();
 		expect(imported.verification(request, `${other}..${head}`, one, () => false)).toBeUndefined();
 	});
@@ -184,23 +185,23 @@ describe("ImportedRecords.verification", () => {
 	it("answers nothing when one candidate of two is not done, so the verifier asks for both", () => {
 		const imported = ImportedRecords.from(changeset, [
 			verification([
-				{ candidate: "k1", outcome: done },
-				{ candidate: "k2", outcome: { status: "unanswered", reason: "superseded" } },
+				{ candidate: "1111111111111111", outcome: done },
+				{ candidate: "2222222222222222", outcome: { status: "unanswered", reason: "failed" } },
 			]),
 		]);
-		const both = [...one, { key: "k2", claims: [claimKey] }];
+		const both = [...one, { key: "2222222222222222", claims: [claimKey] }];
 		expect(imported.verification(request, revision, both, () => false)).toBeUndefined();
 		expect(imported.verification(request, revision, [{ key: "k3", claims: [] }], () => false)).toBeUndefined();
 	});
 
 	it("answers nothing when this host refuses the model that judged a candidate", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }])]);
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }])]);
 		expect(imported.verification(request, revision, one, (model) => model === "openai/sol")).toBeUndefined();
 		expect(imported.verification(request, revision, one, (model) => model === "openai/terra")).toBeDefined();
 	});
 
 	it("answers nothing when the record judged none of a candidate's claims", () => {
-		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "k1", outcome: done }], [])]);
+		const imported = ImportedRecords.from(changeset, [verification([{ candidate: "1111111111111111", outcome: done }], [])]);
 		expect(imported.verification(request, revision, one, () => false)).toBeUndefined();
 	});
 });

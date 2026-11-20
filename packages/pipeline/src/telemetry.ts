@@ -9,8 +9,11 @@ import {
 	RunDetails,
 	type RunStage,
 	type StoredRunDetails,
+	type telemetryOutcomes,
+	thinkingLevelSchema,
 	visibleText,
 } from "@melian-agent/core";
+import Value from "typebox/value";
 import { type CheckRunRecord, CheckSources, ChecksDocument, type RunIdentity } from "./checks.ts";
 import { DecisionDocument } from "./decisions.ts";
 import {
@@ -30,7 +33,7 @@ import {
 } from "./harness.ts";
 import { LensDocument, type LensPolicy } from "./lens-tools.ts";
 import { probeLimits } from "./probe.ts";
-import { ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
+import { type Attack, type ProbeRecord, ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
 import { ReviewTranscript } from "./review-coverage.ts";
 import { ReviewIndex } from "./review-index.ts";
 import { RoundsDocument } from "./rounds.ts";
@@ -73,7 +76,10 @@ function interval(
 	};
 }
 
-function outcome(task: TaskRecord): { outcome: string; error?: string } {
+// Typed to core's set, so a status Pi adds fails to compile here before a record can carry it.
+type Outcome = (typeof telemetryOutcomes)[number];
+
+function outcome(task: TaskRecord): { outcome: Outcome; error?: string } {
 	const state = task.state;
 	if (state.status !== "terminal" && state.status !== "completing") return { outcome: "running" };
 	const result = state.outcome;
@@ -85,7 +91,7 @@ function outcome(task: TaskRecord): { outcome: string; error?: string } {
 	return { outcome: "completed" };
 }
 
-function checkOutcome(record: CheckRecord): { outcome: string; error?: string } {
+function checkOutcome(record: CheckRecord): { outcome: Outcome; error?: string } {
 	switch (record.status) {
 		case "ran":
 			return { outcome: "completed" };
@@ -166,6 +172,16 @@ export type ProbeStage = {
 	milliseconds: number;
 };
 
+/**
+ * A prober's own record: the plan it was given, each attack it skipped with the model's reason, one it probed later too, and each probe's
+ * script, files and output. Model and head text, so it is never telemetry; a caller that keeps it keeps it local.
+ */
+export type ProberRecord = {
+	plan: Attack[];
+	skips: { attack: number; reason: string }[];
+	probes: { id: string; attack: number; script: string; files: { path: string; text: string }[]; output: string }[];
+};
+
 // The run table's name for each stage kind; publication runs in another command, so the table leaves it out.
 const runNames: Readonly<Record<string, string>> = {
 	"melian.check": "check",
@@ -186,7 +202,7 @@ function runModels(stage: Stage): string[] {
 				const reported =
 					providerReported === undefined || providerReported === requested
 						? ""
-						: ` (reported ${providerReported})`;
+						: ` (reported ${Value.Check(thinkingLevelSchema, providerReported) ? providerReported : "unrecognised"})`;
 				return `${model}${level}${reported}`;
 			}),
 		),
@@ -522,6 +538,30 @@ export class TelemetryReader {
 	/** The caller owns and closes storage. */
 	static open(storage: Storage): TelemetryReader {
 		return new TelemetryReader(storage);
+	}
+
+	/**
+	 * The {@link ProberRecord} behind a prober's stage, or nothing for any other stage. Telemetry leaves this text out,
+	 * as the telemetry decision requires.
+	 */
+	async proberRecord(stage: Stage, context: Context = backgroundContext): Promise<ProberRecord | undefined> {
+		if (stage.role !== "prober" || stage.conversation === undefined) return undefined;
+		// A stage stores its conversation as the plain number JSON can hold.
+		const scope = { kind: "conversation", conversationId: stage.conversation as ConversationId } as const;
+		const probed = await this.document(ProbingDocument, scope, context);
+		if (probed?.plan === undefined) return undefined;
+		const probes = Object.entries(probed.probes ?? {});
+		return {
+			plan: structuredClone(probed.plan),
+			skips: Object.entries(probed.skips ?? {}).map(([attack, reason]) => ({ attack: Number(attack), reason })),
+			probes: probes.map(([id, { attack, script, files, result }]) => ({
+				id,
+				attack,
+				script,
+				files: structuredClone(files),
+				output: result.output,
+			})),
+		};
 	}
 
 	/** The frozen run for exactly this storage-local round, absent from older rounds. */
@@ -904,32 +944,7 @@ export class TelemetryReader {
 						...(read.length === 0 ? {} : { read }),
 						...(probes === undefined
 							? {}
-							: {
-									probes: {
-										count: probes.length,
-										milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
-										limit: probing!.timeout ?? probeLimits.timeout.default,
-										attacks: probed!.plan!.length,
-										// Integer keys list in ascending order. An attack skipped and then probed was probed.
-										skipped: Object.keys(probed!.skips ?? {})
-											.map(Number)
-											.filter((attack) => !probes.some(([, probe]) => probe.attack === attack)),
-										runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
-											id: probeId,
-											attack,
-											ended: probeFailed(result)
-												? "failed"
-												: probeConclusive(result)
-													? "passed"
-													: "inconclusive",
-											exitCode: result.exitCode,
-											signal: result.signal,
-											timedOut: result.timedOut,
-											truncated: result.truncated,
-											milliseconds,
-										})),
-									},
-								}),
+							: { probes: proberStage(probed!, probes, probing!.timeout ?? probeLimits.timeout.default) }),
 					}),
 			...(usage === undefined
 				? {}
@@ -962,4 +977,36 @@ export class TelemetryReader {
 /** A stored timing shape this build cannot read. */
 export class TelemetryError extends Error {
 	readonly code = "unreadable";
+}
+
+// Integer keys list in ascending order. An attack skipped and then probed was probed.
+function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): number[] {
+	return Object.keys(skips ?? {})
+		.map(Number)
+		.filter((attack) => !probes.some(([, probe]) => probe.attack === attack));
+}
+
+// A prober's stage: its probes and how each ended, the size of the plan it was given, and the attacks it skipped.
+function proberStage(
+	probed: { plan?: Attack[]; skips?: Record<string, string> },
+	probes: [string, ProbeRecord][],
+	limit: number,
+): NonNullable<Stage["probes"]> {
+	return {
+		count: probes.length,
+		milliseconds: probes.reduce((sum, [, probe]) => sum + probe.milliseconds, 0),
+		limit,
+		attacks: probed.plan!.length,
+		skipped: unprobedSkips(probed.skips, probes),
+		runs: probes.map(([probeId, { attack, result, milliseconds }]) => ({
+			id: probeId,
+			attack,
+			ended: probeFailed(result) ? "failed" : probeConclusive(result) ? "passed" : "inconclusive",
+			exitCode: result.exitCode,
+			signal: result.signal,
+			timedOut: result.timedOut,
+			truncated: result.truncated,
+			milliseconds,
+		})),
+	};
 }

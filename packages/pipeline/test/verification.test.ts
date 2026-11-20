@@ -1541,6 +1541,47 @@ describe("the verifier", () => {
 		expect(requests[verifierMarker]).toHaveLength(3);
 		expect(models).toEqual(["judge", "backup", "backup"]);
 		expect(result.findings[0]!.properties.verification?.model).toBe(`${fake.ref("backup").provider}/backup`);
+		const handover = requests[verifierMarker]![1]!.at(-1)!;
+		expect(handover.role).toBe("user");
+		expect(JSON.stringify(handover.content)).toContain("failed before it started");
+		expect(JSON.stringify(handover.content)).not.toMatch(/already recorded|remain|continue/i);
+	});
+	it("tells the next verifier model to continue when the model before it reported a verdict", async () => {
+		const models: string[] = [];
+		const requests = scriptConversations(fake, [
+			{
+				match: lenses[0]!.instructions,
+				replies: [
+					fauxAssistantMessage(fauxToolCall("report_finding", crashFinding), { stopReason: "toolUse" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				match: verifierMarker,
+				replies: [
+					(messages, modelId) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					},
+					(_messages, modelId) => {
+						models.push(modelId);
+						return fauxAssistantMessage("", {
+							stopReason: "error",
+							errorMessage: "HTTP 503 service unavailable",
+						});
+					},
+					(messages, modelId) => {
+						models.push(modelId);
+						return scriptVerifier(messages);
+					},
+				],
+			},
+		]);
+		await review();
+		expect(models).toEqual(["judge", "judge", "backup"]);
+		const handover = requests[verifierMarker]![2]!.at(-1)!;
+		expect(handover.role).toBe("user");
+		expect(JSON.stringify(handover.content)).toContain("Continue judging the labelled claims.");
 	});
 	it("retries a completed verification whose fallback the plan refused", async () => {
 		const finder = `${fake.ref("finder").provider}/finder`;

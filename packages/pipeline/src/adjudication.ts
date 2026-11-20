@@ -4,10 +4,12 @@ import {
 	type CheckRecord,
 	type CheckStatus,
 	ConfigError,
+	canonicalJson,
 	LensError,
 	type MelianConfig,
 	type ModelRoute,
 	type MutationSkipCause,
+	openSource,
 	type PreExistingCap,
 	type PublicationDetails,
 	type RepositorySource,
@@ -22,6 +24,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -217,7 +220,17 @@ export type AdjudicationTaskInput = {
 	// The changed files the findings name, with each hunk's ranges, so lens reports one hunk caused merge. Absent from a
 	// version 1 input, which merges by snippet alone.
 	files?: ChangedFile[];
+	// `codeVersion("adjudication")` of the build that created the task, which only that code may decide. Absent from a
+	// task created before version 8.
+	code?: string;
 };
+
+// What a stored adjudication is reused for: its input, whose `code` names the code that decides it, so a build whose
+// deciding code differs decides again. The dismissal, compare and publish read the input back from the key. The JSON
+// round trip drops an absent field, which `canonicalJson` refuses.
+export function adjudicationKey(input: AdjudicationTaskInput): string {
+	return canonicalJson(JSON.parse(JSON.stringify(input)));
+}
 
 // `superseded` when a later review of the revision created another adjudication task before this one recorded.
 export type AdjudicationResult = "recorded" | "superseded";
@@ -234,8 +247,9 @@ export const AdjudicationTask = defineTask<
 	name: "melian.adjudication",
 	// Version 2 added `files`, and version 3 marks a task created before stage timing. A version 1 input holds no files,
 	// so its task decides by snippet, as it did. Version 6 lets a check record carry caveats; an older one has none.
-	// Version 7 lets the provenance's plan hold lens routes; a version 6 input has none and reads unchanged.
-	version: 7,
+	// Version 7 lets the provenance's plan hold lens routes; a version 6 input has none and reads unchanged. Version 8
+	// adds `code`, so a build before it refuses a task it cannot check; an older input has none, and fails to decide.
+	version: 8,
 	initial: () => ({ phase: "adjudicate" }),
 	migrate: (input, checkpoint, from) => ({
 		input:
@@ -250,6 +264,19 @@ export const AdjudicationTask = defineTask<
 	phases: {
 		adjudicate: async (task, runtime, context) => {
 			const timing = await TaskTiming.start(runtime, task.state.checkpoint.legacyTiming, context);
+			const fail = async (message: string) => {
+				await runtime.commit(async (tx) => {
+					await timing.end(tx);
+					return { status: "terminal", outcome: { status: "failed", error: { message } } };
+				}, context);
+			};
+			// Builds share a store, so one can resume a task another created. Its verdict would sit under the other's code.
+			if (task.input.code !== codeVersion("adjudication")) {
+				await fail(
+					"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+				);
+				return;
+			}
 			const { root, repoRoot, base, head, policy, config, manifest, checks, allowSkip, producers } = task.input;
 			const revision = Revision.key({ base, head });
 			// Read before the findings, so a write that lands between the two reads makes the verdict look older, never
@@ -261,14 +288,26 @@ export const AdjudicationTask = defineTask<
 			try {
 				const policies = policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
 				// The input names the policy the review read. A working tree can change before this phase runs, as after a
-				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input.
+				// dismissal a crash cut short, and a verdict decided under another policy must not sit under this input. A
+				// fingerprint version 2 made is compared with version 2's recipe, when a full object ID fixes the commit, by
+				// the maintainer's ruling of 2026-11-17 on issue #502; a branch or an abbreviated ID can name another commit by
+				// now. Git decides which a name is: only a name that resolves to itself, in the repository's object format,
+				// is a full object ID, since a branch may be spelt like one. Every other stored fingerprint, the unversioned
+				// one the ruling of 2026-10-24 retired included, is compared with the current one.
 				const { resolutionPolicy } = task.input;
-				if (policies !== undefined && resolutionPolicy !== undefined && policies.fingerprint !== resolutionPolicy) {
-					throw new ConfigError(
-						"invalidValue",
-						repoRoot,
-						"the resolution policy changed since the review read it, so its verdict would be decided under another",
-					);
+				if (policies !== undefined && resolutionPolicy !== undefined) {
+					const fixedCommit =
+						resolutionPolicy.startsWith("2:") &&
+						policy?.kind === "revision" &&
+						(await openSource(repoRoot, policy)).commit === policy.commit;
+					const computed = fixedCommit ? policies.versionTwo : policies.fingerprint;
+					if (computed !== resolutionPolicy) {
+						throw new ConfigError(
+							"invalidValue",
+							repoRoot,
+							"the resolution policy changed since the review read it, so its verdict would be decided under another",
+						);
+					}
 				}
 				verdict = new Adjudication({
 					findings,
@@ -286,11 +325,7 @@ export const AdjudicationTask = defineTask<
 				// time, as when a shallow clone fetches the base later, so the next review starts a new task.
 				// A lens file is policy too: its declared resolution is read with the finding's configuration.
 				if (!(error instanceof ConfigError) && !(error instanceof LensError)) throw error;
-				const failure = { message: error.message };
-				await runtime.commit(async (tx) => {
-					await timing.end(tx);
-					return { status: "terminal", outcome: { status: "failed", error: failure } };
-				}, context);
+				await fail(error.message);
 				return;
 			}
 			await runtime.commit(async (tx) => {
@@ -381,6 +416,7 @@ export function adjudicationInput(options: {
 		provenance,
 		...(options.verificationRan === undefined ? {} : { verificationRan: options.verificationRan }),
 		...(options.files === undefined ? {} : { files: structuredClone([...options.files]) }),
+		code: codeVersion("adjudication"),
 	};
 }
 

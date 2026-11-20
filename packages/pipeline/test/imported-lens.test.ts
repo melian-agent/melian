@@ -206,7 +206,7 @@ describe("a review that imports lens records", () => {
 		["ran at another level", (record: RecordEnvelope) => payload(record, { level: "deep", check: null })],
 		[
 			"did not finish",
-			(record: RecordEnvelope) => payload(record, { outcome: { status: "unanswered", reason: "no" } }),
+			(record: RecordEnvelope) => payload(record, { outcome: { status: "unanswered", reason: "failed" } }),
 		],
 	] as const)("asks the lens when the only record of its run %s", async (_, plant) => {
 		const first = await review(await host(), { store: new MemoryRecordStore({ payloads: reviewPayloads }) });

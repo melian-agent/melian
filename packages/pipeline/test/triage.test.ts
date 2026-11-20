@@ -56,6 +56,7 @@ import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
 import { LensDocument } from "../src/lens-tools.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import { VerificationTask } from "../src/verification.ts";
 import { VerificationWaves, VerificationWavesDocument } from "../src/verification-waves.ts";
 import { gitIn, isolatedGitEnv, lines, writeFiles } from "./fixtures/repo.ts";
@@ -2544,6 +2545,27 @@ describe("reviews recorded before levels joined the keys", () => {
 				expect(findings.map((finding) => finding.properties.source)).toEqual([
 					{ check: "lens.correctness", version: `${lens.version}${version === 1 ? "" : "@careful"}` },
 				]);
+				// A version 1 task's finding names the bare lens version, and each record that names its source exports.
+				const [finding] = findings.map((each) => each.toJSON());
+				const { id, source } = finding!.properties;
+				const records = ReviewRecords.of("c".repeat(64), { base, head });
+				const verdict = { verdict: "confirmed", reason: "It runs", executor: "llm", model: "fake/heavy" } as const;
+				const claims = [{ id, source, verification: { ...verdict, version: "0123456789abcdef" } }];
+				expect(() => records.verification("f".repeat(64), { claims, dismissals: [], outcomes: [] })).not.toThrow();
+				const producers = [{ ...source, ids: [id] }];
+				const facts = { checks: [], records: [], filled: [], allowSkip: [], producers, resolutionPolicy: null };
+				expect(() => records.account(facts)).not.toThrow();
+				const dismissal = {
+					finding: id,
+					by: "writer",
+					reason: "fine",
+					at: "2026-11-19T00:00:00.000Z",
+					severity: "P2" as const,
+					sighting: { revision: Revision.key({ base, head }), finding: finding! },
+					rounds: [],
+					trigger: { hash: "a".repeat(64), proof: [] },
+				};
+				expect(() => records.made(dismissal, [])).not.toThrow();
 			} finally {
 				await current.close(context);
 			}

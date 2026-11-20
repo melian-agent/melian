@@ -478,6 +478,47 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			expect(childProcess.execFile).not.toHaveBeenCalled();
 		},
 	);
+	it.each([
+		[999, true],
+		[1000, false],
+	])("at %s ms against a caller's deadline of 1000, starts work: %s", async (at, starts) => {
+		const next = commit(repo, { "src/clock.ts": "export const flag = true;" });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		let now = at;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			now = 0;
+			return open(root, selected);
+		});
+		const listed = enumeration.list({ limit: 0, deadline: 1000 });
+		if (starts) expect((await listed).toJSON().total).toBeGreaterThan(0);
+		else {
+			await expect(listed).rejects.toMatchObject({
+				name: "MutationEnumerationError",
+				code: "limit",
+				message: expect.stringContaining("deadline"),
+			});
+			expect(core.openSource).not.toHaveBeenCalled();
+			expect(childProcess.execFile).not.toHaveBeenCalled();
+		}
+	});
+	it("keeps its own 120 seconds when a caller's deadline is later", async () => {
+		const next = commit(repo, { "src/clock.ts": "export const flag = true;" });
+		const enumeration = await MutationEnumeration.open(repo, `${head}..${next}`);
+		let now = 0;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		const open = vi.mocked(core.openSource).getMockImplementation()!;
+		vi.mocked(core.openSource).mockImplementation(async (root, selected) => {
+			const source = await open(root, selected);
+			now = 120000;
+			return source;
+		});
+		await expect(enumeration.list({ limit: 0, deadline: 1_000_000 })).rejects.toMatchObject({
+			code: "limit",
+			message: expect.stringContaining("deadline"),
+		});
+	});
 	it("refuses an expired empty selection after policy input", async () => {
 		const enumeration = await MutationEnumeration.open(repo, `${head}..${head}`);
 		let now = 0;

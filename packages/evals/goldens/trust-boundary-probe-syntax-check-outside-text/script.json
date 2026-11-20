@@ -41,7 +41,7 @@
           "name": "report_finding",
           "arguments": {
             "file": "src/syntax-check.mjs",
-            "line": 40,
+            "line": 50,
             "rule": "secret-exposure",
             "severity": "P1",
             "explanation": {
@@ -53,12 +53,12 @@
             "evidence": [
               {
                 "file": "src/syntax-check.mjs",
-                "line": 40,
+                "line": 50,
                 "role": "cause"
               },
               {
                 "file": "src/syntax-check.mjs",
-                "line": 26,
+                "line": 31,
                 "role": "context"
               }
             ],

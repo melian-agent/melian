@@ -1,0 +1,2284 @@
+[
+ {
+  "id": "1963dc68e2592d8716ce49723f9e4f58a4c5e8e058b014d159239c3c75838973",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 59,
+  "column": 90,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > names the tier's checks in order"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "2ea896bdf72349ac3f295a52bfa791a187e048afc7b2dd9a1e7792c5f6684e10",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 66,
+  "column": 80,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > names the tier's checks in order"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "733d008446e7a5cf637fb438efcd3ce6aacda16ac4111adfdefe9bcd9e206b28",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 75,
+  "column": 90,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "b83e311cdddd5c4e68828ec6d014f6179e8ed791d6b0a556e4c6ac2e0e57c5e6",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 76,
+  "column": 39,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a lens or a question that already has a record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "65e4643073ae378fd109781e07698017fa1640d247f22896ce44dcecb9ff70ce",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 78,
+  "column": 54,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5d868aa2c0c9b2c906db75735fa3efee949a546dbe715f312f8e72596d1a9914",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 79,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "687d69a658d76fac5920db24d1aca34a2dac5af8a2f40df1cfe6e957557c5887",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 79,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a lens or a question that already has a record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5872741a4ef239e171f459c4685de51190a0163fe70c54005a921b9ddf4f8a63",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 79,
+  "column": 34,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[\"Stryker was here\"]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "4cca0647bf9d85c170b3160c7a36e5ecd6502858ea9fdd218ab4f74a41bb937f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 80,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "215002b76c7b44256ce9952f62ebc7815b35c607f836f0193644b9e264e6e137",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 80,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c997ace23b46ca4023a56c7c745fe685113ae6dab638a07db8916c54c4c9157f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 80,
+  "column": 7,
+  "mutatorName": "MethodExpression",
+  "replacement": "name.endsWith(\"lens.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "dc0a7d635b2cf605f515e7dfdc985565d483917ebaeef12049820786549957d6",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 80,
+  "column": 33,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a31b0a79376724a5808f7f4b6575adeba87fdfc61af0f111382655d07e3e3d09",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 81,
+  "column": 17,
+  "mutatorName": "MethodExpression",
+  "replacement": "name",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "f731888be82ffbb0347821e49c26a7b3d1a106adeddd8f2ee023605f7e06dc51",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 82,
+  "column": 8,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "this.#lenses.loaded.includes(lens)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "abfbe68b6ec82aaa2360c5a1e26633aeba52e40351279e0d995cd2a50c3a7b7f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 82,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9418bcb075383e2367f67b4129615424efdad94862a04e0576edd652286b8675",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 82,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens no file defines as failed"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1c617e517c7920b24625fd3cb5084e12ad8bf1eb272604ab60a48fb8f654767d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 83,
+  "column": 12,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens no file defines as failed"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "30e1440e68619c552cbe1e6e70e733345749d91fb024304041f12e3b301d0558",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 83,
+  "column": 13,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens no file defines as failed"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5847e0c3ccf050101ea4ca2a071c52914bf89116392906133380677d7d1bdd4a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 84,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "8e3769a024e611244d3167221920dd72156362f2a9eaad9c53ad336ae8c7f21f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 84,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5c8d63f871e1622e6bf28aa21e1faba26d63af88813203dfed297576e43f44bf",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 84,
+  "column": 37,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "30b7cbdf1ee14de8c48c1ff5248b8dee80938489d667c3f80f0768bbe16623e5",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 84,
+  "column": 38,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "144307257c9085b9995d5de9c9735591a96fc9ef62c0f45f108b8ba406b0a012",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 85,
+  "column": 33,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[\"Stryker was here\"]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1c71d172ba30de317c02c6cdabcd32dce838b63137b459999e73690c213c1b05",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 85,
+  "column": 38,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "aab5df036cd1756a774fa77e0df6979a73fbac864e871e4850dfc395b57db0ec",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 85,
+  "column": 39,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0611cb45f6ad3292fcc0045f6ec87b2f312a312196b0f65f80e60aa5121c6156",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 87,
+  "column": 7,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "name.startsWith(\"decisions.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3e20edca6517a715fc8366dd6f7c4dbe5c3324c16fefa759c70b2fa98de10243",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 87,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7af360a889b2dff68d9fbf2b4f0158fa718a624cb30b374c41bb38fadd5abf6c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 87,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a host check of the tier with no record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3344d9ed3c56ac218bb83bdd5b804b0ca88ae98d062ac8109f2e77b7d183095b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 87,
+  "column": 8,
+  "mutatorName": "MethodExpression",
+  "replacement": "name.endsWith(\"decisions.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1016c90e089af17e8c511fff14356ccbd463ee3a57a8193225b6af2ccc0822bd",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 87,
+  "column": 46,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[\"Stryker was here\"]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a host check of the tier with no record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fcd27d1e8dba5995e09c74c5279ba6ad8e357930b0db6dfe3c20da909b3fe998",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 88,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a question skipped without leave when a provider is configured"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "f81b60f685ab4b64a4a919be745135096534e7b3edc1d41c9697b4195aa096b5",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 88,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ddff8756643f7385973965726fddb1b486b9f13b56d34349b40f86d5b4c83d01",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 88,
+  "column": 7,
+  "mutatorName": "EqualityOperator",
+  "replacement": "provider !== undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ea456e8c10405b8911667abe34dddc93310e6883e51a040ec104ae51e779b9b8",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 88,
+  "column": 31,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "32b32bf17cda2281f8f29240067dcdeb4040c30479e8decbf4d53839e70f3a8a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 89,
+  "column": 20,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > names the decider that answered triage in a skipped question's reason"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0513fe37d26063d19cbc2b6cb43ca2c75b3719c7763b2a92c53682d1d9023bfa",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 89,
+  "column": 20,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ebf4a4a725a5f44efcd7c31b93174b992d5b730366b7b5024f9e4a1c663a2184",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 89,
+  "column": 20,
+  "mutatorName": "EqualityOperator",
+  "replacement": "triagedBy !== undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5da08d888054d6a2ad8131b919f6788ec13d047602637329c2d4c4910a077a16",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 90,
+  "column": 11,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3ced0fa191809daf1f68d16523d1ef19103754c29c023cfc17aed0275e995e8c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 90,
+  "column": 12,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "93728b9e7f8cdcb5d40ccb62caa2c38656f27570d2a23a652897d2910a1ea810",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 95,
+  "column": 10,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a question skipped without leave when a provider is configured"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "d027b5206c61d5bf57b2cd524658ae43b5edc19a02030f03f7fed833ed563542",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 95,
+  "column": 11,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a question skipped without leave when a provider is configured"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "27126efd23b9ab92d17f18d36b6d4613e4f30fb3f306515e2287648b6126940f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 104,
+  "column": 40,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c24e871651fded826ab807be5b690ccdee71119c70bc5bae5cfc24fc916be6e1",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 107,
+  "column": 3,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "32ea0591e3ad3c0b7b5dccd1e96efa076513dd292643895b6f7869e556f8c808",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 107,
+  "column": 3,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "06e0e1c713517883df380c281bbb400096ef1466ac4b874bb47973c11036520b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 107,
+  "column": 3,
+  "mutatorName": "LogicalOperator",
+  "replacement": "triage === undefined && triage.inputCut",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "77bab3c6b9e84f85d35efd1206d53810ea50a3bf4128f980991b8815dcbfe784",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 107,
+  "column": 3,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5b8b290594f6853a59aabe25e15744748fc3464a1fcbe7fbcd225b9917637101",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 107,
+  "column": 3,
+  "mutatorName": "EqualityOperator",
+  "replacement": "triage !== undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "05cdf61e1a7a57809d699cf6bc1421e706661260915607e6d7970cef5ab263e1",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 108,
+  "column": 6,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[\"Stryker was here\"]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "659de9bffa895ed6d7bb67deaf97be0650550b5ea2e4d815b9f68f31a27afd51",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 109,
+  "column": 6,
+  "mutatorName": "MethodExpression",
+  "replacement": "this.#lenses.selected",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage chose a level"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "8423cf71da3c3e12f61e608c3e72444980b22f3ebc74b3e329f0fc043df41a11",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 111,
+  "column": 7,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "8e66d9eacb2054c534c4aa97b0e987a6451360ce2852796db5ed4ed37ef75be4",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 112,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage chose a level"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "125e51954a5e687db75871aac7a15c5aee3c51fce736581cf520203723edf49e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 112,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "51424fea15165afbb0f9f09a433fd46c49e95cdb73cfc40cdb3f5d8938015ec0",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 112,
+  "column": 8,
+  "mutatorName": "LogicalOperator",
+  "replacement": "band.floor === \"skip\" || triage.answers.find(answer => answer.question === name)?.chosen === \"skip\"",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage chose a level"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9bdcadf1f99d522ad2c1bb5f79a2d1497b8861d37877cf41085a0f0593a0a28c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 112,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when the floor is quick"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "18608eb1a13839a0f40cadee17a29229866c68234248a85941a52c3f79a7711d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 112,
+  "column": 8,
+  "mutatorName": "EqualityOperator",
+  "replacement": "band.floor !== \"skip\"",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "bf58c6f576b57ef95290b80f2b2fbf7b534024761b92a2c1b8814deb480df80d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 8,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage chose a level"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "8907d83cc92731ac7649ec7dd494eaa6cc7d5526c78c88e5adbc8685f63f93f6",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 8,
+  "mutatorName": "EqualityOperator",
+  "replacement": "triage.answers.find(answer => answer.question === name)?.chosen !== \"skip\"",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "319c59d8fdac685680ce44dab59ace9fe72d129b50c59fab9e4cbb5e911654e8",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 8,
+  "mutatorName": "OptionalChaining",
+  "replacement": "triage.answers.find(answer => answer.question === name).chosen",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage answered another lens"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6c1cf6bcca3bb08f3f699471a40fb35cc3cdb13113348995dd880ec288fdf4fd",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 28,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c869cad3bc1eccb6823e5b451ae32a7ab33b8abb2eb9afcc4247de91a864354b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 40,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no triage skip when triage answered another lens"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e87e9bd178f83e1b94b047e6be2a4303eafd3b9060922af9a891ddddfbf1df4d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 40,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a0b6a42d48039c134f1fd266522809e505f887d2ecfc118fd1a941fd91016c11",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 113,
+  "column": 40,
+  "mutatorName": "EqualityOperator",
+  "replacement": "answer.question !== name",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5974243b202487ef31ccd384242b4d7393026739336fdd971f4d27b047eddae6",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 115,
+  "column": 11,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a6a7a0da547cd1a3a9abe3a032485ca8046e51c8bf650ff78e6b967b18da2ee0",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 118,
+  "column": 19,
+  "mutatorName": "MethodExpression",
+  "replacement": "facts.records",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1dd718deb734f1a22ec1f04367a76711215455fe7d658aa0a8f9d4f70f062ed0",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 11,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6654a7b9a7a95c332e9447c5d84dacd71bd9890c384e88b990d7b88512cb2a50",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 22,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "67668d666ee8d5673a354d5815bb8ea641cb4fc81aa1eae39b767b9ced5c4043",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 22,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "083288d3513e0cfee92bc7ac24e277cf54c89e0db679a68c87a0ffc3869acec3",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 22,
+  "mutatorName": "LogicalOperator",
+  "replacement": "check.name === \"static.mutation\" || mutationSkipHasLeave(check.cause)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9a8c30af590928bf1e69b4bbb756353f871a678a0bc9accddcabe7f932b2ce7b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 22,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows a mutation skip only for a change with no production lines"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fd9ee7dd2f52b61c5e33a4f45e08568f9f66f9be505aff8fcc13b7ddc4d08257",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 119,
+  "column": 22,
+  "mutatorName": "EqualityOperator",
+  "replacement": "check.name !== \"static.mutation\"",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "bd260d2de0ccc1b2bc26745e9c0e7d4f5aac6e05acbbe5f7246668d571e06fc5",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 120,
+  "column": 8,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > puts configuration's skips first, then triage's, then mutation's, then the tier's"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0ca70cfecd39e4a511614203e3e6188f8fa616afe5440d4cc68cceff9c793bdc",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 121,
+  "column": 15,
+  "mutatorName": "MethodExpression",
+  "replacement": "this.checks",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a2341764fd5adb6d8da3afe58cf5ec207cde1cdb725d49c80f69bc01e7c2d021",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 121,
+  "column": 44,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "df14cd21269f999919082ba4acbbec69ce86fbf35a653064eea2ae78edfd743b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7cdf107a0c101280a22a9ca73df752507009013c5c92eeee7518bf260e862dce",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7c356a1a7396e340812e93dad3795983745776e26f786ad602bf608c38660e09",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 7,
+  "mutatorName": "MethodExpression",
+  "replacement": "name.endsWith(\"decisions.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e82539b5c0ed28f3fa036abc8fc737f939bd9754a9a8a5c34bbf4804aeca5a56",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 45,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no question's skip when a provider is configured"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "2954eeb6bc677bf2498bba7a6f0614051c3caf73404e788601e964e8b757a290",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 45,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "adf2fb216fe5bf5dfe339942fae287f78ef473147507a47abd625cbc238759d2",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 122,
+  "column": 45,
+  "mutatorName": "EqualityOperator",
+  "replacement": "this.#config.decisions.provider !== undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5a4d07542728120e8891ce444b5239c94d1abaf61cb34ca87a7e8d96ace7bc45",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 123,
+  "column": 7,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "name.startsWith(\"lens.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "123f189492b36c070ee3acac8eef8bbc631069e7487f300e87e115dcc7ae2fc3",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 123,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ca31cda2694f944ebe99e61ff5de3bae1ea176c417b4091120c4ffe07984b4ef",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 123,
+  "column": 7,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no skip of a host check whose name ends in a loaded lens's name"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9565178befcf302ec2b1d61e841eb11285d2e3822a7ad2c8dc1a683073a3941b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 123,
+  "column": 8,
+  "mutatorName": "MethodExpression",
+  "replacement": "name.endsWith(\"lens.\")",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3c11c7c623b27bafa127cec300fb173bb0a3455bf53cc63a3c4b6e5e4c8f0be9",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 123,
+  "column": 41,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6d3df16602930505e6fac89f32a5fad2c71cbce630e8f091c7fd95efd416b470",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 124,
+  "column": 16,
+  "mutatorName": "MethodExpression",
+  "replacement": "name",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "474c5615947d64274b6c36c75e24f141efd7b821641efcff417e25fd39443216",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 10,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "898d9970d94eec23e8276e60a147b6179eeb370cc08119b23b27614acb983b63",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 10,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "713425649d08f072858741dcde5c05e2c200e4959ea86abac2db8f46bdeac987",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 10,
+  "mutatorName": "LogicalOperator",
+  "replacement": "this.#lenses.loaded.includes(lens) && !this.#disabled(lens) || !this.#covered(lens)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "78b42afb91fcd821d837adf4027ad14fd0942396ad40496d4555eef369522e00",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 10,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows no skip of a tier lens no file defines, or one configuration disables"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "d1b2f443d3865273464fcb2f04769872b5e91d3ccec183d42f1b9d59ebe1729d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 10,
+  "mutatorName": "LogicalOperator",
+  "replacement": "this.#lenses.loaded.includes(lens) || !this.#disabled(lens)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c0ae8f209c6756eb404e9f6c6a5528e2f5c4417aaa8828c41f00674f3b0358a0",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 48,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "this.#disabled(lens)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1d9f7766b1f69c86d01eb215fb52a79e9e679500cc1e377364515605a586c883",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 125,
+  "column": 73,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "this.#covered(lens)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7887d88dd0ddae0bad683bb3cd2dfc6a765f7f44e716cf8beb5f70153994be0e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 127,
+  "column": 9,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > allowSkip > allows the tier's question with no provider and its lens that covers nothing, and no other"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fede334849a7f3ee3dcd263a80f2a1ac11b9bdd55d4b9a71273983b08fa92e64",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 134,
+  "column": 83,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses the verifier named twice"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "df9565191027ff275ae52108bbfb989c9a10d57b8d38f90884c19008818935f7",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 135,
+  "column": 16,
+  "mutatorName": "MethodExpression",
+  "replacement": "account.checks",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing when the account names the verifier once and the round holds its record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6265018ed721ce0eaf17dee5c324eb95073b7432bea8b2359053c4626f170082",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 135,
+  "column": 38,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ced8792a7225cf66069f961ee7434ff285aa7e2ff5c97c6d0b4b2e341d7cdb80",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 135,
+  "column": 48,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing when the account names the verifier once and the round holds its record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "2ef59963e3524c7a7ed35094fae4be68bef757fc2460974df052bc2ce87ce85a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 135,
+  "column": 48,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "cdfaa998163d5aa324c904243a00f72ec6f5a60c1e404f8fb92fd59ae172d211",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 135,
+  "column": 48,
+  "mutatorName": "EqualityOperator",
+  "replacement": "name === verifier",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "d4ef348abd88825ed4309f20c792c1c07843b78de5b566f098c1e9c920416fd5",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "232391ad28922615eacc2ca038a28c5ccdf0879be0ab5ff32bf7e20d605c889e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses the verifier named twice"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "bddc25def9789180481e7ca6ad62d9053d0f72617bb3e327d8f2727ac0542670",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "LogicalOperator",
+  "replacement": "account.checks.length - named.length > 1 && !sameSet(named, this.checks)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses the verifier named twice"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7b8afa932fddccb5670eaa9fec713f4210e92b2545745590eecc7f923528be8c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses the verifier named twice"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "52649925c9a8ac462d84e3e4a2a6b8863a247fb0f2eeb327400a7a7829802774",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "EqualityOperator",
+  "replacement": "account.checks.length - named.length >= 1",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing when the account names the verifier once and the round holds its record"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "dfe69087e579ab9c7d2f419a2d837da09ad98148e7fd2668c0ca590d37e4526e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "EqualityOperator",
+  "replacement": "account.checks.length - named.length <= 1",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "feac76e917044f2c3d621cadcb875c2c5bdae0d42c6cfc8991b07eed18e7393a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 6,
+  "mutatorName": "ArithmeticOperator",
+  "replacement": "account.checks.length + named.length",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "4c11bd5f2ab784ba44dd1d6471c151bef12a5cb1f67b677e117282f487b5029c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 136,
+  "column": 50,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "sameSet(named, this.checks)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0e87c9293fe3ea00d3e97b8872edc0c07311ad25a08823125882b61a2974e67b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 137,
+  "column": 45,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c874a16ddf4ab67172f79ecda17bc45cf4fe6bd1cbd295aa0a31c75fc4d65985",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 138,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e0a83d2e8a36391a4bbb3742e512ff5d8eaf2aedb1850588ee344abc2c751fcd",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 138,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account missing a record for a check of the tier"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "4fe827f49d7a203e934fa98bcdf57b6cd16114cbadaa491fc103a8eda9bb55e3",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 138,
+  "column": 6,
+  "mutatorName": "MethodExpression",
+  "replacement": "account.checks.every(name => !recorded.has(name))",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account missing a record for a check of the tier"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "8b895bf85a1433cd8938f709a3619dbdb2c545abdf55acc0fbd68812050f4e17",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 138,
+  "column": 26,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account missing a record for a check of the tier"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "f1a58a625fbdd315c837cca13fa45669e165d105d46e42b65d9b945658e79b5a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 138,
+  "column": 36,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "recorded.has(name)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a73ff539d4eab589a4ccd5490b9c27a5a85f08757eb4ae1ee7d05fe9b4d76bb4",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 139,
+  "column": 6,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "sameSet([...new Set(account.allowSkip)], [...new Set(this.allowSkip(facts))])",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "68869230aef8174877604ca5ff963ad9cdfc86c49b09cad6bf4a20df098b2583",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 139,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "224d826c114f3391280a9761f2359b5917e7e00490f121f6e4a12c81c8fdc83d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 139,
+  "column": 6,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account that allows a skip none of the reasons gives"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "552beb859191f5bd25c96332511873d47561504f463437b487877e15210a12ef",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 139,
+  "column": 15,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c893be6fa2b97a023453659acc2e931beb4333c94a0e96b1f64a0a953f826ccb",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 139,
+  "column": 48,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "32e7c71ed1074317a4f24920adfa68e3de077b99de97beb3dc33efecb91c99d9",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 143,
+  "column": 34,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3a324fdd3182b89e96e12e386e1c799844736fe18179733891ac3747b5566274",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 145,
+  "column": 9,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "39f8050664f8f54e139fe456b8795634912a391b468448fe54080cdab4b99299",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 145,
+  "column": 9,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "b460d4505e9f62cd9f38a99c4badbc448f9a5c7b224420e3686ffabcd4ddef0a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 145,
+  "column": 9,
+  "mutatorName": "EqualityOperator",
+  "replacement": "settings?.enabled !== false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "adff514b8f8c319a045f106449832071cf607970e6e15f0c3b530b65b956b4ae",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 145,
+  "column": 9,
+  "mutatorName": "OptionalChaining",
+  "replacement": "settings.enabled",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5d97f79f8df5e2f5797bb9bc8abbc6a72c36e70bb2e5af0f0f3afbb894551d58",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 145,
+  "column": 31,
+  "mutatorName": "BooleanLiteral",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records a lens configuration disables as skipped for that"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "774ea0f49e1cccc49ae1de4e6bb407e46130733227f564eee96bdfe705b4c9f9",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 148,
+  "column": 33,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ac0c88e0abe9cce4b9bff973c2fc301acbecd37593c20cee1a8029b2d9f0ac9e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 9,
+  "mutatorName": "MethodExpression",
+  "replacement": "this.#lenses.selected.every(({\n  name,\n  covers\n}) => name === lens && covers.length > 0)",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0f444a9d135cccaf4821d549bcd7eb80ae65e537b60a739714b4d3c08d6b2622",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 36,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7621e2d08ff1d1fc36333357e4d90343b1b2c5b443590544df469eeb6f58b0d5",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 58,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "448889adbf2c3693c8693a2aa7336a52c497a42eeb0c875cc8abf83d1a5b185a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 58,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7576248fd1e6495e8c4be61ba2a540c836cf21479041dbf897f180cbdd200df7",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 58,
+  "mutatorName": "LogicalOperator",
+  "replacement": "name === lens || covers.length > 0",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "40f1daec3c7a155a364b707955b255e172bb1666fe811a94d7f229267704628b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 58,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "ea0b11be9ef6ae7f7d39b8669abaebc1d5e2f52d0bc00384751f3adf28df5831",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 58,
+  "mutatorName": "EqualityOperator",
+  "replacement": "name !== lens",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > records each unrecorded lens and question of the tier, and nothing for a recorded one"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "0b2a26b7d903d28b48763108901ce26bb4b53ba236cbde60e02544b865792b2e",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 75,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills a selected lens that covers no path as no paths"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fd8fff3bf0e04d451975933c4a05ba71cbfdc5cbdc2481a17ea84c704b7c6d45",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 75,
+  "mutatorName": "EqualityOperator",
+  "replacement": "covers.length >= 0",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills a selected lens that covers no path as no paths"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "35e3dd20195bc0bcef82eab0fc40854b037a3036d470de712ee21e49926d3ae3",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 149,
+  "column": 75,
+  "mutatorName": "EqualityOperator",
+  "replacement": "covers.length <= 0",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > filled > fills nothing for a selected lens that covers a path and has no record, so it reads as never started"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "99f557d65a5c7c814ce4a634c5b92804f646278b93c31451709a20eb54b193be",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 154,
+  "column": 81,
+  "mutatorName": "BlockStatement",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "5181b2cabb13e48608000cbf4f52a43449e207ff97c7e226cd9ac2c4d1071482",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check fewer than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c97f2ed105d2b1c63d3ed8012393729907f3553fc8b2e6644875dcab8513771f",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "d641bc53cfa141198214eb3c568b0b8419cb866c985aa2491ba7f54c52744554",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "LogicalOperator",
+  "replacement": "values.length === set.size && new Set(values).size === values.length || values.every(value => set.has(value))",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check fewer than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c7f40d2ecee417355b89688bcfe43c7fee14f4c5fd00cb656017f487c3aabb16",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check fewer than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c38a6e6f04337a3c830797bb5259dfd14028110a1b0ee888e0991e99c56ddb09",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "LogicalOperator",
+  "replacement": "values.length === set.size || new Set(values).size === values.length",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check fewer than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9d13be9e7279e7baf682e10922d6f38b8a0b1aecdeffda81998ea67cc9526885",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check fewer than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1cb24464bb56e6b430d17bf47716e3aad7c9da170360979f0e06069b9959655a",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 2,
+  "mutatorName": "EqualityOperator",
+  "replacement": "values.length !== set.size",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e414eaa1e5c6bf41ce72287db8c287fc480ff65518a930a43e1b44e380023f5b",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 32,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with one check twice in another's place than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "dd204f032ecdbb02782e7508b0d527020e0550fb6c75052bd7cb0b222fe03450",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 32,
+  "mutatorName": "EqualityOperator",
+  "replacement": "new Set(values).size !== values.length",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "1eeb8cd9f96ebd5b1fa46da64e8b9c83ed1990ba2e7ca43fd9c185e7aa96311c",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 74,
+  "mutatorName": "MethodExpression",
+  "replacement": "values.some(value => set.has(value))",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses an account with another check in one's place than the tier names"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "2657e25dc5529cbc88e7a378c7d959d9fcdc3c81508ef60c9490f594e770bd0d",
+  "file": "packages/core/src/tier-account.ts",
+  "line": 157,
+  "column": 87,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/core/test/tier-account.test.ts",
+   "name": "TierAccount > refusal > refuses nothing in the account the tier and the round's records give"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "06b82f83100aaee24cbc0560e119d53b0dcde6aeed2dd0e265ce8098847501ce",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2151,
+  "column": 9,
+  "mutatorName": "LogicalOperator",
+  "replacement": "options.checks && []",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "df8b875f21d878dd78bd338ec4f0a0ace590da44ed54a47cdd03c1ba2be4093a",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2190,
+  "column": 14,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6a5c3c0748b98d6ab96cd2a093d3b38c61fa3258d592ef465304bc5fdc5f0085",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2191,
+  "column": 13,
+  "mutatorName": "ArrayDeclaration",
+  "replacement": "[]",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "9d28b92bb3ecb506afbaaeb12d8be4613f9cc930be538fe9744e13321d4c0c2c",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2193,
+  "column": 81,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e0977677c94f3ba173dba41b5b85719685ab0796c68f9d0d6ea2d7d55f58bfe3",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2470,
+  "column": 50,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "7d050ff615310ea29d00a62496c877869cb2c473da464f52f066f440e4c6dd06",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2471,
+  "column": 29,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > a lens of the tier that covers no changed path > records it skipped for no paths and allows the skip"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fa6cf9818a03e9c8db66efecb1a8e0de7ea0017bd8d90e2b9d8716c48f17bdf6",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2472,
+  "column": 25,
+  "mutatorName": "ArrowFunction",
+  "replacement": "() => undefined",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "b0a5752eb55092a0999f1b1adf4daa7f1264514cd92c9f80a1f4b5c30c952f13",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 2472,
+  "column": 48,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "e84842c81ef5645d34eb1d387f75c140587c1a10483dc2faeb120b3b197ef210",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3397,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "a485d0321ddee56afae71e6d6958838bfc4c40710dfe0b20be1ad5e497252104",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3397,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c15905d27116e2ffa35cb86c56a88ab9a90c2e43f3e66271d0286dd0fb8b3575",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3397,
+  "column": 2,
+  "mutatorName": "EqualityOperator",
+  "replacement": "triaged.decision !== undefined",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "fa99b48a7e34f8723bdae897ddb36a4bebf9f43000eadc0bf16bd0605595da8f",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3397,
+  "column": 47,
+  "mutatorName": "ObjectLiteral",
+  "replacement": "{}",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > triage > passes a lens it skips under a floor of skip"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "c142e71d2987df7c9890a8152b179eb1c8b91f6d6e8e7480ed8ff68fec69c4bf",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3398,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "true",
+  "test": {
+   "file": "packages/pipeline/test/triage.test.ts",
+   "name": "the LLM fallback > answers triage on a text model through one tool, uncalibrated, and the lens runs at its answer"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "3318086f51c7bb7800b15f55e378ebab608ec26dc3ae6474a354b6787d06f111",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3398,
+  "column": 2,
+  "mutatorName": "ConditionalExpression",
+  "replacement": "false",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "6b121fed6b7319f2e93210dcef7e8f85d33561f95dafa353e98fbc50bb498a79",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3398,
+  "column": 2,
+  "mutatorName": "EqualityOperator",
+  "replacement": "triaged.decision !== undefined",
+  "test": {
+   "file": "packages/pipeline/test/tier-account-review.test.ts",
+   "name": "the account a review gives its adjudication > allows no skip when every check of the tier ran"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ },
+ {
+  "id": "63522423c1b3540d6c110cfedcb8fa48b1cd8eaddfd277e7d12ccd251d7ff641",
+  "file": "packages/pipeline/src/review.ts",
+  "line": 3400,
+  "column": 5,
+  "mutatorName": "MethodExpression",
+  "replacement": "triaged.decision.decider.endsWith(\"llm-fallback\")",
+  "test": {
+   "file": "packages/pipeline/test/triage.test.ts",
+   "name": "the LLM fallback > answers triage on a text model through one tool, uncalibrated, and the lens runs at its answer"
+  },
+  "head": "b7a1784f8d4dc2d515622779c9b770109401c024",
+  "outcome": "killed"
+ }
+]

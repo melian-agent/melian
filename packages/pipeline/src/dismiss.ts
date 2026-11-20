@@ -1,13 +1,22 @@
 import { existsSync } from "node:fs";
-import { type AlsoReportedAs, type Finding, Revision, Verdict } from "@melian-agent/core";
+import {
+	type AlsoReportedAs,
+	type Finding,
+	type RecordEnvelope,
+	type RecordStore,
+	Revision,
+	Verdict,
+} from "@melian-agent/core";
 import {
 	type AdjudicationResult,
 	AdjudicationTask,
 	type AdjudicationTaskInput,
+	adjudicationKey,
 	readVerdict,
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
+import { codeVersion } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -21,8 +30,11 @@ import {
 	type TaskId,
 } from "./harness.ts";
 import { modelsOf, type ReviewModels } from "./models.ts";
+import type { UnsharedDismissal } from "./review.ts";
 import { attachable, ReviewIndex, undecided } from "./review-index.ts";
+import { ReviewRecords } from "./review-records.ts";
 import { RoundWriter } from "./rounds.ts";
+import { StaticProof } from "./static-proof.ts";
 
 // The adjudication task alone, so a dismissal decides the verdict again without resuming a review a crash interrupted.
 const adjudicationExtension = defineExtension({ name: "melian.adjudication", tasks: [AdjudicationTask] });
@@ -84,6 +96,12 @@ export interface DismissalOptions {
 	 * been a worktree since removed.
 	 */
 	readonly repoRoot: string;
+	/**
+	 * The record store to write each dismissal's record to, once, as it is made, and the changeset's ID there. Its record
+	 * supersedes the dismissals of the finding that stand in the store. Without it, the dismissal's record waits for a
+	 * review's export, and supersedes nothing.
+	 */
+	readonly records?: { readonly store: RecordStore; readonly changeset: string };
 	readonly context?: Context;
 }
 
@@ -101,6 +119,8 @@ export interface RecordedDismissal {
 	/** The dismissal this one replaced, when the finding was dismissed already with another reason or dismisser. */
 	readonly replaced?: Dismissal;
 	readonly verdict: Verdict;
+	/** The dismissals given `records` could not share, each left for no review to export either. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
 
 /**
@@ -122,6 +142,29 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 	const where = { revision, finding: id };
 	const root = await harness.root(context);
 	const again = "run melian review again";
+	// With a store, all or nothing: the record reaches the store inside the dismissal's commit, so a store that fails
+	// leaves no dismissal on the host. A commit that fails after the write leaves the record saying dismissed while the
+	// host still blocks, so a reader of the record passes what the host blocks until the same dismissal again commits
+	// it; that run writes the same record.
+	// A write the store reports failed may have landed, as its port allows, so its refusal says to run dismiss again.
+	const refusing = <T>(step: () => Promise<T>, wrote = false) =>
+		step().catch((error: unknown) => {
+			const why = error instanceof Error ? error.message : String(error);
+			const again = wrote ? "; the store may hold its record, so run the command again" : "";
+			throw new DismissError(
+				"storeFailed",
+				`the dismissal is not recorded, because the record store failed: ${why}${again}`,
+				{
+					...where,
+					cause: error,
+				},
+			);
+		});
+	const { records: target } = options;
+	const listing = target && (await refusing(() => target.store.list(target.changeset)));
+	// Read before the commit: a static finding's dismissal is shared only when a stored request proves its run.
+	const proof = target && (await StaticProof.read(harness, root.id, context));
+	const unshared: UnsharedDismissal[] = [];
 	const { replaced, also, live, task } = await root.commit(async (tx) => {
 		// Read in the commit, so a review that recorded another verdict a moment before decides what the ID names.
 		const stored = (await tx.doc(VerdictDocument, root.id)).verdicts[revision];
@@ -170,8 +213,23 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			);
 			if (report === own) replaced = before;
 		}
-		// The review's own input with the findings version the dismissal moved to, keeping its key order, so a later
-		// review that computes the same input attaches to this task. The review's checkout stays while it exists, since
+		if (target !== undefined) {
+			const state = await tx.doc(FindingsDocument, root.id);
+			const records = ReviewRecords.of(target.changeset, options.revision);
+			const made: RecordEnvelope[] = [];
+			for (const report of dismissed) {
+				try {
+					const record = records.madeOf(state, report, listing!, proof);
+					if (record !== undefined) made.push(record.toJSON());
+				} catch (error) {
+					if (!(error instanceof DismissError) || error.code !== "unprovenRun") throw error;
+					unshared.push({ finding: report, code: error.code });
+				}
+			}
+			await refusing(() => target.store.add(made), true);
+		}
+		// The review's own input with the findings version the dismissal moved to, so a later review that computes the same
+		// input attaches to this task. The review's checkout stays while it exists, since
 		// another worktree may hold another melian.yaml.
 		const findingsVersion = (await tx.doc(FindingsDocument, root.id)).versions[revision] ?? 0;
 		const checkout = existsSync(previous.repoRoot) ? previous.repoRoot : repoRoot;
@@ -180,8 +238,9 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			checks: previous.checks.map(withLegacyCaveats),
 			repoRoot: checkout,
 			findingsVersion,
+			code: codeVersion("adjudication"),
 		};
-		const key = JSON.stringify(input);
+		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
 		const also = found.members
 			.filter((other) => other.id !== own && dismissed.includes(other.id))
@@ -235,5 +294,5 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			where,
 		);
 	}
-	return { finding, also, live, ...(replaced === undefined ? {} : { replaced }), verdict };
+	return { finding, also, live, ...(replaced === undefined ? {} : { replaced }), verdict, unshared };
 }

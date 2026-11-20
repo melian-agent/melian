@@ -168,7 +168,7 @@ describe("a review that imports a triage record", () => {
 		],
 		[
 			"records a decider that failed",
-			(payload: TriagePayload): TriagePayload => ({ ...payload, decision: null, failure: "it broke" }),
+			(payload: TriagePayload): TriagePayload => ({ ...payload, decision: null, failure: "failed" }),
 		],
 		[
 			"names another request",

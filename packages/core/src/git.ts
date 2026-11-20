@@ -62,10 +62,29 @@ const repositoryLocalVariables = [
 	"GIT_COMMON_DIR",
 ];
 
-function gitEnvironment(): NodeJS.ProcessEnv {
+/**
+ * The environment every git call Melian makes runs with: this process's, without the variables that point git at
+ * another repository, with optional locks and replacement objects off. A caller's own git settings in
+ * `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS` go too, since git reads both before the repository's.
+ */
+export function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 	for (const name of repositoryLocalVariables) delete env[name];
-	return env;
+	return withoutReplacements(env);
+}
+
+/**
+ * Returns `env` with git's replacement objects turned off: a ref under refs/replace puts another object behind an ID, so
+ * a commit Melian names could show a different tree. Git 2.40 and 2.41 let `core.useReplaceRefs` in a repository's
+ * configuration outrank `GIT_NO_REPLACE_OBJECTS`, so the setting is pinned too, in `GIT_CONFIG_PARAMETERS`, which git
+ * reads after every setting `GIT_CONFIG_COUNT` holds. The count is left as `env` has it, for git to read or refuse.
+ */
+export function withoutReplacements(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	return {
+		...env,
+		GIT_NO_REPLACE_OBJECTS: "1",
+		GIT_CONFIG_PARAMETERS: [env.GIT_CONFIG_PARAMETERS, "'core.useReplaceRefs=false'"].filter(Boolean).join(" "),
+	};
 }
 
 /** Runs Git in cwd with repository-local environment variables removed, and resolves with its exit code and output. */

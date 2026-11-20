@@ -82,7 +82,7 @@ describe("runChecks with imported records", () => {
 		const head = commit(repo, { "a.ts": "// TODO\n" });
 		const own = await run(base, head);
 		expect(own.run.records).toEqual([{ name: "guardrails", status: "ran", findings: 1, notes: [] }]);
-		const clean: CheckRunRecord = { name: "guardrails", status: "ran", findings: 0, notes: ["kept"] };
+		const clean: CheckRunRecord = { name: "guardrails", status: "ran", findings: 0, notes: [] };
 		const resumed = await run(base, head, (request) =>
 			ImportedRecords.from(own.changeset.id, [
 				ReviewRecords.of(own.changeset.id, { base, head }).check(request, clean, []).toJSON(),
@@ -97,7 +97,7 @@ describe("runChecks with imported records", () => {
 		const head = commit(repo, { "a.ts": "// TODO\n" });
 		const own = await run(base, head);
 		const sightings = own.findings.map((finding) => finding.toJSON());
-		const reported: CheckRunRecord = { name: "guardrails", status: "ran", findings: 1, notes: ["kept"] };
+		const reported: CheckRunRecord = { name: "guardrails", status: "ran", findings: 1, notes: [] };
 		const resumed = await run(base, head, (request) =>
 			ImportedRecords.from(own.changeset.id, [
 				ReviewRecords.of(own.changeset.id, { base, head }).check(request, reported, sightings).toJSON(),
@@ -137,7 +137,6 @@ describe("ImportedRecords.check", () => {
 	const ran = (name: string): CheckRunRecord & { status: "ran" } => ({
 		name,
 		status: "ran",
-		version: "1",
 		findings: 0,
 		notes: [],
 	});

@@ -160,15 +160,15 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe is asked under the key, and the verifier's version, it had then.
+// that rests on a probe is asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
+// by adding the fresh failover wording. A candidate with a dismissed root now keys that root's dismissal record, so only
+// a candidate with none keeps the key main's code gives it.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
+		const { dismissed: _dismissed, dismissals: _dismissals, ...undismissed } = candidate;
 		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
-		// Main's sample showed a dismissal with no record, as a task version 4 stored it.
-		const { record: _, ...shown } = candidate.dismissed![0]!;
-		const asMainWroteIt: VerificationInput = { ...sample, candidates: [{ ...candidate, dismissed: [shown] }] };
-		expect(verificationRequest(asMainWroteIt).key).toBe(
-			"04364f1f6900da045e954f73d88effad517136b83cbe312329af2947b7bc3708",
+		expect(verificationRequest({ ...sample, candidates: [undismissed] }).key).toBe(
+			"ace12258fc705b6da1ffbf45308c20eb468e1ad8ef7dab2bacaf1f4681caef75",
 		);
 	});
 });
@@ -206,7 +206,7 @@ const claimProbe: ClaimProbe = {
 		writer: { trusted: true, by: "reviewer" },
 		trustWriters: true,
 		read: [],
-		host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.0.0" },
+		host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.0.0" },
 	},
 };
 

@@ -1,15 +1,18 @@
 export { type ReviewOrigin, readProvenance, readVerdict, type VerdictProvenance } from "./adjudication.ts";
+export { ChangeLenses, type CoveringLens } from "./change-lenses.ts";
 export {
 	type CheckRun,
 	type CheckRunRecord,
 	checksExtension,
 	checksExtensionFor,
+	headCodeChecks,
 	type RunChecksInput,
 	type RunIdentity,
 	readCheckRecords,
 	runChecks,
 	type WriterTrust,
 } from "./checks.ts";
+export { codeVersion } from "./code-version.ts";
 export {
 	CompareError,
 	type CompareErrorCode,
@@ -44,6 +47,7 @@ export {
 	type PublishErrorCode,
 	ReviewError,
 	type ReviewErrorCode,
+	type UnsharedCode,
 } from "./errors.ts";
 export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
@@ -86,18 +90,29 @@ export {
 	readPublished,
 	type SupersededPublication,
 } from "./publish.ts";
-export { RecordedRound, type RecordedRoundContext } from "./recorded-round.ts";
+export {
+	type EndedDismissal,
+	RecordedRound,
+	type RecordedRoundContents,
+	type RecordedRoundContext,
+	type SharedDismissalRecord,
+} from "./recorded-round.ts";
 export {
 	ChangePrompt,
 	createReviewRegistry,
 	lensExtension,
 	openReviewHarness,
+	type ProbeGap,
+	type ProbeGapCause,
+	probeGapSentences,
 	type Review,
 	ReviewHarness,
 	type ReviewHarnessOptions,
 	type ReviewOptions,
 	reviewChangeset,
+	type UnsharedDismissal,
 } from "./review.ts";
+export { withheld } from "./review-records.ts";
 export {
 	runStaticTool,
 	type StaticRun,
@@ -141,6 +156,7 @@ export {
 	type PullRequestRoundMember,
 	type PullRequestRoundSnapshot,
 } from "./pull-request-rounds.ts";
+export { RelayBatch, RelayRefusal, type RelayRefusalCode, type RelayRun, relayLimits } from "./record-relay.ts";
 export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";
@@ -155,7 +171,14 @@ export {
 	unreadableGraphAgeDays,
 } from "./store-prune.ts";
 export { summarizeReview } from "./summarize.ts";
-export { type ProbeStage, type Stage, StageTelemetry, TelemetryReader, type Untimed } from "./telemetry.ts";
+export {
+	type ProberRecord,
+	type ProbeStage,
+	type Stage,
+	StageTelemetry,
+	TelemetryReader,
+	type Untimed,
+} from "./telemetry.ts";
 export { TokenUsage, type UsageSummary } from "./token-usage.ts";
 export { type ToolBinaryReceipt, ToolCache, ToolCacheError, type ToolFetch } from "./tool-cache.ts";
 export { CacheLocation, ToolProvisioning } from "./tool-provisioning.ts";

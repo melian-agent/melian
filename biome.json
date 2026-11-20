@@ -27,6 +27,10 @@
 		},
 		{
 			"path": "./biome/literal-emoji.grit"
+		},
+		{
+			"path": "./biome/object-by-path.grit",
+			"includes": ["**/packages/*/src/**", "!**/packages/core/src/guardrails.ts"]
 		}
 	],
 	"formatter": {

@@ -1,0 +1,11 @@
+# Issue #481: a dismissal record's key must name its sighting's finding
+
+[Issue #481](https://github.com/melian-agent/melian/issues/481) shares a dismissal through the record store. Codex's review of [pull request #551](https://github.com/melian-agent/melian/pull/551) found that a dismissal record's key is never checked against the finding in its own frozen sighting. A record keyed `ffffffffffffffff` whose sighting holds finding `d49cff2f28e9c470` parses. Slots and supersession go by the key, while reopening and audit read the sighting, so a hand-built record could dismiss one finding with another's evidence. The coordinator asked on 2026-11-18 for the check in this issue's reader, not in core's payload checks, which two other pull requests touch; that is a coordinator's answer, not a ruling.
+
+`RecordedRound` now reads a set holding such a record as not reviewed, whatever changeset the record names and whether another record supersedes it. `ReviewRecords.dismissal` throws rather than build one; the frozen sighting is the adjudicated winner of the finding it dismisses, so the export never meets the case. The identity guideline gains the dismissal record key's row.
+
+Failing test first. At `f18ea0dc1`, the four cases of the new reader test in `recorded-round.test.ts` failed with `expected undefined to be 'holds a dismissal record keyed ffffff…'`, and the writer test in `review-records.test.ts` failed with `expected [Function] to throw an error`. Both pass on the fix, at `9e19f9915`.
+
+The same pass adds `packages/cli/test/review-unshared.test.ts`, which checks that `melian review` prints a warning for each dismissal the review left out of the shared records, in text and JSON, and after a review that failed once it had exported. Deleting the warning's line fails all three of its cases, and deleting the line that reads the list from a failed review fails the third.
+
+Mutants. The enumerator lists 15 mutants of `f18ea0dc1...9e19f9915`: 12 generated and 3 ignored string literals. Each generated mutant ran by hand against its one named test, which passed unmutated first and collected exactly one test, and all 12 were killed. The inventory is [2026-11-18-issue-481-dismissal-key-mutants.json](2026-11-18-issue-481-dismissal-key-mutants.json).

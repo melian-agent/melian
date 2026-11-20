@@ -23,6 +23,7 @@ import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
+import { relayRecords } from "./relay.ts";
 import { storePrune } from "./store.ts";
 import { parseTarget } from "./target.ts";
 import { tools } from "./tools.ts";
@@ -44,12 +45,18 @@ Commands:
   findings <range|#pr> --records dir:<path>
                          Decide each round a record store holds at the target's revision from its records alone,
                          under the base's policy, when that policy sets trust.writers: true.
+  records relay <#pr> --from dir:<path> --expect-base <sha> --expect-head <sha> [--check]
+                         Add the records a round of the pull request left in a directory store to melian/state,
+                         refusing the whole batch unless the head's job may hand over every record in it. --check
+                         checks the batch the same way and writes nothing.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
-  dismiss <range|#pr> <id> --reason <text> [--only]
+  dismiss <range|#pr> <id> --reason <text> [--only] [--records dir:<path>]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
                          dismisses the reports merged into the finding by snippet unless --only names one report
                          alone; a report merged only through a hunk stays live, and the ID of a merged report
-                         dismisses that report alone.
+                         dismisses that report alone. --records writes the dismissal's record to the store now,
+                         superseding the dismissals of the finding that stand there, when the base's policy sets
+                         trust.writers: true; without it, the dismissal is never shared.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
   compare <range|#pr> [--from <source>]... [--round <id|unattributed>]
@@ -104,6 +111,8 @@ Options:
   --trust-head           Run the change's own tests, as the mutation check does, for a head that is not your own
                          checked-out work, such as a fork's; pass it only for code you have read (review).
                          For probe, run the probe in your checkout; pass it only for code you have read.
+  --require-probes       Fail each level that probes and cannot probe here, rather than run it without probes (review).
+  --probe-gaps <file>    Write each level --require-probes failed, by check, level and cause, to <file> as JSON (review).
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
   --open, --all, --json  For findings; --json also applies to review, telemetry and probe.
@@ -114,7 +123,8 @@ Options:
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
-  --from <source>        Where to import external findings from; repeat it for several (compare).
+  --from <source>        Where to import external findings from; repeat it for several (compare). records relay
+                         takes one, the directory store its round wrote.
   --verdict <value>     valid, noise, or duplicate (compare adjudicate).
   --severity <value>    P0, P1, P2, P3, or nit (compare adjudicate).
   --of <finding-id>    The finding duplicated (compare adjudicate).
@@ -178,7 +188,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				walkthrough: { type: "boolean", default: true },
 				rerun: { type: "boolean", default: false },
 				"trust-head": { type: "boolean", default: false },
+				"require-probes": { type: "boolean", default: false },
+				"probe-gaps": { type: "string" },
 				records: { type: "string" },
+				check: { type: "boolean", default: false },
 				cold: { type: "boolean", default: false },
 				all: { type: "boolean", default: false },
 				limit: { type: "string" },
@@ -229,16 +242,17 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
-		if (name !== "review" && name !== "findings" && values.records !== undefined)
-			throw new UsageError("--records is only available for review and findings");
+		if (name !== "review" && name !== "findings" && name !== "dismiss" && values.records !== undefined)
+			throw new UsageError("--records is only available for review, findings and dismiss");
 		if (values.records !== undefined && !/^dir:./.test(values.records))
 			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
 		const expectHead = values["expect-head"];
-		if (name !== "review" && (expectBase !== undefined || expectHead !== undefined))
-			throw new UsageError("--expect-base and --expect-head are only available for review");
+		if (name !== "records" && values.check) throw new UsageError("--check is only available for records relay");
+		if (name !== "review" && name !== "records" && (expectBase !== undefined || expectHead !== undefined))
+			throw new UsageError("--expect-base and --expect-head are only available for review and records relay");
 		if ((expectBase === undefined) !== (expectHead === undefined))
-			throw new UsageError("review takes --expect-base and --expect-head together");
+			throw new UsageError(`${name} takes --expect-base and --expect-head together`);
 		const expected =
 			expectBase === undefined || expectHead === undefined ? undefined : { base: expectBase, head: expectHead };
 		switch (name) {
@@ -270,6 +284,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			}
 			case "review": {
 				const target = one(rest, name, "range or pull request");
+				if (values["probe-gaps"] !== undefined && !values["require-probes"])
+					throw new UsageError("--probe-gaps writes what --require-probes finds, so it needs --require-probes");
 				if (expected !== undefined && parseTarget(target).kind !== "pullRequest")
 					throw new UsageError('--expect-base and --expect-head take a pull request such as "#12", not a range');
 				return await review(
@@ -293,8 +309,25 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						cold: values.cold,
 						...(values.records === undefined ? {} : { records: values.records }),
 						...(values.json ? { json: true } : {}),
+						...(values["require-probes"] ? { requireProbes: true } : {}),
+						...(values["probe-gaps"] === undefined ? {} : { probeGaps: values["probe-gaps"] }),
 					},
 				);
+			}
+			case "records": {
+				const [subcommand, ...targets] = rest;
+				if (subcommand !== "relay") throw new UsageError("records takes a subcommand: relay");
+				const target = one(targets, "records relay", "pull request");
+				if (parseTarget(target).kind !== "pullRequest")
+					throw new UsageError('records relay takes a pull request such as "#12", not a range');
+				const [from, ...more] = values.from;
+				if (from === undefined || more.length > 0 || !/^dir:./.test(from))
+					throw new UsageError('records relay takes one --from, a store such as "dir:<path>"');
+				if (expected === undefined)
+					throw new UsageError(
+						"records relay takes --expect-base and --expect-head, the base and head its round reviewed",
+					);
+				return await relayRecords(scoped, target, { from, expect: expected, check: values.check });
 			}
 			case "status":
 				if (one(rest, name, "subcommand") !== "merge-group") throw new UsageError("status takes merge-group");
@@ -332,7 +365,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					throw new UsageError(`${id} is not a finding ID; an ID is 16 hex digits, as melian findings prints it`);
 				}
 				if (values.reason === undefined) throw new UsageError("dismiss needs --reason <text>");
-				return await dismiss(scoped, target, id, readableReason(values.reason), { only: values.only });
+				return await dismiss(scoped, target, id, readableReason(values.reason), {
+					only: values.only,
+					...(values.records === undefined ? {} : { records: values.records }),
+				});
 			}
 			case "compare": {
 				const [first, ...others] = rest;

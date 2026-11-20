@@ -1,0 +1,302 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "bd4b6a7ae57d3fe73e5af182af75bfd2a5f753d9",
+		"head": "3b29424b10e59c06372edd17dc725e21171232b5"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/adjudication.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "1b8ab03125cacee48939c1e53c45225bcf5780f576491ce3efb6be05cfea41d2",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 276,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e7c36d418e6f6455ee8519cebdf49b312f82719d54042d7f5e199f18a596398a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy is the working tree, which may have changed since"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 276,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "edf738813dd1e520c7b0afd9b842ee72575b25bb4e1bbbb610e7ca59f172297d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"decides the dismissal under the version-2 fingerprint main's build wrote for the same policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 276,
+			"endColumn": 67,
+			"mutatorName": "LogicalOperator",
+			"replacement": "resolutionPolicy.startsWith(\"2:\") && policy?.kind === \"revision\" || (await openSource(repoRoot, policy)).commit === policy.commit",
+			"status": "generated",
+			"id": "6269dffad6cfd850a9b3354212860fa6c4db4c1091d7cafc27ce9cd87e184490",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy is the working tree, which may have changed since"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce9c23b1c1649564f7b7d0b7eb658cf5530be249bd3aa8b969e79ac9bc9573a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy is the working tree, which may have changed since"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "LogicalOperator",
+			"replacement": "resolutionPolicy.startsWith(\"2:\") || policy?.kind === \"revision\"",
+			"status": "generated",
+			"id": "79439053dbda887d0b49ed9cd189ae680fb062623664ba5845d460429f8b1ac5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy names a branch spelt as a full object ID of another object format"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 6,
+			"endLine": 274,
+			"endColumn": 39,
+			"mutatorName": "MethodExpression",
+			"replacement": "resolutionPolicy.endsWith(\"2:\")",
+			"status": "generated",
+			"id": "cde3bd0b73de57a08cb172be67efbd1fab048eadd5872c2de1e884df2b68810a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"decides the dismissal under the version-2 fingerprint main's build wrote for the same policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 274,
+			"column": 34,
+			"endLine": 274,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1404fe6fb46b72d35217deb5dfbaa6962b23e3c9b37fe5cbdfa88a086d8dae81"
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 275,
+			"column": 6,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "21d9fbe7b0fee37013bff6e82938744b6c5d7393f5ab4734fcbfd8e99377d885",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy is the working tree, which may have changed since"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 275,
+			"column": 6,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "policy?.kind !== \"revision\"",
+			"status": "generated",
+			"id": "0d31cb32fb7a523866c7db8ae3a6374c7a32c6aa00cecff785c7f5f6e69e62bd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"decides the dismissal under the version-2 fingerprint main's build wrote for the same policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 275,
+			"column": 6,
+			"endLine": 275,
+			"endColumn": 18,
+			"mutatorName": "OptionalChaining",
+			"replacement": "policy.kind",
+			"status": "generated",
+			"id": "a8c4400d1057eeb4451c18ef3a94405fd39d4842bdadc80ac18cc96bac63711e",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "policies is defined only when policy is, and this branch runs only when policies is defined, so policy is never undefined here"
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 275,
+			"column": 23,
+			"endLine": 275,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "702b57843d2ed4e9e7dddf6a6c034aa562853b784e21ddf6d16e733992ccc50b"
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 276,
+			"column": 6,
+			"endLine": 276,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "47f50a364c908a5335d93219a8188b431efc2243d7338a56d1976fa9382bf0f5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"refuses when the policy names a branch spelt as a full object ID of another object format"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/adjudication.ts",
+			"line": 276,
+			"column": 6,
+			"endLine": 276,
+			"endColumn": 67,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(await openSource(repoRoot, policy)).commit !== policy.commit",
+			"status": "generated",
+			"id": "df04590d9013dc9db1fc995231491fa01685110a22fdbc8f629779501a89a2ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"a review stored with a fingerprint of an older computation",
+						"decides the dismissal under the version-2 fingerprint main's build wrote for the same policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 13,
+	"omitted": 0,
+	"unmutated": []
+}

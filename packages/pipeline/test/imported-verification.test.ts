@@ -178,7 +178,7 @@ describe("a review that imports a verification record", () => {
 						...payload,
 						outcomes: payload.outcomes.map(({ candidate }) => ({
 							candidate,
-							outcome: { status: "unanswered", reason: "superseded" },
+							outcome: { status: "unanswered", reason: "failed" },
 						})),
 					} as unknown as RecordEnvelope["payload"],
 				};

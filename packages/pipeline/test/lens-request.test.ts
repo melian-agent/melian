@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { type LensProbingWording, type LensToolName, lensProbingWording, type Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { piVersions } from "../src/harness.ts";
-import { continuePrompt, lensRequest } from "../src/lens-request.ts";
+import { handoverWording, lensRequest, type MutantLister } from "../src/lens-request.ts";
 import {
 	injectionPolicySection,
 	lensListedTools,
@@ -44,7 +44,7 @@ const sample = {
 				trustWriters: true,
 				timeout: 30,
 				read: ["/usr/lib"],
-				host: { platform: "linux", sandbox: "bubblewrap", arch: "x64", node: "24.1.0" },
+				host: { platform: "linux", sandbox: "bubblewrap", sandboxVersion: "0.0.81", arch: "x64", node: "24.1.0" },
 			},
 			onLevelTier: true,
 		},
@@ -66,9 +66,9 @@ type Sample = typeof sample;
 
 // The run as the review builds it: whatever is quoted, inside boundaries of the nonce it is rendered under, with the
 // caller section when asked for it.
-function build(input: Sample) {
+function build(input: Sample & { readonly mutants?: MutantLister }, request = lensRequest) {
 	const { escalation, callers, ...rest } = input;
-	return lensRequest({
+	return request({
 		...rest,
 		...(escalation === undefined ? {} : { escalation }),
 		run: (nonce, withCallers) => ({
@@ -132,7 +132,7 @@ describe("lensRequest", () => {
 	it("keys the system prompt's policy and every tool the run's conversations are offered, by its whole definition", () => {
 		const { request } = build(sample);
 		expect(request.policy).toEqual({ section: "injection_policy", text: injectionPolicy(identityNonce) });
-		expect(request.continue).toBe(continuePrompt);
+		expect(request.handover).toEqual({ continue: handoverWording.continue, fresh: handoverWording.fresh });
 		expect(request.tools).toEqual(
 			[lensListedTools.read_file, lensListedTools.search, reportFinding, recordPlan].map(specOf),
 		);
@@ -191,6 +191,71 @@ describe("lensRequest", () => {
 		expect(build(sample).key).toBe(before);
 	});
 
+	it("keys list_mutants by a description that carries its cap, so a new cap asks again", async () => {
+		const asking = {
+			...sample,
+			run: { ...sample.run, tools: ["list_mutants"] as LensToolName[] },
+			mutants: "unavailable" as MutantLister,
+		};
+		const before = build(asking);
+		expect(before.request.tools).toContainEqual(specOf(lensListedTools.list_mutants));
+		vi.resetModules();
+		vi.doMock("../src/mutant-listing.ts", async (original) => ({
+			...(await original<object>()),
+			maxListedMutants: 100,
+		}));
+		try {
+			const reloaded = await import("../src/lens-request.ts");
+			const tools = await import("../src/lens-tools.ts");
+			expect(tools.lensListedTools.list_mutants.description).toContain("At most 100 a call");
+			expect(build(asking, reloaded.lensRequest).key).not.toBe(before.key);
+		} finally {
+			vi.doUnmock("../src/mutant-listing.ts");
+			vi.resetModules();
+		}
+	});
+
+	describe("the instrumenter that answers list_mutants", () => {
+		const lister = { version: "10.0.0", source: "checkout" as const };
+		const asking = {
+			...sample,
+			run: { ...sample.run, tools: ["read_file", "list_mutants"] as LensToolName[] },
+			mutants: lister as MutantLister,
+		};
+		const tools = ["read_file", "search", "list_files", "list_mutants"];
+
+		it("keys its version and source, and every other input, for a run offered list_mutants", () => {
+			const vary = (name: string, value: unknown) =>
+				name.startsWith("run.tools.")
+					? tools.find((tool) => tool !== value && !asking.run.tools.includes(tool as LensToolName))
+					: name === "mutants.source"
+						? "melian"
+						: name === "run.name"
+							? "tests"
+							: undefined;
+			expect(keyCoverage(build, asking, { excluded: ["nonce", "callers"], vary })).toEqual([]);
+		});
+
+		it("keys an instrumenter that cannot be found apart from every one that can", () => {
+			const keys = (
+				["unavailable", lister, { ...lister, source: "melian" }, { ...lister, version: "unavailable" }] as const
+			).map((mutants) => build({ ...asking, mutants: mutants as MutantLister }).key);
+			expect(new Set(keys).size).toBe(4);
+		});
+
+		it("leaves a run not offered list_mutants keyed as before, byte for byte", () => {
+			const without = build(sample);
+			const given = build({ ...sample, mutants: lister });
+			expect(given.key).toBe(without.key);
+			expect(given.request).not.toHaveProperty("mutants");
+		});
+
+		it("refuses to key a run offered list_mutants without the instrumenter", () => {
+			const { mutants: _, ...missing } = asking;
+			expect(() => build(missing)).toThrow("list_mutants");
+		});
+	});
+
 	it("offers a run that does not probe no planner tool, and keys no probing text", () => {
 		const { probe: _, ...run } = sample.run;
 		const { callers: _c, ...rest } = sample;
@@ -219,8 +284,9 @@ describe("lensRequest", () => {
 		expect(build({ ...sample, run: plain as Sample["run"], escalation: none }).request).not.toHaveProperty("wording");
 	});
 
-	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared.
-	it("keys the trust-boundary lens's probing wording as the table main keyed", () => {
+	// The golden was written by main's code at 512c8ae2, from the one table every lens then shared, and rewritten from
+	// code for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file.
+	it("keys the trust-boundary lens's probing wording as the recorded table", () => {
 		const golden = JSON.parse(
 			readFileSync(new URL("./golden/trust-boundary-probing-wording.json", import.meta.url), "utf8"),
 		);

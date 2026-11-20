@@ -6,7 +6,7 @@ import {
 	RecordSet,
 	SharedRecord,
 } from "@melian-agent/core";
-import { testPayloads } from "@melian-agent/core/testing";
+import { findingKey, recordKey, testPayloads } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const changeset = "pull-0123456789abcdef";
@@ -28,7 +28,7 @@ describe("the round 3 findings on pull request #399", () => {
 			v: 1,
 			changeset,
 			kind: "dismissal",
-			key: "finding-1",
+			key: findingKey("finding-1"),
 			payload: { reason: "ok" },
 		} as RecordEnvelope;
 		expect(refusal(() => SharedRecord.parse(target)).code).toBe("unvalidatedKind");
@@ -39,11 +39,11 @@ describe("the round 3 findings on pull request #399", () => {
 			dismissal: (payload: RecordJson) => ("by" in (payload as object) ? undefined : "names no dismisser"),
 		};
 		const good = SharedRecord.parse(
-			{ v: 1, changeset, kind: "dismissal", key: "finding-1", payload: { by: "maintainer" } },
+			{ v: 1, changeset, kind: "dismissal", key: findingKey("finding-1"), payload: { by: "maintainer" } },
 			strict,
 		);
 		const bad = SharedRecord.parse(
-			{ v: 1, changeset, kind: "dismissal", key: "finding-1", supersedes: [good.id], payload: {} },
+			{ v: 1, changeset, kind: "dismissal", key: findingKey("finding-1"), supersedes: [good.id], payload: {} },
 			{ dismissal: () => undefined },
 		);
 		const error = refusal(() => RecordSet.of([good, bad], { counts: everyRecordCounts, payloads: strict }));
@@ -55,7 +55,7 @@ describe("the round 3 findings on pull request #399", () => {
 			v: 1,
 			changeset,
 			kind: "round",
-			key: "round",
+			key: recordKey("round"),
 			revision,
 			payload: { replaces: [] },
 		};
@@ -68,7 +68,8 @@ const hex = (character: string) => character.repeat(64);
 const manifest = { read: [], walkthrough: null, replaces: [], before: [] };
 
 function envelope(fields: Partial<RecordEnvelope>): RecordEnvelope {
-	return { v: 1, changeset, kind: "check", key: "static.biome", payload: {}, ...fields };
+	const key = fields.kind === "dismissal" ? findingKey("static.biome") : recordKey("static.biome");
+	return { v: 1, changeset, kind: "check", key, payload: {}, ...fields };
 }
 
 describe("payload checks", () => {
@@ -95,12 +96,15 @@ describe("payload checks", () => {
 
 	it("hands the check the payload, and takes the record when the check does", () => {
 		const seen: unknown[] = [];
-		const record = SharedRecord.parse(envelope({ kind: "dismissal", key: "f", payload: { reason: "ok" } }), {
-			dismissal: (payload) => {
-				seen.push(payload);
-				return undefined;
+		const record = SharedRecord.parse(
+			envelope({ kind: "dismissal", key: findingKey("f"), payload: { reason: "ok" } }),
+			{
+				dismissal: (payload) => {
+					seen.push(payload);
+					return undefined;
+				},
 			},
-		});
+		);
 		expect(seen).toEqual([{ reason: "ok" }]);
 		expect(record.kind).toBe("dismissal");
 	});
@@ -118,14 +122,16 @@ describe("payload checks", () => {
 
 	it("refuses the record, with the check's reason, when the check refuses its payload", () => {
 		const error = refusal(() =>
-			SharedRecord.parse(envelope({ kind: "dismissal", key: "f" }), { dismissal: () => "names no dismisser" }),
+			SharedRecord.parse(envelope({ kind: "dismissal", key: findingKey("f") }), {
+				dismissal: () => "names no dismisser",
+			}),
 		);
 		expect(error.code).toBe("invalidRecord");
 		expect(error.message).toBe("a dismissal record's payload names no dismisser");
 	});
 
 	it("checks a round itself, whatever check is registered for the kind", () => {
-		const round = envelope({ kind: "round", key: "r", revision, payload: manifest });
+		const round = envelope({ kind: "round", key: recordKey("r"), revision, payload: manifest });
 		expect(SharedRecord.parse(round, {}).manifest()).toEqual(manifest);
 		expect(SharedRecord.parse(round, { round: () => "refused" }).kind).toBe("round");
 		expect(refusal(() => SharedRecord.parse({ ...round, payload: {} }, { round: () => undefined })).code).toBe(
@@ -156,13 +162,14 @@ describe("payload checks", () => {
 });
 
 describe("a round's manifest", () => {
-	const named = { kind: "check", key: "static.biome", id: hex("1") };
-	const round = (payload: unknown) => envelope({ kind: "round", key: "r", revision, payload: payload as never });
+	const named = { kind: "check", key: recordKey("static.biome"), id: hex("1") };
+	const round = (payload: unknown) =>
+		envelope({ kind: "round", key: recordKey("r"), revision, payload: payload as never });
 
 	it("takes every field filled", () => {
 		const full = {
-			read: [named, { kind: "lens", key: "l", id: hex("2") }],
-			walkthrough: { key: "w", id: hex("3") },
+			read: [named, { kind: "lens", key: recordKey("l"), id: hex("2") }],
+			walkthrough: { key: recordKey("w"), id: hex("3") },
 			replaces: [hex("4")],
 			before: [hex("5")],
 		};
@@ -172,7 +179,8 @@ describe("a round's manifest", () => {
 	it.each(["dismissal", "post", "status", "ledger-comment", "comparison"])(
 		"takes a read entry naming a %s, a kind that supersedes",
 		(kind) => {
-			const read = { ...manifest, read: [{ ...named, kind }] };
+			const key = kind === "dismissal" ? findingKey("static.biome") : named.key;
+			const read = { ...manifest, read: [{ ...named, kind, key }] };
 			expect(SharedRecord.parse(round(read)).manifest()).toEqual(read);
 		},
 	);
@@ -182,7 +190,7 @@ describe("a round's manifest", () => {
 		["a missing field", { read: [], walkthrough: null, replaces: [] }],
 		["an extra field", { ...manifest, verdict: "passed" }],
 		["read that is no list", { ...manifest, read: {} }],
-		["a read entry missing its ID", { ...manifest, read: [{ kind: "check", key: "k" }] }],
+		["a read entry missing its ID", { ...manifest, read: [{ kind: "check", key: recordKey("k") }] }],
 		["a read entry with an extra field", { ...manifest, read: [{ ...named, at: 1 }] }],
 		["a read entry naming a round", { ...manifest, read: [{ ...named, kind: "round" }] }],
 		["a read entry naming an unknown kind", { ...manifest, read: [{ ...named, kind: "checks" }] }],
@@ -192,13 +200,13 @@ describe("a round's manifest", () => {
 		["a read entry with a bad ID", { ...manifest, read: [{ ...named, id: "x" }] }],
 		["read out of ID order", { ...manifest, read: [{ ...named, id: hex("2") }, named] }],
 		["read naming one ID twice", { ...manifest, read: [named, { ...named, kind: "lens" }] }],
-		["a walkthrough missing its ID", { ...manifest, walkthrough: { key: "w" } }],
+		["a walkthrough missing its ID", { ...manifest, walkthrough: { key: recordKey("w") } }],
 		[
 			"a walkthrough with an extra field",
-			{ ...manifest, walkthrough: { key: "w", id: hex("3"), kind: "walkthrough" } },
+			{ ...manifest, walkthrough: { key: recordKey("w"), id: hex("3"), kind: "walkthrough" } },
 		],
 		["a walkthrough with an empty key", { ...manifest, walkthrough: { key: "", id: hex("3") } }],
-		["a walkthrough with a bad ID", { ...manifest, walkthrough: { key: "w", id: "x" } }],
+		["a walkthrough with a bad ID", { ...manifest, walkthrough: { key: recordKey("w"), id: "x" } }],
 		["a walkthrough left out rather than null", { read: [], replaces: [], before: [], walkthrough: undefined }],
 		["before that is no list", { ...manifest, before: hex("1") }],
 		["before out of order", { ...manifest, before: [hex("2"), hex("1")] }],
@@ -242,17 +250,17 @@ describe("RecordSet.missing", () => {
 
 	// Built inside each test, so a mutant that breaks parsing fails that test rather than the file's collection.
 	function fixture() {
-		const check = parse({ kind: "check", key: "static.biome" });
-		const lens = parse({ kind: "lens", key: "correctness" });
-		const walkthrough = parse({ kind: "walkthrough", key: "w" });
+		const check = parse({ kind: "check", key: recordKey("static.biome") });
+		const lens = parse({ kind: "lens", key: recordKey("correctness") });
+		const walkthrough = parse({ kind: "walkthrough", key: recordKey("w") });
 		const sorted = [check, lens].sort((a, b) => (a.id < b.id ? -1 : 1));
 		const round = parse({
 			kind: "round",
-			key: "r",
+			key: recordKey("r"),
 			revision,
 			payload: {
 				read: sorted.map((record) => ({ kind: record.kind, key: record.key, id: record.id })),
-				walkthrough: { key: "w", id: walkthrough.id },
+				walkthrough: { key: recordKey("w"), id: walkthrough.id },
 				replaces: [],
 				before: [],
 			},
@@ -274,18 +282,18 @@ describe("RecordSet.missing", () => {
 		expect(
 			RecordSet.of([round, check], { counts: everyRecordCounts, payloads: testPayloads }).missing(round),
 		).toEqual([
-			{ kind: "lens", key: "correctness", id: lens.id },
-			{ kind: "walkthrough", key: "w", id: walkthrough.id },
+			{ kind: "lens", key: recordKey("correctness"), id: lens.id },
+			{ kind: "walkthrough", key: recordKey("w"), id: walkthrough.id },
 		]);
 	});
 
 	it.each([
-		["another kind", { kind: "check", key: "correctness" }],
-		["another key", { kind: "lens", key: "design" }],
+		["another kind", { kind: "check", key: recordKey("correctness") }],
+		["another key", { kind: "lens", key: recordKey("design") }],
 	])("counts a record with the ID but %s as missing", (_name, fields) => {
 		const { lens } = fixture();
 		const named = { ...fields, id: lens.id };
-		const odd = parse({ kind: "round", key: "r2", revision, payload: { ...manifest, read: [named] } });
+		const odd = parse({ kind: "round", key: recordKey("r2"), revision, payload: { ...manifest, read: [named] } });
 		expect(RecordSet.of([odd, lens], { counts: everyRecordCounts, payloads: testPayloads }).missing(odd)).toEqual([
 			named,
 		]);
@@ -293,20 +301,20 @@ describe("RecordSet.missing", () => {
 
 	it("counts a record of the same kind and key but another ID as missing", () => {
 		const { check, lens, walkthrough, round } = fixture();
-		const rerun = parse({ kind: "lens", key: "correctness", payload: { again: true } });
+		const rerun = parse({ kind: "lens", key: recordKey("correctness"), payload: { again: true } });
 		expect(
 			RecordSet.of([round, check, rerun, walkthrough], {
 				counts: everyRecordCounts,
 				payloads: testPayloads,
 			}).missing(round),
-		).toEqual([{ kind: "lens", key: "correctness", id: lens.id }]);
+		).toEqual([{ kind: "lens", key: recordKey("correctness"), id: lens.id }]);
 	});
 
 	it("counts a record of another changeset as missing", () => {
 		const { lens } = fixture();
 		const elsewhere = SharedRecord.parse({ ...lens.toJSON(), changeset: "pull-fedcba9876543210" }, payloads);
-		const named = { kind: "lens", key: "correctness", id: elsewhere.id };
-		const odd = parse({ kind: "round", key: "r3", revision, payload: { ...manifest, read: [named] } });
+		const named = { kind: "lens", key: recordKey("correctness"), id: elsewhere.id };
+		const odd = parse({ kind: "round", key: recordKey("r3"), revision, payload: { ...manifest, read: [named] } });
 		expect(
 			RecordSet.of([odd, elsewhere], { counts: everyRecordCounts, payloads: testPayloads }).missing(odd),
 		).toEqual([named]);
@@ -320,11 +328,12 @@ describe("RecordSet.missing", () => {
 
 describe("RecordSet.account", () => {
 	const parse = (fields: Partial<RecordEnvelope>) => SharedRecord.parse(envelope(fields), testPayloads);
-	const account = (fields: Partial<RecordEnvelope> = {}) => parse({ kind: "account", key: "a", revision, ...fields });
+	const account = (fields: Partial<RecordEnvelope> = {}) =>
+		parse({ kind: "account", key: recordKey("a"), revision, ...fields });
 	const roundOf = (...named: SharedRecord[]) =>
 		parse({
 			kind: "round",
-			key: "r",
+			key: recordKey("r"),
 			revision,
 			payload: {
 				...manifest,
@@ -338,20 +347,20 @@ describe("RecordSet.account", () => {
 
 	it("is the one account the round names", () => {
 		const own = account();
-		const check = parse({ kind: "check", key: "static.biome" });
+		const check = parse({ kind: "check", key: recordKey("static.biome") });
 		const round = roundOf(own, check);
 		expect(set([round, own, check]).account(round)?.id).toBe(own.id);
 	});
 
 	it("is none for a round that names no account, so the round is not reviewed", () => {
-		const check = parse({ kind: "check", key: "static.biome" });
+		const check = parse({ kind: "check", key: recordKey("static.biome") });
 		const round = roundOf(check);
 		expect(set([round, check, account()]).account(round)).toBeUndefined();
 	});
 
 	it("is none for a round that names two", () => {
 		const one = account();
-		const two = account({ key: "b" });
+		const two = account({ key: recordKey("b") });
 		const round = roundOf(one, two);
 		expect(set([round, one, two]).account(round)).toBeUndefined();
 	});
@@ -367,7 +376,7 @@ describe("RecordSet.account", () => {
 		const round = roundOf(own);
 		const counted = (record: SharedRecord) => record.id !== own.id;
 		expect(set([round, own], counted).account(round)).toBeUndefined();
-		expect(set([round, own], counted).missing(round)).toEqual([{ kind: "account", key: "a", id: own.id }]);
+		expect(set([round, own], counted).missing(round)).toEqual([{ kind: "account", key: recordKey("a"), id: own.id }]);
 	});
 
 	it.each([
@@ -380,12 +389,12 @@ describe("RecordSet.account", () => {
 	});
 
 	it.each([
-		["another key", { key: "b" }],
+		["another key", { key: recordKey("b") }],
 		["another kind", { kind: "check" }],
 	])("is none for a record with the ID the round names but %s", (_name, fields) => {
 		const own = account();
-		const named = { kind: "account", key: "a", id: own.id, ...fields };
-		const round = parse({ kind: "round", key: "r", revision, payload: { ...manifest, read: [named] } });
+		const named = { kind: "account", key: recordKey("a"), id: own.id, ...fields };
+		const round = parse({ kind: "round", key: recordKey("r"), revision, payload: { ...manifest, read: [named] } });
 		expect(set([round, own]).account(round)).toBeUndefined();
 	});
 
@@ -398,9 +407,9 @@ describe("RecordSet.account", () => {
 	});
 
 	it("is none for a record of another kind that the round names as its account", () => {
-		const check = parse({ kind: "check", key: "static.biome", revision });
+		const check = parse({ kind: "check", key: recordKey("static.biome"), revision });
 		const named = { kind: "account", key: check.key, id: check.id };
-		const round = parse({ kind: "round", key: "r", revision, payload: { ...manifest, read: [named] } });
+		const round = parse({ kind: "round", key: recordKey("r"), revision, payload: { ...manifest, read: [named] } });
 		expect(set([round, check]).account(round)).toBeUndefined();
 	});
 
@@ -414,12 +423,12 @@ describe("a record from the job that ran a head's code", () => {
 	const run = { changeset, revision, fork: false };
 	const parse = (fields: Partial<RecordEnvelope>) =>
 		SharedRecord.parse(envelope({ revision, ...fields }), testPayloads);
-	const round = () => parse({ kind: "round", key: "r", payload: manifest });
+	const round = () => parse({ kind: "round", key: recordKey("r"), payload: manifest });
 
 	it.each(["check", "lens", "verification", "walkthrough", "triage", "account", "telemetry"])(
 		"takes a %s record from a writer's head",
 		(kind) => {
-			expect(parse({ kind, key: "k" }).refusedFromHeadCode(run)).toBeUndefined();
+			expect(parse({ kind, key: recordKey("k") }).refusedFromHeadCode(run)).toBeUndefined();
 		},
 	);
 
@@ -430,14 +439,14 @@ describe("a record from the job that ran a head's code", () => {
 	it.each(["marker", "post", "status", "ledger-comment", "comparison"])(
 		"refuses a %s record from a writer's head",
 		(kind) => {
-			expect(parse({ kind, key: "k" }).refusedFromHeadCode(run)).toBe(
+			expect(parse({ kind, key: recordKey("k") }).refusedFromHeadCode(run)).toBe(
 				`the job that runs a writer's head hands over no ${kind} record`,
 			);
 		},
 	);
 
 	it("refuses a dismissal from a writer's head", () => {
-		const dismissal = SharedRecord.parse(envelope({ kind: "dismissal", key: "k" }), testPayloads);
+		const dismissal = SharedRecord.parse(envelope({ kind: "dismissal", key: findingKey("k") }), testPayloads);
 		expect(dismissal.refusedFromHeadCode(run)).toBe(
 			"the job that runs a writer's head hands over no dismissal record",
 		);
@@ -445,9 +454,9 @@ describe("a record from the job that ran a head's code", () => {
 
 	it("takes only a check record from a fork's head", () => {
 		const fork = { ...run, fork: true };
-		expect(parse({ kind: "check", key: "k" }).refusedFromHeadCode(fork)).toBeUndefined();
+		expect(parse({ kind: "check", key: recordKey("k") }).refusedFromHeadCode(fork)).toBeUndefined();
 		for (const kind of ["lens", "verification", "walkthrough", "triage", "account", "telemetry"])
-			expect(parse({ kind, key: "k" }).refusedFromHeadCode(fork)).toBe(
+			expect(parse({ kind, key: recordKey("k") }).refusedFromHeadCode(fork)).toBe(
 				`the job that runs a fork's head hands over no ${kind} record`,
 			);
 		expect(round().refusedFromHeadCode(fork)).toBe("the job that runs a fork's head hands over no round record");
@@ -457,13 +466,13 @@ describe("a record from the job that ran a head's code", () => {
 		["changeset", { changeset: "pull-fedcba9876543210" }],
 		["revision", { revision: `${"c".repeat(40)}..${"d".repeat(40)}` }],
 	])("refuses an account of another %s than the run's", (_name, fields) => {
-		expect(parse({ kind: "account", key: "k", ...fields }).refusedFromHeadCode(run)).toBe(
+		expect(parse({ kind: "account", key: recordKey("k"), ...fields }).refusedFromHeadCode(run)).toBe(
 			"a record from the head's job names another changeset or revision than its run's",
 		);
 	});
 
 	it("refuses a check record with no revision", () => {
-		const bare = SharedRecord.parse(envelope({ kind: "check", key: "k" }), testPayloads);
+		const bare = SharedRecord.parse(envelope({ kind: "check", key: recordKey("k") }), testPayloads);
 		expect(bare.refusedFromHeadCode(run)).toBe(
 			"a record from the head's job names another changeset or revision than its run's",
 		);

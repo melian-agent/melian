@@ -211,6 +211,7 @@ jobs:
     outputs:
       artifact: ${{ steps.artifact.outputs.name }}
       checked: ${{ steps.checked.outputs.sha }}
+      records: ${{ steps.records.outputs.name }}
     steps:
       # A rerun of failed jobs alone bumps run_attempt for report but keeps this job's earlier attempt, so report reads
       # the name from this output, never from its own run_attempt. The nonce ties the run's comment to the run, for a rerun
@@ -264,6 +265,30 @@ jobs:
           node-version: 24
       - run: npm ci --ignore-scripts
         working-directory: melian
+      # The trust-boundary lens probes the head in sandbox-runtime, which needs bubblewrap, socat and ripgrep on Linux,
+      # and user namespaces that Ubuntu 24.04's AppArmor can restrict. No login is in this job's environment yet.
+      - name: Let probes run under bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat ripgrep
+          # Runner images differ: an image without the restriction has no such setting.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+      # Before any step holds a login, prove on this runner that a probe reaches none of what the round's process will
+      # hold. The script plants fake values under the logins' names, so it needs none of them. A failure ends the round
+      # unreviewed, and the report posts that no round ran.
+      - name: Prove a probe cannot reach the round's secrets
+        working-directory: melian
+        env:
+          MELIAN_PROBE_POLICY_COMMIT: ${{ needs.gate.outputs.base }}
+        run: |
+          if ! node --conditions=@melian-agent/source scripts/round-probe-containment.mjs; then
+            echo "::error::a probe on this runner reached what the round would hold, so the round does not run"
+            mkdir -p "$RUNNER_TEMP/public"
+            echo none > "$RUNNER_TEMP/public/exit"
+            exit 1
+          fi
       # "#N" reads the pull request again, so a push since the gate would spend the logins on a head the gate never
       # approved. Refuse one that moved, before the step that holds them; the report then posts its stale notice. Seconds
       # remain between this read and Melian's own, and the comment's check of what the round reviewed covers them.
@@ -315,15 +340,46 @@ jobs:
           node packages/cli/bin/melian.js doctor || true
           set +e
           # Melian refuses, before it reads a login, a pull request that moved after the gate approved this base and head.
+          # A level that probes and cannot probe here fails rather than pass without probes; this log names each one's cause
+          # from a closed set, since its reason can name a path in the head.
           node packages/cli/bin/melian.js review "#$NUMBER" --expect-base "$BASE" --expect-head "$HEAD" --json --no-walkthrough \
+            --require-probes --probe-gaps "$raw/probe-gaps.json" --records "dir:$RUNNER_TEMP/records" \
             > "$raw/verdict.json" 2> "$raw/round.err"
           echo $? > "$out/exit"
+          node --conditions=@melian-agent/source scripts/round-probe-gaps.mjs "$raw/probe-gaps.json" "$out/probe-gaps.json"
           node scripts/round-comment.mjs --public "$raw/verdict.json" > "$out/verdict.json"
           # "#N" reads the pull request again, so the comment checks that the round reviewed what the gate approved:
           # the round's own base and head against the gate's head and their merge base.
           node packages/cli/bin/melian.js findings "#$NUMBER" --rounds --json > "$out/rounds.json" 2> /dev/null
           git merge-base "$BASE" "$HEAD" > "$out/merge-base" 2> /dev/null
           exit 0
+      # An uploaded artefact is public, whatever the relay later decides, so the relay's own checks run here first, with
+      # no login, and a batch they refuse is never uploaded. The record job checks it again, since it cannot trust what
+      # this job decided. A review that wrote no records, under a base that does not trust writers, uploads none. The check
+      # and the upload read one copy, so nothing written to the review's folder after the check is uploaded.
+      - name: Check the round's records for the relay
+        id: records
+        working-directory: melian
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+          ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          [ -d "$RUNNER_TEMP/records" ] || { echo "the round wrote no records, so none are relayed"; exit 0; }
+          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
+          cp -RP "$RUNNER_TEMP/records" "$RUNNER_TEMP/checked-records"
+          node packages/cli/bin/melian.js records relay "#$NUMBER" --from "dir:$RUNNER_TEMP/checked-records" \
+            --expect-base "$BASE" --expect-head "$HEAD" --check
+          echo "name=melian-records-$ATTEMPT" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.records.outputs.name != ''
+        with:
+          name: ${{ steps.records.outputs.name }}
+          path: ${{ runner.temp }}/checked-records
+          if-no-files-found: error
+          retention-days: 30
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -331,6 +387,119 @@ jobs:
           path: ${{ runner.temp }}/public
           if-no-files-found: ignore
           retention-days: 30
+
+  # Adds the round's records to melian/state, where a reader on another machine finds the verdict. The job declares no
+  # Environment, so it holds no login and no status token, and it runs no head code. Its token can write contents,
+  # which reaches every branch and tag but what a ruleset protects, and no workflow file, since GitHub never gives a
+  # workflow's token the workflows permission. A writer's branch copy of this workflow gets the same token, which
+  # reaches nothing the writer's own push does not; the rulesets bind both, so this job refuses unless they apply.
+  record:
+    needs: [gate, round]
+    # An empty name would download every artefact of the run.
+    if: needs.round.outputs.records != ''
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      # A round outlasts several merges to main, so a first attempt carries on after the default branch moves, by the
+      # report job's rule and its reasons: this job runs only when the round's records step ran, after the round job's
+      # check, so the code it runs was main's head when the round began. A rerun is refused.
+      - name: Refuse a rerun on a commit the default branch has moved past
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          ATTEMPT: ${{ github.run_attempt }}
+          CHECKED: ${{ needs.round.outputs.checked }}
+        run: |
+          if ! [[ "$ATTEMPT" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::this run's attempt, ${ATTEMPT:-empty}, is not a whole number above 0; start a new round"
+            exit 1
+          fi
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ "$REF" != "refs/heads/$default" ]; then
+            echo "::error::this run is from $REF, and the default branch is now ${default:-unreadable}; start a new round"
+            exit 1
+          fi
+          current=$(gh api "repos/$REPOSITORY/branches/$default" --jq .commit.sha) || current=""
+          if ! [[ "$current" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::the default branch is at an unreadable commit, not $SHA, which this run would build; start a new round"
+            exit 1
+          fi
+          if [ "$current" != "$SHA" ] && [ "$ATTEMPT" != 1 ]; then
+            echo "::error::the default branch is at $current, not $SHA, which this rerun would build; start a new round"
+            exit 1
+          fi
+          if [ "$current" != "$SHA" ] && [ "$CHECKED" != "$SHA" ]; then
+            echo "::error::the default branch is at $current, not $SHA, and this run's round did not check $SHA; start a new round"
+            exit 1
+          fi
+      # Without these rules this job's token could push to the default branch, or rewrite or delete melian/state. A rule
+      # applies only when GitHub says it does, and each ruleset that applies one must let this token bypass it never.
+      - name: Refuse unless rulesets keep the default branch and melian/state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ -z "$default" ]; then
+            echo "::error::GitHub did not answer which branch is the default, so nothing is relayed"
+            exit 1
+          fi
+          for branch in "$default" melian/state; do
+            if [ "$branch" = "$default" ]; then want="deletion non_fast_forward pull_request merge_queue"; else want="deletion non_fast_forward"; fi
+            rules=$(gh api "repos/$REPOSITORY/rules/branches/$branch" --jq '.[] | "\(.type) \(.ruleset_id)"') || {
+              echo "::error::GitHub did not answer which rules apply to $branch, so nothing is relayed"
+              exit 1
+            }
+            for type in $want; do
+              if ! grep -q "^$type " <<< "$rules"; then
+                echo "::error::no ruleset applies $type to $branch, so nothing is relayed"
+                exit 1
+              fi
+            done
+            for id in $(cut -d " " -f 2 <<< "$rules" | sort -u); do
+              if ! [[ "$id" =~ ^[0-9]+$ ]]; then echo "::error::a rule on $branch names no ruleset ID"; exit 1; fi
+              bypass=$(gh api "repos/$REPOSITORY/rulesets/$id" --jq .current_user_can_bypass) || bypass=""
+              if [ "$bypass" != never ]; then
+                echo "::error::ruleset $id on $branch lets this job's token bypass it (${bypass:-unreadable}), so nothing is relayed"
+                exit 1
+              fi
+            done
+          done
+      # The run's own commit of main supplies Melian. The whole history, so Melian can fetch the pull request and find its
+      # merge base. No token stays in .git/config; the push takes it from gh's credential helper below.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: melian
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+        working-directory: melian
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.round.outputs.records }}
+          path: ${{ runner.temp }}/records
+      # The relay checks the batch whole again and adds it in one write, or adds nothing. `gh auth setup-git` writes a
+      # credential helper into the runner's global git configuration, which melian/state's push reads.
+      - name: Relay the round's records to melian/state
+        working-directory: melian
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ inputs.pull_request }}
+          BASE: ${{ needs.gate.outputs.base }}
+          HEAD: ${{ needs.gate.outputs.head }}
+        run: |
+          gh auth setup-git
+          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
+          node packages/cli/bin/melian.js records relay "#$NUMBER" --from "dir:$RUNNER_TEMP/records" \
+            --expect-base "$BASE" --expect-head "$HEAD"
 
   report:
     needs: [gate, pending, round]
@@ -426,7 +595,7 @@ jobs:
           read -r current_base current_head <<< "$current" || true
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
-            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" \
+            --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --probe-gaps "$out/probe-gaps.json" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
           # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post

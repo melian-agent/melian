@@ -38,7 +38,9 @@ import {
 	systemPromptOf,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { type AdjudicationTaskInput, VerdictDocument } from "../src/adjudication.ts";
+import { type AdjudicationTaskInput, adjudicationKey, VerdictDocument } from "../src/adjudication.ts";
+import type { CheckRunRecord } from "../src/checks.ts";
+import { codeVersion } from "../src/code-version.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -402,6 +404,21 @@ it.each(["import", "adjudicate"])("records the legacy verdict before a compariso
 	}
 });
 
+// Main's key names no code version, so this build's first review of main's store decides again, as
+// adjudication-key-reopen.test.ts shows. The tests below are about the round an attachment keeps, so they give the
+// stored key this build's code before they review.
+async function withCurrentKey(harness: Harness) {
+	const root = await harness.root(context);
+	await root.commit(async (tx) => {
+		const adjudication = (await tx.doc(ReviewIndex, root.id)).reviews[legacy.key]!.adjudication!;
+		const input = JSON.parse(adjudication.input) as AdjudicationTaskInput;
+		adjudication.input = adjudicationKey({ ...input, code: codeVersion("adjudication") });
+	}, context);
+}
+
+// The check as main's rounds fixture recorded it, bare, so a run that carries it reviews the same input.
+const legacyChecks = [{ name: "static.mutation", status: "ran" }] as unknown as CheckRunRecord[];
+
 it.each([
 	undefined,
 	{ base: legacy.key.split("..")[0]!, head: legacy.key.split("..")[1]!, tier: "full", policy: "cli-policy", task: 1 },
@@ -409,6 +426,7 @@ it.each([
 	const { storage } = await oldStorage("decided");
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
+		await withCurrentKey(reopened);
 		const root = await reopened.root(context);
 		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
 		const input = JSON.parse(before.input) as AdjudicationTaskInput;
@@ -428,8 +446,15 @@ it.each([
 			lenses: [],
 			standards: [],
 			models: fake.review,
-			checks: [{ name: "static.mutation", status: "ran" as const }],
-			checkRun,
+			...(checkRun === undefined
+				? { checks: [{ name: "static.mutation", status: "ran" as const }] }
+				: {
+						checkRun: {
+							identity: checkRun,
+							request: "a".repeat(64),
+							records: legacyChecks,
+						},
+					}),
 		};
 		await reviewChangeset(options);
 		await reviewChangeset(options);
@@ -448,6 +473,7 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 	const { storage } = await oldStorage("decided");
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
+		await withCurrentKey(reopened);
 		const root = await reopened.root(context);
 		const before = (await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!;
 		const input = JSON.parse(before.input) as AdjudicationTaskInput;
@@ -468,8 +494,11 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 			lenses: [],
 			standards: [],
 			models: fake.review,
-			checks: [{ name: "static.mutation", status: "ran" as const }],
-			checkRun,
+			checkRun: {
+				identity: checkRun,
+				request: "a".repeat(64),
+				records: legacyChecks,
+			},
 		};
 		await reviewChangeset(options);
 		expect((await reopened.snapshot(ReviewIndex, root.id, context))!.reviews[legacy.key]!.adjudication!.task).toBe(
@@ -477,7 +506,7 @@ it("mints after a legacy attachment when the CLI supplies a distinct check run w
 		);
 		const attached = structuredClone((await reopened.snapshot(rounds, root.id, context))!);
 		expect(attached.sequence).toBe(0);
-		await reviewChangeset({ ...options, checkRun: { ...checkRun, task: 2 } });
+		await reviewChangeset({ ...options, checkRun: { ...options.checkRun, identity: { ...checkRun, task: 2 } } });
 		const minted = await reopened.snapshot(rounds, root.id, context);
 		expect(minted?.sequence).toBe(1);
 		expect(minted?.items.r1).toMatchObject({ verdict: { status: "passed" } });
@@ -626,26 +655,24 @@ it("synthesises main's legacy round on a detached read without creating a docume
 	}
 });
 
-it("lets an adjudication main left pending overwrite its own legacy verdict after reopening", async () => {
+it("fails an adjudication main left pending and leaves its legacy verdict and rounds alone", async () => {
 	const { storage } = await oldStorage();
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
 		const root = await reopened.root(context);
-		expect(await reopened.snapshot(RoundsDocument, root.id, context)).toBeUndefined();
+		const verdict = structuredClone(
+			(await reopened.snapshot(VerdictDocument, root.id, context))!.verdicts[legacy.key],
+		);
 		const task = await reopened.waitForTask(legacy.pending as TaskId, context);
-		expect(task.state.outcome).toMatchObject({ status: "completed", result: "recorded" });
-		const state = await reopened.snapshot(RoundsDocument, root.id, context);
-		expect(state?.sequence).toBe(0);
-		expect(Object.values(state!.items)).toMatchObject([
-			{ tasks: [legacy.pending], verdict: { status: "not-reviewed" } },
-		]);
-		expect(Object.keys(state!.items)).toEqual([state!.current[legacy.key]]);
+		expect(task.state.outcome).toMatchObject({ status: "failed" });
+		expect(await reopened.snapshot(RoundsDocument, root.id, context)).toBeUndefined();
+		expect((await reopened.snapshot(VerdictDocument, root.id, context))!.verdicts[legacy.key]).toEqual(verdict);
 	} finally {
 		await reopened.close(context);
 	}
 });
 
-it("places a main task with no live verdict or comparison in its key's legacy round", async () => {
+it("writes no round when a main task with no live verdict or comparison fails", async () => {
 	const { storage } = await oldStorage();
 	const reopened = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	try {
@@ -654,19 +681,15 @@ it("places a main task with no live verdict or comparison in its key's legacy ro
 			delete (await tx.doc(VerdictDocument, root.id)).verdicts[legacy.key];
 			delete (await tx.doc(ComparisonDocument, root.id)).unattributed[legacy.key];
 		}, context);
-		await reopened.waitForTask(legacy.pending as TaskId, context);
-		const state = await reopened.snapshot(rounds, root.id, context);
-		expect(state?.sequence).toBe(0);
-		expect(state?.current[legacy.key]).toMatch(/^k[0-9a-f]{16}$/);
-		expect(Object.values(state!.items)).toMatchObject([
-			{ tasks: [legacy.pending], verdict: { status: "not-reviewed" } },
-		]);
+		const task = await reopened.waitForTask(legacy.pending as TaskId, context);
+		expect(task.state.outcome).toMatchObject({ status: "failed" });
+		expect(await reopened.snapshot(rounds, root.id, context)).toBeUndefined();
 	} finally {
 		await reopened.close(context);
 	}
 });
 
-it("reopens between minting and deciding with the same round and task", async () => {
+it("reopens between minting and deciding, fails main's task, and leaves its round undecided", async () => {
 	const { storage, path } = await oldStorage();
 	const first = await openHarness(storage, { models: fake.models, registry: createReviewRegistry() });
 	const root = await first.root(context);
@@ -681,15 +704,13 @@ it("reopens between minting and deciding with the same round and task", async ()
 		registry: createReviewRegistry(),
 	});
 	try {
-		await reopened.waitForTask(legacy.pending as TaskId, context);
+		const task = await reopened.waitForTask(legacy.pending as TaskId, context);
+		expect(task.state.outcome).toMatchObject({ status: "failed" });
 		const state = await reopened.snapshot(RoundsDocument, (await reopened.root(context)).id, context);
 		expect(state?.sequence).toBe(1);
 		expect(state?.current[legacy.key]).toBe("r1");
-		expect(state?.items.r1).toMatchObject({
-			tasks: [legacy.pending],
-			mintedAt: "2026-10-18T00:00:00Z",
-			verdict: { status: "not-reviewed" },
-		});
+		const [base, head] = legacy.key.split("..");
+		expect(state?.items.r1).toEqual({ base, head, tasks: [legacy.pending], mintedAt: "2026-10-18T00:00:00Z" });
 		expect(Object.values(state!.items).filter((round) => round.mintedAt === undefined)).toMatchObject([
 			{ verdict: { status: "passed" } },
 		]);

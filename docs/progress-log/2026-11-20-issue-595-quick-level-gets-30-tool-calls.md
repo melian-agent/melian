@@ -1,0 +1,9 @@
+# The quick level gets 30 tool calls
+
+For [issue #595](https://github.com/melian-agent/melian/issues/595): each of Melian's own lenses that has a quick level now allows it 30 tool calls instead of the 10 it took from the built-in lenses. Durability's quick level, which set its own 10, rises to 30 as well. No token budget changes, and neither does any careful or deep budget.
+
+The change follows four range rounds with main's build at 64c0cbe9513b, on [pull request #567](https://github.com/melian-agent/melian/pull/567), [#542](https://github.com/melian-agent/melian/pull/542), [#504](https://github.com/melian-agent/melian/pull/504) and [#525](https://github.com/melian-agent/melian/pull/525), with every lens but design under a raised, uncommitted budget so nothing was cut. They cost $4.74, $7.38, $8.88 and $22.98. The largest careful or deep run used 511k budgeted tokens and 22 tool calls, from `tests` on #525, well inside the 3 million and 90 kept. At the quick level, the 10-call limit ended `removed-behaviour` at 11 calls on [pull request #585](https://github.com/melian-agent/melian/pull/585)'s round, the only cut the data shows under the present budgets. [The issue](https://github.com/melian-agent/melian/issues/595#issuecomment-7029003470) has the whole table.
+
+The maintainer ruled on 2026-11-20, in the coordinator's session, to change only the quick level's tool calls. [The decision](../decisions/2026-11-20-quick-level-gets-30-tool-calls.md) amends the 2026-11-18 budget decision, which left tool calls unchanged; Codex's adversarial review found the gap.
+
+The lens versions pinned in `packages/core/test/lens.test.ts` change with the lens files. No changed file guards trust or durability, so no mutation inventory is owed.
