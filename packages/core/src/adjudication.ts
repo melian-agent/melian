@@ -199,7 +199,10 @@ export class Defect {
 	 * report no verifier judged is capped at `advisory`, alone: a static report beside it is not. A lens report whose every claim a verifier refuted is left
 	 * out. With only refuted reports and a protected minimum, ordinary resolution starts at silent.
 	 */
-	decision(policyFor: ConfigFor, unverified: boolean | ((report: Finding, defect: Finding) => boolean)): FindingDecision {
+	decision(
+		policyFor: ConfigFor,
+		unverified: boolean | ((report: Finding, defect: Finding) => boolean),
+	): FindingDecision {
 		// A report a verifier refuted asks for nothing beside one that stands.
 		const standing = this.reports.filter((report) => !report.refuted());
 		const strictest = (standing.length === 0 ? this.reports : standing)

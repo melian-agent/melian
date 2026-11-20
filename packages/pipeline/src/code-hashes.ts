@@ -2,7 +2,7 @@
 // A blank line parts every entry, so two pull requests that change different modules merge without a conflict.
 
 export const moduleHashes: Readonly<Record<string, string>> = {
-	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
+	"packages/core/src/adjudication.ts": "5c0c39453b7aaadba9d01b55b0e70b012c59228612c84be6f77b295dccf67e8e",
 
 	"packages/core/src/analyser.ts": "3d39fa2860d8ceb9863ddf5bf34ce8ebe57af54e568d96c68f7cf3036b0adb54",
 
