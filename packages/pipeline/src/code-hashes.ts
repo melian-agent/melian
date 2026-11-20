@@ -4,7 +4,7 @@
 export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
 
-	"packages/core/src/analyser.ts": "cbcda69cb7044d9264564e7da0750b14ba88cadff4204caae00aca1081b68833",
+	"packages/core/src/analyser.ts": "3d39fa2860d8ceb9863ddf5bf34ce8ebe57af54e568d96c68f7cf3036b0adb54",
 
 	"packages/core/src/cause.ts": "1e75ff44ddce3c8f244dd812c23972a993c8b7be49f51241316af2a08e858dd8",
 
@@ -80,7 +80,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/process-tree.ts": "2707b8c6a10a0bc7266f3f276eedd8f59aec82d7a3bf5ed63e2d035f5702ce2b",
 
-	"packages/core/src/publication.ts": "624c417046c10ab2d8aa788a7b7c5bdf3bffebaa5b43aa143b4dc4015317557f",
+	"packages/core/src/publication.ts": "fb5476361a779c2bf5e9e2996fde1b60336e0a95fd2e7ce248e1ec134fb64cf8",
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
@@ -140,7 +140,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
-	"packages/pipeline/src/checks.ts": "9dc1ab3991e2f25e71fdc38cf1d461e0e7eca53a72c771fbf01e6c562f75b833",
+	"packages/pipeline/src/checks.ts": "cc651221d31d050070c29ef2b927ebdbab67c7c5e109c06d356a1f7992b54ac7",
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 

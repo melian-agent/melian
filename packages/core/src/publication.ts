@@ -24,8 +24,11 @@ export interface PullRequest {
 	readonly author?: string;
 	readonly url: string;
 	readonly state: "open" | "closed";
-	/** The branch the pull request merges into, and its commit as the provider last saw it. */
-	readonly base: { readonly ref: string; readonly sha: string };
+	/**
+	 * The branch the pull request merges into, and its commit as the provider last saw it, with the repository's
+	 * default branch from the same read, absent when the provider does not say.
+	 */
+	readonly base: { readonly ref: string; readonly sha: string; readonly defaultBranch?: string };
 	readonly head: {
 		readonly ref: string;
 		readonly sha: string;

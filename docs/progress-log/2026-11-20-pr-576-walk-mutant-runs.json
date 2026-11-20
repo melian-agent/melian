@@ -1,0 +1,483 @@
+[
+  {
+    "id": "51b1f887cb35b4ec1e1da55f228346211b1cec37cf02b4ba0fdd9d93486b7acd",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 134,
+    "column": 27,
+    "endLine": 136,
+    "endColumn": 2,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "eebef9fc2a2110856da977850d9eff87f2b3214ef6f8fc6da5a32136f0619a56",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 139,
+    "column": 27,
+    "endLine": 139,
+    "endColumn": 29,
+    "mutatorName": "ArrayDeclaration",
+    "replacement": "[\"Stryker was here\"]",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "ed810ed3e94da8f02cfd4326c0db7b4af60fd51152e938d54ae4a4ac87cb590a",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 140,
+    "column": 6,
+    "endLine": 146,
+    "endColumn": 3,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "c094a6513ece728becc480d1371932f41100e9a22e8466d016d1ee00f5a1b689",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 141,
+    "column": 67,
+    "endLine": 145,
+    "endColumn": 4,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "1d30199dd61f29ad54dc573bcb4ea8036f01529a313ce03097ae16b6867f8378",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 142,
+    "column": 4,
+    "endLine": 142,
+    "endColumn": 21,
+    "mutatorName": "AssignmentOperator",
+    "replacement": "this.#walked -= 1",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "85b010f60d58c290b70619d60076547c3317723c9ea60adb644e10dbdebff623",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 143,
+    "column": 8,
+    "endLine": 143,
+    "endColumn": 42,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "8cdc8b187f44cd6e1833983f36143a2c481d8b15ba581b0cd56c4639edfb78c1",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 143,
+    "column": 8,
+    "endLine": 143,
+    "endColumn": 42,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "55c1ef94eb1fd2758636a38399ca5f80ccdf2b383b3e7e297486d1f0807b6bf2",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 143,
+    "column": 8,
+    "endLine": 143,
+    "endColumn": 42,
+    "mutatorName": "EqualityOperator",
+    "replacement": "this.#walked >= relayLimits.entries",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "931cd38f8292f041ae16ad05a8d98fdb9ab6fb145cdfc5ed0f90df2a51de8bdf",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 143,
+    "column": 8,
+    "endLine": 143,
+    "endColumn": 42,
+    "mutatorName": "EqualityOperator",
+    "replacement": "this.#walked <= relayLimits.entries",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "128070b9b435fb9804a1ef15a28b1b884939a3a86d9cba11f78569f6834b6bc4",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 143,
+    "column": 44,
+    "endLine": 143,
+    "endColumn": 110,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "9559c3c2ec6571d082ce7db9461e2305064c23e9fabc2a3eb1a787a7f181abfd",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 144,
+    "column": 4,
+    "endLine": 144,
+    "endColumn": 23,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "f39d22502a4b53ceabf884b0608a3473756d6b667e306bd186793cba2ddd0811",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 146,
+    "column": 18,
+    "endLine": 149,
+    "endColumn": 3,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "efed6a9d0955186ed0f0c11af185744e9bac211a10316fd451ab34a9a2715439",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 147,
+    "column": 7,
+    "endLine": 147,
+    "endColumn": 36,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "refuses a root it cannot list as unreadable",
+      "pattern": "^RelayBatch > refuses a root it cannot list as unreadable$"
+    },
+    "note": ""
+  },
+  {
+    "id": "9dce7bd567fbb720fb2f0e54ebef5d873b9cd01b94d8590cb1de5e836d3a5c41",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 147,
+    "column": 7,
+    "endLine": 147,
+    "endColumn": 36,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "1e9deb76071bd5a55d72d1da454791761cb77f3de9a0ba6295aa1ae290e3903f",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 148,
+    "column": 3,
+    "endLine": 148,
+    "endColumn": 46,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "refuses a root it cannot list as unreadable",
+      "pattern": "^RelayBatch > refuses a root it cannot list as unreadable$"
+    },
+    "note": ""
+  },
+  {
+    "id": "b9a623fb1031e0af723e40841f15f110bd3af0265402d368801dac321db1e734",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 90,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "refuses a link, a cell and a file the store never writes",
+      "pattern": "^RelayBatch > refuses a link, a cell and a file the store never writes$"
+    },
+    "note": ""
+  },
+  {
+    "id": "cf33a7a27c2cf698ec9214a87256f0f306ce53461c2ff02a09137285254d4484",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 90,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "e23aa50a12dc6dbdb9cfc66fa7990836e98807f4c5f115f08a0d8d0016d53747",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 90,
+    "mutatorName": "LogicalOperator",
+    "replacement": "top.name === \"tmp\" && top.isDirectory() || (await walk.entries(\"tmp\")).length === 0",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "5fda7bb3b89a8b621b1514c44de6bb5c651fe10e44406fd00526baf4cd2fe3cb",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "757dc6d873093acc1f4fdc63f725f2a1c68366a5d299723541759da18092ef36",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "LogicalOperator",
+    "replacement": "top.name === \"tmp\" || top.isDirectory()",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "c1d768c75ed75d9f93cc7048969604c05d037c22624ed5b48921016856e8f7b9",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 25,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay-io.test.ts",
+      "ancestorTitles": [
+        "RelayBatch on a folder with more entries than it walks"
+      ],
+      "title": "stops reading the folder at the entry past its bound",
+      "pattern": "^RelayBatch on a folder with more entries than it walks > stops reading the folder at the entry past its bound$"
+    },
+    "note": ""
+  },
+  {
+    "id": "3cdd64720b956e23f8f39dc21f2f8fbf52f405dafe36fb27eb5e803bcd4c76be",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 7,
+    "endLine": 255,
+    "endColumn": 25,
+    "mutatorName": "EqualityOperator",
+    "replacement": "top.name !== \"tmp\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  },
+  {
+    "id": "afe5396dd74444e5b99e0d25d23495ec54013f4d0253e9464191c24795492659",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 50,
+    "endLine": 255,
+    "endColumn": 90,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch",
+        "refuses an entry the store's tree never holds"
+      ],
+      "title": "a file in tmp",
+      "pattern": "^RelayBatch > refuses an entry the store's tree never holds > a file in tmp$"
+    },
+    "note": ""
+  },
+  {
+    "id": "e31d62c04d61c99dd0081238099662868cff1016114415d7e4fa4f2ed5755636",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 255,
+    "column": 50,
+    "endLine": 255,
+    "endColumn": 90,
+    "mutatorName": "EqualityOperator",
+    "replacement": "(await walk.entries(\"tmp\")).length !== 0",
+    "result": "killed",
+    "test": {
+      "file": "packages/cli/test/relay.test.ts",
+      "ancestorTitles": [
+        "melian records relay"
+      ],
+      "title": "adds a writer's round and the records it reads to melian/state",
+      "pattern": "^melian records relay > adds a writer's round and the records it reads to melian/state$"
+    },
+    "note": ""
+  }
+]

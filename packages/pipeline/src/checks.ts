@@ -188,6 +188,12 @@ const toolOf: Readonly<Record<Exclude<DeterministicCheck, "guardrails">, StaticT
 	"static.mutation": "mutation",
 };
 
+/**
+ * The checks that run the head's own code, and so the only ones whose results a fork's job hands over, by rule 6 of the
+ * shared record decision: the job that holds the keys runs every other check itself.
+ */
+export const headCodeChecks: readonly DeterministicCheck[] = ["static.mutation"];
+
 // The note a mutation check carries when it ran the head's tests only because the reviewer vouched for the head.
 export const trustedHeadNote = "Ran the head's own tests because the reviewer passed --trust-head.";
 
@@ -218,10 +224,10 @@ async function runStatic(
 	const settings = input.config.static[tool];
 	if (!settings.enabled) return { status: "skipped", reason: `static.${tool}.enabled is false` };
 	const leaveNotes: string[] = [];
-	// Only mutation runs head code, and it gets its leave only past the guard below.
+	// Only a head-code check runs the head's code, and it gets its leave only past the guard below.
 	let mutationLeave: { headCode: HeadTrust; target: string; cold?: true; created: number } | Record<string, never> =
 		{};
-	if (tool === "mutation") {
+	if (headCodeChecks.includes(input.check)) {
 		// Asked first: a change with nothing to judge runs no head code, so it needs no leave and passes on any host.
 		if (!MutationRun.judges(Revision.from(input.changeset.revision)))
 			return { status: "skipped", reason: mutationSkips.noProductionLines, cause: "noProductionLines" };
