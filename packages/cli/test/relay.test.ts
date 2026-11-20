@@ -335,7 +335,13 @@ describe("the relay's push to an origin that needs a credential", { timeout: 60_
 		if (helper) {
 			const key = `credential.${remote.url}.helper`;
 			execFileSync("git", ["config", "--global", "--add", key, ""]);
-			execFileSync("git", ["config", "--global", "--add", key, "!f() { echo username=relay; echo password=s3cret; }; f"]);
+			execFileSync("git", [
+				"config",
+				"--global",
+				"--add",
+				key,
+				"!f() { echo username=relay; echo password=s3cret; }; f",
+			]);
 		}
 		try {
 			const pr = await pullRequest({ origin: `${remote.url}/origin.git` });
