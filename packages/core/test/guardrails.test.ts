@@ -760,13 +760,13 @@ describe("policy-change-review", () => {
 		});
 
 		it("raises none without the glob", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
 
 		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			const { findings } = await guardrails(
 				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
@@ -777,6 +777,33 @@ describe("policy-change-review", () => {
 					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
 					.map((finding) => [finding.properties.path, finding.properties.severity]),
 			).toContainEqual([".github/workflows/check.yml", "P1"]);
+		});
+	});
+
+	describe("this repository's macOS test list and comparator", () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const scripts = ["scripts/compare-platform-reports.mjs", "scripts/macos-tests.json"];
+		const notices = (findings: readonly Finding[]) =>
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => [finding.properties.path, finding.properties.severity]);
+		const stripped = scripts.reduce((policy, path) => policy.replace(`, "${path}"`, ""), own);
+
+		it("raises a blocking notice for an edit to either", async () => {
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(scripts.map((path) => [path, "P1"]));
+		});
+
+		it("keeps both notices when the head strips them, because the base's policy decides", async () => {
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ "melian.yaml": stripped, [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(expect.arrayContaining(scripts.map((path) => [path, "P1"])));
 		});
 	});
 
