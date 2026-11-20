@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -24,6 +24,14 @@ const install = (path: string, manifest: Record<string, unknown> | string) => {
 };
 
 const read = (limit?: number) => Install.read(from, limit);
+// The entry a package directory at `place` beneath the install root records: its manifest's bytes, hashed.
+const manifest = (place: string): InstallEntry => [
+	place,
+	"manifest",
+	createHash("sha256")
+		.update(readFileSync(join(scratch, place, "package.json")))
+		.digest("hex"),
+];
 const digest = () => read().digest;
 
 beforeEach(() => {
@@ -67,9 +75,9 @@ const nest = (directory: string, name: string, version = "1.0.0") => {
 describe("Install.read", () => {
 	it("lists every copy beneath the root as its place and release, sorted, whether or not anything imports it", () => {
 		expect(read().entries).toEqual([
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
@@ -80,20 +88,20 @@ describe("Install.read", () => {
 	it("lists a scoped package at its place, and the scope as none", () => {
 		install("@scope/tool", { name: "@scope/tool", version: "3.0.0" });
 		expect(read().entries).toEqual([
-			["node_modules/@scope/tool", "release", "@scope/tool", "3.0.0"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/@scope/tool"),
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
 	it("lists each copy of one release at its own place", () => {
 		install("pi/node_modules/sdk", { name: "sdk", version: "2.0.0" });
 		expect(read().entries).toEqual([
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/pi/node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/pi/node_modules/sdk"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
@@ -125,10 +133,10 @@ describe("Install.read", () => {
 		const nested = read();
 		expect(nested.entries).toEqual([
 			["node_modules/@app/pipeline", "links", "packages/pipeline"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
-			["packages/pipeline", "release", "@app/pipeline", "0.0.0"],
-			["packages/pipeline/node_modules/pi", "release", "pi", "1.1.0"],
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
+			manifest("packages/pipeline"),
+			manifest("packages/pipeline/node_modules/pi"),
 		]);
 		rmSync(join(pipeline, "node_modules"), { recursive: true });
 		install("pi", { name: "pi", version: "1.1.0" });
@@ -150,11 +158,11 @@ describe("Install.read", () => {
 		nest(workspace("core"), "yaml", "2.0.0");
 		expect(read().entries).toEqual([
 			["node_modules/@app/core", "links", "packages/core"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
-			["packages/core", "release", "@app/core", "0.0.0"],
-			["packages/core/node_modules/yaml", "release", "yaml", "2.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
+			manifest("packages/core"),
+			manifest("packages/core/node_modules/yaml"),
 		]);
 	});
 
@@ -183,11 +191,11 @@ describe("Install.read", () => {
 			["node_modules/a/node_modules/sdk", "links", "store/sdk-one"],
 			["node_modules/b", "no manifest"],
 			["node_modules/b/node_modules/sdk", "links", "store/sdk-two"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
-			["store/sdk-one", "release", "sdk", "2.0.0"],
-			["store/sdk-two", "release", "sdk", "2.1.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
+			manifest("store/sdk-one"),
+			manifest("store/sdk-two"),
 		]);
 		expect(layout("sdk-two", "sdk-one").digest).not.toBe(before.digest);
 	});
@@ -195,7 +203,7 @@ describe("Install.read", () => {
 	it("moves when a node_modules made by hand inside a package's own directory changes", () => {
 		install("pi/cjs/node_modules/sdk", { name: "sdk", version: "2.0.0" });
 		const before = read();
-		expect(before.entries).toContainEqual(["node_modules/pi/cjs/node_modules/sdk", "release", "sdk", "2.0.0"]);
+		expect(before.entries).toContainEqual(manifest("node_modules/pi/cjs/node_modules/sdk"));
 		install("pi/cjs/node_modules/sdk", { name: "sdk", version: "3.0.0" });
 		expect(digest()).not.toBe(before.digest);
 	});
@@ -221,7 +229,7 @@ describe("Install.read", () => {
 	it("moves when an alias installs another package under a name, at the same version", () => {
 		const before = digest();
 		install("sdk", { name: "real-sdk", version: "2.0.0" });
-		expect(read().entries).toContainEqual(["node_modules/sdk", "release", "real-sdk", "2.0.0"]);
+		expect(read().entries).toContainEqual(manifest("node_modules/sdk"));
 		expect(digest()).not.toBe(before);
 	});
 
@@ -280,11 +288,11 @@ describe("Install.read", () => {
 		install("melian/node_modules/pi", { name: "pi", version: "1.1.0" });
 		writeFileSync(join(scratch, "node_modules", "melian", "bin.js"), "");
 		expect(Install.read(join(scratch, "node_modules", "melian", "bin.js")).entries).toEqual([
-			["node_modules/melian", "release", "melian", "1.0.0"],
-			["node_modules/melian/node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/melian"),
+			manifest("node_modules/melian/node_modules/pi"),
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
@@ -292,9 +300,9 @@ describe("Install.read", () => {
 		renameSync(join(scratch, "node_modules"), join(scratch, "modules"));
 		symlinkSync(join(scratch, "modules"), join(scratch, "node_modules"));
 		expect(read().entries).toEqual([
-			["modules/pi", "release", "pi", "1.1.0"],
-			["modules/sdk", "release", "sdk", "2.0.0"],
-			["modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("modules/pi"),
+			manifest("modules/sdk"),
+			manifest("modules/unrelated"),
 			["node_modules", "links", "modules"],
 		]);
 	});
@@ -308,10 +316,10 @@ describe("Install.read", () => {
 		symlinkSync(join(scratch, "store", "scope"), join(scratch, "node_modules", "@scope"));
 		expect(read().entries).toEqual([
 			["node_modules/@scope", "links", "store/scope"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
-			["store/scope/tool", "release", "@scope/tool", "3.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
+			manifest("store/scope/tool"),
 		]);
 	});
 
@@ -323,11 +331,11 @@ describe("Install.read", () => {
 		);
 		symlinkSync(join(scratch, "store", "pi-modules"), join(scratch, "node_modules", "pi", "node_modules"));
 		expect(read().entries).toEqual([
-			["node_modules/pi", "release", "pi", "1.1.0"],
+			manifest("node_modules/pi"),
 			["node_modules/pi/node_modules", "links", "store/pi-modules"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
-			["store/pi-modules/sdk", "release", "sdk", "3.0.0"],
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
+			manifest("store/pi-modules/sdk"),
 		]);
 	});
 
@@ -341,19 +349,19 @@ describe("Install.read", () => {
 	it("keys a directory named like a scope inside a package as no package", () => {
 		install("pi/lib/@inner/thing", { name: "thing", version: "1.0.0" });
 		expect(read().entries).toEqual([
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
 	it("keys a slot named like a scope inside a scope as a package", () => {
 		install("@scope/@odd", { name: "@scope/@odd", version: "1.0.0" });
 		expect(read().entries).toEqual([
-			["node_modules/@scope/@odd", "release", "@scope/@odd", "1.0.0"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/@scope/@odd"),
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
@@ -362,9 +370,9 @@ describe("Install.read", () => {
 		expect(read()).toMatchObject({
 			entries: [
 				["node_modules/gone", "links nowhere"],
-				["node_modules/pi", "release", "pi", "1.1.0"],
-				["node_modules/sdk", "release", "sdk", "2.0.0"],
-				["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+				manifest("node_modules/pi"),
+				manifest("node_modules/sdk"),
+				manifest("node_modules/unrelated"),
 			],
 			identified: true,
 		});
@@ -377,9 +385,9 @@ describe("Install.read", () => {
 		mkdirSync(join(scratch, "node_modules", ".cache", "deep"), { recursive: true });
 		expect(read().entries).toEqual([
 			["node_modules/.bin/pi", "links", "node_modules/pi/cli.js"],
-			["node_modules/pi", "release", "pi", "1.1.0"],
-			["node_modules/sdk", "release", "sdk", "2.0.0"],
-			["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+			manifest("node_modules/pi"),
+			manifest("node_modules/sdk"),
+			manifest("node_modules/unrelated"),
 		]);
 	});
 
@@ -388,14 +396,52 @@ describe("Install.read", () => {
 		expect(read().entries).toContainEqual(["node_modules/bare", "no manifest"]);
 	});
 
-	it.each<[string, Record<string, unknown>, InstallEntry]>([
-		["no name", { version: "1.0.0" }, ["node_modules/sdk", "release", "", "1.0.0"]],
-		["no version", { name: "sdk" }, ["node_modules/sdk", "release", "sdk", ""]],
-		["a version that is a number", { name: "sdk", version: 2 }, ["node_modules/sdk", "release", "sdk", ""]],
-		["a name that is a number", { name: 7, version: "1.0.0" }, ["node_modules/sdk", "release", "", "1.0.0"]],
-	])("keys a manifest with %s by what it holds", (_, manifest, entry) => {
-		install("sdk", manifest);
-		expect(read().entries).toContainEqual(entry);
+	it.each<[string, string]>([
+		["no name", JSON.stringify({ version: "1.0.0" })],
+		["a version that is a number", JSON.stringify({ name: "sdk", version: 2 })],
+		["a fraction, which core's canonical JSON refuses", '{"name":"sdk","version":"2.0.0","weight":1.5}'],
+		["a lone surrogate, which core's canonical JSON refuses", '{"name":"sdk","version":"2.0.0","note":"\\ud800"}'],
+	])("keys a manifest with %s by its bytes", (_, text) => {
+		install("sdk", text);
+		expect(read().entries).toContainEqual([
+			"node_modules/sdk",
+			"manifest",
+			createHash("sha256").update(text).digest("hex"),
+		]);
+	});
+
+	it.each<[string, Record<string, unknown>, Record<string, unknown>]>([
+		["exports", { exports: "./a.js" }, { exports: "./b.js" }],
+		["main", { main: "a.js" }, { main: "b.js" }],
+		["type", { type: "commonjs" }, { type: "module" }],
+	])("moves when a manifest's %s changes, at one name and version", (_, before, after) => {
+		install("sdk", { name: "sdk", version: "2.0.0", ...before });
+		const first = digest();
+		install("sdk", { name: "sdk", version: "2.0.0", ...after });
+		expect(digest()).not.toBe(first);
+	});
+
+	// What the key cannot see: a file's bytes beneath a package, which the decision of 2026-11-20 leaves out.
+	it.each<[string, string, string]>([
+		["a patched file, as patch-package makes", "index.js", "module.exports = 2;"],
+		["a postinstall script's output", "generated/config.js", "module.exports = {};"],
+		["a native binary", "build/Release/sdk.node", "\u0000\u0001"],
+		["another tarball a registry serves under one version", "lib/sdk.js", "export default 2;"],
+	])("keeps the digest when %s changes beneath a release", (_, file, text) => {
+		const path = join(scratch, "node_modules", "sdk", file);
+		mkdirSync(join(path, ".."), { recursive: true });
+		writeFileSync(path, "module.exports = 1;");
+		const first = digest();
+		writeFileSync(path, text);
+		expect(digest()).toBe(first);
+	});
+
+	it("keeps the digest when a file changes in a package with no manifest", () => {
+		mkdirSync(join(scratch, "node_modules", "bare"));
+		writeFileSync(join(scratch, "node_modules", "bare", "index.js"), "module.exports = 1;");
+		const first = digest();
+		writeFileSync(join(scratch, "node_modules", "bare", "index.js"), "module.exports = 2;");
+		expect(digest()).toBe(first);
 	});
 
 	it("fails, naming the place, on a manifest that is not JSON", () => {
@@ -437,9 +483,9 @@ describe("Install.read", () => {
 		it("keys the link, naming no place outside, walks nothing beneath it, and names its place", () => {
 			expect(read()).toMatchObject({
 				entries: [
-					["node_modules/pi", "release", "pi", "1.1.0"],
+					manifest("node_modules/pi"),
 					["node_modules/sdk", "links outside"],
-					["node_modules/unrelated", "release", "unrelated", "1.0.0"],
+					manifest("node_modules/unrelated"),
 				],
 				outside: ["node_modules/sdk"],
 				identified: false,
@@ -484,11 +530,16 @@ describe("Install.read", () => {
 	});
 
 	it("is a SHA-256 over the canonical JSON of the sorted entries", () => {
+		const hashed = (place: string) =>
+			createHash("sha256")
+				.update(readFileSync(join(scratch, place, "package.json")))
+				.digest("hex");
 		expect(digest()).toBe(
 			createHash("sha256")
 				.update(
-					'[["node_modules/pi","release","pi","1.1.0"],["node_modules/sdk","release","sdk","2.0.0"],' +
-						'["node_modules/unrelated","release","unrelated","1.0.0"]]',
+					`[["node_modules/pi","manifest","${hashed("node_modules/pi")}"],` +
+						`["node_modules/sdk","manifest","${hashed("node_modules/sdk")}"],` +
+						`["node_modules/unrelated","manifest","${hashed("node_modules/unrelated")}"]]`,
 				)
 				.digest("hex"),
 		);

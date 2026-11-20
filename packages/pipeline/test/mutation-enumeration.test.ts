@@ -1,5 +1,6 @@
 import * as childProcess from "node:child_process";
 import { ChildProcess, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmodSync } from "node:fs";
 import * as nodeFs from "node:fs/promises";
 import { access, chmod, mkdir, mkdtemp, readdir, readFile, rm, symlink } from "node:fs/promises";
@@ -1707,8 +1708,13 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		const installed = await TypeScriptMutationAdapter.open(repo);
 		expect(installed.source).toBe("checkout");
 		expect(installed.identity).toEqual({ ...fallback.identity, source: "checkout" });
+		const manifest = await readFile(join(repo, "node_modules/@stryker-mutator/instrumenter/package.json"));
 		expect(installed.install().entries).toEqual([
-			["node_modules/@stryker-mutator/instrumenter", "release", "@stryker-mutator/instrumenter", "10.0.0"],
+			[
+				"node_modules/@stryker-mutator/instrumenter",
+				"manifest",
+				createHash("sha256").update(manifest).digest("hex"),
+			],
 		]);
 		expect(fallback.install().digest).toBe(melianInstall().digest);
 		gitIn(repo, "add", "-f", "node_modules/.keep");

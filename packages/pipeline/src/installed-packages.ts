@@ -184,17 +184,17 @@ class Walk {
 		}
 	}
 
-	// What a package directory holds: its manifest's name and version, or that it has none, since Node can still load it.
+	// A package directory's whole manifest, since `exports`, `main` and `type` change what runs at one version, or that
+	// it has none, since Node can still load it. Its bytes, not core's canonical JSON, which refuses a fraction.
 	#release(directory: string): string[] {
 		if (!existsSync(join(directory, "package.json"))) return ["no manifest"];
-		let manifest: { name?: unknown; version?: unknown };
+		let manifest: Buffer;
 		try {
-			manifest = JSON.parse(readFileSync(join(directory, "package.json"), "utf8")) as typeof manifest;
+			manifest = readFileSync(join(directory, "package.json"));
+			JSON.parse(manifest.toString("utf8"));
 		} catch {
 			throw new InstalledPackagesError(`Melian cannot read the installed package at ${this.#place(directory)}.`);
 		}
-		const name = typeof manifest.name === "string" ? manifest.name : "";
-		const version = typeof manifest.version === "string" ? manifest.version : "";
-		return ["release", name, version];
+		return ["manifest", createHash("sha256").update(manifest).digest("hex")];
 	}
 }

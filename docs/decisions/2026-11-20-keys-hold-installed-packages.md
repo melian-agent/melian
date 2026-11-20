@@ -20,7 +20,7 @@ The first forms keyed only what each producer's imports reach, walking manifests
 
 ## The change
 
-**The guarantee:** two installs with one digest hold the same release and the same link at every place in every `node_modules` tree Node searches beneath the install root, so every import from Melian's code reaches the same release.
+**The guarantee:** two installs with one digest hold the same manifest and the same link at every place in every `node_modules` tree Node searches beneath the install root, so every import from Melian's code reaches the same release.
 
 `Install.read`, in `pipeline/src/installed-packages.ts`, lists every copy and every link beneath the install root, whether any import reaches it or not. Every producer keys that one digest: the lens request's `packages`, the mutant lister's `packages` beside its version and source, the check request's `packages`, and the adjudication task's `packages`. `melianInstall()`, in `code-version.ts`, reads Melian's own install once a process. `TypeScriptMutationAdapter.install()` reads the install beneath the instrumenter it resolved, from the resolved module itself, in Melian's install or the checkout's.
 
@@ -28,13 +28,13 @@ The first forms keyed only what each producer's imports reach, walking manifests
 
 - The install root is the outermost ancestor of the module that holds a `node_modules`, since Node searches every ancestor's.
 - In a `node_modules` directory, each child is a package slot, and an `@scope` child holds slots. A name starting with a dot, such as `.bin` or `.cache`, is walked as a plain tree.
-- A package records `[place, "release", name, version]`, read from its `package.json`, or `[place, "no manifest"]`, since Node can load one. Its subdirectories are walked for a nested `node_modules`.
-- A link records `[place, "links", target]`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's release but not its files, since a workspace package's source is no release; the code version covers it.
+- A package records `[place, "manifest", digest]`, a SHA-256 of its `package.json`'s bytes, or `[place, "no manifest"]`, since Node can load one. The whole manifest is keyed, not its name and version alone, because `exports`, `main` and `type` change what runs at one version. The digest is over the file's bytes, not core's `canonicalJson`, which refuses a fraction or a lone surrogate that a manifest may hold. The file must still parse as JSON. Its subdirectories are walked for a nested `node_modules`.
+- A link records `[place, "links", target]`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's manifest but not its other files, since a workspace package's source is no release; the code version covers it.
 - A link that resolves nowhere records `[place, "links nowhere"]`.
 
 The lockfile is not asked. It records what npm meant to install, not what Node finds, and a hand edit, `npm link` or a second package manager changes the second without the first.
 
-`place` is the path relative to the install root, with `/` between its parts on every platform. Each entry is a list of strings, and the digest is a SHA-256 over core's `canonicalJson` of the sorted list of entries. No place, target, name or version can stand for a kind or for another field, since each is a JSON string of its own. One layout at two absolute paths gives one digest, so a host and an Actions runner that run `npm ci` on one lockfile share it. In this repository the walk reads 2,263 directories and writes 402 entries, 31 of them links, in about 90 ms, once a process.
+`place` is the path relative to the install root, with `/` between its parts on every platform. Each entry is a list of strings, and the digest is a SHA-256 over core's `canonicalJson` of the sorted list of entries. No place, target or manifest digest can stand for a kind or for another field, since each is a JSON string of its own. One layout at two absolute paths gives one digest, so a host and an Actions runner that run `npm ci` on one lockfile share it. In this repository the walk reads 2,263 directories and writes 402 entries, 31 of them links, in about 90 ms, once a process.
 
 **A bound.** The walk reads at most `maxInstallDirectories`, 50,000 directories, and past it fails the key: "Melian cannot key its install: it holds more than 50000 directories." That is 22 times this repository's install. A global install whose root is `/usr/lib` reads every global package, and one that big fails closed rather than walk without end.
 
@@ -50,7 +50,9 @@ Seven layouts collided under the earlier forms. Each is a named test in `install
 
 Codex's review of the first whole-install form found that its text lines could be forged. A link to a directory named `nowhere` wrote the line of a link that names no directory, a space in a place shifted where a link's target began, and an `@` in a manifest's name moved where its version began. Each is a named test that failed on the text lines and passes on the entries.
 
-An npm alias, `node_modules/sdk` holding `real-sdk@2.0.0`, is an eighth test. It reads as `["node_modules/sdk", "release", "real-sdk", "2.0.0"]`, and moving it moves the digest. Against main's walk at 56f7fb059, the hand-made nested, platform, nested entry and dev dependency cases each kept the digest, and the alias failed the key, so every review would have failed.
+Codex's next review found that two installs whose packages differ under one name and version shared a digest. On 2026-11-20 the coordinator chose to key each whole manifest. A changed `exports`, `main` or `type` at one name and version is now a named test that failed on the name and version alone and passes on the manifest's digest.
+
+An npm alias, `node_modules/sdk` holding `real-sdk@2.0.0`, is an eighth test. It reads as `["node_modules/sdk", "manifest", digest]` of a manifest that names `real-sdk`, and moving it moves the digest. Against main's walk at 56f7fb059, the hand-made nested, platform, nested entry and dev dependency cases each kept the digest, and the alias failed the key, so every review would have failed.
 
 ## What it gives up
 
@@ -58,7 +60,16 @@ Any change to the install reruns every producer: a dev dependency's move, a dedu
 
 What the walk does not see, and why each is left:
 
-- **A file's contents within a release.** A hand edit inside `node_modules` keeps the line. [The request-key decision](2026-11-14-request-keys-as-built.md) already leaves out "A hand edit or `npm link` inside an install a manager recorded, and nothing else."
+- **Any file beneath a package but its manifest.** Each of these keeps the digest, and each is a named test in `installed-packages.test.ts`:
+  - a patched file, as patch-package makes;
+  - a postinstall script's output;
+  - a native binary;
+  - another tarball a registry serves under one version, with the same manifest;
+  - any file of a package with no manifest.
+
+  A hand edit inside `node_modules` keeps it too. [The request-key decision](2026-11-14-request-keys-as-built.md) already leaves out "A hand edit or `npm link` inside an install a manager recorded, and nothing else". Keying every file would hash the whole of `node_modules`, tens of thousands of files here, and that is another mechanism at another cost, which the coordinator chose not to build on 2026-11-20.
+
+  npm's hidden lockfile, `node_modules/.package-lock.json`, would catch the registry case where npm's install took a different tarball. npm writes it on every install, with each place's `version`, `resolved` URL and `integrity`, a SHA-512 of the tarball npm verified. Here it is 178 KB with 379 entries, 363 of them with an integrity, and it parses in about 2 ms, so reading it would cost little. It catches less than it seems. `npm ci` already refuses a tarball whose integrity differs from the committed lockfile's, so two hosts that run `npm ci` on one lockfile cannot take different tarballs. The integrity is npm's record of the tarball, not of the files on disk, so it misses the patched file, the postinstall output and a hand edit. pnpm, Yarn and Bun write no such file, so an install by another manager would need its own rule. It is the lockfile's answer, not Node's, which this decision set aside above. Melian does not read it.
 - **A `node_modules` beneath the root that no walked tree holds**, such as one made by hand in `scripts/` or in a workspace package's `src/`. No module of Melian's resolves from there, except a workspace module beside it, which only a hand edit makes.
 - **CommonJS's global folders**, `NODE_PATH` and `~/.node_modules`. Melian is ESM, whose resolver never reads them.
 
@@ -82,7 +93,7 @@ An adjudication task whose `packages` differs from the running install's fails, 
 
 ## Melian's own packages
 
-The walk lists Melian's own packages like any other. A published install reads `["node_modules/@melian-agent/core", "release", "@melian-agent/core", "1.1.0"]`, and a checkout reads the workspace link and the release at `packages/core`. So the digest covers a published pipeline paired with another core. Each workspace package also names the others at their exact version, as AGENTS.md asks of every direct dependency, and `scripts/check-pinned-deps.mjs` fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
+The walk lists Melian's own packages like any other. A published install reads `["node_modules/@melian-agent/core", "manifest", digest]` of the manifest that names `@melian-agent/core` at 1.1.0, and a checkout reads the workspace link and the manifest at `packages/core`. So the digest covers a published pipeline paired with another core. Each workspace package also names the others at their exact version, as AGENTS.md asks of every direct dependency, and `scripts/check-pinned-deps.mjs` fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
 
 ## What it costs
 
