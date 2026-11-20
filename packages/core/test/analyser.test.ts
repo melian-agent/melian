@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { analyserOf, switchOffs } from "../src/analyser.ts";
+import { analyserOf, switchOffs as found } from "../src/analyser.ts";
 import { CheckError } from "../src/errors.ts";
 import { analyserConfigNames, isAnalyserConfig, isPolicyFile } from "../src/paths.ts";
 import { maxProgram } from "../src/pattern.ts";
+
+const switchOffs = (...args: Parameters<typeof found>) => found(...args).map(({ sentence }) => sentence);
 
 it.each([
 	["web/BIOME.JSONC", "Biome"],

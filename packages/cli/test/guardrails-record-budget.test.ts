@@ -30,8 +30,9 @@ import { commit, createRepository, lines, removeRepository } from "../../pipelin
 import { Remote } from "../../state-git/test/fixtures/remote.ts";
 
 // Issue #605's example, scaled: each workspace manifest's notice names ten changed and ten removed scripts of 100
-// characters, so 1,500 of them pass the budget with their detail and fit it with most of it left out.
-const packages = 1500;
+// characters, so 1,700 of them pass the budget with their detail and fit it with most of it left out. The root
+// manifest's `check` script changes too. Its notice's ID, fixed by its path, sorts past the cut at 1,700 and not at 1,500.
+const packages = 1700;
 const name = (index: number) => `script-${String(index).padStart(2, "0")}-`.padEnd(100, "x");
 const manifest = (scripts: Record<string, string>) => JSON.stringify({ scripts }, undefined, 2);
 const all = Object.fromEntries(Array.from({ length: 20 }, (_, index) => [name(index), "vitest --run"]));
@@ -44,6 +45,8 @@ const tree = (scripts: Record<string, string>) =>
 		]),
 	);
 
+const root = (check: string) => lines(JSON.stringify({ workspaces: ["packages/*"], scripts: { check } }));
+
 let repo: string;
 let harness: Harness;
 let remote: Remote;
@@ -52,10 +55,10 @@ beforeAll(async () => {
 	repo = createRepository();
 	commit(repo, {
 		"melian.yaml": lines("tiers:", "  fast: [guardrails]"),
-		"package.json": lines('{ "workspaces": ["packages/*"] }'),
+		"package.json": root("vitest --run"),
 		...tree(all),
 	});
-	commit(repo, tree(some));
+	commit(repo, { "package.json": root("true"), ...tree(some) });
 	const registry = createReviewRegistry();
 	registry.install(checksExtension);
 	harness = await openHarness(createMemoryStorage(), {
@@ -83,7 +86,7 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 		const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
 		const untrimmed = await evaluateGuardrails({ repoRoot: repo, revision: changeset.revision, source });
 		const notices = untrimmed.findings.map((finding) => finding.toJSON());
-		expect(notices).toHaveLength(packages);
+		expect(notices).toHaveLength(packages + 1);
 		expect(Buffer.byteLength(canonicalJson(notices))).toBeGreaterThan(SightingBudget.checkRecord.bytes);
 
 		const { config } = await loadConfig(repo, source, "");
@@ -109,6 +112,15 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 				`Melian left out the detail for ${left.length} more files to keep this record under its limit; \`git diff\` shows those files.`,
 			]),
 		);
+		// The root's changed gate script reads, cut, as any other manifest's changed script does.
+		const top = sightings.find(({ properties }) => properties.path === "package.json")!;
+		expect(left).toContain(top);
+		expect(top.message.text).toBe(
+			"Review the change to package.json, which configures the packages Biome and tsc load. The head changes npm scripts.",
+		);
+		expect(
+			new Set(left.filter((each) => each !== top).map(({ message }) => message.text.replace(/^.* load\. /, ""))),
+		).toEqual(new Set(["The head changes npm scripts and removes npm scripts."]));
 		// The record beside its sightings is the envelope and the check's result, which the allowance must cover.
 		const sighted = Buffer.byteLength(canonicalJson((record.payload as { sightings: unknown }).sightings));
 		expect(Buffer.byteLength(record.bytes) - sighted).toBeLessThanOrEqual(envelopeAllowance);

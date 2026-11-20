@@ -328,6 +328,9 @@ async function policyChanges(
 					blob.text ?? (blob.why === "absent" ? undefined : "");
 				const switched = switchOffs(path, text(base), text(head), changed);
 				const link = linked.has(path);
+				// A record trimmed to fit the store keeps the headline alone, so it names the kind of each switch-off. No
+				// file has more than two kinds.
+				const summary = switched.length === 0 ? "" : ` The head ${switched.map(({ kind }) => kind).join(" and ")}.`;
 				return {
 					guardrail: "policy-change-review",
 					file: path,
@@ -337,9 +340,10 @@ async function policyChanges(
 					// The maintainer's ruling of 2026-11-18: the Packwerk finding it can hide is advisory, so its notice asks for acknowledgement.
 					severity: read ? guardrail.severity : guardrail.analyserSeverity,
 					match: { notice: "analyser", ...marked },
-					message: link
-						? `Review ${path}, which configures ${analyser} through a symbolic link.`
-						: `Review the change to ${path}, which configures ${analyser}.`,
+					message:
+						(link
+							? `Review ${path}, which configures ${analyser} through a symbolic link.`
+							: `Review the change to ${path}, which configures ${analyser}.`) + summary,
 					explanation: {
 						what:
 							[
@@ -349,7 +353,7 @@ async function policyChanges(
 											`${path} reaches Enola through a symbolic link, so Melian cannot tell whether this change altered it.`,
 										]
 									: [`This revision changes ${path}, which configures ${analyser}.`]),
-								...switched,
+								...switched.map(({ sentence }) => sentence),
 							].join(" ") + override,
 						whyHere:
 							"The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",

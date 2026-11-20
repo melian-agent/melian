@@ -113,7 +113,7 @@ describe("packwerkNotices", () => {
 				"packwerk.yml",
 				"P2",
 				enola,
-				"Review the change to packwerk.yml, which configures Enola's Packwerk check.",
+				"Review the change to packwerk.yml, which configures Enola's Packwerk check. The head deletes the file.",
 				"This revision changes packwerk.yml, which configures Enola's Packwerk check. The head deletes packwerk.yml.",
 			],
 		]);

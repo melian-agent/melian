@@ -4,6 +4,8 @@ Status: the maintainer ruled, on [issue #605](https://github.com/melian-agent/me
 
 Amends: [2026-11-13-shared-record-behind-a-store-port.md](2026-11-13-shared-record-behind-a-store-port.md), the record-size limit. Every store refuses a record past `recordLimit`, and a refused record never lists; a batch may still land in part, as the port allows.
 
+Amends: [2026-11-20-every-npm-script-is-a-switch-off.md](2026-11-20-every-npm-script-is-a-switch-off.md), the notice that names each changed or removed script, in a trimmed record alone. Building the headline from kinds, not names, is the coordinator's choice of approach on 2026-11-20, not a ruling; the maintainer has been asked.
+
 ## Problem
 
 Every record store refuses a record past core's `recordLimit`, 4 MiB. A head that changes many workspace manifests makes one guardrails finding per manifest, each naming the scripts it changes, and their record can pass the limit. The store then refused the round's records after the harness had stored a verdict of findings, so the review threw a store error with that verdict standing.
@@ -16,6 +18,16 @@ Example: 1,500 changed manifests, each naming twenty long scripts, wrote a guard
 - A record that still passes the limit with every finding trimmed fails the guardrails check, with `RecordError` `recordTooLarge` and a fixed sentence that holds no finding's text. The review reads not reviewed, and its records export.
 - Every check's record gets the same budget, not the guardrails alone. A static tool may write 16 MiB of output, so enough Biome, tsc or Enola findings could pass the limit after adjudication had stored a verdict; `runCheck` fits every check's findings where it forms the outcome. This extension is the builder's, from Codex's adversarial review; it is not a ruling.
 - The trim applies to the check's own findings, not only to the exported record. The verdict's fingerprint hashes the findings' text, so trimming at export alone would give the local and the shared verdict different texts for one round.
+
+## A trimmed notice names the kind of change, not the script
+
+A trimmed finding's What becomes its headline. A notice's switch-offs name what changed, such as the scripts `"check"` and `"lint"`, but they sit in What, so a trim would drop them, and a trimmed notice on a manifest whose gate script changed would read like one whose version changed.
+
+Example: a head changes 1,700 workspace manifests' scripts and the root's `check` script. The root's notice sorts past the cut, so before this change its trimmed form said only "Review the change to package.json, which configures the packages Biome and tsc load."
+
+So a notice's headline names the kind of each switch-off in a fixed clause, with no name from either revision: "The head changes npm scripts and removes npm scripts." The kinds are: deletes the file; turns on `noCheck` or `skipLibCheck`; turns Biome's linter off; makes Biome ignore files this change touches; changes npm scripts; removes npm scripts; has npm scripts Melian cannot read. A notice with no switch-off keeps its headline unchanged.
+
+In a trimmed record, then, the root's changed `check` script reads the same as any other manifest's changed script: the notice says scripts changed and does not say which. Its Why here says the detail was left out and that `git diff` shows those files. The headline is in no key: a notice's ID comes from its file, rule and discriminator, and its reopen from the blobs, so the clause changes no ID, dismissal or fingerprint match.
 
 ## What it costs
 

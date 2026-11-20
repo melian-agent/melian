@@ -4,7 +4,7 @@
 export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
 
-	"packages/core/src/analyser.ts": "3d39fa2860d8ceb9863ddf5bf34ce8ebe57af54e568d96c68f7cf3036b0adb54",
+	"packages/core/src/analyser.ts": "ff7133210e79be3fe940c0e00c6b2721da26bb3091afc35cd6e677c82d57ff70",
 
 	"packages/core/src/cause.ts": "1e75ff44ddce3c8f244dd812c23972a993c8b7be49f51241316af2a08e858dd8",
 
@@ -50,7 +50,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/graph.ts": "c4a1e0142d48f4b4793e32b468ee38ed7557715de633104e598575a0028a13c2",
 
-	"packages/core/src/guardrails.ts": "070b2ae8bf0e6b43b9fa39dcf3c39f4642059c9593a41999b024352cf5233d7e",
+	"packages/core/src/guardrails.ts": "2770627aa7b5495a6ab3d9a57058e6d00c477247d7cb701a3ebfd829aacdd323",
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
