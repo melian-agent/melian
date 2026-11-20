@@ -184,9 +184,14 @@ describe("ParityArm", () => {
 
 	it("gives a route that names no model its first accepted model alone, so no later accepted model answers", async () => {
 		const accept = ["h/heavy", "h/second"];
-		const accepting: MelianConfig = { ...config, models: { ...config.models, heavy: { accept } } };
+		const accepting: MelianConfig = {
+			...config,
+			models: { ...config.models, heavy: { accept }, light: { thinking: "low" } },
+		};
 		const routed = new ParityArm(1000).routed(accepting, [await named("a", ["src/**"])], [file("src/x.ts", 0, 3)]);
-		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", accept, thinking: "high" });
+		expect(routed.config.models.heavy).toStrictEqual({ accept, model: "h/heavy", thinking: "high" });
+		expect(routed.config.models.light).toStrictEqual({ thinking: "high" });
+		expect(routed.config.models.verifier).toStrictEqual({ model: "v/verify" });
 	});
 
 	it("gives a lens holding only some graph tools the rest of them and their guidance", async () => {
