@@ -152,7 +152,7 @@ export class ReviewOutcome {
 // preference files, and a configuration that does not load leaves it at `auto`: the command's own work reads its
 // policy separately and fails there. `auto` shows them on a terminal whose
 // locale, the first of `LC_ALL`, `LC_CTYPE` and `LANG` that is set, is UTF-8.
-async function terminalEmoji(io: Io, repoRoot: string): Promise<boolean> {
+export async function terminalEmoji(io: Io, repoRoot: string): Promise<boolean> {
 	const source = { kind: "worktree", preferences: userFiles(io.env).config } as const;
 	const setting = await loadConfig(repoRoot, source, ".").then(
 		({ config }) => config.output.emoji,
