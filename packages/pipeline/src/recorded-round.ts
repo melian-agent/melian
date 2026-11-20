@@ -332,14 +332,12 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 		});
 }
 
-// The rounds a dismissal whose writer held `frontier` has seen since, short of `round` itself, whose sightings are the
-// ones tested, as the host tests a sighting against what it held before it: every round back along each round's
-// `before` from `round` that is neither in `frontier` nor an ancestor of one there, whatever its revision. `undefined`
-// when a branch of the chain names a round of the changeset the set does not hold, or a round that names a record the
-// set does not hold, since what the rounds past that point cited is unknown. `undefined` too when a branch ends, at a
-// round that follows none, short of `frontier` while the writer held a round of another revision: a round names every
-// round of another revision its store held, so the chain was cut there. A round names none of its own revision, so a
-// branch may end short of `frontier` at the revision of every round the writer held.
+// The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, short of `round`
+// itself: every round of the changeset in the set that is neither in `frontier` nor an ancestor of one there, in ID
+// order and whatever its revision or place, so a round another host wrote without the frontier, which `round` never
+// names, reopens what it would have reopened on time. `before` serves only to find the frontier's ancestors.
+// `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round the set does
+// not hold that the writer did not, since what that round cited is unknown.
 function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
 	const rounds = new Map(
 		set
@@ -354,25 +352,12 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 				held.add(id);
 				pending.push(id);
 			}
-	if (held.has(round.id)) return [];
-	const since: SharedRecord[] = [];
-	const seen = new Set<string>();
-	const next = [round];
-	for (let each = next.pop(); each !== undefined; each = next.pop()) {
-		if (seen.has(each.id)) continue;
-		seen.add(each.id);
-		if (set.missing(each).length > 0) return undefined;
-		if (each !== round) since.push(each);
-		const { before } = each.manifest()!;
-		if (before.length === 0 && [...held].some((id) => rounds.get(id)?.revision !== each.revision)) return undefined;
-		for (const id of before) {
-			if (held.has(id)) continue;
-			const earlier = rounds.get(id);
-			if (earlier === undefined) return undefined;
-			next.push(earlier);
-		}
-	}
-	return since;
+	const tested = [...rounds.values()].filter((each) => !held.has(each.id));
+	const known = [round, ...tested].every(
+		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
+	);
+	if (!known) return undefined;
+	return tested.filter((each) => each.id !== round.id).sort((a, b) => (a.id < b.id ? -1 : 1));
 }
 
 // The proving hunks of a revision that changes `files`, as a lens cites them.
