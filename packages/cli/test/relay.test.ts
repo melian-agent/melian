@@ -55,6 +55,8 @@ async function pullRequest(
 		mainMoved?: Record<string, string>;
 		// The branch GitHub says the pull request merges into, when it is not the repository's default.
 		baseRef?: string;
+		// The repository's default branch, when it is not main.
+		defaultBranch?: string;
 		check?: string;
 	} = {},
 ) {
@@ -76,6 +78,7 @@ async function pullRequest(
 		gitIn(repo, "checkout", "--quiet", "feature");
 	}
 	if (options.baseRef !== undefined) state.pull.base.ref = options.baseRef;
+	if (options.defaultBranch !== undefined) state.defaultBranch = options.defaultBranch;
 	state.author = "octocat";
 	state.permissions = { octocat: options.permission ?? "write" };
 	if (options.fork === true) state.headRepository = { owner: "someone", name: "example" };
@@ -284,6 +287,13 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 			const { check, account, round, relay, onState, err } = await pullRequest({ baseRef: "release" });
 			expect(await relay(await artefact(check, account, round))).toBe(1);
 			expect(err()).toContain("merges into release, not the default branch main,");
+			expect(onState()).toBeUndefined();
+		});
+
+		it("refuses a pull request into main when the repository's default branch is another", async () => {
+			const { check, account, round, relay, onState, err } = await pullRequest({ defaultBranch: "trunk" });
+			expect(await relay(await artefact(check, account, round))).toBe(1);
+			expect(err()).toContain("merges into main, not the default branch trunk,");
 			expect(onState()).toBeUndefined();
 		});
 
