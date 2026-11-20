@@ -579,6 +579,10 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("fileTooLarge");
 	});
 
+	it("bounds a batch at two of the store's records: one full record and as much again for the rest", () => {
+		expect(relayLimits.bytes).toBe(2 * recordLimit);
+	});
+
 	it("takes a batch at its byte bound, and refuses one byte more", async () => {
 		const at = await artefact();
 		const files = relayLimits.bytes / relayLimits.fileBytes;
