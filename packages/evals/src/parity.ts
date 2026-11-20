@@ -587,10 +587,11 @@ export async function measureParity(
 		printError(visibleText(error instanceof Error ? error.message : String(error)));
 		return 2;
 	}
-	// Written whole through a rename, so a cut run leaves every review it finished, never a torn file.
+	// Written whole through a rename, so a cut run leaves every review it finished, never a torn file. The temporary
+	// file is created afresh, so a file or link planted at its path fails the save rather than receiving it.
 	const save = () => {
 		const written = `${out}.${process.pid}.tmp`;
-		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`);
+		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`, { flag: "wx" });
 		renameSync(written, out);
 	};
 	const stop = (reason: string): 3 => {

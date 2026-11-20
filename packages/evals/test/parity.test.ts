@@ -827,6 +827,21 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(elsewhere.models).not.toHaveBeenCalled();
 	});
 
+	it("refuses to save through a file or link planted at its temporary path, and leaves the link's target alone", async () => {
+		const sentinel = join(scratch, "sentinel");
+		const planted = `${env.MELIAN_EVAL_PARITY_OUT}.${process.pid}.tmp`;
+		writeFileSync(sentinel, "SAFE");
+		symlinkSync(sentinel, planted);
+		try {
+			await expect(measure(env, runners())).rejects.toThrow(/EEXIST/);
+			expect(readFileSync(sentinel, "utf8")).toBe("SAFE");
+			expect(existsSync(env.MELIAN_EVAL_PARITY_OUT!)).toBe(false);
+		} finally {
+			rmSync(planted, { force: true });
+			rmSync(sentinel, { force: true });
+		}
+	});
+
 	it("stops and resumes with its results and misses files beside the checkout, and refuses either inside it before any model", async () => {
 		const { repo: checkout } = buildGoldenRepository(failOpen);
 		try {
