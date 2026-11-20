@@ -66,8 +66,8 @@ describe("the relay trusts the payload schema, not the writer", () => {
 		expect(found.code).toBe("invalidRecord");
 		expect(found.message).not.toContain("ghp_token");
 	});
-	// The schema takes any text in a snapshot's IDs until issue #548 gives them their patterns; flip to `it` then.
-	it.fails("refuses free text in a field classed as an ID or hash", async () => {
+
+	it("refuses free text in a field classed as an ID or hash", async () => {
 		const snapshot = {
 			commit: head,
 			snapshotId: "ghp_token",

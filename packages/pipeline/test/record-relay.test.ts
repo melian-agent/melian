@@ -14,6 +14,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import { RelayBatch, RelayRefusal, relayLimits } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
+import { verifierVersion } from "../src/verification-instructions.ts";
 
 const base = "a".repeat(40);
 const head = "b".repeat(40);
@@ -306,10 +307,10 @@ describe("RelayBatch", () => {
 		const run = { ...writer, tier: lensTier };
 		const lens = () =>
 			records().lens(
-				{ name: "correctness", version: "abc", level: "careful", request: "e".repeat(64), probe: false },
+				{ name: "correctness", version: "0123456789ab", level: "careful", request: "e".repeat(64), probe: false },
 				{ status: "unanswered", reason: "no reply" },
 				[],
-				{ name: "lens.correctness", status: "ran", version: "abc", level: "careful" },
+				{ name: "lens.correctness", status: "ran", version: "0123456789ab", level: "careful" },
 			);
 		const triaged = (inputCut: boolean) =>
 			records().triage(request, {
@@ -345,7 +346,7 @@ describe("RelayBatch", () => {
 		// A review exports each lens run as its lens ends, with no check, and again with its check once adjudication decides.
 		const early = (key: string) =>
 			records().lens(
-				{ name: "correctness", version: "abc", level: "careful", request: key, probe: false },
+				{ name: "correctness", version: "0123456789ab", level: "careful", request: key, probe: false },
 				{ status: "unanswered", reason: "no reply" },
 				[],
 			);
@@ -366,10 +367,10 @@ describe("RelayBatch", () => {
 		it("refuses a second decided copy under the key of a run the round reads", async () => {
 			const written = accounted([check(), lens(), triaged(false)], claim);
 			const other = records().lens(
-				{ name: "correctness", version: "abc", level: "careful", request: "e".repeat(64), probe: true },
+				{ name: "correctness", version: "0123456789ab", level: "careful", request: "e".repeat(64), probe: true },
 				{ status: "unanswered", reason: "no reply" },
 				[],
-				{ name: "lens.correctness", status: "ran", version: "abc", level: "careful" },
+				{ name: "lens.correctness", status: "ran", version: "0123456789ab", level: "careful" },
 			);
 			const found = await refusal(RelayBatch.read(await artefact(...written, other), run));
 			expect([found.code, found.file]).toEqual(["unnamedRecord", `${other.id}.json`]);
@@ -396,7 +397,7 @@ describe("RelayBatch", () => {
 				claims: [],
 				dismissals: [],
 				outcomes: [],
-				...(ran ? { check: { name: "verifier", status: "ran", version: "1" } as const } : {}),
+				...(ran ? { check: { name: "verifier", status: "ran", version: verifierVersion } as const } : {}),
 			});
 		const claim = { checks: ["static.biome", "verifier"] };
 
@@ -504,7 +505,7 @@ describe("RelayBatch", () => {
 				reason: "It runs",
 				executor: "llm",
 				model: "a/m",
-				version: "1",
+				version: verifierVersion,
 			} as const,
 		});
 		const verification = (source: string) =>
@@ -512,9 +513,9 @@ describe("RelayBatch", () => {
 				claims: [claim(source)],
 				dismissals: [],
 				outcomes: [],
-				check: { name: "verifier", status: "ran", version: "1" },
+				check: { name: "verifier", status: "ran", version: verifierVersion },
 			});
-		const lensRun = { version: "abc", level: "careful", request: "e".repeat(64), probe: false } as const;
+		const lensRun = { version: "0123456789ab", level: "careful", request: "e".repeat(64), probe: false } as const;
 		const unanswered = { status: "unanswered", reason: "no reply" } as const;
 		const lensTier = TierAccount.of(
 			{ ...defaultConfig, tiers: { relay: ["static.biome", "lens.correctness"] } },
