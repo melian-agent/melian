@@ -5,8 +5,8 @@ import { join } from "node:path";
 import {
 	Changeset,
 	DirectoryRecordStore,
-	pullRequestChangesetId,
 	Finding,
+	pullRequestChangesetId,
 	reviewPayloads,
 	type SharedRecord,
 	type StoredFinding,
@@ -91,7 +91,9 @@ async function pullRequest(
 		checks: options.skipped === undefined ? ["static.biome"] : ["static.biome", options.skipped],
 		records: [check],
 		filled:
-			options.skipped === undefined ? [] : [{ name: options.skipped, status: "skipped", reason: "no TypeScript" }],
+			options.skipped === undefined
+				? []
+				: [{ name: options.skipped, status: "skipped" as const, reason: "no TypeScript" }],
 		allowSkip: [],
 		producers: [{ check: "static.biome", version: "2.0.0" }],
 	} as const;
