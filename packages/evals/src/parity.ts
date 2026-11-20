@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
 	type ChangedFile,
@@ -417,6 +417,48 @@ export async function measureParity(
 	print: Print,
 	printError: Print,
 ): Promise<0 | 1 | 2 | 3> {
+	const held: { lock?: ResultsLock } = {};
+	try {
+		return await measureHeld(env, runners, print, printError, held);
+	} finally {
+		held.lock?.close();
+	}
+}
+
+// Two runs on one results file would each save over the other's attempts, so a run holds the file from before it reads
+// it until it ends. A lock a run that died left stays, and the next run refuses until a person removes it.
+class ResultsLock {
+	readonly path: string;
+
+	private constructor(path: string) {
+		this.path = path;
+	}
+
+	static take(out: string): ResultsLock {
+		const path = `${out}.lock`;
+		try {
+			writeFileSync(path, `${process.pid}\n`, { flag: "wx" });
+		} catch (thrown) {
+			if ((thrown as NodeJS.ErrnoException).code !== "EEXIST") throw thrown;
+			throw new Error(
+				`${path} says run ${readFileSync(path, "utf8").trim()} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+			);
+		}
+		return new ResultsLock(path);
+	}
+
+	close(): void {
+		rmSync(this.path, { force: true });
+	}
+}
+
+async function measureHeld(
+	env: NodeJS.ProcessEnv,
+	runners: ParityRunners,
+	print: Print,
+	printError: Print,
+	held: { lock?: ResultsLock },
+): Promise<0 | 1 | 2 | 3> {
 	let out: string;
 	let stops: { review: number; run: number };
 	let verifier: string | undefined;
@@ -545,6 +587,7 @@ export async function measureParity(
 				},
 			]),
 		);
+		held.lock = ResultsLock.take(out);
 		if (existsSync(out)) {
 			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
 			if (earlier.version !== 2 || earlier.arm !== parityArmName)

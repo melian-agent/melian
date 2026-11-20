@@ -957,6 +957,43 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const first = runners(undefined, {
+			range: vi.fn(async () => {
+				entered();
+				await held;
+				return ran(committedStages);
+			}),
+		});
+		const running = measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, first);
+		await started;
+		const before = readFileSync(out, "utf8");
+		const second = runners();
+		const { status, errors } = await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, second);
+		expect(status).toBe(2);
+		expect(errors).toEqual([
+			`${out}.lock says run ${process.pid} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+		]);
+		expect(second.range).not.toHaveBeenCalled();
+		expect(readFileSync(out, "utf8")).toBe(before);
+		release();
+		expect((await running).status).toBe(1);
+		expect(existsSync(`${out}.lock`)).toBe(false);
+		expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
+			["two", "committed"],
+			["two", "parity"],
+		]);
+	});
+
 	it("stops and resumes with its results and misses files beside the checkout, and refuses either inside it before any model", async () => {
 		const { repo: checkout } = buildGoldenRepository(failOpen);
 		try {
@@ -1466,6 +1503,11 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			});
 			void measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, using);
 			await reviewed;
+			// The dead run's lock is left, and refuses a resume until a person who knows no run is using it removes it.
+			const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+			expect(readFileSync(lock, "utf8")).toBe(`${process.pid}\n`);
+			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners())).status).toBe(2);
+			rmSync(lock);
 		}
 
 		const ended = {
