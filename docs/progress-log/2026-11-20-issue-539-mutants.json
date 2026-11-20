@@ -1,0 +1,155 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "16c0d89cbfba8932a2f1def37331988571a11cc3",
+    "head": "64c9951a174da0451d3701c07dac9d66a4407295"
+  },
+  "claimsIn": [
+    "packages/cli/src/repository.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+  "mutants": [
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 9,
+      "column": 11,
+      "endLine": 9,
+      "endColumn": 16,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6c5f4f5317488f07eb196091ab22ec5937a90b69611e792fbab7c52241ac9f40"
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 9,
+      "column": 24,
+      "endLine": 9,
+      "endColumn": 83,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9b75f7b4202fa98ede627f51b764b0704011a41c35ecb6a233f2606c1c7026ff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/repository.test.ts",
+          "path": [
+            "git's repository-local variables",
+            "reads the repository it was given though GIT_DIR names another"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 9,
+      "column": 65,
+      "endLine": 9,
+      "endColumn": 81,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 * 1024 / 1024",
+      "status": "generated",
+      "id": "114707369ddddeca20901326fa29174281484646e0778ed1df30d7068f8775e9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/repository.test.ts",
+          "path": [
+            "git's repository-local variables",
+            "reads the repository it was given though GIT_DIR names another"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/repository.ts",
+      "line": 9,
+      "column": 65,
+      "endLine": 9,
+      "endColumn": 74,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "16 / 1024",
+      "status": "generated",
+      "id": "91b5ec609565d64c45605d0a388002260909ac77f6a9d0aca6ebd418dbc66619",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/repository.test.ts",
+          "path": [
+            "git's repository-local variables",
+            "reads the repository it was given though GIT_DIR names another"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 47,
+      "column": 29,
+      "endLine": 47,
+      "endColumn": 95,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a395630dc26574d6c3c7dc457ec53e13a00010289d1a0755b2978740295b54f7"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 57,
+      "column": 31,
+      "endLine": 57,
+      "endColumn": 97,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3f1aeeae7853514958e8d483fa95b6be8a5c48dc578599f2d6bb19f020b0f906"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 213,
+      "column": 36,
+      "endLine": 213,
+      "endColumn": 102,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7b5f16983a38ed440eda45a9855f3269e7e42b898755d0a692d65857f571b7fe"
+    }
+  ],
+  "total": 7,
+  "omitted": 0,
+  "unmutated": [
+    {
+      "file": "packages/core/src/git.ts",
+      "reason": "it sends process signals, and a mutant there could signal a process outside the run"
+    },
+    {
+      "file": "packages/pipeline/src/static.ts",
+      "reason": "it sends process signals, and a mutant there could signal a process outside the run"
+    },
+    {
+      "file": "biome/object-by-path.grit",
+      "reason": "no mutation adapter handles this language"
+    }
+  ]
+}
