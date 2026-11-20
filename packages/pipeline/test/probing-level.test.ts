@@ -2777,6 +2777,71 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.reason).not.toContain(`; ${provider}/first refused`);
 	});
 
+	it("moves a planner's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [on(fauxAssistantMessage("Nothing.")), on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second", "second"]);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
+	it("moves a prober's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					fauxAssistantMessage("Done."),
+					flagged,
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+		);
+	});
+
 	it("names an earlier refusal when the next model fails in a way that does not move on", async () => {
 		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
 		const provider = fake.ref("first").provider;

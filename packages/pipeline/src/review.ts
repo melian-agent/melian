@@ -363,6 +363,11 @@ type LensOutcome =
 			readonly refused?: readonly string[];
 	  };
 
+// A conversation's end: on `done`, the model that answered, its place in the route, and the models that refused before.
+type Conversed =
+	| { readonly status: "done"; readonly model: string; readonly attempt: number; readonly refused?: readonly string[] }
+	| Exclude<LensOutcome, { status: "done" }>;
+
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
 // the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
 /**
@@ -632,24 +637,31 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			const rule = input.escalateAt === undefined ? undefined : new EscalationRule(input.escalateAt);
 			const revision = Revision.key(input.revision);
 			// One conversation of a run on `route`, from the attempt a crash left it at under `key`. A request ID per
-			// attempt: a rerun after a crash finds the attempt it had reached, settled or not.
+			// attempt: a rerun after a crash finds the attempt it had reached, settled or not. A reminder starts on the model
+			// that answered, at `from`, under its own request ID and attempt count, and carries the refusals before it.
 			const converse = async (
 				key: string,
 				route: readonly ModelReference[],
 				id: ConversationId,
 				prompt: string,
-			): Promise<
-				| { readonly status: "done"; readonly model: string; readonly refused?: string[] }
-				| Exclude<LensOutcome, { status: "done" }>
-			> => {
+				reminder?: { readonly requestId: string; readonly from: number; readonly refused?: readonly string[] },
+			): Promise<Conversed> => {
 				const child = (await runtime.conversation(id, context))!;
+				const first = reminder?.from ?? 0;
+				const requestOf = (attempt: number) =>
+					reminder === undefined
+						? `lens:${key}:${attempt}`
+						: attempt === first
+							? reminder.requestId
+							: `${reminder.requestId}:${attempt}`;
+				const counter = reminder?.requestId ?? key;
 				// The models before `attempt` whose content filter refused this conversation, read from each attempt's settled
 				// submission, so a resume after a crash names the refusals of attempts it did not see.
 				const refusedBefore = async (attempt: number) => {
-					const refused: string[] = [];
+					const refused = [...(reminder?.refused ?? [])];
 					await runtime.commit(async (tx) => {
-						for (let at = 0; at < attempt; at++) {
-							const settled = await tx.submissionByRequest(id, `lens:${key}:${at}`);
+						for (let at = first; at < attempt; at++) {
+							const settled = await tx.submissionByRequest(id, requestOf(at));
 							if (settled?.reason === "model_error" && isContentRefusal(unsettled(settled)))
 								refused.push(modelName(route[at]!));
 						}
@@ -657,21 +669,21 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					}, context);
 					return refused.length === 0 ? {} : { refused };
 				};
-				for (let attempt = started.attempts[key] ?? 0; ; attempt++) {
+				for (let attempt = started.attempts[counter] ?? first; ; attempt++) {
 					// A task a later review replaced asks no model again, even when a resume restarts it.
 					if (await superseded(runtime, input, runtime.taskId, context)) {
 						return { status: "unanswered", reason: "a later review of this revision replaced this run" };
 					}
 					const content =
-						attempt === 0
+						attempt === first
 							? prompt
 							: (await holdsWork(runtime, id, context))
 								? handoverWording.continue
 								: handoverWording.fresh;
-					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
+					const request = { type: "input", content, requestId: requestOf(attempt) } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done")
-						return { status: "done", model: modelName(route[attempt]!), ...(await refusedBefore(attempt)) };
+						return { status: "done", model: modelName(route[attempt]!), attempt, ...(await refusedBefore(attempt)) };
 					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
@@ -686,31 +698,35 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						return {
 							status: "running",
-							checkpoint: { ...checkpoint, attempts: { ...checkpoint.attempts, [key]: attempt + 1 } },
+							checkpoint: { ...checkpoint, attempts: { ...checkpoint.attempts, [counter]: attempt + 1 } },
 						};
 					}, context);
 				}
 			};
-			// One more input to a conversation that finished without what its role owes, under a request ID of its own. A
-			// reminder that does not finish ends the lens, so what its conversation did before it failed never stands as done.
-			// One already submitted is waited on even when no longer owed, since before a crash it may have recorded what was.
+			// One more input to a conversation that `answered`, without what its role owes, under a request ID of its own. It
+			// moves along the route as the conversation did. A reminder that does not finish ends the lens, so what its
+			// conversation did before it failed never stands as done. One already submitted is waited on even when no longer
+			// owed, since before a crash it may have recorded what was.
 			const remind = async (
+				key: string,
+				route: readonly ModelReference[],
 				id: ConversationId,
 				content: string,
 				requestId: string,
 				which: string,
 				owed: boolean,
-			): Promise<Exclude<LensOutcome, { status: "done" }> | undefined> => {
+				answered: Extract<Conversed, { status: "done" }>,
+			): Promise<Conversed> => {
 				let submitted = false;
 				await runtime.commit(async (tx) => {
 					submitted = (await tx.submissionByRequest(id, requestId)) !== undefined;
 					return undefined;
 				}, context);
-				if (!owed && !submitted) return undefined;
-				const child = (await runtime.conversation(id, context))!;
-				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
-				if (settled.status === "done") return undefined;
-				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
+				if (!owed && !submitted) return answered;
+				const { attempt: from, refused } = answered;
+				const reminded = await converse(key, route, id, content, { requestId, from, refused });
+				if (reminded.status !== "unanswered") return reminded;
+				return { ...reminded, reason: `${which} did not finish: ${reminded.reason}` };
 			};
 			// The attack numbers the prober answered with neither a probe nor a skip.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
@@ -727,17 +743,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				planner: ConversationId,
 				carried: string | undefined,
 			): Promise<ProbingOutcome | Exclude<LensOutcome, { status: "done" }>> => {
-				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
-				let plan = await planOf();
-				const failed = await remind(
-					planner,
-					recordPlanPrompt(lens.probe?.probesAs ?? lens.name),
-					`lens:${lens.key}:plan`,
-					"the planner's reminder",
-					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
-				);
-				if (failed !== undefined) return failed;
-				plan = await planOf();
+				let plan = (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				if (plan === undefined) {
 					const ended = await budgetEnded(runtime, planner, context);
 					const reason =
@@ -772,7 +778,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				}
 				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
-				const answered = await converse(
+				let answered = await converse(
 					key,
 					lens.probe!.route,
 					prober!,
@@ -780,14 +786,17 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
-				const unfinished = await remind(
+				answered = await remind(
+					key,
+					lens.probe!.route,
 					prober!,
 					answerPrompt(open),
 					`lens:${key}:answer`,
 					"the prober's reminder",
 					open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined,
+					answered,
 				);
-				if (unfinished !== undefined) return unfinished;
+				if (answered.status !== "done") return answered;
 				open = await unanswered(prober!, plan.length);
 				const state = (await runtime.snapshot(ProbingDocument, prober!, context)) ?? {};
 				const probes = Object.values(state.probes ?? {});
@@ -812,8 +821,22 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				prompt: string,
 				carried?: string,
 			): Promise<LensOutcome> => {
-				const planned = await converse(lens.key, lens.route, id, prompt);
+				let planned = await converse(lens.key, lens.route, id, prompt);
 				if (planned.status !== "done") return planned;
+				if (lens.probe !== undefined) {
+					const plan = (await runtime.snapshot(ProbingDocument, id, context))?.plan;
+					planned = await remind(
+						lens.key,
+						lens.route,
+						id,
+						recordPlanPrompt(lens.probe.probesAs ?? lens.name),
+						`lens:${lens.key}:plan`,
+						"the planner's reminder",
+						plan === undefined && (await budgetEnded(runtime, id, context)) === undefined,
+						planned,
+					);
+					if (planned.status !== "done") return planned;
+				}
 				const probed = lens.probe === undefined ? undefined : await probe(lens, id, carried);
 				if (probed !== undefined && "status" in probed) return probed;
 				const conversations = [id, ...(probed?.prober === undefined ? [] : [probed.prober])];

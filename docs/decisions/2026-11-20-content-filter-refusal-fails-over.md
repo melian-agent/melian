@@ -31,6 +31,8 @@ Left out, with the reason for each:
 - Bedrock's `guardrail_intervened`. A guardrail is a rule the account's owner set, and moving to another provider would step round it.
 - Gemini's `RECITATION` and the image reasons. Recitation guards against quoting training data, not against the content sent, and a review sends no images.
 
+A reminder, the turn that asks a planner or a prober for what it still owes, moves on the same way, from the model that answered, and a usage limit on one now moves it on too. Before, a reminder that failed in any way failed the lens, so a planner that finished without a plan could lose its review to a filter its fallback would pass.
+
 The lens's record says which models' content filter refused it and which model answered, in its reason, beside the lineage the verdict already records. A failover on a limit adds no such note, so a reader can tell the two apart. The lens task reads each earlier attempt's settled submission to find them, so a review that resumes after a crash names refusals it did not see. When every model of the tier refused, the lens fails as before, and its reason says every model of its tier refused the content and names them. A lens whose next model fails in a way that does not move on still names the refusal before it.
 
 Triage and the walkthrough take the first model of their route with credentials and fail over on no failure, so they do not fail over on this one either.
