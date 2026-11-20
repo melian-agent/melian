@@ -153,6 +153,24 @@ describe("the check over a scratch repository", () => {
 		expect(importedPackages("src/entry.ts", repo)).toEqual({ app: ["yaml"] });
 	});
 
+	it("orders the importing packages, and each one's imports, by name", { timeout: 60_000 }, () => {
+		write("package.json", JSON.stringify({ name: "app", version: "1.0.0", type: "module" }));
+		write("src/sub/package.json", JSON.stringify({ name: "aaa", version: "1.0.0", type: "module" }));
+		write(
+			"src/entry.ts",
+			'import { parse } from "yaml";\nimport { valid } from "semver";\nimport { b } from "./sub/b.ts";\nexport const entry = [parse("1"), valid("1.0.0"), b];\n',
+		);
+		write("src/sub/b.ts", 'import { stringify } from "yaml";\nexport const b = stringify(1);\n');
+		expect(JSON.stringify(importedPackages("src/entry.ts", repo))).toBe('{"aaa":["yaml"],"app":["semver","yaml"]}');
+	});
+
+	it("refuses a module that no manifest names as its package's", { timeout: 60_000 }, () => {
+		write("src/entry.ts", 'import { parse } from "yaml";\nexport const entry = parse("1");\n');
+		expect(failure(() => importedPackages("src/entry.ts", repo))).toMatch(
+			/no package\.json names the package that holds file:\/\/.*\/src\/entry\.ts/,
+		);
+	});
+
 	it("refuses an entry Node cannot load", { timeout: 60_000 }, () => {
 		write("src/entry.ts", 'import { gone } from "./gone.ts";\nexport const entry = gone;\n');
 		expect(failure(() => importedPackages("src/entry.ts", repo))).toMatch(
@@ -242,6 +260,18 @@ describe("the command", () => {
 		expect(imported).toMatchObject({ status: 0, stdout: "" });
 	});
 
+	it("checks nothing when another module imports it with --imports among its own arguments", {
+		timeout: 60_000,
+	}, () => {
+		const script = pathToFileURL(join(repo, "scripts/code-hashes.mjs")).href;
+		const imported = spawnSync(
+			process.execPath,
+			["--input-type=module", "-e", `await import(${JSON.stringify(script)});`, "other", "--imports"],
+			{ cwd: repo, encoding: "utf8" },
+		);
+		expect(imported).toMatchObject({ status: 0, stdout: "" });
+	});
+
 	it("prints each difference and the command, and fails, once a module changes", { timeout: 60_000 }, () => {
 		expect(run("--write").status).toBe(0);
 		write("packages/pipeline/src/a.ts", "export const a = 2;\n");
@@ -322,6 +352,17 @@ describe("differences", () => {
 			"zed: recorded, but no longer a producer",
 			"zed: no longer reaches a.ts, which its list names",
 		]);
+	});
+});
+
+describe("render", () => {
+	it("writes each producer's packages under the package that imports them", () => {
+		const text = render({
+			moduleHashes: {},
+			producerModules: {},
+			producerPackages: { lens: { app: ["semver", "yaml"] } },
+		});
+		expect(text).toMatch(/= \{\n\tlens: \{\n\t\t"app": \[\n\t\t\t"semver",\n\n\t\t\t"yaml",\n\t\t\],\n\t\},\n\};\n$/);
 	});
 });
 

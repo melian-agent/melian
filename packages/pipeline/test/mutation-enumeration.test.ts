@@ -24,7 +24,7 @@ import { commit, createRepository, gitIn, removeRepository, writeFiles } from ".
 
 vi.mock("node:module", async (original) => {
 	const actual = await original<typeof nodeModule>();
-	return { ...actual, createRequire: vi.fn(actual.createRequire) };
+	return { ...actual, createRequire: vi.fn(actual.createRequire), findPackageJSON: vi.fn(actual.findPackageJSON) };
 });
 vi.mock("node:child_process", async (original) => {
 	const actual = await original<typeof childProcess>();
@@ -1733,6 +1733,29 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		expect((await TypeScriptMutationAdapter.open(repo)).source).toBe("melian");
 		await rm(join(repo, "node_modules/@stryker-mutator"), { recursive: true });
 		expect(await readFile(join(repo, "node_modules/.keep"), "utf8")).toBe("");
+	});
+	it("names the install that needs the instrumenter when its manifest cannot be found", async () => {
+		const fallback = await TypeScriptMutationAdapter.open(repo);
+		vi.mocked(nodeModule.findPackageJSON).mockReturnValueOnce(undefined);
+		expect(() => fallback.installedPackages()).toThrow(
+			"Melian cannot find the installed package @stryker-mutator/instrumenter, which Melian needs.",
+		);
+		writeFiles(repo, {
+			"node_modules/.keep": "",
+			"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+				name: "@stryker-mutator/instrumenter",
+				version: "10.0.0",
+				type: "module",
+				main: "index.js",
+			}),
+			"node_modules/@stryker-mutator/instrumenter/index.js": "throw new Error('selection does not execute');",
+		});
+		const installed = await TypeScriptMutationAdapter.open(repo);
+		expect(installed.source).toBe("checkout");
+		await rm(join(repo, "node_modules/@stryker-mutator"), { recursive: true });
+		expect(() => installed.installedPackages()).toThrow(
+			"Melian cannot find the installed package @stryker-mutator/instrumenter, which the checkout needs.",
+		);
 	});
 	it.each(["repository", "index"])(
 		"ignores a foreign Git %s when rejecting tracked install code",
