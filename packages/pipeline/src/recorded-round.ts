@@ -75,9 +75,25 @@ export type RecordedRoundContents = {
 	readonly dismissals: readonly SharedDismissalRecord[];
 	/** Every such dismissal a round at another revision than the one it was made at ended, in record ID order. */
 	readonly ended: readonly EndedDismissal[];
+	/**
+	 * Every such dismissal that counts for nothing because a round of the changeset names a record or an earlier round
+	 * that neither the set nor the dismissal's frontier holds, so what that round cited is unknown, in record ID order.
+	 * Its finding reads as live, as for a dismissal that no longer holds.
+	 */
+	readonly unjudged: readonly UnjudgedDismissal[];
 };
 
-/** A shared dismissal that a round at another revision ended, as a push does, until someone dismisses again. */
+/** A shared dismissal no reader can judge, since a round of its changeset names what the store does not hold. */
+export type UnjudgedDismissal = {
+	/** The ID of the finding it dismissed. */
+	readonly finding: string;
+	/** The dismissal record's ID. */
+	readonly record: string;
+	/** The round that names a record or round the store does not hold. */
+	readonly round: string;
+};
+
+/** A shared dismissal that a round at another revision ended, until someone dismisses again. */
 export type EndedDismissal = {
 	/** The ID of the finding it dismissed. */
 	readonly finding: string;
@@ -109,7 +125,8 @@ type Decided = Exclude<Pieces, { readonly refused: string }>;
 // the round since it that reviewed another revision and so ended it.
 type PendingDismissal =
 	| { readonly dismissal: SharedDismissalRecord; readonly sightings: readonly StoredFinding[] }
-	| { readonly ended: EndedDismissal };
+	| { readonly ended: EndedDismissal }
+	| { readonly unjudged: UnjudgedDismissal };
 
 /**
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
@@ -163,10 +180,12 @@ export class RecordedRound {
 		const hunks = hunksOf(revision.files);
 		const dismissals: SharedDismissalRecord[] = [];
 		const ended: EndedDismissal[] = [];
+		const unjudged: UnjudgedDismissal[] = [];
 		for (const pending of pieces.dismissals)
 			if ("ended" in pending) ended.push(pending.ended);
+			else if ("unjudged" in pending) unjudged.push(pending.unjudged);
 			else if (sharedDismissalHolds(pending.dismissal, pending.sightings, hunks)) dismissals.push(pending.dismissal);
-		return { revision: asked, sightings: pieces.sightings, hunks, dismissals, ended };
+		return { revision: asked, sightings: pieces.sightings, hunks, dismissals, ended, unjudged };
 	}
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
@@ -350,8 +369,8 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 			const { by, reason, at, trigger, sighting, frontier } = record.payload as DismissalPayload;
 			if (frontier === undefined) return [];
 			const since = roundsSince(set, round, frontier);
-			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
+			if ("unknown" in since) return [{ unjudged: { finding: key, record: id, round: since.unknown } }];
 			// A round always names its revision, as the record's own check requires.
 			const moved = [round, ...since].find((each) => each.revision !== sighting.revision);
 			if (moved !== undefined)
@@ -380,9 +399,14 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 // The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, `round` among them
 // unless the writer held it: every round of the changeset in the set outside `frontier`, in the set's ID order and
 // whatever its place, so a round another host wrote, which the writer never met, ends or reopens it on time.
-// `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round that neither the
-// set nor the writer held, since what that round cited is unknown. That is the one thing `before` still decides.
-function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
+// `unknown` names the first of `round` and the tested rounds that names a record the set does not hold, or follows a
+// round that neither the set nor the writer held, since what that round cited is unknown. That is the one thing
+// `before` still decides.
+function roundsSince(
+	set: RecordSet,
+	round: SharedRecord,
+	frontier: readonly string[],
+): SharedRecord[] | { readonly unknown: string } {
 	const rounds = new Map(
 		set
 			.records()
@@ -391,10 +415,10 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 	);
 	const held = new Set(frontier);
 	const tested = [...rounds.values()].filter((each) => !held.has(each.id));
-	const known = [round, ...tested].every(
-		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
+	const unknown = [round, ...tested].find(
+		(each) => set.missing(each).length > 0 || !each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
 	);
-	return known ? tested : undefined;
+	return unknown === undefined ? tested : { unknown: unknown.id };
 }
 
 // The proving hunks of a revision that changes `files`, as a lens cites them.

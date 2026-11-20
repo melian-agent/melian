@@ -12,6 +12,7 @@ import {
 	type StoredFinding,
 } from "@melian-agent/core";
 import { createGitHubProvider } from "@melian-agent/github";
+import { RecordGate } from "@melian-agent/pipeline";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
@@ -172,6 +173,27 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		expect(await gate()).toBe(0);
 		expect(err()).toBe(`melian: round ${round.id} counts, and covers 1 checks\n`);
 		expect(out()).toContain("passed");
+	});
+
+	it("names each dismissal a round ended or cannot judge, and the command that dismisses it again", async () => {
+		const { check, account, round, relay, gate, err } = await pullRequest();
+		await relay(check, account, round);
+		const decide = RecordGate.decide.bind(RecordGate);
+		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) =>
+			Object.assign(Object.create(RecordGate.prototype), await decide(...args), {
+				ended: [{ finding: "0123456789abcdef", record: "r1", madeAt: "base..one", round: "r2", at: "base..two" }],
+				unjudged: [{ finding: "fedcba9876543210", record: "r3", round: "r4" }],
+			}),
+		);
+		expect(await gate()).toBe(0);
+		expect(err()).toBe(
+			[
+				`melian: round ${round.id} counts, and covers 1 checks`,
+				"melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two. To dismiss it at this head: melian dismiss #7 0123456789abcdef --reason <text> --records git:melian/state",
+				"melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it again: melian dismiss #7 fedcba9876543210 --reason <text> --records git:melian/state",
+				"",
+			].join("\n"),
+		);
 	});
 
 	it("says no round reviewed the merge, and how to review it, when melian/state holds none", async () => {

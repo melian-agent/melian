@@ -17,7 +17,7 @@ import {
 	type TierAccount,
 	Verdict,
 } from "@melian-agent/core";
-import { type EndedDismissal, RecordedRound } from "./recorded-round.ts";
+import { type EndedDismissal, RecordedRound, type UnjudgedDismissal } from "./recorded-round.ts";
 import { roundFacts } from "./review-records.ts";
 
 /** What the merge gate judges a head against, all read from the base tip, never from the records. */
@@ -63,6 +63,8 @@ export class RecordGate {
 	readonly rounds: readonly GateRound[];
 	/** Each dismissal a counted round reads as ended by a round at another revision. */
 	readonly ended: readonly EndedDismissal[];
+	/** Each dismissal a counted round cannot judge, since a round of its changeset names what the store does not hold. */
+	readonly unjudged: readonly UnjudgedDismissal[];
 	/** Why the records cannot decide the gate, each naming the record or round. */
 	readonly failures: readonly string[];
 
@@ -70,11 +72,13 @@ export class RecordGate {
 		verdict: Verdict;
 		rounds: GateRound[];
 		ended: EndedDismissal[];
+		unjudged: UnjudgedDismissal[];
 		failures: string[];
 	}) {
 		this.verdict = fields.verdict;
 		this.rounds = fields.rounds;
 		this.ended = fields.ended;
+		this.unjudged = fields.unjudged;
 		this.failures = fields.failures;
 	}
 
@@ -116,6 +120,7 @@ export class RecordGate {
 		const gate = Revision.key(revision);
 		const rounds: GateRound[] = [];
 		const ended: EndedDismissal[] = [];
+		const unjudged: UnjudgedDismissal[] = [];
 		const verdicts: Verdict[] = [];
 		const covered = new Set<string>();
 		for (const round of counted) {
@@ -131,7 +136,10 @@ export class RecordGate {
 			}
 			verdicts.push(findings);
 			const contents = read.contents(own);
-			if (!("refused" in contents)) ended.push(...contents.ended);
+			if (!("refused" in contents)) {
+				ended.push(...contents.ended);
+				unjudged.push(...contents.unjudged);
+			}
 			const covers =
 				round.revision !== gate
 					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
@@ -147,6 +155,7 @@ export class RecordGate {
 			verdict: RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]),
 			rounds,
 			ended,
+			unjudged,
 			failures,
 		});
 	}
@@ -156,6 +165,7 @@ export class RecordGate {
 			verdict: RecordGate.#merged([], [], failures.map(asFailure)),
 			rounds: [],
 			ended: [],
+			unjudged: [],
 			failures,
 		});
 	}

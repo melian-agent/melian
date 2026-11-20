@@ -96,6 +96,7 @@ export {
 	type RecordedRoundContents,
 	type RecordedRoundContext,
 	type SharedDismissalRecord,
+	type UnjudgedDismissal,
 } from "./recorded-round.ts";
 export {
 	ChangePrompt,

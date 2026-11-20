@@ -526,6 +526,7 @@ describe("what a round's records hold", () => {
 				},
 			],
 			ended: [],
+			unjudged: [],
 		});
 		expect((contents as RecordedRoundContents).hunks).toHaveLength(1);
 		expect(seen.revision).toBe(Revision.key(reviewed.changeset.revision));
@@ -990,6 +991,20 @@ describe("the dismissal records a reader applies", () => {
 		const unknown = roundAt("1", "2", [], []);
 		const since = again([], [unknown]);
 		expect(standingOf(await readAfter([first], [first, since], [first]))).toEqual([[id, "new", undefined]]);
+	});
+
+	it("reports a dismissal it cannot judge past a round since that follows a round neither the set nor the writer held", async () => {
+		const { id, first, roundAt, again, after, handedAfter } = await citedAcross("lens");
+		const unknown = roundAt("1", "2", [], []);
+		const since = again([], [unknown]);
+		const [records] = after([first], [first, since], [first]);
+		const dismissal = SharedRecord.parseEnvelope(records.at(-1)).id;
+		const contents = await handedAfter([first], [first, since], [first]);
+		expect([contents.dismissals, contents.ended, contents.unjudged]).toEqual([
+			[],
+			[],
+			[{ finding: id, record: dismissal, round: since.id }],
+		]);
 	});
 
 	it("ends a dismissal at a round of another revision its writer never met, though a round of its frontier names it", async () => {

@@ -73,7 +73,11 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	for (const reason of outcome.failures) io.stderr(`melian: the records cannot decide the merge: ${reason}\n`);
 	for (const ended of outcome.ended)
 		io.stderr(
-			`melian: finding ${ended.finding} is live: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. To dismiss it at this head: melian dismiss ${argument} ${ended.finding} --reason <text> --records git:melian/state\n`,
+			`melian: finding ${ended.finding} is live: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}. To dismiss it at this head: melian dismiss ${argument} ${ended.finding} --reason <text> --records git:melian/state\n`,
+		);
+	for (const unjudged of outcome.unjudged)
+		io.stderr(
+			`melian: finding ${unjudged.finding} is live: dismissal ${unjudged.record} cannot be judged, since round ${unjudged.round} names a record or round the store does not hold. To dismiss it again: melian dismiss ${argument} ${unjudged.finding} --reason <text> --records git:melian/state\n`,
 		);
 	if (outcome.verdict.status === "not-reviewed") {
 		const stale = outcome.rounds.every(({ covers }) => "refused" in covers);
