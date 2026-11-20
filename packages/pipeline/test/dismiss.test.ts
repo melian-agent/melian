@@ -999,6 +999,30 @@ describe("recording a dismissal", () => {
 		}
 	});
 
+	it("adjudicates the same dismissal again on an install Melian identifies, after one on an install it cannot", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		const { digest } = codeVersionModule.melianInstall();
+		const install = (identified: boolean) =>
+			vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+				digest,
+				identified,
+				outside: identified ? [] : ["node_modules/yaml"],
+				entries: [],
+			} as never);
+		try {
+			install(false);
+			await dismiss(harness, id);
+			const task = await adjudicationTask(harness);
+			install(true);
+			await dismiss(harness, id);
+			expect(await adjudicationTask(harness)).not.toBe(task);
+		} finally {
+			vi.restoreAllMocks();
+		}
+	});
+
 	it("refuses comparison writes after a cut-short dismissal until its adjudication records", async () => {
 		const path = join(dir, "changeset.sqlite");
 		const first = await reviewHarness(await openSqliteStorage(path));

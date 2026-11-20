@@ -130,7 +130,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/decisions/src/recorded.ts": "825e8ee8644d8a7a2f5850ad335db0d181cb0dea136e417870753380f4b2446a",
 
-	"packages/pipeline/src/adjudication.ts": "cd74c8afd905abd04b3ae2978fd47749871d36d5c32f4ad305a0c9c313870875",
+	"packages/pipeline/src/adjudication.ts": "8fb568862c9ec32a38a55eceacb8039c8e0bf582376dada0ea8a4d8545239054",
 
 	"packages/pipeline/src/cache-scratch.ts": "525ebcf4936524e650601977391088828a7e06fd8eb6efc87544e49e6af6ee1d",
 

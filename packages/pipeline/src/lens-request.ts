@@ -79,6 +79,7 @@ type ToolSpec = {
 type LensRequestBody = {
 	run: RecordJson;
 	packages: string;
+	identified: boolean;
 	policy: { section: string; text: string };
 	tools: ToolSpec[];
 	limits: typeof lensToolLimits;
@@ -126,6 +127,7 @@ export function lensRequest<Run extends LensRequestRun>(
 		{
 			run: requestJson(keyed),
 			packages: melianInstall().digest,
+			identified: melianInstall().identified,
 			policy: { section: injectionPolicySection.key, text: injectionPolicy(identityNonce) },
 			tools: [...read, reportFinding, ...(probes ? [recordPlan] : [])].map(specOf),
 			limits: lensToolLimits,

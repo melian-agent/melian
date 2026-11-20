@@ -594,6 +594,21 @@ describe("a repeat review on an install Melian cannot identify", () => {
 		expect(again.copied).toBe("none");
 	});
 
+	it("asks every lens again on an install Melian identifies, after a review on one it cannot with the same digest", async () => {
+		unidentified();
+		const first = await review(lenses);
+		vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest: "linked",
+			identified: true,
+			outside: [],
+			entries: [],
+		} as never);
+		const again = await review(lenses);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.task).not.toBe(first.task);
+		expect(again.copied).toBe("none");
+	});
+
 	it("copies no lens run into a review whose other lens changed", async () => {
 		unidentified();
 		await review(lenses);

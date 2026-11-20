@@ -184,6 +184,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			findingsVersion,
 			code: codeVersion("adjudication"),
 			packages: melianInstall().digest,
+			identified: melianInstall().identified,
 		};
 		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.

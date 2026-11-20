@@ -226,6 +226,8 @@ export type AdjudicationTaskInput = {
 	// The digest of Melian's install the task was created on, which only that install may decide. Absent
 	// from a task created before it was keyed, which then fails to decide.
 	packages?: string;
+	// Whether Melian could identify that install, so a task on one it could not stands for no task on one it can.
+	identified?: boolean;
 };
 
 // What a stored adjudication is reused for: its input, whose `code` names the code that decides it, so a build whose
@@ -421,6 +423,7 @@ export function adjudicationInput(options: {
 		...(options.files === undefined ? {} : { files: structuredClone([...options.files]) }),
 		code: codeVersion("adjudication"),
 		packages: melianInstall().digest,
+		identified: melianInstall().identified,
 	};
 }
 

@@ -98,6 +98,7 @@ it("decides main's stored verdict again once, under a key that adds the code and
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
 		packages: melianInstall().digest,
+		identified: melianInstall().identified,
 	});
 	expect(first.verdict.status).toBe("passed");
 
@@ -132,6 +133,7 @@ it("fails a version 7 task main left pending, which names no code version, and d
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
 		packages: melianInstall().digest,
+		identified: melianInstall().identified,
 	});
 	expect(verdict.status).toBe("passed");
 	expect((await harness.snapshot(VerdictDocument, root.id, context))!.decisions![recorded.key]!.task).toBe(
@@ -162,6 +164,7 @@ it("fails a version 8 task main left pending, which names main's code and no pac
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
 		packages: melianInstall().digest,
+		identified: melianInstall().identified,
 	});
 	expect(verdict.status).toBe("passed");
 	const root = await harness.root(context);

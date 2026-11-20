@@ -364,6 +364,19 @@ describe("reviewChangeset", () => {
 			expect(await adjudication()).not.toBe(decided);
 		});
 
+		it("decides again on an install Melian identifies, after a review on one it cannot with the same digest", async () => {
+			code.identified = false;
+			script();
+			await reviewed();
+			const decided = await adjudication();
+			code.identified = true;
+			script();
+
+			await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
+		});
+
 		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {
 			script();
 			const first = await reviewed();
