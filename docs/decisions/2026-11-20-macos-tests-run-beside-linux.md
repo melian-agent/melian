@@ -25,6 +25,8 @@ The macOS tests run in `test (macos, 24)`, beside the Linux jobs. That job needs
 5. Every file Linux skipped a test in is on the list. A file that is missing fails the run, and the message names the file to add.
 6. Each macOS report says its run succeeded. A failed hook or an unhandled error fails a run whose every test passed, and the test statuses alone would not show it. Codex's adversarial review found the gap.
 
+The comparison runs the head's own copy of the script and the list, so a pull request can change the rules that judge it. `guardrails.policy-change-review` in `melian.yaml` names both files, and its notice is what makes a person read a change to either.
+
 Checks 1 to 4 are the checks the macOS job made before; check 6 and the job's own result stand for the exit code that failed the old job. So no test Linux skips reaches `main` without passing on macOS. A wrong list can fail the run. It cannot pass a test that never ran, because check 1 counts that test as missing.
 
 The tag is the marker, written in the test file. The workflow reads it through Vitest's filter. The comparison reads it from the Linux report, which lists each test's tags, so a lost tag shows as a tagged file with no tagged test, and fails check 2. A test of the script checks that the committed list's tag is the one the file uses and that `vitest.config.ts` defines.
@@ -46,7 +48,7 @@ The other 143 no longer run on macOS. Linux is enough for them. Each drives the 
 ## What it gives up
 
 - The list is kept by hand. A new test that skips on Linux fails `check (macos, 24)` until its file is added. Before, the macOS job found the file in the Linux report. The failure names the file to add.
-- 143 tests of the probing level run on Linux alone. A new test in that file that depends on the platform needs the tag, and nothing finds it if it lacks the tag.
+- 143 tests of the probing level run on Linux alone. A new test in that file that depends on the platform needs the tag, and nothing finds it if it lacks the tag. Such a test passes CI and fails on every Mac, as the BSD `date +%s%3N` timestamp did before [issue #495](https://github.com/melian-agent/melian/issues/495) added the file to the list.
 - Removing the tag from one of the twelve, while others keep it, stops that test running on macOS, and the comparison still passes: it takes the tagged set from the Linux report. That removal is an edit to a test file that review sees, as deleting a test from a named suite is, which nothing catches either. A count or a list of the tagged tests would catch it, at the price of one more number or list kept by hand. The coordinator chose to accept the limit on 2026-11-20, after Codex's adversarial review raised it.
 - The run has one more job and one more artefact, `macos-vitest-reports`.
 
