@@ -1,5 +1,15 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -51,7 +61,7 @@ import { GoldenRunError } from "../src/run-error.ts";
 
 let scratch: string;
 beforeEach(() => {
-	scratch = mkdtempSync(join(tmpdir(), "melian-parity-eval-"));
+	scratch = realpathSync(mkdtempSync(join(tmpdir(), "melian-parity-eval-")));
 });
 afterEach(() => rmSync(scratch, { recursive: true, force: true }));
 
@@ -1009,6 +1019,47 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			["two", "committed"],
 			["two", "parity"],
 		]);
+	});
+
+	it("refuses a second run that names the held results file through a link", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		const alias = join(scratch, "alias.json");
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const first = runners(undefined, {
+			range: vi.fn(async () => {
+				entered();
+				await held;
+				return ran(committedStages);
+			}),
+		});
+		const running = measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, first);
+		await started;
+		symlinkSync(out, alias);
+		const before = readFileSync(out, "utf8");
+		const second = runners();
+		const { status, errors } = await measure(
+			{ ...env, MELIAN_EVAL_PARITY_OUT: alias, MELIAN_EVAL_PARITY_MISSES: "two" },
+			second,
+		);
+		expect(status).toBe(2);
+		expect(errors).toEqual([
+			`${out}.lock says run ${process.pid} holds ${alias}; if no run is using it, a run that died left it, and removing it lets this one start`,
+		]);
+		expect(second.range).not.toHaveBeenCalled();
+		expect(readFileSync(out, "utf8")).toBe(before);
+		release();
+		expect((await running).status).toBe(1);
+		const third = runners();
+		await measure({ ...env, MELIAN_EVAL_PARITY_OUT: alias, MELIAN_EVAL_PARITY_MISSES: "two" }, third);
+		expect(lstatSync(alias).isSymbolicLink()).toBe(true);
+		expect(existsSync(`${alias}.lock`)).toBe(false);
 	});
 
 	it("refuses a lock path that is a link, a directory or a file of other text, and says nothing the path holds", async () => {

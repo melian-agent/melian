@@ -449,15 +449,25 @@ class LostLock extends Error {}
 // carries a claim of this run's own, so a run whose lock another took saves nothing and leaves that lock in place.
 class ResultsLock {
 	readonly path: string;
+	readonly file: string;
 	private readonly claim: string;
 
-	private constructor(path: string, claim: string) {
-		this.path = path;
+	private constructor(file: string, claim: string) {
+		this.file = file;
+		this.path = `${file}.lock`;
 		this.claim = claim;
 	}
 
+	// Keyed by the file, not the name it was given, so a run that names the held file through a link is refused too,
+	// and the run reads and saves that file, so its save never turns the link into a file another run could lock apart.
 	static take(out: string): ResultsLock {
-		const path = `${out}.lock`;
+		let real: string;
+		try {
+			real = realpathSync(out);
+		} catch {
+			real = join(realpathSync(dirname(out)), basename(out));
+		}
+		const path = `${real}.lock`;
 		const claim = `${process.pid} ${randomUUID()}\n`;
 		try {
 			writeFileSync(path, claim, { flag: "wx" });
@@ -470,7 +480,7 @@ class ResultsLock {
 					: `${path} says run ${run} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
 			);
 		}
-		return new ResultsLock(path, claim);
+		return new ResultsLock(real, claim);
 	}
 
 	// The refusal prints what the path holds, so it reads only a regular file, opened without following a link, and
@@ -650,6 +660,7 @@ async function measureHeld(
 			]),
 		);
 		held.lock = ResultsLock.take(out);
+		out = held.lock.file;
 		if (existsSync(out)) {
 			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
 			if (earlier.version !== 2 || earlier.arm !== parityArmName)
