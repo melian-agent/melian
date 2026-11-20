@@ -26,11 +26,12 @@ const text = Type.String({ minLength: 1 });
 /**
  * The JSON Schema of a resolution golden's `scenario.json`. `findings` are the reports a review would hold, scripted:
  * each names its check, rule, severity, and place, the verifier's `verdict` on a lens report, and a `lowered` severity
- * when the verifier lowered it. Two reports at one file, line, and code are one defect. The guardrails run over the
- * golden's change, and their findings join the scripted ones. `expect` says what each finding must resolve to: it
- * names the finding by its file and, where two share it, by the rule that speaks or the line; `decidedBy` is the file
- * that must have decided, empty when none spoke. `doctor` lists the lines `melian doctor` must print for the base's
- * policy.
+ * when the verifier lowered it, and `cites`, the files a lens report cites as context evidence. Two reports at one
+ * file, line, and code are one defect. The guardrails run over the golden's change, and their findings join the
+ * scripted ones. `expect` says what each finding must resolve to: it names the finding by its file and, where two
+ * share it, by the rule that speaks or the line; `decidedBy` is the file that must have decided, empty when none
+ * spoke; `replacedBy` is the file whose instruction-file notice must report the finding in its place. `doctor` lists
+ * the lines `melian doctor` must print for the base's policy.
  */
 export const resolutionScenarioSchema = Type.Object(
 	{
@@ -49,6 +50,7 @@ export const resolutionScenarioSchema = Type.Object(
 						Type.Union([Type.Literal("confirmed"), Type.Literal("plausible"), Type.Literal("refuted")]),
 					),
 					lowered: Type.Optional(Type.Object({ to: severitySchema, reason: text }, strict)),
+					cites: Type.Optional(Type.Array(text, { minItems: 1 })),
 				},
 				strict,
 			),
@@ -61,6 +63,7 @@ export const resolutionScenarioSchema = Type.Object(
 					line: Type.Optional(Type.Integer({ minimum: 1 })),
 					resolution: resolutionSchema,
 					decidedBy: Type.Optional(Type.String()),
+					replacedBy: Type.Optional(text),
 				},
 				strict,
 			),
@@ -138,6 +141,7 @@ function reportOf(report: ResolutionScenario["findings"][number]): Finding {
 		cause = "introduced",
 		verdict,
 		lowered,
+		cites,
 	} = report;
 	const finding = Finding.create({
 		rule,
@@ -152,6 +156,17 @@ function reportOf(report: ResolutionScenario["findings"][number]): Finding {
 		source: { check, version: "scripted" },
 		// Only a lens states a failure scenario; a static or guardrail report has none.
 		...(check.startsWith("lens.") ? { failureScenario: "Scripted." } : {}),
+		...(cites === undefined
+			? {}
+			: {
+					evidence: cites.map((cited) => ({
+						file: cited,
+						startLine: 1,
+						role: "context" as const,
+						revision: "head" as const,
+						snippet: code,
+					})),
+				}),
 	});
 	if (verdict === undefined) return finding;
 	return finding.verifiedAs({

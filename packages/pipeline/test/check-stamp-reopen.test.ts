@@ -99,7 +99,7 @@ it("reads what version-4 checks and version-11 findings wrote after an SQLite re
 		/newer version 5 than 4/,
 	);
 	await expect(second.harness.snapshot(legacy("melian.findings", 11), second.root.id, context)).rejects.toThrow(
-		/newer version 12 than 11/,
+		/newer version 13 than 11/,
 	);
 });
 

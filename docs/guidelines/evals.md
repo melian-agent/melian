@@ -158,13 +158,13 @@ Existing lens goldens explicitly route the fake verifier in scripted mode. In li
 
 ## Resolution goldens
 
-The twenty goldens that [the resolution decision](../decisions/2026-10-13-resolution-as-built.md) lists live under `packages/evals/goldens/resolution/<name>/`. They run no model and no lens, so `loadGoldens` leaves that directory out and `loadResolutionGoldens` reads it.
+The twenty goldens that [the resolution decision](../decisions/2026-10-13-resolution-as-built.md) lists live under `packages/evals/goldens/resolution/<name>/`, beside five `instructions-*` goldens for [instruction files](../decisions/2026-11-18-instruction-files-draw-a-notice.md). They run no model and no lens, so `loadGoldens` leaves that directory out and `loadResolutionGoldens` reads it.
 
-Each holds a `base/` tree with the policy, under the corpus's inert names: `melian.golden.yaml` at any level, and `.melian/lenses/<name>/LENS.golden.md` for a lens that declares a default. A `head/` tree, when there is one, is laid over the base as the change. `scenario.json` scripts the findings a review would hold: each report's check, rule, severity and place, the verifier's verdict on a lens report, and a lowered severity. Two reports at one file, line and code are one defect.
+Each holds a `base/` tree with the policy, under the corpus's inert names: `melian.golden.yaml` at any level, and `.melian/lenses/<name>/LENS.golden.md` for a lens that declares a default. A `head/` tree, when there is one, is laid over the base as the change. `scenario.json` scripts the findings a review would hold: each report's check, rule, severity and place, the verifier's verdict on a lens report, a lowered severity, and the files a lens report cites. Two reports at one file, line and code are one defect.
 
 `runResolutionGolden` commits the trees and reads policy and lenses from the base, as a pull request's review does. It runs the guardrails over the change, resolves every finding through `configsFor` and core's `Adjudication`, and lists what `melian doctor` would print through `resolutionOverrides`.
 
-A golden is held three ways. `expect` in `scenario.json` says what each finding must resolve to and which file must have decided, written by hand from the decision. `doctor` lists the doctor lines. `expected.txt` holds the rendering `melian findings` prints, with its `Decided by` lines, and is read before it is committed. The rules that tie a lens golden's `LENS.golden.md` and tiers to Melian's own leave these goldens out.
+A golden is held three ways. `expect` in `scenario.json` says what each finding must resolve to, which file must have decided, and, for a finding an instruction-file notice reports in its place, that notice's file, written by hand from the decision. `doctor` lists the doctor lines. `expected.txt` holds the rendering `melian findings` prints, with its `Decided by` lines, and is read before it is committed. The rules that tie a lens golden's `LENS.golden.md` and tiers to Melian's own leave these goldens out.
 
 ## Scoring
 

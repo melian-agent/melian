@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const goldens = loadResolutionGoldens();
 
 describe("the resolution goldens", { timeout: 60_000 }, () => {
-	it("holds the twenty the decision lists, apart from the lens corpus", () => {
+	it("holds the twenty the decision lists and the five of instruction files, apart from the lens corpus", () => {
 		expect(goldens.map((golden) => golden.name)).toEqual([
 			"ceiling-caps-and-never-raises",
 			"ceiling-only-file",
@@ -14,6 +14,11 @@ describe("the resolution goldens", { timeout: 60_000 }, () => {
 			"findings-name-the-file-and-entry",
 			"head-edits-keys",
 			"injection-under-cleanup-ceiling",
+			"instructions-finding-cites-unlisted-file",
+			"instructions-head-lists-its-own-file",
+			"instructions-prompt-in-listed-source",
+			"instructions-reviewer-brief-in-listed-doc",
+			"instructions-unlisted-file-still-injection",
 			"lens-default-applies",
 			"lens-resolution-change",
 			"lowered-finding",
@@ -49,6 +54,13 @@ describe("the resolution goldens", { timeout: 60_000 }, () => {
 			if (expected.decidedBy !== undefined) {
 				expect(found[0]!.properties.decidedBy?.file ?? "", name).toBe(expected.decidedBy);
 			}
+			const notice = all.find(
+				(finding) =>
+					finding.properties.path === expected.replacedBy && finding.ruleId === "guardrail/policy-change-review",
+			);
+			expect(found[0]!.properties.decidedBy?.replacedBy, name).toEqual(
+				expected.replacedBy === undefined ? undefined : [notice!.id],
+			);
 		}
 		// Every finding the run holds is one the golden expects, so none resolves unseen.
 		expect(all).toHaveLength(golden.scenario.expect.length);

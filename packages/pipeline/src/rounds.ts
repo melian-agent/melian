@@ -45,10 +45,11 @@ export class RoundError extends Error {
 // Keys are local to this storage; the public ID prefixes them with the changeset ID of its SQLite file.
 // Version 2 meant caveats on main and split round keys on this branch; version 3 applies both, and each is a no-op
 // on a round that already has it, so one migration serves every earlier version. Version 4 lets a round's plan hold
-// lens routes; a version 3 round has none and reads unchanged.
+// lens routes; a version 3 round has none and reads unchanged. Version 5 lets a round's verdict mark an instruction
+// file's notice, or name the notices that replaced an injection finding; a version 4 verdict has neither.
 export const RoundsDocument = defineDoc<RoundState>({
 	kind: "melian.rounds",
-	version: 4,
+	version: 5,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",

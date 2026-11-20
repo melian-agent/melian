@@ -129,6 +129,50 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 
+	it("lists no instruction files by default, and takes the root policy's list anchored at the root", async () => {
+		expect((await load("src/index.ts")).config.guardrails["policy-change-review"]).toEqual({
+			enabled: true,
+			severity: "P2",
+			analyserSeverity: "P1",
+			files: [],
+			instructions: [],
+		});
+		writeFiles(repo, {
+			"melian.yaml": lines(
+				"guardrails:",
+				"  policy-change-review:",
+				"    instructions: [prompts/brief.md, ./docs/review.md]",
+			),
+		});
+		expect((await load("src/index.ts")).config.guardrails["policy-change-review"].instructions).toEqual([
+			"prompts/brief.md",
+			"docs/review.md",
+		]);
+	});
+
+	it("refuses an instruction file that leaves the repository", async () => {
+		writeFiles(repo, {
+			"melian.yaml": lines("guardrails:", "  policy-change-review:", "    instructions: [../prompts.md]"),
+		});
+		expect(await rejection(load("src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "guardrails.policy-change-review.instructions",
+		});
+	});
+
+	it("refuses instruction files in a nested policy", async () => {
+		writeFiles(repo, {
+			"services/melian.yaml": lines("guardrails:", "  policy-change-review:", "    instructions: [brief.md]"),
+		});
+		const error = await rejection(load("services/api.ts"));
+		expect(error).toMatchObject({
+			code: "invalidValue",
+			key: "guardrails.policy-change-review.instructions",
+			file: "services/melian.yaml",
+		});
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("lets a probe read the dependency install by default, and takes the root policy's list whole", async () => {
 		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["node_modules"] });
 		writeFiles(repo, { "melian.yaml": "probe: { read: [generated, dist/report.json] }\n" });
@@ -777,6 +821,19 @@ describe("melian.local.yaml", () => {
 		expect(error.message).toContain("only a committed root melian.yaml");
 	});
 
+	it("refuses instruction files in clone preferences", async () => {
+		writeFiles(repo, {
+			"melian.local.yaml": lines("guardrails:", "  policy-change-review:", "    instructions: [src/index.ts]"),
+		});
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
+		expect(error).toMatchObject({
+			code: "invalidValue",
+			key: "guardrails.policy-change-review.instructions",
+			file: "melian.local.yaml",
+		});
+		expect(error.message).toContain("only a committed root melian.yaml");
+	});
+
 	it("refuses a probe allowlist in clone preferences", async () => {
 		writeFiles(repo, { "melian.local.yaml": "probe: { read: [secrets] }\n" });
 		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "src/index.ts"));
@@ -852,6 +909,17 @@ describe("the user-level preference file", () => {
 		expect(await rejection(loadConfig(repo, worktree(), "src/index.ts"))).toMatchObject({
 			code: "invalidValue",
 			key: "comparison",
+			file: preferences(),
+		});
+	});
+
+	it("refuses instruction files in user preferences", async () => {
+		writeFiles(home, {
+			"config.yaml": lines("guardrails:", "  policy-change-review:", "    instructions: [src/index.ts]"),
+		});
+		expect(await rejection(loadConfig(repo, worktree(), "src/index.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "guardrails.policy-change-review.instructions",
 			file: preferences(),
 		});
 	});

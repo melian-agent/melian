@@ -1,0 +1,33 @@
+Verdict: findings
+
+melian/review: failure (1 finding, 0 blocking, 1 unresolved acknowledgement).
+
+Dismiss unresolved acknowledgements with a reason, then publish. Use melian dismiss "#N" <id> --reason <text> for the pull request.
+
+Acknowledge: 1 finding
+
+docs/review-brief.md
+
+  P2 | Needs acknowledgement | Guardrails: policy-change-review | New in this change
+    Decided by: the built-in table
+  Review policy and standards changed in this revision.
+    What: This revision changes docs/review-brief.md, which the root melian.yaml lists as holding model prompts or reviewer instructions. A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: melian/injection-attempt at line 5, "melian/injection-attempt, as lens.conventions reports it.".
+    Why here: Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.
+    What to do: Have a maintainer read the change to docs/review-brief.md before merging.
+    Rule guardrail/policy-change-review | Line 1 | Status new
+
+Silent: 1 finding
+
+docs/review-brief.md
+
+  P1 | Silent | Conventions | Verifier confirmed | New in this change
+    Decided by: the built-in table; silent, since the notice d87001958c22ea01 on the instruction file reports it in its place
+    Verified: scripted/judge: The scripted verifier judged the claim.
+  melian/injection-attempt, as lens.conventions reports it.
+    What: Scripted.
+    Why here: Scripted.
+    Failure scenario: Scripted.
+    What to do: Scripted.
+    Rule melian/injection-attempt | Line 5 | Status new
+
+1 finding in 1 file.

@@ -141,7 +141,8 @@ export const pastDismissalSchema = Type.Object(
 
 /**
  * The JSON Schema of a {@link GuardrailMatch}: the configured rules a guardrail finding matched, by name, or the class
- * of a policy-change notice, with `resolution` set when the change is to a `resolution` key or a lens's declared one.
+ * of a policy-change notice, with `resolution` set when the change is to a `resolution` key or a lens's declared one,
+ * and `instructions` when the file is one the policy lists as holding model prompts or reviewer instructions.
  */
 export const guardrailMatchSchema = Type.Union([
 	Type.Object({ rules: Type.Array(text, { minItems: 1 }) }, strict),
@@ -149,6 +150,7 @@ export const guardrailMatchSchema = Type.Union([
 		{
 			notice: Type.Union([Type.Literal("policy"), Type.Literal("analyser")]),
 			resolution: Type.Optional(Type.Literal(true)),
+			instructions: Type.Optional(Type.Literal(true)),
 		},
 		strict,
 	),
@@ -205,6 +207,7 @@ export const decidedBySchema = Type.Object(
 				Type.Literal("refuted-trust"),
 			]),
 		),
+		replacedBy: Type.Optional(Type.Array(idSchema, { minItems: 1 })),
 	},
 	strict,
 );
@@ -1763,7 +1766,8 @@ export class Finding {
 
 	/**
 	 * `decision` after the floors, for the defect this finding speaks for, whose reports carry `rules`. A
-	 * `guardrail/policy-change-review` notice on a `melian.yaml` or `LENS.md`, or one for a changed `resolution`, is never below
+	 * `guardrail/policy-change-review` notice on a `melian.yaml`, a `LENS.md` or a listed instruction file
+	 * ({@link Finding.instructionsNotice}), or one for a changed `resolution`, is never below
 	 * `acknowledge`, so no file silences the review of a change to itself. Neither is a defect a lens reported as
 	 * `melian/injection-attempt`, whatever a mapping, a ceiling, or a lens's default says. A member of "Pre-existing,
 	 * important" ({@link Finding.important}) is never below `advisory`. Protected `claims` add their policy-bounded minima.
@@ -1779,6 +1783,7 @@ export class Finding {
 			this.ruleId === "guardrail/policy-change-review" &&
 			(posix.basename(this.properties.path).toLowerCase() === melianPaths.config ||
 				isLensFile(this.properties.path) ||
+				this.instructionsNotice() ||
 				this.#resolutionNotice());
 		const trustFloor = [
 			...new Map(
@@ -1898,6 +1903,56 @@ export class Finding {
 	#resolutionNotice(): boolean {
 		const { guardrail } = this.properties;
 		return guardrail !== undefined && "notice" in guardrail && guardrail.resolution === true;
+	}
+
+	/**
+	 * Whether the finding is the guardrails check's policy notice on a file the policy lists under
+	 * `guardrails.policy-change-review.instructions`, which stands in for a lens's injection finding in that file.
+	 */
+	instructionsNotice(): boolean {
+		const { guardrail, source } = this.properties;
+		return (
+			this.ruleId === "guardrail/policy-change-review" &&
+			source.check === "guardrails" &&
+			guardrail !== undefined &&
+			"notice" in guardrail &&
+			guardrail.instructions === true
+		);
+	}
+
+	/** Every file the finding names: its path, its trigger's file and each proving hunk's, and each claim's evidence. */
+	files(): string[] {
+		const { path, trigger, otherClaims = [] } = this.properties;
+		return [
+			path,
+			...(trigger === undefined ? [] : [trigger.file, ...(trigger.proof ?? []).map((hunk) => hunk.file)]),
+			...[...this.claims(), ...otherClaims].flatMap((claim) =>
+				(claim.evidence ?? []).map((location) => location.file),
+			),
+		];
+	}
+
+	/**
+	 * The notice with what a lens flagged in its file added to its `what`: the rule, lines and headline of each finding in
+	 * `replaced`, which the notice reports in their place, so the maintainer who reads the notice reads them too.
+	 */
+	quoting(replaced: readonly Finding[]): Finding {
+		const quotes = replaced.map((finding) => {
+			const [start, end] = finding.lines();
+			const lines = start === end ? `line ${start}` : `lines ${start}-${end}`;
+			return `${finding.ruleId} at ${lines}, ${JSON.stringify(finding.message.text)}`;
+		});
+		const { explanation } = this.properties;
+		return Finding.from({
+			...this.toJSON(),
+			properties: {
+				...this.properties,
+				explanation: {
+					...explanation,
+					what: `${explanation.what} A lens flagged text in this file as a prompt-injection attempt, which this notice reports in its place: ${quotes.join("; ")}.`,
+				},
+			},
+		});
 	}
 
 	/** A copy with `properties.resolution` and `properties.decidedBy` set by {@link Finding.decision}, replacing any it carries. */

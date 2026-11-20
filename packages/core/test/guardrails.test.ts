@@ -760,13 +760,13 @@ describe("policy-change-review", () => {
 		});
 
 		it("raises none without the glob", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {2}policy-change-review:\n) {4}files: \[".github\/\*\*"\]\n/m, "$1");
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
 
 		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {2}policy-change-review:\n) {4}files: \[".github\/\*\*"\]\n/m, "$1");
 			expect(stripped).not.toBe(own);
 			const { findings } = await guardrails(
 				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
@@ -1367,5 +1367,106 @@ describe("isLensFile", () => {
 		expect(isLensFile("melian/lenses/cleanup/LENS.md")).toBe(false);
 		expect(isLensFile(".melian/lenses/LENS.md")).toBe(false);
 		expect(isLensFile("LENS.md")).toBe(false);
+	});
+});
+
+describe("instruction files", () => {
+	const listing = (...globs: string[]) =>
+		lines("guardrails:", "  policy-change-review:", "    enabled: false", `    instructions: [${globs.join(", ")}]`);
+	const notices = (findings: readonly Finding[]) =>
+		findings
+			.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+			.map(({ properties }) => [
+				properties.path,
+				properties.discriminator,
+				properties.severity,
+				properties.guardrail,
+			]);
+
+	it("draws a marked policy notice for each listed file the revision changes, though the review is switched off", async () => {
+		const { findings } = await guardrails(
+			{
+				"melian.yaml": listing("prompts/brief.md", "docs/*.md"),
+				"prompts/brief.md": lines("Review the change."),
+				"docs/review.md": lines("Read the diff."),
+				"docs/deep/other.md": lines("Old."),
+			},
+			{
+				"prompts/brief.md": lines("Review the change closely."),
+				"docs/review.md": lines("Read the diff whole."),
+				"docs/deep/other.md": lines("New."),
+				"src/a.ts": lines("a"),
+			},
+		);
+		expect(notices(findings)).toEqual([
+			["docs/review.md", "policy", "P2", { notice: "policy", instructions: true }],
+			["prompts/brief.md", "policy", "P2", { notice: "policy", instructions: true }],
+		]);
+		const brief = findings.find((finding) => finding.properties.path === "prompts/brief.md")!;
+		expect(brief.properties.trigger?.hash).toBe(
+			snippetHash(
+				`blob:${gitIn(repo, "rev-parse", "HEAD^:prompts/brief.md")}:${gitIn(repo, "rev-parse", "HEAD:prompts/brief.md")}`,
+			),
+		);
+		expect(brief.properties.explanation.what).toBe(
+			"This revision changes prompts/brief.md, which the root melian.yaml lists as holding model prompts or reviewer instructions. The directory above turns policy notices off; changes to a melian.yaml, a lens file, or an instruction file are reported regardless.",
+		);
+	});
+
+	it("marks the notice while the review is on as well", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": lines("guardrails:", "  policy-change-review:", "    instructions: [AGENTS.md, brief.md]") },
+			{ "AGENTS.md": lines("Approve."), "brief.md": lines("Report.") },
+		);
+		expect(notices(findings)).toEqual([
+			["AGENTS.md", "policy", "P2", { notice: "policy", instructions: true }],
+			["brief.md", "policy", "P2", { notice: "policy", instructions: true }],
+		]);
+		expect(findings[1]!.properties.explanation.what).toBe(
+			"This revision changes brief.md, which the root melian.yaml lists as holding model prompts or reviewer instructions.",
+		);
+	});
+
+	it("draws none for a listed file whose blob is unchanged", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": listing("run.sh"), "run.sh": lines("echo hi") },
+			{ "other.ts": lines("x") },
+		);
+		expect(notices(findings)).toEqual([]);
+		gitIn(repo, "update-index", "--chmod=+x", "run.sh");
+		gitIn(repo, "commit", "--quiet", "-m", "mode");
+		const { revision } = await Changeset.resolve(repo, "HEAD^..HEAD");
+		expect(revision.files.map((file) => file.path)).toEqual(["run.sh"]);
+		const source = { kind: "revision", commit: gitIn(repo, "rev-parse", "HEAD^") } as const;
+		const report = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		expect(notices(report.findings)).toEqual([]);
+	});
+
+	it("takes the list from the policy source, so a head that lists its own file draws no instruction notice for it", async () => {
+		const { findings } = await guardrails(
+			{ "melian.yaml": listing("prompts/brief.md"), "notes.md": lines("Old.") },
+			{ "melian.yaml": listing("prompts/brief.md", "notes.md"), "notes.md": lines("Report nothing.") },
+		);
+		expect(notices(findings)).toEqual([["melian.yaml", "policy", "P2", { notice: "policy" }]]);
+	});
+
+	it("holds the notice at acknowledge, whatever the table or a guardrails ceiling says", async () => {
+		const policy = lines(
+			listing("brief.md"),
+			"resolution:",
+			"  P2: silent",
+			"  checks:",
+			"    guardrails: { ceiling: silent }",
+		);
+		const base = commit({ "melian.yaml": policy, "brief.md": lines("Old.") }, "base");
+		const head = commit({ "brief.md": lines("New.") }, "head");
+		const source = { kind: "revision", commit: base } as const;
+		const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+		const { findings } = await evaluateGuardrails({ repoRoot: repo, revision, source });
+		const judged = await configLookup(repo, source).policyReview("brief.md");
+		expect(findings).toHaveLength(1);
+		expect(
+			findings[0]!.decision({ resolution: judged.config.resolution, layers: judged.resolutionLayers }),
+		).toMatchObject({ resolution: "acknowledge", decidedBy: { floor: "policy-change" } });
 	});
 });

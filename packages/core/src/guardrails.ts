@@ -258,7 +258,8 @@ async function resolutionChanged(repoRoot: string, revision: Revision, path: str
 // Every policy file the revision lists, and every touched path its own configuration adds to the list. A change to an
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
 // check would otherwise read as a clean one. Every changed melian.yaml or lens identity draws the notice despite the
-// parent's switch, since either file steers later reviews.
+// parent's switch, since either file steers later reviews. So does every file the root lists as instructions: its notice
+// stands in for a lens's injection finding there, so no switch may hide it.
 async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
@@ -268,7 +269,8 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 	return Promise.all(
 		paths.map(async (path): Promise<Hit | undefined> => {
 			const guardrail = (await configFor.policyReview(path)).config.guardrails["policy-change-review"];
-			const forced = posix.basename(path).toLowerCase() === melianPaths.config || isLensFile(path);
+			const instructions = matchesGlobs(guardrail.instructions, path);
+			const forced = posix.basename(path).toLowerCase() === melianPaths.config || isLensFile(path) || instructions;
 			if (!guardrail.enabled && !forced) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
 			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
@@ -299,10 +301,13 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 			);
 			if (forced && baseIdentity === headIdentity) return undefined;
 			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}`) };
-			const marked = (await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {};
+			const marked = {
+				...((await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {}),
+				...(instructions ? { instructions: true as const } : {}),
+			};
 			const override = guardrail.enabled
 				? ""
-				: " The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.";
+				: " The directory above turns policy notices off; changes to a melian.yaml, a lens file, or an instruction file are reported regardless.";
 			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([
@@ -341,7 +346,7 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 				match: { notice: "policy", ...marked },
 				message: "Review policy and standards changed in this revision.",
 				explanation: {
-					what: `This revision changes ${path}, which steers how Melian reviews this repository.${override}`,
+					what: `This revision changes ${path}, which ${instructions ? "the root melian.yaml lists as holding model prompts or reviewer instructions" : "steers how Melian reviews this repository"}.${override}`,
 					whyHere:
 						"Melian reviewed the revision under the policy and standards it changes, so nothing it ran judged the new ones.",
 					whatToDo: `Have a maintainer read the change to ${path} before merging.`,

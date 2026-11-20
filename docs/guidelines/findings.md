@@ -67,6 +67,8 @@ Melian states certainty with the verifier's word and nothing else.
 
 A refutation is protected when the refuted claim came from `lens.trust-boundary`, `lens.trust-boundary-probes` or `lens.tests`, or reports `untested-behaviour` or `melian/injection-attempt` from any lens. `Finding.trustFloor` replays such a claim's confirmed outcome, capped at `acknowledge`, as [Lowering a severity](../design.md#lowering-a-severity) sets out. The minimum is whatever that outcome resolves to: `acknowledge` for a wholly refuted injection attempt, which still fails the status until a maintainer dismisses it; `advisory` for a refuted P3 test gap; and `silent` where the table hides the confirmed outcome, which stays hidden. Only a protected refutation with a visible minimum posts, and its note comes from `trustFloorNotes`, which reads that minimum. The finding states the refutation and the obligation together.
 
+An injection finding in a file the root `melian.yaml` lists under `guardrails.policy-change-review.instructions` is reported by that file's policy notice instead. The finding is silent, and the notice, held at `acknowledge`, quotes the rule, lines and headline the lens flagged, so a person still reads it. [The decision](../decisions/2026-11-18-instruction-files-draw-a-notice.md) says when the replacement applies.
+
 When Melian is unsure, it says what it read and what it did not find, then how to settle it: "Melian read `writeOrder` and `syncOrder`. It found no other writer of `posId`. If one exists, this finding stands; if not, dismiss it." That sentence replaces every "may".
 
 ## Severity and tone

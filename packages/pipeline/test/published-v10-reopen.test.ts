@@ -39,7 +39,7 @@ it("reopens main's version-10 publication unchanged, and a version-10 reader ref
 		await root.commit(async (tx) => {
 			await tx.doc(PublishedDocument, root.id);
 		}, context);
-		await expect(first.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 11 than 10/);
+		await expect(first.snapshot(previous, root.id, context)).rejects.toThrow(/newer version 12 than 10/);
 		await first.close(context);
 		const second = await open();
 		harnesses.push(second);
