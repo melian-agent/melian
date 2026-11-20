@@ -36,3 +36,12 @@ The four equivalents:
 - `record-relay.ts:218`: `TierAccount.refusal` treats a triage of `undefined` as absent.
 
 Each of the 366 claimed kills ran by hand at f6f561f9 against its named test alone, which passed unmutated first, and failed under every mutant; [the runs](2026-11-18-pr-576-records-relay-mutant-runs.json) record each. `node scripts/enumerate-mutants.mjs --sample` reads the inventory.
+
+## After pull request #551
+
+The merge of `main` at f9862b6f brought core's closed payload schemas. The expected-fail test now passes as a plain one, and the relay's fixtures name versions those schemas accept. Melian's round at 4d259091 raised two acknowledge findings beyond the policy notices:
+
+- 791958de: the snapshot-ID test also planted a receipt the schema refuses, so it passed with the ID rule removed. Its record now differs from an accepted one in the ID alone, and it fails with the rule removed.
+- The checked records stay writable until the upload. The decision on the `record` job now says why nothing can write them: the head's code runs only in the probe sandbox, and Biome and tsc run no head code.
+
+A coordinator's question asked whether the push still finds `gh auth setup-git`'s credential helper. Two tests in `packages/cli/test/relay.test.ts` push to an HTTP origin that demands a credential, with and without the helper in `$HOME/.gitconfig`. The positive test fails when state-git sets `GIT_CONFIG_GLOBAL=/dev/null` or passes `-c credential.helper=`. Both pass on a merge with pull request #592's head, ee37b1f7.
