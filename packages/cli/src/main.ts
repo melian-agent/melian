@@ -127,7 +127,10 @@ Options:
   --apply               Remove what the dry run lists (store prune).
   --rounds              List a target's stored rounds (findings).
   --reason <text>        Dismissal reason, or owned-missed, no-owner, needs-execution, out-of-scope (adjudicate).
-                         compare misses takes it again for each miss reason to write.
+                         compare misses takes it again for each miss reason to write. It keeps each round's
+                         misses from a reviewer's file, so a withdrawn one stays and a repeated one appears once
+                         per round; only a GitHub thread a later round compares replaces its earlier miss. Read
+                         the misses and enter each one's lines by hand before a measurement uses them.
   --only                 Dismiss the report the ID names alone, leaving the reports merged with it live (dismiss).
   --from <source>        Where to import external findings from; repeat it for several (compare). records relay
                          takes one, the directory store its round wrote.

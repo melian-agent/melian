@@ -27,6 +27,10 @@ const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 const melian = (input: Partial<FindingInput> = {}) =>
 	Finding.create({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
 
+// A review thread's finding, by its node ID.
+const thread = (node: string, input: Partial<ExternalFindingInput> = {}) =>
+	external({ source: { kind: "thread", thread: node, url: `https://github.com/o/r/pull/7#${node}` }, ...input });
+
 let position = 0;
 function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
 	return ExternalFinding.create({
@@ -1898,8 +1902,8 @@ describe("Comparison misses", () => {
 		]);
 	});
 
-	it("exports no miss a later round matched", () => {
-		const missed = external();
+	it("exports no miss a later round matched through the same review thread", () => {
+		const missed = thread("T1", { line: 12 });
 		const first = compared({ externals: [missed], findings: [] });
 		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
 		const second = compared({ externals: [missed], findings: [melian()] });
@@ -1915,8 +1919,75 @@ describe("Comparison misses", () => {
 		expect(exported).toEqual({ cases: [], skipped: [] });
 	});
 
-	it("exports the same misses whichever side of the rounds an unattributed comparison sits, and names each finding it cannot order", () => {
-		const conflicted = external();
+	it("keeps each round's miss on a file's reused ref, since a file reviewer may reuse a ref for another defect", () => {
+		const one = external({ line: 12, source: { kind: "file", path: "codex.json", position: 0, ref: "A1" } });
+		const other = external({
+			line: 90,
+			title: "another defect",
+			source: { kind: "file", path: "codex.json", position: 0, ref: "A1" },
+		});
+		expect(other.id).toBe(one.id);
+		const first = compared({ externals: [one], findings: [] });
+		first.adjudicate(one.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [other], findings: [] });
+		second.adjudicate(other.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone", exportedMissReasons);
+		const at = (name: string, line: number) => ({
+			name,
+			repo: "/clone",
+			base: revision.base,
+			head: revision.head,
+			file: "src/run.ts",
+			lines: [line, line],
+		});
+		expect(exported).toEqual({
+			cases: [at(`pull-7.r1-${one.id}`, 12), at(`pull-7.r2-${one.id}`, 90)],
+			skipped: [],
+		});
+	});
+
+	it("exports one miss for a defect two threads reported once a later round compares one of them alone", () => {
+		const a = thread("A", { line: 12, endLine: 14 });
+		const b = thread("B", { reviewer: { name: "human" }, line: 13 });
+		const first = compared({ externals: [a, b], findings: [] });
+		first.adjudicate(a.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		first.adjudicate(b.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [b], findings: [] });
+		second.adjudicate(b.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const third = compared({ externals: [b], findings: [] });
+		third.adjudicate(b.id, { ...by, verdict: "noise" });
+		const rounds = [
+			{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+			{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			{ changeset: "pull-7", round: "pull-7.r3", comparison: third },
+		];
+		expect(new ComparisonExport(rounds.slice(0, 2), "#7").misses("/clone", exportedMissReasons)).toEqual({
+			cases: [
+				{
+					name: `pull-7-${b.id}`,
+					repo: "/clone",
+					base: revision.base,
+					head: revision.head,
+					file: "src/run.ts",
+					lines: [13, 13],
+				},
+			],
+			skipped: [],
+		});
+		expect(new ComparisonExport(rounds, "#7").misses("/clone", exportedMissReasons)).toEqual({
+			cases: [],
+			skipped: [],
+		});
+	});
+
+	it("exports the same misses whichever side of the rounds an unattributed comparison sits, and names each thread it cannot order", () => {
+		const conflicted = thread("T1");
 		const alone = external({ line: 130 });
 		const attributed = compared({ externals: [conflicted], findings: [melian()] });
 		attributed.adjudicate(conflicted.id, { ...by, verdict: "valid" });
@@ -1947,8 +2018,8 @@ describe("Comparison misses", () => {
 		expect(new ComparisonExport([legacy, round], "#7").misses("/clone", exportedMissReasons)).toEqual(expected);
 	});
 
-	it("exports each miss as a case of the measurement tool, keeping a finding compared again from its last round", () => {
-		const missed = external({ line: 90 });
+	it("exports each miss as a case of the measurement tool, keeping a thread compared again from its last round", () => {
+		const missed = thread("T1", { line: 90 });
 		const skipped = external({ file: undefined, line: undefined });
 		const first = compared({ externals: [missed, skipped], findings: [] });
 		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });

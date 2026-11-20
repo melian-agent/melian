@@ -68,40 +68,70 @@ export class ComparisonExport {
 
 	/**
 	 * Every valid miss with one of `reasons` of the comparisons, in the shape the measurement tool's misses file takes, `{ name, repo, base,
-	 * head, file, lines }`, with each miss that names no lines at its compared head beside them and why. A finding
-	 * compared in several rounds is kept from the last. A finding an unattributed comparison shares with another is
-	 * left out with its reason, since no order places that comparison among the rounds. `repo` is the clone the misses are
-	 * reviewed in again.
+	 * head, file, lines }`, with each miss that names no lines at its compared head beside them and why. A later round
+	 * replaces an earlier round's miss only through a review thread: when it compares any thread the earlier miss's
+	 * defect held, the earlier miss leaves, and the later round's own miss, if any, stands for the defect. A finding read
+	 * from a reviewer's file has no identity a later file keeps, since a reviewer may reuse a ref for another defect, so
+	 * its miss stays with its round: a withdrawn file miss stays, and a defect a file reviewer reports again appears once
+	 * per round, named by its round when another round's miss shares its ID. A thread an unattributed comparison shares
+	 * with another is left out with its reason, since no order places that comparison among the rounds. `repo` is the
+	 * clone the misses are reviewed in again.
 	 */
 	misses(repo: string, reasons: readonly ExportedMissReason[]): MissesExport {
-		const latest = new Map<string, { readonly entry: ComparisonEntry; readonly miss: ComparisonMiss }>();
-		// An unattributed comparison has no place among the rounds, so a finding it shares with another is never ordered.
+		type Kept = {
+			readonly entry: ComparisonEntry;
+			readonly index: number;
+			readonly miss: ComparisonMiss;
+			readonly threads: ReadonlySet<string>;
+		};
+		// A thread is the one source whose ID names the same report in every round, so only threads order rounds.
+		const threadsOf = (entry: ComparisonEntry) =>
+			entry.comparison.groups().map((group) => ({
+				members: group.external.map(({ id }) => id),
+				threads: new Set(group.external.filter(({ source }) => source.kind === "thread").map(({ id }) => id)),
+			}));
 		const comparedIn = new Map<string, { changeset: string; unattributed: boolean; count: number }>();
-		for (const entry of this.entries) {
-			for (const group of entry.comparison.groups())
-				for (const finding of group.external) {
-					latest.delete(finding.id);
-					const seen = comparedIn.get(finding.id) ?? { unattributed: false, count: 0 };
-					comparedIn.set(finding.id, {
+		for (const entry of this.entries)
+			for (const { threads } of threadsOf(entry))
+				for (const thread of threads) {
+					const seen = comparedIn.get(thread) ?? { unattributed: false, count: 0 };
+					comparedIn.set(thread, {
 						changeset: entry.changeset,
 						unattributed: seen.unattributed || entry.unattributed !== undefined,
 						count: seen.count + 1,
 					});
 				}
-			for (const miss of entry.comparison.misses(reasons)) latest.set(miss.id, { entry, miss });
-		}
-		const cases: MissCase[] = [];
-		const skipped: { readonly name: string; readonly reason: string }[] = [];
-		for (const [id, { changeset, unattributed, count }] of comparedIn)
-			if (unattributed && count > 1) {
-				latest.delete(id);
-				skipped.push({
-					name: `${changeset}-${id}`,
-					reason: "was compared in an unattributed comparison and in another, so which came last is unknown",
-				});
+		const unordered = new Set(
+			[...comparedIn].filter(([, { unattributed, count }]) => unattributed && count > 1).map(([thread]) => thread),
+		);
+		const meets = (threads: ReadonlySet<string>, others: ReadonlySet<string>) =>
+			[...threads].some((thread) => others.has(thread));
+		let kept: Kept[] = [];
+		this.entries.forEach((entry, index) => {
+			const groups = threadsOf(entry);
+			const compared = new Set(groups.flatMap(({ threads }) => [...threads]));
+			kept = kept.filter(({ threads }) => !meets(threads, compared));
+			for (const miss of entry.comparison.misses(reasons)) {
+				const threads = groups.find(({ members }) => members.includes(miss.id))?.threads ?? new Set<string>();
+				kept.push({ entry, index, miss, threads });
 			}
-		for (const { entry, miss } of latest.values()) {
-			const name = `${entry.changeset}-${miss.id}`;
+		});
+		const skipped: { readonly name: string; readonly reason: string }[] = [];
+		for (const thread of unordered)
+			skipped.push({
+				name: `${comparedIn.get(thread)!.changeset}-${thread}`,
+				reason: "was compared in an unattributed comparison and in another, so which came last is unknown",
+			});
+		kept = kept.filter(({ threads }) => !meets(threads, unordered));
+		const named = new Map<string, number>();
+		for (const { entry, miss } of kept)
+			named.set(`${entry.changeset}-${miss.id}`, (named.get(`${entry.changeset}-${miss.id}`) ?? 0) + 1);
+		const cases: MissCase[] = [];
+		for (const { entry, index, miss } of kept) {
+			const name =
+				named.get(`${entry.changeset}-${miss.id}`)! > 1
+					? `${entry.round ?? `${entry.changeset}.${index + 1}`}-${miss.id}`
+					: `${entry.changeset}-${miss.id}`;
 			if ("skipped" in miss) skipped.push({ name, reason: miss.skipped });
 			else
 				cases.push({
