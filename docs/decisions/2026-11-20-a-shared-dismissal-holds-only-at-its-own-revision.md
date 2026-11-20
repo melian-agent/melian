@@ -1,7 +1,7 @@
 # A shared dismissal holds only at the revision it was made at
 
 Supersedes: [the decision that a dismissal record names the rounds its writer held](2026-11-19-a-dismissal-record-names-the-rounds-its-writer-held.md)
-Amends: [the decision that a shared reader remembers the hunks cited since a dismissal](2026-11-18-a-shared-reader-remembers-every-cited-hunk.md), everything but its rule that a round names the store's frontier in `before`
+Amends: [the decision that a shared reader remembers the hunks cited since a dismissal](2026-11-18-a-shared-reader-remembers-every-cited-hunk.md), everything but its rule that a store which cannot be listed fails the review before any round is written, its two rulings of 2026-11-18 included: that a round names the store's frontier in `before`, and that a reader which cannot trace the chain counts the dismissal as nothing
 Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 7's reopen from every sighting in the set, with each revision's proving hunks from git, and its late round of an older revision; and rule 7's "the record reaches the store with the host's next add", for a dismissal made with no store; and rule 9's inheritance the reader computes from the dismissal records and git
 Amends: [the decision that a dismissal record is written once](2026-11-18-a-dismissal-record-is-written-once.md), "A dismissal made with no store gets its record at the next review that exports", and "When the store fails", as a reader of shared records now reads that window
 Amends: [the decision that a dismissal carries to a restatement](2026-11-08-dismissal-carries-to-restatement.md), inheritance in a reader of shared records
@@ -45,7 +45,13 @@ These clauses of the superseded frontier decision stand:
 - A dismissal made with no store gets no record. A review names it as unshared, under the code `madeWithoutStore`, and `melian dismiss` says so; to share it, dismiss it again with `--records`. The verification request's key still names such a dismissal, by the ID its record would have with no frontier and no `supersedes`.
 - A record found in the store for a dismissal made again is the one the store holds, whatever its frontier.
 
-A round still names in `before` the rounds of its host's previous revision, joined with the store's frontier, and a store that cannot be listed still fails the review before any round is written, as the shared-reader decision says. `before` now serves only to find the frontier's ancestors.
+## A round's `before`
+
+The maintainer ruled on 2026-11-20, in the coordinator's session, to drop [issue #611](https://github.com/melian-agent/melian/issues/611), the job that would have named a round's predecessors for the `melian round` workflow. That retires the shared-reader decision's two rulings of 2026-11-18 on the chain. Its first ruling made a round name the store's frontier in `before`, so a reader could walk back to the dismissal's revision. Its second made a reader that could not walk that far count the dismissal as nothing. Neither is needed now. A dismissal's own `frontier` names every round its writer's store listing held, and the reader tests every round of the changeset outside it.
+
+The writer is unchanged. On every host, with local history or without, `predecessors` in `packages/pipeline/src/review.ts` names in `before` the rounds of the revision that host reviewed before, joined with every round of another revision in the store's listing that no such round names. A store that cannot be listed still fails the review before any round is written. The record relay still refuses a round whose `before` is not empty.
+
+The reader still reads `before`, in `roundsSince`, for two things. It counts as held every round a frontier round names, back along each `before`. Against a frontier that `melian dismiss` writes from one store, that adds nothing, since the listing already holds every such round; it decides only when the listing held a round but not one it names, as a store synced in part would. And a round since that names a round neither the set nor the writer held leaves the finding live, since what that round cited is unknown. That replaces the cut chain: a reader no longer needs to reach the dismissal's revision, only to know every round outside the frontier.
 
 ## What goes
 

@@ -25,3 +25,9 @@ Inheritance at one revision could not come from the verification record alone. T
 ## The store's failure window, under the new reader
 
 No code changed. The one-revision decision now restates the written-once decision's gap: when a record reaches the store and the host records nothing, a reader of a round at the dismissed revision reads the finding dismissed, while the writing host blocks until `melian dismiss` runs again. A round at another revision ends it for the reader too.
+
+## A round's `before`, after issue #611
+
+The maintainer dropped [issue #611](https://github.com/melian-agent/melian/issues/611) on 2026-11-20, in the coordinator's session. The one-revision decision now amends the shared-reader decision's two rulings of 2026-11-18 on the chain, and says what replaced them. The writer still names in `before` the host's previous revision's rounds, joined with the store's frontier, on every host. The relay still refuses a round with a non-empty `before`. No field was removed.
+
+The reader still reads `before`, and two mutants show it. Removing its walk back from the frontier fails four `recorded-round.test.ts` tests, each with a frontier that names a round but not the round before it. Removing the check that a round since follows only known rounds fails "leaves a finding live past a round since that follows a round neither the set nor the writer held". The file was restored after each run.
