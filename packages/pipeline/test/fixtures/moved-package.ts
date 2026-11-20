@@ -3,11 +3,8 @@ import { readFileSync, realpathSync } from "node:fs";
 import { findPackageJSON } from "node:module";
 import { vi } from "vitest";
 
-/**
- * Runs `build` with `name`'s installed manifest reading as one that names `version`, at the place it is installed, so
- * the code under test reads an install where only that package's release moved. Modules are reloaded inside, so
- * `build` imports what it tests itself.
- */
+// The manifest moves its release at the place it is installed, so only the release moves. `build` imports what it
+// tests itself, since modules are reloaded inside.
 export async function withMovedPackage<T>(name: string, version: string, build: () => Promise<T>): Promise<T> {
 	const found = findPackageJSON(name, import.meta.url);
 	if (found === undefined) throw new Error(`${name} is not installed`);
