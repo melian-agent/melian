@@ -45,3 +45,9 @@ The merge of `main` at f9862b6f brought core's closed payload schemas. The expec
 - The checked records stay writable until the upload. The decision on the `record` job now says why nothing can write them: the head's code runs only in the probe sandbox, and Biome and tsc run no head code.
 
 A coordinator's question asked whether the push still finds `gh auth setup-git`'s credential helper. Two tests in `packages/cli/test/relay.test.ts` push to an HTTP origin that demands a credential, with and without the helper in `$HOME/.gitconfig`. The positive test fails when state-git sets `GIT_CONFIG_GLOBAL=/dev/null` or passes `-c credential.helper=`. Both pass on a merge with pull request #592's head, ee37b1f7.
+
+## After main moves past the approved base
+
+Melian's round at 01ed40f1 found that the relay refused once `main` moved on from the base the gate approved, so a merge during a round lost the round's records. 91b1041c adds `checkApproved`, one guard for the relay and the round job's `--check`, and reads policy from the approved base. [The decision](../decisions/2026-11-18-round-records-relay-after-main-moves.md#which-base-the-relay-checks-and-whose-policy-it-reads) says why that commit and not the tip.
+
+The tests in `packages/cli/test/relay.test.ts` failed before the fix with "pull request #7 is at base … not the expected base … so nothing was relayed", and passed after it. An agent briefed with the cases alone wrote `packages/cli/test/relay-approved.test.ts` against a stub that always throws: 4 of its 13 tests failed there, the cases that should relay, and all 13 pass against the guard.

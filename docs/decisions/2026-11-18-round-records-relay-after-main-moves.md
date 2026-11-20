@@ -31,3 +31,18 @@ Two more tools touch the head's files outside the sandbox: Biome and tsc on the 
 A process that could write there unconfined would leak through `$RUNNER_TEMP/public` as well, which the same job uploads under `always()`. So the records artefact adds no channel. An archive written by the check would not help, since any process of the same user could rewrite it too. The maintainer's read of the finding is pending.
 
 The relay reads each record file by its path after it lists the store, so a writer working alongside it could swap a file, or a folder above it, for a link between the two. Melian's round at 01ed40f1 raised this. No such writer runs in either job. The record job runs no head code, and download-artifact has finished before the relay step starts. In the round job, the check is the case above: the head's code runs only inside the probe sandbox. Refusing a link on the final open alone would leave a folder higher up open to a swap, and Node has no `openat`, so a full fix would need a reader that walks descriptors, against a writer that does not exist. The maintainer's read of this finding is pending with the one above.
+
+## Which base the relay checks, and whose policy it reads
+
+The gate passes the base and head it approved as `--expect-base` and `--expect-head`. The relay required the pull request's base to still be `--expect-base`, so once `main` moved during a round, the relay refused and the round's records were lost. Melian's round at 01ed40f1 found it. The maintainer's ruling of 2026-11-18, that a merge during a round keeps its records, decides the fix; the coordinator approved this form.
+
+The relay and the round job's `--check` call one guard, `checkApproved` in `packages/cli/src/target.ts`, so the two cannot disagree. It refuses unless all of these hold:
+
+- Both approved values are whole commit IDs. A branch name such as `main` would resolve to the tip, and the relay would then read the tip's policy.
+- The pull request's head, and the revision Melian fetched, are the approved head. A head that moved, was force-moved or was rebased names records no round produced.
+- The approved base is in the history of the pull request's base. A base rewritten without it, or retargeted to a branch that lacks it, no longer describes the round.
+- The revision diffs from the merge base that the approved base and head share. When `main` takes one of the head's commits, the merge base moves, and so does the diff, though the head and the base's history still hold.
+
+The relay reads policy, `trust.writers` and the tier from the approved base, not from the base's tip. The approved base is the commit the round's review read. The relay must judge the records under the policy that produced them. A later `main` might trust writers the round did not, or select another tier, and neither should decide records made before it.
+
+Two cases pass on purpose. A base retargeted to another branch that still holds the approved base relays, because the diff and the policy the round read are unchanged. An approved base older than the tip, but no older than the merge base, relays under its own policy. That rests on the gate passing the base it really approved, and a writer can push to `melian/state` directly in any case.
