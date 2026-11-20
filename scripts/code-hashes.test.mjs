@@ -177,6 +177,7 @@ describe("the command", () => {
 		symlinkSync(join(root, "node_modules"), join(repo, "node_modules"));
 		write("scripts/code-hashes.mjs", readFileSync(join(root, "scripts/code-hashes.mjs"), "utf8"));
 		write("packages/pipeline/src/adjudication.ts", 'import { a } from "./a.ts";\nexport const n = a;\n');
+		write("packages/pipeline/src/checks.ts", "export const checks = 1;\n");
 		write("packages/pipeline/src/a.ts", "export const a = 1;\n");
 	});
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
@@ -232,6 +233,7 @@ describe("the command's formatting", () => {
 		writeFileSync(join(repo, "scripts/code-hashes.mjs"), readFileSync(join(root, "scripts/code-hashes.mjs"), "utf8"));
 		mkdirSync(join(repo, "packages/pipeline/src"), { recursive: true });
 		writeFileSync(join(repo, "packages/pipeline/src/adjudication.ts"), "export const n = 1;\n");
+		writeFileSync(join(repo, "packages/pipeline/src/checks.ts"), "export const checks = 1;\n");
 	});
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
 	const write = (exit) =>

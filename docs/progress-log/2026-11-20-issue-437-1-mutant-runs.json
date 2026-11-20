@@ -1,0 +1,578 @@
+{
+	"head": "5044bbd2cbea04c39f31f1f533675c9b67812358",
+	"note": "Each mutant ran against its named test alone, after that test passed on the unmutated head. The test for a code in a list was in the working tree, as committed at this head.",
+	"baselines": {
+		"V2": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves static.biome from version 2 of its check, and not from version 1"
+			]
+		},
+		"HASH": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+			]
+		},
+		"LENSCODE": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from another producer's request that keys a code"
+			]
+		},
+		"NOFIXED": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing for a check that has no fixed-text version"
+			]
+		},
+		"NUM": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from a code that is a number"
+			]
+		},
+		"SHORT": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from a code one digit short"
+			]
+		},
+		"LIST": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from a code in a list, which a pattern reads as its text"
+			]
+		},
+		"NOCHECKS": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from a request with no checks"
+			]
+		},
+		"TEXT": {
+			"file": "packages/pipeline/test/check-request.test.ts",
+			"path": [
+				"writesFixedText",
+				"proves nothing from a request that names the check's version as text"
+			]
+		},
+		"HASHES": {
+			"file": "scripts/code-hashes.test.mjs",
+			"path": [
+				"the recorded code hashes",
+				"match what each producer reaches now"
+			]
+		}
+	},
+	"runs": [
+		{
+			"id": "3b97d8999b48921586520b12e507f1628fa778e0ae1f31cf5421d5ee7711c617",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "asked.producer !== \"check\" || since === undefined"
+		},
+		{
+			"id": "0022b20221817c82e3df25fa3d839091c864fc5fad09b9effd6ec703af1174b0",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from another producer's request that keys a code"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "asked.producer !== \"check\" || since === undefined"
+		},
+		{
+			"id": "e6d0e997e912c20b5edb90a403c17678b1085d88b4d2889a041122324c9d2b6b",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 5,
+			"mutatorName": "LogicalOperator",
+			"replacement": "asked.producer !== \"check\" && since === undefined",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from another producer's request that keys a code"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "asked.producer !== \"check\" || since === undefined"
+		},
+		{
+			"id": "08513535b1c4e81056d5f729d27a9311bb909ee74e8932af1256f64c6ec454d1",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from another producer's request that keys a code"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "asked.producer !== \"check\""
+		},
+		{
+			"id": "f67cb22f5dd0cea8b783cfeaf6185c395e505890d9871e8f52ca49860b28d067",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 5,
+			"mutatorName": "EqualityOperator",
+			"replacement": "asked.producer === \"check\"",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "asked.producer !== \"check\""
+		},
+		{
+			"id": "2b57be3dfe95f35703fb95c6fc611d356c91d078ac09db372cb5f4ac9d3f0d0e",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing for a check that has no fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "since === undefined"
+		},
+		{
+			"id": "b4ab6f5385cb64a463a966fbea76d556c7a9a9459ebed6f79fb8bfa83fecdc8a",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "since !== undefined",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "since === undefined"
+		},
+		{
+			"id": "14fc32badc0e8a13eb36943f5990ea7d11dc8e5b51389d96979427590279ab54",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 87,
+			"column": 63,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from another producer's request that keys a code"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "false"
+		},
+		{
+			"id": "ff3c93edfef8146b7c10851e06ec77ee0664bb31dd3d8cd6c83e901c7445ae7c",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "Object.hasOwn(request, \"code\")"
+		},
+		{
+			"id": "a324148ca33f34e910d124e1020f40839adfc1843d1115b3470c0d5d1b3f926c",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "Object.hasOwn(request, \"code\")"
+		},
+		{
+			"id": "6c290b86720d98fd5e21eaff035e10fc309b4ceee1d252aa1c6e2c58ac900048",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a code that is a number"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof request.code === \"string\" && codeHash.test(request.code)"
+		},
+		{
+			"id": "ead408672d9bfef4864c37c133813dd9a8e7c89d5e8a7d2817d3a5e56f4342b3",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof request.code === \"string\" && codeHash.test(request.code)"
+		},
+		{
+			"id": "6cb09230975ac925053050ed3ea3c0e50c10b32f0c7d7ffa03778d42d86f4697",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "typeof request.code === \"string\" || codeHash.test(request.code)",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a code one digit short"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof request.code === \"string\" && codeHash.test(request.code)"
+		},
+		{
+			"id": "a285323a7da0d18a0bf3ae8d15b2af44ed761ee001d8209a9d80f5072858de9b",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a code in a list, which a pattern reads as its text"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof request.code === \"string\""
+		},
+		{
+			"id": "f46874e041a511b0f04e80f2a2b1e1bbc6d28a2bebb865af9a8ea2de6c0a8d36",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 89,
+			"column": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof request.code !== \"string\"",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from a request that keys the checks' code by hash, which came after every fixed-text version"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof request.code === \"string\""
+		},
+		{
+			"id": "c34ded11783dce35fef39db0f7c05341bdbc029822c512d00fe64194d05c968a",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 8,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a request with no checks"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof version === \"number\" && version >= since"
+		},
+		{
+			"id": "8b2eaa960c38d55f3e195ad6fe140f211e4e4af20e73ac95a4340b3ea66745fd",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 8,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof version === \"number\" && version >= since"
+		},
+		{
+			"id": "7ea7590c80f4b59c6ce6adffbe09c2b5898b4e240b55f7caf5695bc7e881201d",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 8,
+			"mutatorName": "LogicalOperator",
+			"replacement": "typeof version === \"number\" || version >= since",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a request that names the check's version as text"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof version === \"number\" && version >= since"
+		},
+		{
+			"id": "57a4481cadabaafc301d05b4be27dc4affddc08dbe1c3a0f07c96407dafabb46",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 8,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves nothing from a request that names the check's version as text"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof version === \"number\""
+		},
+		{
+			"id": "9d53e791ad100801d972abc30612106133bd219c278d430470e256ae3bbdf7af",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 8,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof version !== \"number\"",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "typeof version === \"number\""
+		},
+		{
+			"id": "989f5076cab4816b541b48b0c69674fb6ab7a76dc833728237ca51846bcdaf95",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "version >= since"
+		},
+		{
+			"id": "9e2338fc9dcd51ffd572c50085623738ef3061d1c647b713d8402151b9c06f14",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version > since",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "version >= since"
+		},
+		{
+			"id": "6affe77bd6c017895dc99cc089ade779e7212bbd3fa4583abe602ae27e04a199",
+			"file": "packages/pipeline/src/check-request.ts",
+			"line": 93,
+			"column": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version < since",
+			"test": {
+				"file": "packages/pipeline/test/check-request.test.ts",
+				"path": [
+					"writesFixedText",
+					"proves static.biome from version 2 of its check, and not from version 1"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "version >= since"
+		},
+		{
+			"id": "709df4744d4578447b0d78d6e7541c034c4c2533ebf3e57683a4ea45696c14cc",
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 466,
+			"column": 9,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"test": {
+				"file": "scripts/code-hashes.test.mjs",
+				"path": [
+					"the recorded code hashes",
+					"match what each producer reaches now"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "[\n\t\t\"packages/core/src/adjudication.ts\",\n\n\t\t\"packages/core/src/analyser.ts\",\n\n\t\t"
+		},
+		{
+			"id": "eaf8841d96e9ff213ec6f2b673a9fafcfbfb41def5c0d246bd91dedb96a030f9",
+			"file": "scripts/code-hashes.mjs",
+			"line": 15,
+			"column": 25,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "scripts/code-hashes.test.mjs",
+				"path": [
+					"the recorded code hashes",
+					"match what each producer reaches now"
+				]
+			},
+			"outcome": "killed",
+			"statuses": [
+				"failed"
+			],
+			"original": "{\n\tadjudication: \"packages/pipeline/src/adjudication.ts\",\n\tchecks: \"packages/pip"
+		}
+	]
+}
