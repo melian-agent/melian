@@ -12,6 +12,9 @@ function bytes(value: unknown): number {
 	return Buffer.byteLength(canonicalJson(value));
 }
 
+const tooLarge =
+	"The change has too many guardrails findings to record within the store's 4 MiB limit, even with their detail left out.";
+
 function note(files: number): string {
 	const [file, those] = files === 1 ? ["file", "that file"] : ["files", "those files"];
 	return `Melian left out the detail for ${files} more ${file} to keep this record under its limit; \`git diff\` shows ${those}.`;
@@ -36,6 +39,9 @@ export class SightingBudget {
 	 * keeps its detail wherever it falls, so no finding grows. The same findings always give the same result, and no ID,
 	 * severity or resolution changes. Findings whose canonical JSON core cannot write are returned unchanged, and the
 	 * store refuses their record as it always has.
+	 *
+	 * @throws {RecordError} `recordTooLarge` when even every finding abridged passes the budget, so the check fails
+	 * closed.
 	 */
 	fit(findings: readonly Finding[]): Finding[] {
 		const ordered = [...findings].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
@@ -70,9 +76,10 @@ export class SightingBudget {
 		const total = (cut: number) =>
 			2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! + shrinking[cut]! * note(files[cut]!).length;
 		if (total(count) <= this.bytes) return [...findings];
+		// The message names no finding's text, since a failed check's error reaches the shared record.
+		if (total(0) > this.bytes) throw new RecordError("recordTooLarge", tooLarge);
 		let cut = 0;
 		while (cut < count && total(cut + 1) <= this.bytes) cut++;
-		// When even every finding abridged passes the budget, they stay abridged: issue #605's pending ruling decides the rest.
 		const shortened = new Map(
 			ordered
 				.slice(cut)

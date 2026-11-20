@@ -38,7 +38,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/enola.ts": "1e9265cd95cdfb8909288a385e5e6868ff720ec4dd365cd61de124e2bf4e4e0e",
 
-	"packages/core/src/errors.ts": "949b9cb0a50566c4c946b1cb5cd4b85c6deb3650e1073a4c2e9cda4001a57e31",
+	"packages/core/src/errors.ts": "b4606a1f9443ec9b4bd6827cb4a643bc69475987fbef039e0eb91a15b18d4a15",
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
@@ -102,7 +102,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
 
-	"packages/core/src/sighting-budget.ts": "bae3d9336aa62be0ab5717718b7e2043c368dd3d4b7cade6870f7853c88c22bd",
+	"packages/core/src/sighting-budget.ts": "6c60d23e297f46c2c49877caffee5bbfc4c7d64bc920c8e690ac033ecb6e9f87",
 
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 

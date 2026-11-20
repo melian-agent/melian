@@ -4,6 +4,7 @@ import {
 	defaultConfig,
 	envelopeAllowance,
 	Finding,
+	RecordError,
 	recordLimit,
 	SightingBudget,
 	snippetHash,
@@ -171,7 +172,7 @@ describe("a record's sighting budget", () => {
 		);
 	});
 
-	it("abridges every finding at its floor", () => {
+	it("abridges every finding at its floor, and refuses them a byte under it", () => {
 		const lowest = floor(findings);
 		const fitted = new SightingBudget(lowest).fit(findings);
 		expect(bytes(fitted)).toBe(lowest);
@@ -180,6 +181,21 @@ describe("a record's sighting budget", () => {
 			new Set([note(findings.length)]),
 		);
 		expect(kept(fitted)).toEqual(kept(findings));
+		const error = refusal(lowest - 1, findings);
+		expect(error).toBeInstanceOf(RecordError);
+		expect(error).toMatchObject({
+			code: "recordTooLarge",
+			message:
+				"The change has too many guardrails findings to record within the store's 4 MiB limit, even with their detail left out.",
+		});
+	});
+
+	it("refuses one finding whose headline alone is past the budget, naming none of its text", () => {
+		const huge = notice(0, { message: `Review ${"m".repeat(5 * 1024 * 1024)}` });
+		const error = refusal(SightingBudget.checkRecord.bytes, [huge]);
+		expect(error).toBeInstanceOf(RecordError);
+		expect((error as RecordError).code).toBe("recordTooLarge");
+		expect((error as RecordError).message).not.toContain("m".repeat(20));
 	});
 
 	it("abridges one finding whose What alone is past the budget, and it fits", () => {
