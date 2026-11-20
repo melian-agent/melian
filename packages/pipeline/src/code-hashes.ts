@@ -158,7 +158,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/errors.ts": "62f87457efc1a4a2cae468ee9cfc08991a42d6e9789960ae3da799ace7f3437f",
 
-	"packages/pipeline/src/findings.ts": "8ba7ba7854e679f19364b3fb9e609aa2771302f0bdb4c1c43db5757f9ebeb2c6",
+	"packages/pipeline/src/findings.ts": "b42e3492a37248c74744edf4c6fe1852c14454d232a19af4be39756f03c0ca9f",
 
 	"packages/pipeline/src/graph-cache.ts": "e1e730c5a1f86852d9159f67664b36abc5fc69fad4c9bf56595e99289d194039",
 

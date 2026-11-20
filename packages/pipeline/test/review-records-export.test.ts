@@ -719,6 +719,38 @@ describe("a review that names a record store after a dismissal", () => {
 		expect(made.unshared).toEqual([]);
 		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
 	});
+
+	it("shares a dismissal made again with the same reason after a push, at the pushed revision", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const pushed = await review(store);
+		const revision = Revision.key(pushed.changeset.revision);
+		const contentsAt = (held: RecordEnvelope[]) =>
+			RecordedRound.of(
+				held,
+				SharedRecord.parseEnvelope(
+					held.filter((each) => each.kind === "round" && each.revision === revision).at(-1)!,
+				).id,
+				everyRecordCounts,
+			).contents(pushed.changeset.revision) as RecordedRoundContents;
+		expect(contentsAt(await store.list(pushed.changeset.id)).ended).toHaveLength(1);
+
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: pushed.changeset.revision,
+			id,
+			dismissal: { ...dismissal, at: "2026-11-18T00:00:00.000Z" },
+			records: { store, changeset: pushed.changeset.id },
+		});
+
+		const contents = contentsAt(await store.list(pushed.changeset.id));
+		expect({ dismissals: contents.dismissals.map((each) => each.finding), ended: contents.ended }).toEqual({
+			dismissals: [id],
+			ended: [],
+		});
+	});
 });
 
 describe("a review that names a record store, when building a dismissal's record fails", () => {
