@@ -3,7 +3,7 @@ name: trust-boundary-probes
 extends: trust-boundary
 emoji: "\U0001F52C"
 levels:
-  quick: { budget: { tokens: 1m } }
+  quick: { budget: { tokens: 1m, tools: 30 } }
   deep: { probe: { prober: medium }, budget: { tokens: 3m, tools: 90 } }
 budget: { findings: 8, tokens: 3m, tools: 90 }
 standards: false
