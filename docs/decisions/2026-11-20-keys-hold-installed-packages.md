@@ -8,7 +8,9 @@ Amends: [A lens run offered `list_mutants` keys the instrumenter that answers it
 
 Amends: [A lens run is reused by its request key, one lens at a time](2026-11-15-lens-runs-reused-per-request.md), whose key held the versions of Pi Durable and pi-ai alone
 
-Status: the coordinator chose this design on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470), after reviews found a new collision in each earlier form: one digest over the whole install, a fixed entry and a flag for an install Melian cannot identify, and the bound. Those are the coordinator's choices, not a maintainer's ruling.
+Amends: [Review attachment](2026-10-03-review-attachment.md), "a repeat call attaches, never duplicates", on an install Melian cannot identify, where a review does not resume its own interrupted lens task, so a crash there costs a full rerun of every lens
+
+Status: the coordinator chose this design on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470), after reviews found a new collision in each earlier form: one digest over the whole install, a fixed entry and a flag for an install Melian cannot identify, and the bound. Those are the coordinator's choices, not a maintainer's ruling. The maintainer confirmed the whole-install key on 2026-11-21, in the coordinator's session, and agreed there that a review on an unidentified install does not resume its own interrupted lens task.
 
 ## Problem
 
@@ -93,7 +95,7 @@ A module in an installed package, a pnpm store's package, or a workspace package
 The flag gates reuse where a key is looked up, as `checkReusable` already does for an unread policy and an unidentified checkout install, by [the request-key decision](2026-11-14-request-keys-as-built.md). Three places carry it. Each has a test that two reviews on the same unidentified install share a key and reuse nothing:
 
 1. **Checks.** The check request stores `packages` as `{ digest, identified }`, and `checkReusable` requires both install flags to be exactly `true`. A request stored with `packages` as a bare digest, or none, is not keyed fully. Tests in `check-request.test.ts` and `static-proof.test.ts`.
-2. **Lenses.** `runLenses` takes `reusable`, false when Melian's install or the instrumenter's is unidentified. It then neither attaches to the stored task nor copies a lens run from another. The lens request holds `identified` beside `packages`, so a review on an identified install never attaches to a run made on an unidentified one with the same digest, which the review of record found the gate alone allowed. Tests in `lens-reuse-review.test.ts`: the second review asks every lens again, and copies none, whichever of the two installs is unidentified.
+2. **Lenses.** `runLenses` takes `reusable`, false when Melian's install or the instrumenter's is unidentified. It then neither attaches to the stored task nor copies a lens run from another. That holds for the review's own task too, so a crash on an unidentified install costs a full rerun of every lens, as the maintainer agreed on 2026-11-21. The lens request holds `identified` beside `packages`, so a review on an identified install never attaches to a run made on an unidentified one with the same digest, which the review of record found the gate alone allowed. Tests in `lens-reuse-review.test.ts`: the second review asks every lens again, and copies none, whichever of the two installs is unidentified.
 3. **Adjudication.** A review and a repeated dismissal attach to the stored adjudication only on an identified install, and the task input holds `identified` beside `packages` for the same reason. Tests in `review.test.ts` and `dismiss.test.ts`, with an unidentified install first and with it second.
 
 `melian doctor` names each place that links out, and each place not laid out as npm lays out an install, on its `packages` line, as a warning.
