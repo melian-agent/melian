@@ -11,6 +11,7 @@ import {
 	type RecordStore,
 	type RoundFacts,
 	type RoundManifest,
+	recordLimit,
 	reviewPayloads,
 	SharedRecord,
 	type TierAccount,
@@ -25,7 +26,7 @@ import {
 export const relayLimits = {
 	entries: 2048,
 	files: 512,
-	fileBytes: 1024 * 1024,
+	fileBytes: recordLimit,
 	bytes: 4 * 1024 * 1024,
 	extras: 64,
 } as const;

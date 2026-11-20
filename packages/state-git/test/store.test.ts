@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { recordLimit } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RecordRepository } from "../src/repository.ts";
 import { cellPath } from "../src/state-tree.ts";
@@ -202,7 +203,6 @@ describe("the entries a write may leave", { timeout: 300_000 }, () => {
 
 describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 	const limit = 256 * 1024 * 1024;
-	const fileLimit = 4 * 1024 * 1024;
 
 	// Reports the blobs it is asked about as `total` bytes in all, raising each, but none past what one file may be.
 	function reportTotal(total: number) {
@@ -214,7 +214,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 			const found = await sizes.apply(this, args);
 			let left = total - [...found.values()].reduce((sum, size) => sum + size, 0);
 			for (const [oid, size] of found) {
-				const more = Math.min(fileLimit - size, left);
+				const more = Math.min(recordLimit - size, left);
 				found.set(oid, size + more);
 				left -= more;
 			}
@@ -249,7 +249,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 	async function fullFiles(count: number) {
 		await (await remote.open()).add(Array.from({ length: count }, (_, n) => check(`r${n}`)));
 		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(
-			async (oids) => new Map(oids.map((oid) => [oid, fileLimit])),
+			async (oids) => new Map(oids.map((oid) => [oid, recordLimit])),
 		);
 		return remote.open();
 	}
@@ -267,7 +267,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 		const tip = remote.tip();
 		await expect(store.add([check("x")])).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state would hold ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; nothing was pushed, and disposing changesets makes room`,
+			message: `melian/state would hold ${65 * recordLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; nothing was pushed, and disposing changesets makes room`,
 		});
 		expect(remote.tip()).toBe(tip);
 	});
@@ -284,7 +284,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 			),
 		});
 		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(
-			async (oids) => new Map(oids.map((oid) => [oid, fileLimit])),
+			async (oids) => new Map(oids.map((oid) => [oid, recordLimit])),
 		);
 		return remote.open();
 	}
@@ -299,7 +299,7 @@ describe("the bytes a tip may hold", { timeout: 60_000 }, () => {
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await expect(store.strays()).rejects.toMatchObject({
 			code: "unreachable",
-			message: `melian/state holds ${65 * fileLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets from the branch with git`,
+			message: `melian/state holds ${65 * recordLimit} bytes of records and cells at its tip, past the store's limit of ${limit}; every call fails, dispose included, until a writer removes changesets from the branch with git`,
 		});
 		expect(blobs).not.toHaveBeenCalled();
 	});

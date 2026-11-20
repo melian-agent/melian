@@ -537,6 +537,7 @@ export {
 	type RecordJson,
 	RecordSet,
 	type RoundManifest,
+	recordLimit,
 	SharedRecord,
 } from "./record.ts";
 export {

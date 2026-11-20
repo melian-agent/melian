@@ -11,12 +11,13 @@ import {
 	type RecordEnvelope,
 	RecordError,
 	type RecordStore,
+	recordLimit,
 	SharedRecord,
 } from "@melian-agent/core";
 import { type Clock, Deadline, systemClock } from "./deadline.ts";
 import type { Processes } from "./owner.ts";
 import { RecordRepository, type Sweep, type TreeChange } from "./repository.ts";
-import { type Cell, cellBytes, cellPath, fileLimit, type Judged, StateTree } from "./state-tree.ts";
+import { type Cell, cellBytes, cellPath, type Judged, StateTree } from "./state-tree.ts";
 
 /** Where a {@link GitRecordStore} keeps its repository and which branch of which remote it holds. */
 export type GitRecordStoreOptions = {
@@ -155,8 +156,8 @@ export class GitRecordStore implements RecordStore {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
 		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads));
 		for (const record of parsed)
-			if (Buffer.byteLength(record.bytes) > fileLimit)
-				throw new RecordError("invalidRecord", `a record is at most ${fileLimit} bytes`);
+			if (Buffer.byteLength(record.bytes) > recordLimit)
+				throw new RecordError("invalidRecord", `a record is at most ${recordLimit} bytes`);
 		if (parsed.length === 0) return;
 		await this.#write((tree) => {
 			for (const changeset of new Set(parsed.map((record) => record.changeset))) {
@@ -188,8 +189,9 @@ export class GitRecordStore implements RecordStore {
 
 	async writeCell(changeset: string, expectedVersion: string | undefined, value: string): Promise<boolean> {
 		checkCellValue(value);
-		if (Buffer.byteLength(cellBytes({ value, version: randomUUID() })) > fileLimit)
-			throw new RecordError("invalidCell", `a cell is at most ${fileLimit} bytes`);
+		// The state tree reads no file past the record limit, so a cell is held to it too.
+		if (Buffer.byteLength(cellBytes({ value, version: randomUUID() })) > recordLimit)
+			throw new RecordError("invalidCell", `a cell is at most ${recordLimit} bytes`);
 		this.#check(changeset);
 		return this.#write((tree) => {
 			tree.refuse(changeset);

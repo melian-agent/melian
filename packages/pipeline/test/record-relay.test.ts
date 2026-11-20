@@ -7,6 +7,7 @@ import {
 	LevelBand,
 	MemoryRecordStore,
 	pullRequestChangesetId,
+	recordLimit,
 	reviewPayloads,
 	SharedRecord,
 	TierAccount,
@@ -564,6 +565,10 @@ describe("RelayBatch", () => {
 			`melian records relay refused the batch: ${past.file} passes the relay's bound of ${relayLimits.entries} entries`,
 		]);
 	}, 120_000);
+
+	it("bounds a file at the store's record limit, so it hands over any record a store keeps", () => {
+		expect(relayLimits.fileBytes).toBe(recordLimit);
+	});
 
 	it("takes a file at its byte bound, and refuses one byte more", async () => {
 		const path = `changesets/${changeset}/check/${"0".repeat(64)}/${"1".repeat(64)}.json`;

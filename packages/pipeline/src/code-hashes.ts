@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "a9032f6043526f3c10f121319962a1de8eb86a154e04292d36d4da855b131e84",
+	"packages/core/src/index.ts": "8186734ee620c4e6ef1d903861ad07d48eac609822d13d3ad0ee4b32f1a978cb",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -88,7 +88,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/record-store.ts": "4c86098bd02ce1931f3f1fe9793aad3b5373cb8982373af4ae8c8be895c4ae57",
 
-	"packages/core/src/record.ts": "e3e235580cb244d14f57629ba97e02efa2d60c42e05211a8d3d523fe6020595e",
+	"packages/core/src/record.ts": "5988022c2ed051164b220ec89e0e66706da60b0b4c3a58fdc2edb55f7592cfc3",
 
 	"packages/core/src/render.ts": "876fe6874e8ffb8c3916775212dfbf76db634f29a5aa2a1c43d018a841af0f2d",
 
