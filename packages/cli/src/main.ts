@@ -15,6 +15,7 @@ import {
 	adjudicateComparison,
 	compare,
 	comparisonBacklog,
+	comparisonEvidence,
 	comparisonStats,
 	exportComparison,
 	exportMisses,
@@ -71,6 +72,12 @@ Commands:
                          Match an external finding with a Melian finding by hand, or keep them apart.
   compare adjudicate <range|#pr> <finding-id> --verdict valid|noise|duplicate [--round <id|unattributed>]
                          Record a local judgement, with --severity, --reason, --golden, --rule, --note, and --of.
+  compare evidence <range|#pr> <external-id> [--round <id>] [--json]
+                         Print the conversations kept when compare adjudicate judged a miss valid: each lens run whose
+                         coverage held its file, and each verifier that judged a lens sighting on its lines. Kept in
+                         the clone alone, never published or exported. When keeping it would pass evidence.budget,
+                         adjudicate writes no evidence file and loses none already kept; melian store prune keeps
+                         <state>/evidence/<changeset>/, so raise evidence.budget until issue #627 builds its prune.
   compare stats [--since <date>|--last <n>]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
   compare backlog [--markdown]
@@ -98,8 +105,8 @@ Commands:
                          removing it frees; --apply removes it. Changeset files are never removed. Exits 0, or 1
                          when a static check is running, which stops prune removing anything, or when the state
                          directory is a link, which prune does not follow.
-  doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, and GitHub
-                         access.
+  doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, GitHub
+                         access, and the evidence directory's size against evidence.budget.
 
 Options:
   --head, --base <sha>   Confirm the merge_group event SHAs (status merge-group).
@@ -120,7 +127,7 @@ Options:
   --probe-gaps <file>    Write each level --require-probes failed, by check, level and cause, to <file> as JSON (review).
   --cold                 Run the mutation check without an earlier head's results; only a cold run can pass the
                          review, so run it before the queue (review).
-  --open, --all, --json  For findings; --json also applies to review, telemetry and probe.
+  --open, --all, --json  For findings; --json also applies to review, telemetry, probe and compare evidence.
   --notes                Show each distinct lens note once (review, findings).
   --round <id>          Read a stored verdict; select a range comparison by ID or unattributed.
   --accept              Accept rejected members (compare refresh only).
@@ -473,6 +480,16 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 						throw error;
 					}
 					return await adjudicateComparison(scoped, target, id, fields, values.round);
+				}
+				if (first === "evidence") {
+					if (others.length !== 2)
+						throw new UsageError("compare evidence takes a range or pull request and an external finding ID");
+					const [target, id] = others as [string, string];
+					if (!/^[0-9a-f]{16}$/.test(id)) throw new UsageError("a finding ID is 16 hex digits");
+					return await comparisonEvidence(scoped, target, id, {
+						json: values.json,
+						...(values.round === undefined ? {} : { round: values.round }),
+					});
 				}
 				if (first === "match" || first === "unmatch") {
 					if (others.length !== 3) {

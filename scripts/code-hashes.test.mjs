@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { moduleHashes, producerModules } from "../packages/pipeline/src/code-hashes.ts";
-import { computeRecord, differences, reachedModules, render } from "./code-hashes.mjs";
+import { computeRecord, differences, producers, reachedModules, render } from "./code-hashes.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
@@ -24,6 +24,12 @@ describe("the recorded code hashes", () => {
 	it("match what each producer reaches now", { timeout: 60_000 }, () => {
 		const found = differences({ moduleHashes, producerModules }, computeRecord());
 		expect(found, `run \`npm run code-hashes\` to record:\n${found.join("\n")}`).toEqual([]);
+	});
+
+	it("keeps a miss's evidence and the telemetry it reads out of the adjudication's reach", { timeout: 60_000 }, () => {
+		const reached = reachedModules(producers.adjudication);
+		for (const module of ["evidence.ts", "telemetry.ts"])
+			expect(reached).not.toContain(`packages/pipeline/src/${module}`);
 	});
 });
 

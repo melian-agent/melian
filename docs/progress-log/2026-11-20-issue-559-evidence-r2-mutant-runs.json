@@ -1,0 +1,863 @@
+{
+	"head": "2874dacabfd5b3837b33ca378771ff784136071a",
+	"file": "packages/pipeline/src/evidence.ts",
+	"unmutated": [
+		{
+			"test": "keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		},
+		{
+			"test": "counts every entry of a conversation with no reply as leading",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		},
+		{
+			"test": "keeps a lens's instructions ahead of twenty large tool results",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		},
+		{
+			"test": "keeps every entry of a conversation at the bound",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		},
+		{
+			"test": "keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		},
+		{
+			"test": "keeps every leading entry of a conversation with no reply at the bound",
+			"collected": 1,
+			"exit": 0,
+			"status": "passed"
+		}
+	],
+	"results": [
+		{
+			"line": 279,
+			"column": 34,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 279,
+			"endColumn": 69,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 280,
+			"column": 18,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 280,
+			"endColumn": 30,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 280,
+			"column": 18,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"counts every entry of a conversation with no reply as leading"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 280,
+			"endColumn": 30,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 280,
+			"column": 18,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found !== -1",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 280,
+			"endColumn": 30,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 280,
+			"column": 28,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"counts every entry of a conversation with no reply as leading"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 280,
+			"endColumn": 30,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 283,
+			"column": 48,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 290,
+			"endColumn": 3,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 284,
+			"column": 16,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 284,
+			"endColumn": 80,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 284,
+			"column": 20,
+			"mutatorName": "MethodExpression",
+			"replacement": "sizes",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 284,
+			"endColumn": 40,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 284,
+			"column": 45,
+			"mutatorName": "MethodExpression",
+			"replacement": "sizes",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 284,
+			"endColumn": 79,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 284,
+			"column": 57,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + tail",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps a lens's instructions ahead of twenty large tool results"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 284,
+			"endColumn": 78,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 286,
+			"column": 4,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "Buffer.byteLength(JSON.stringify({\n  version: 1,\n  stage,\n  entries: [],\n  dropped: entries.length - kept.length\n})) - kept.reduce((sum, size) => sum + size + 1, -1)",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 288,
+			"endColumn": 54,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 287,
+			"column": 20,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 287,
+			"endColumn": 93,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 287,
+			"column": 50,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps every entry of a conversation at the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 287,
+			"endColumn": 52,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 287,
+			"column": 63,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + kept.length",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps every entry of a conversation at the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 287,
+			"endColumn": 91,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 288,
+			"column": 20,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 288,
+			"endColumn": 49,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 288,
+			"column": 35,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "sum + size - 1",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 288,
+			"endColumn": 49,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 288,
+			"column": 35,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "sum - size",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 288,
+			"endColumn": 45,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 288,
+			"column": 51,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps every entry of a conversation at the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 288,
+			"endColumn": 53,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 9,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 58,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 9,
+			"mutatorName": "LogicalOperator",
+			"replacement": "head > 0 || bytes(head, 0) > evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 58,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 9,
+			"mutatorName": "EqualityOperator",
+			"replacement": "head <= 0",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 17,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 58,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, 0) >= evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps every leading entry of a conversation with no reply at the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 58,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, 0) <= evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 292,
+			"endColumn": 58,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 292,
+			"column": 60,
+			"mutatorName": "UpdateOperator",
+			"replacement": "head++",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": true,
+			"collected": null,
+			"exit": null,
+			"endLine": 292,
+			"endColumn": 66,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 293,
+			"column": 13,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + leading",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 293,
+			"endColumn": 37,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 9,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps a lens's instructions ahead of twenty large tool results"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 61,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 9,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tail > 0 || bytes(head, tail) > evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 61,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 9,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tail <= 0",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps a lens's instructions ahead of twenty large tool results"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 17,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 21,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 61,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, tail) >= evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps every entry of a conversation at the bound"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 61,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 21,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, tail) <= evidenceLimits.stage",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 61,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 294,
+			"column": 63,
+			"mutatorName": "UpdateOperator",
+			"replacement": "tail++",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps a lens's instructions ahead of twenty large tool results"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 294,
+			"endColumn": 69,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 298,
+			"column": 12,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 298,
+			"endColumn": 80,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 298,
+			"column": 16,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 298,
+			"endColumn": 38,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 298,
+			"column": 43,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 298,
+			"endColumn": 79,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 298,
+			"column": 57,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + tail",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 298,
+			"endColumn": 78,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 299,
+			"column": 12,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length - head + tail",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 299,
+			"endColumn": 40,
+			"file": "packages/pipeline/src/evidence.ts"
+		},
+		{
+			"line": 299,
+			"column": 12,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + head",
+			"test": {
+				"file": "packages/pipeline/test/evidence.test.ts",
+				"path": [
+					"EvidenceStore",
+					"the 16 MiB stage bound",
+					"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+				]
+			},
+			"killed": true,
+			"timedOut": false,
+			"collected": 1,
+			"exit": 1,
+			"endLine": 299,
+			"endColumn": 33,
+			"file": "packages/pipeline/src/evidence.ts"
+		}
+	]
+}
