@@ -348,23 +348,34 @@ function measuredStages(telemetry: StageTelemetry, paths: readonly string[]): Pa
 	});
 }
 
-// Why the run must stop after this review: a provider said its usage limit was reached, or a lens answered on a model
-// other than its route's first, which with every route held to its first model only a failover does and which is the earliest sign of that limit. Fallbacks are
-// equivalent in a real round; here both arms must answer on the same models to be compared.
+// The words the pipeline gives a lens, prober or verifier whose route reaches no model it holds credentials for. Every
+// route is held to its first model, so a missing credential leaves the same stage unrun on every later miss.
+const unrouted = /\bwith credentials\b/;
+
+// Why the run must stop after this review: a provider said its usage limit was reached, a stage's route reached no
+// model with credentials, or a lens answered on a model other than its route's first, which with every route held to
+// its first model only a failover does and which is the earliest sign of that limit. Fallbacks are equivalent in a
+// real round; here both arms must answer on the same models to be compared.
 function stopCause(
 	run: RangeRun | undefined,
 	telemetry: StageTelemetry | undefined,
 	error: string | undefined,
 ): string | undefined {
-	if (error !== undefined && isProviderLimit(error)) return `a provider's usage limit: ${error}`;
+	const cause = (text: string) =>
+		isProviderLimit(text)
+			? "a provider's usage limit"
+			: unrouted.test(text)
+				? "no model with credentials"
+				: undefined;
+	if (error !== undefined && cause(error) !== undefined) return `${cause(error)}: ${error}`;
 	for (const stage of telemetry?.stages ?? []) {
-		if (stage.error !== undefined && isProviderLimit(stage.error))
-			return `a provider's usage limit in ${stage.subject}: ${stage.error}`;
+		if (stage.error !== undefined && cause(stage.error) !== undefined)
+			return `${cause(stage.error)} in ${stage.subject}: ${stage.error}`;
 		const models = Object.keys(stage.usage?.models ?? {});
 		if (models.length > 1) return `${stage.subject} answered on ${models.join(" and ")}, so a model failed over`;
 	}
 	for (const { name, reason } of run?.verdict.notRun ?? [])
-		if (reason !== undefined && isProviderLimit(reason)) return `a provider's usage limit in ${name}: ${reason}`;
+		if (reason !== undefined && cause(reason) !== undefined) return `${cause(reason)} in ${name}: ${reason}`;
 	return undefined;
 }
 

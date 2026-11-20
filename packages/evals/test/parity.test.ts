@@ -1027,6 +1027,54 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			},
 		]);
 	});
+	it("stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it", async () => {
+		const fake = createFakeModels();
+		const bare = fake.withoutCredentials("bare");
+		const real = runners(undefined, {
+			models: vi.fn(async () => fake.review),
+			// Without the arm's graph, which this host cannot build, so the review reaches its lenses' routes.
+			range: vi.fn((target, mode) =>
+				runRange(target, {
+					...mode,
+					model: `${bare.provider}/${bare.modelId}`,
+					probing: { routed: (config, lenses, files) => mode.probing!.routed(config, lenses, files) },
+				}),
+			),
+		});
+		expect((await measure(env, real)).status).toBe(3);
+		expect(results().stopped).toMatch(
+			/^committed on one met no model with credentials: lens \S+ may run from careful to deep, and no level there can run: careful runs on heavy, and none of locked\/bare is known with credentials;/,
+		);
+		expect(results().attempts.map(({ miss, arm, said }) => ({ miss, arm, said }))).toEqual([
+			{ miss: "one", arm: "committed", said: "not scored: the run stopped" },
+		]);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const unverified = ran([lensStage()]);
+		const verifier = {
+			...unverified,
+			verdict: new Verdict({
+				status: "not-reviewed",
+				blocking: false,
+				findings: { block: [], acknowledge: [], advisory: [], silent: [] },
+				dismissed: [],
+				notRun: [{ name: "verifier", status: "failed", reason: "the verifier has no model with credentials" }],
+			}),
+		};
+		expect((await measure(env, runners(undefined, { range: vi.fn(async () => verifier) }))).status).toBe(3);
+		expect(results().stopped).toBe(
+			"committed on one met no model with credentials in verifier: the verifier has no model with credentials",
+		);
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		const prober = lensStage({
+			outcome: "failed",
+			error: "deep ran without probes, since its prober runs on heavy, and none of h/heavy is known with credentials",
+		});
+		expect((await measure(env, runners([[prober]]))).status).toBe(3);
+		expect(results().stopped).toBe(
+			"committed on one met no model with credentials in correctness@1@deep: deep ran without probes, since its prober runs on heavy, and none of h/heavy is known with credentials",
+		);
+	});
+
 	it("keeps a stopped attempt's spend on resume, and reviews its arm again", async () => {
 		const limited = lensStage({ outcome: "failed", error: "You have hit your usage limit." });
 		expect((await measure(env, runners([[limited], committedStages]))).status).toBe(3);
