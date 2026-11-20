@@ -5,15 +5,9 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { visibleText } from "../packages/core/src/render.ts";
 
 const fileOf = (name) => name.replace(/^.*?\/((packages|scripts)\/)/, "$1");
-
-// The job installs nothing, so core's visibleText is out of reach; this escapes the same characters.
-const visible = (text) =>
-	text.replace(
-		/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,
-		(c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
-	);
 
 const testsOf = (report) =>
 	report.testResults.flatMap((entry) => {
@@ -101,7 +95,7 @@ export function compare({ linux, mac, list }) {
 	}
 	if (errors.length === 0)
 		lines.push(`${skipped.length} tests Linux skipped: every one passed on macOS or is allowed`);
-	return { lines: lines.map(visible), errors: errors.map(visible) };
+	return { lines: lines.map(visibleText), errors: errors.map(visibleText) };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
@@ -112,7 +106,15 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 		process.stderr.write("usage: compare-platform-reports.mjs --linux <report> --mac <report>... --list <list>\n");
 		process.exit(2);
 	}
-	const read = (path) => JSON.parse(readFileSync(path, "utf8"));
+	// A parser's or reader's message quotes the file, which a test's output wrote, so it never reaches the log.
+	const read = (path) => {
+		try {
+			return JSON.parse(readFileSync(path, "utf8"));
+		} catch {
+			process.stderr.write(`cannot read ${visibleText(path)} as JSON\n`);
+			process.exit(1);
+		}
+	};
 	const { lines, errors } = compare({ linux: read(values.linux), mac: values.mac.map(read), list: read(values.list) });
 	for (const line of lines) process.stdout.write(`${line}\n`);
 	for (const error of errors) process.stderr.write(`${error}\n`);

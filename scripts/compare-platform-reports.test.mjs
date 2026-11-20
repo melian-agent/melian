@@ -349,6 +349,17 @@ describe("compare", () => {
 		expect([...lines, ...errors].join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f‮]/);
 	});
 
+	it("escapes the Arabic letter mark, a bidi control core's visibleText escapes", () => {
+		const { errors } = compare({
+			linux: report(...rows(linux()), { file: gated, title: "reads \u061c backwards", status: "skipped" }),
+			mac: [macWhole(), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([
+			`skipped on Linux, not passed on macOS: ${gated} > a suite > reads \\u061c backwards: missing`,
+		]);
+	});
+
 	it("does not let a test whose title holds the separator borrow another test's pass", () => {
 		const { errors } = compare({
 			linux: report(...rows(linux()), { file: gated, ancestors: ["s"], title: "b > c", status: "skipped" }),
@@ -391,6 +402,20 @@ describe("the command", () => {
 				1,
 				`skipped on Linux, not passed on macOS: ${gated} > a suite > spells the path as the disk does: missing\n`,
 			]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("names a report it cannot parse and prints none of the parser's text, which quotes the file", () => {
+		const dir = mkdtempSync(join(tmpdir(), "melian-compare-reports-"));
+		try {
+			const broken = join(dir, "linux.json");
+			writeFileSync(broken, '{"testResults": "\u001b[2J\u001b[HFORGED: all checks passed');
+			const listFile = join(dir, "list.json");
+			writeFileSync(listFile, JSON.stringify(list));
+			const result = run(["--linux", broken, "--mac", broken, "--list", listFile]);
+			expect([result.status, result.stdout, result.stderr]).toEqual([1, "", `cannot read ${broken} as JSON\n`]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
