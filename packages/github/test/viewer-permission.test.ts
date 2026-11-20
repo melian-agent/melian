@@ -22,7 +22,7 @@ function github(routes: Routes) {
 			return new Response(JSON.stringify({ message: "unexpected" }), { status: 599 });
 		}
 		if (answer === "network") throw new TypeError("fetch failed");
-		return new Response(JSON.stringify(answer.body ?? { message: "refused" }), {
+		return new Response(JSON.stringify("body" in answer ? answer.body : { message: "refused" }), {
 			status: answer.status,
 			headers: { "content-type": "application/json" },
 		});
@@ -84,6 +84,7 @@ describe("the collaborator endpoint is the authority when it answers", () => {
 	it.each([
 		["an unknown role", { permission: "owner" }],
 		["no role", {}],
+		["a null body", null],
 	])("reads %s as unknown and never falls back", (_, body) =>
 		run(
 			"redbeard",

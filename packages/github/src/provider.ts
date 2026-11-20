@@ -305,17 +305,18 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async permission(login: string): Promise<RepositoryPermission | undefined> {
-		let permission: string;
+		let body: unknown;
 		try {
-			const { data } = await this.octokit.rest.repos.getCollaboratorPermissionLevel({
+			({ data: body } = await this.octokit.rest.repos.getCollaboratorPermissionLevel({
 				owner: this.owner,
 				repo: this.repo,
 				username: login,
-			});
-			permission = data.permission;
+			}));
 		} catch {
 			return await this.ownPermission(login);
 		}
+		// Only a failed request falls back; a 200, whatever its body, is the collaborator endpoint's answer.
+		const permission = (body as { permission?: unknown } | null)?.permission;
 		return permission === "admin" ||
 			permission === "maintain" ||
 			permission === "write" ||
