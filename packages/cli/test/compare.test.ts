@@ -597,6 +597,43 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(human.stdout).toContain("Skipped review bodies: 2.");
 	});
 
+	it("writes a pull request's valid miss as a misses file", () => {
+		const { repo, files, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" }],
+			}),
+		);
+		expect(melian(repo, ["compare", "#7", "--from", `file:${path}`], env).status).toBe(0);
+		const [name, stored] = Object.entries(
+			JSON.parse(melian(repo, ["compare", "export", "#7", "--json"], env).stdout).comparisons,
+		)[0] as [string, { base: string; head: string; external: Record<string, { title: string }> }];
+		const missed = Object.keys(stored.external)[0]!;
+		expect(
+			melian(repo, ["compare", "adjudicate", "#7", missed, "--verdict", "valid", "--reason", "owned-missed"], env)
+				.status,
+		).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", "#7", "--out", output], env);
+
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n`, stderr: "" });
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${name.split(".")[0]}-${missed}`,
+				repo: git(repo, "rev-parse", "--show-toplevel"),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [2, 2],
+			},
+		]);
+	});
+
 	it("passes the repository, pull request and author to the thread importer", async () => {
 		const { repo, env } = pullRequest();
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);

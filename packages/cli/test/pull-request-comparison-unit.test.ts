@@ -375,6 +375,20 @@ it.each([true, false])(
 	},
 );
 
+it("returns misses with the additional-records notice only when an export would print it", async () => {
+	stores.histories.set(id, PullRequestRoundHistory.from([{ ...previous, members: [{ ...old, number: 1 }] }]));
+	stores.candidates.splice(0, stores.candidates.length, {
+		...added,
+		publication: { repository: answer.repository, pullRequest: 7 },
+	});
+	expect((await PullRequestComparison.open(io, 7)).misses("/repo")).toEqual({
+		misses: { cases: [], skipped: [] },
+		notice: `Additional stored records are included beyond snapshot 1; membership/history remain as last refreshed; run melian compare "#7" to refresh.`,
+	});
+	stores.candidates.splice(0, stores.candidates.length);
+	expect((await PullRequestComparison.open(io, 7)).misses("/repo")).toEqual({ misses: { cases: [], skipped: [] } });
+});
+
 const arrangeSaved = (
 	candidates: RoundMembership[],
 	classifications: RoundMembership[],
