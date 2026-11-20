@@ -2,6 +2,7 @@
 
 Amends: [the decision that a dismissal record is written once](2026-11-18-a-dismissal-record-is-written-once.md), "A dismissal made with no store gets its record at the next review that exports"
 Amends: [the decision that a shared reader remembers the hunks cited since a dismissal](2026-11-18-a-shared-reader-remembers-every-cited-hunk.md), where the reader stops the round chain and what counts as a cut chain
+Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 7's "the record reaches the store with the host's next add", for a dismissal made with no store
 
 Status: for [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575). The coordinator answered on 2026-11-19: a dismissal made with no store exports no record, and the record names a frontier. That is a coordinator's answer, not a ruling. The rule that a cut chain counts the dismissal as nothing is the maintainer's ruling of 2026-11-18, restated here for the frontier.
 
