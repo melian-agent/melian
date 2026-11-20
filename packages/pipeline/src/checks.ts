@@ -21,6 +21,7 @@ import {
 	type RecordJson,
 	type RepositorySource,
 	Revision,
+	SightingBudget,
 	type StaticTool,
 	staticFindings,
 	type ToolLog,
@@ -314,6 +315,21 @@ async function runStatic(
 }
 
 async function runCheck(
+	input: CheckInput,
+	env: () => Promise<ExecutionEnv | undefined>,
+	context: Context,
+	mutation: MutationHooks,
+	environment: NodeJS.ProcessEnv,
+): Promise<Outcome> {
+	const outcome = await outcomeOf(input, env, context, mutation, environment);
+	if (outcome.report === undefined) return outcome;
+	return {
+		...outcome,
+		report: { ...outcome.report, findings: SightingBudget.checkRecord.fit(outcome.report.findings) },
+	};
+}
+
+async function outcomeOf(
 	input: CheckInput,
 	env: () => Promise<ExecutionEnv | undefined>,
 	context: Context,

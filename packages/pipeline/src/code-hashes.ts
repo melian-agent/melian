@@ -4,7 +4,7 @@
 export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
 
-	"packages/core/src/analyser.ts": "3d39fa2860d8ceb9863ddf5bf34ce8ebe57af54e568d96c68f7cf3036b0adb54",
+	"packages/core/src/analyser.ts": "ff7133210e79be3fe940c0e00c6b2721da26bb3091afc35cd6e677c82d57ff70",
 
 	"packages/core/src/cause.ts": "1e75ff44ddce3c8f244dd812c23972a993c8b7be49f51241316af2a08e858dd8",
 
@@ -12,13 +12,13 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/checks.ts": "e7481774eeb3141a6b9e5f063cffba1e7e04b959a14818594b4ebccb80d45429",
 
-	"packages/core/src/comparison-adjudication.ts": "0f88c3f91b1cede518c9e8d9cdd72f496fee5ebffb6fa6f453f826f2c6727562",
+	"packages/core/src/comparison-adjudication.ts": "2c676b0f19c015d52b42b92c905c6d4087f3db0a1ea5d535b04b70794ce7181c",
 
-	"packages/core/src/comparison-export.ts": "478dba3c12b761be90e7a627409174c7e7b7dd28011dd618a79727509c275031",
+	"packages/core/src/comparison-export.ts": "9a0ea0a3a7d21a8369922ad19817f43f2cba4132fec59a169afa5f5e8ca4e0c8",
 
 	"packages/core/src/comparison-set.ts": "8f56f2e3e5a3846bc66820bf95540f8a77da4cfaf63a402aa43df998a8497ade",
 
-	"packages/core/src/comparison.ts": "6b65f1d6c50802fefd9705af4d31b14d60406b239a88ee35fc484eb1d90fb6f0",
+	"packages/core/src/comparison.ts": "e86847d78aa8dd6df21dd9dfa4147074b391afaad89b6a1aef806fdae48d74f0",
 
 	"packages/core/src/config.ts": "7bdeeb890b93c90f520e2bb603b6965bf0188f69c94dabd315258fe276a77dde",
 
@@ -28,7 +28,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/diff.ts": "ab5040f505ee8aead0760d463f00dc9e4fb440663528b23f4f8ec631cc06b296",
 
-	"packages/core/src/directory-record-store.ts": "ff4e2d15b4e2c8d4d742bcf85aa36cb2ed50361774a6405818f9140f1934df2e",
+	"packages/core/src/directory-record-store.ts": "450ec61ef4c04af0057b1db37d7b9dc2b93d42273042d85a68739042606b5393",
 
 	"packages/core/src/emoji.ts": "cbf8ab55136e4bcf1f2fe81a1cfc4f69432e3d33d898da8882750c517bc19040",
 
@@ -38,11 +38,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/enola.ts": "1e9265cd95cdfb8909288a385e5e6868ff720ec4dd365cd61de124e2bf4e4e0e",
 
-	"packages/core/src/errors.ts": "949b9cb0a50566c4c946b1cb5cd4b85c6deb3650e1073a4c2e9cda4001a57e31",
+	"packages/core/src/errors.ts": "b4606a1f9443ec9b4bd6827cb4a643bc69475987fbef039e0eb91a15b18d4a15",
 
 	"packages/core/src/evidence.ts": "65751e0a862d45e26897ab76048736b48505b386fcd27f5c46eb0e1f2e47365b",
 
-	"packages/core/src/findings.ts": "7f13e4bbf9db61879f20e3f7b65c79a8fabcacd00d78cff4c39aec9591c3ca90",
+	"packages/core/src/findings.ts": "36d88d78253ce5f01f3308a4220c585d5d74de4f5334d5381f7c81e16e582878",
 
 	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
@@ -50,11 +50,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/graph.ts": "c4a1e0142d48f4b4793e32b468ee38ed7557715de633104e598575a0028a13c2",
 
-	"packages/core/src/guardrails.ts": "070b2ae8bf0e6b43b9fa39dcf3c39f4642059c9593a41999b024352cf5233d7e",
+	"packages/core/src/guardrails.ts": "2770627aa7b5495a6ab3d9a57058e6d00c477247d7cb701a3ebfd829aacdd323",
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "a9032f6043526f3c10f121319962a1de8eb86a154e04292d36d4da855b131e84",
+	"packages/core/src/index.ts": "2da5c2d062708ce2ac65d42758e1d72ef134e825924f71c6cb763d0294ae2e02",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -86,9 +86,9 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/record-payloads.ts": "b6b3459f64e2cfa45f848b2852f1b3d84a5ee4d4d1292dcd15f0d98276142395",
 
-	"packages/core/src/record-store.ts": "4c86098bd02ce1931f3f1fe9793aad3b5373cb8982373af4ae8c8be895c4ae57",
+	"packages/core/src/record-store.ts": "cf22d37a4f0b82f5e63ee9b0661df3b5a32b0af9287de86dc1629ede2705fc13",
 
-	"packages/core/src/record.ts": "e3e235580cb244d14f57629ba97e02efa2d60c42e05211a8d3d523fe6020595e",
+	"packages/core/src/record.ts": "3957096845057838ee3d4c897c7c3fec98cbfcef79a670a507a69d6901be1b1a",
 
 	"packages/core/src/render.ts": "876fe6874e8ffb8c3916775212dfbf76db634f29a5aa2a1c43d018a841af0f2d",
 
@@ -101,6 +101,8 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/core/src/run-details.ts": "155ebac2cac30c07f611000160a28392e08c24f3bfe9f1cf12fb8dfb9fcfdd90",
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
+
+	"packages/core/src/sighting-budget.ts": "2c927c4e4fcb8cb0360efe3b83306888ff66ecbb81df458a6ee1ad6e759e771e",
 
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 
@@ -140,7 +142,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "84f83b4cd46117352264b10e14cdf30cc020036977294d547a9743955c98b259",
 
-	"packages/pipeline/src/checks.ts": "4fcaa2c4d89253c9f5a3a7ec4d8272ecac68c68f611bde988fdb5768b1581880",
+	"packages/pipeline/src/checks.ts": "387328e3315d23fc51fbf27a405081c6a97ee4657bbd86de694f587def7a3768",
 
 	"packages/pipeline/src/code-version.ts": "fbb022e81dab46ca2cc047fb9ecadba57428a66149c656e062c54e39601c6527",
 
@@ -164,7 +166,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "0d20c62adf957b5f8fcd759c3c558b36ddc92b35677fd622d17bc372fda16c32",
+	"packages/pipeline/src/harness.ts": "37a4787b1494f220946ba9cae00125d99f014ac6a571ece98dc842c24721c2e4",
 
 	"packages/pipeline/src/installed-packages.ts": "2e1ba81b6192035c23a7aa1480acea1b4dcef3f5a1006171474853568fc81989",
 
@@ -200,7 +202,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/publish.ts": "c2fb72bc237ae6967f787fb517c71dbf25801f07d81eb0916e05836e1c9a525a",
 
-	"packages/pipeline/src/pull-request-rounds.ts": "03c1998aa13678cacf7e7a058c9d93d3eb4f0ffebfb67b7ad435d98a59135de3",
+	"packages/pipeline/src/pull-request-rounds.ts": "ccbf04c1d99807b934fcb8e40863419d9956975877de1dd30d1c0e36b1073fd8",
 
 	"packages/pipeline/src/reasoning.ts": "fa1d55fd64f338400837c4fe49c0bf10da91ddfd487cdd0b9b8bd5d1cd2234e9",
 
@@ -335,6 +337,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/core/src/run-details.ts",
 
 		"packages/core/src/secrets.ts",
+
+		"packages/core/src/sighting-budget.ts",
 
 		"packages/core/src/source.ts",
 
@@ -567,6 +571,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/core/src/run-details.ts",
 
 		"packages/core/src/secrets.ts",
+
+		"packages/core/src/sighting-budget.ts",
 
 		"packages/core/src/source.ts",
 

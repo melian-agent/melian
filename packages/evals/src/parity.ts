@@ -1,5 +1,20 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+	closeSync,
+	constants,
+	existsSync,
+	fstatSync,
+	lstatSync,
+	mkdirSync,
+	openSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	type Stats,
+	writeFileSync,
+} from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
 	type ChangedFile,
@@ -417,6 +432,114 @@ export async function measureParity(
 	print: Print,
 	printError: Print,
 ): Promise<0 | 1 | 2 | 3> {
+	const held: { lock?: ResultsLock } = {};
+	try {
+		return await measureHeld(env, runners, print, printError, held);
+	} catch (thrown) {
+		if (!(thrown instanceof LostLock)) throw thrown;
+		printError(visibleText(thrown.message));
+		return 2;
+	} finally {
+		held.lock?.close();
+	}
+}
+
+class LostLock extends Error {}
+
+// Only the last name is checked: the directory may lie behind links, as every macOS temporary directory does.
+function regularOrAbsent(path: string): string {
+	let found: Stats | undefined;
+	try {
+		found = lstatSync(path);
+	} catch (thrown) {
+		if ((thrown as NodeJS.ErrnoException).code !== "ENOENT") throw thrown;
+	}
+	if (found !== undefined && !found.isFile())
+		throw new Error(
+			`${visibleText(path)} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+		);
+	return path;
+}
+
+// Two runs on one results file would each save over the other's attempts, so a run holds the file from before it reads
+// it until it ends. A lock a run that died left stays, and the next run refuses until a person removes it. The lock
+// carries a claim of this run's own, so a run whose lock another took saves nothing and leaves that lock in place.
+// A hard link to a held results file is a second name the lock does not see, so two runs can start and pay twice.
+// A lock replaced by something that is not a regular file while its run is going can block that run's next save.
+class ResultsLock {
+	readonly path: string;
+	private readonly claim: string;
+
+	private constructor(path: string, claim: string) {
+		this.path = path;
+		this.claim = claim;
+	}
+
+	static take(out: string): ResultsLock {
+		const path = regularOrAbsent(`${regularOrAbsent(out)}.lock`);
+		const claim = `${process.pid} ${randomUUID()}\n`;
+		try {
+			writeFileSync(path, claim, { flag: "wx" });
+		} catch (thrown) {
+			if ((thrown as NodeJS.ErrnoException).code !== "EEXIST") throw thrown;
+			const run = ResultsLock.claimant(path);
+			throw new Error(
+				run === undefined
+					? `${path} is not a lock this measurement wrote, so it cannot say which run holds ${out}; if no run is using it, removing it lets this one start`
+					: `${path} says run ${run} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+			);
+		}
+		return new ResultsLock(path, claim);
+	}
+
+	// The refusal prints what the path holds, so it reads only a regular file, opened without following a link should
+	// one replace the file after take checked it, and only one that reads whole as a claim.
+	private static claimant(path: string): string | undefined {
+		let fd: number;
+		try {
+			fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+		} catch {
+			return undefined;
+		}
+		try {
+			if (!fstatSync(fd).isFile()) return undefined;
+			return /^(\d+) [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\n$/.exec(
+				readFileSync(fd, "utf8"),
+			)?.[1];
+		} finally {
+			closeSync(fd);
+		}
+	}
+
+	// Read and then acted on: a lock deleted while its run lives, and taken by a second run between the read and the act,
+	// lets the first run save over the second's results or remove its lock. Delete a lock only once its run is gone.
+	holds(): boolean {
+		try {
+			return readFileSync(this.path, "utf8") === this.claim;
+		} catch {
+			return false;
+		}
+	}
+
+	check(out: string): void {
+		if (!this.holds())
+			throw new LostLock(
+				`${this.path} no longer holds this run's claim, so another run may own ${out}; this run stopped without saving`,
+			);
+	}
+
+	close(): void {
+		if (this.holds()) rmSync(this.path, { force: true });
+	}
+}
+
+async function measureHeld(
+	env: NodeJS.ProcessEnv,
+	runners: ParityRunners,
+	print: Print,
+	printError: Print,
+	held: { lock?: ResultsLock },
+): Promise<0 | 1 | 2 | 3> {
 	let out: string;
 	let stops: { review: number; run: number };
 	let verifier: string | undefined;
@@ -545,8 +668,16 @@ export async function measureParity(
 				},
 			]),
 		);
+		held.lock = ResultsLock.take(out);
 		if (existsSync(out)) {
-			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
+			const fd = openSync(out, constants.O_RDONLY | constants.O_NOFOLLOW);
+			let text: string;
+			try {
+				text = readFileSync(fd, "utf8");
+			} finally {
+				closeSync(fd);
+			}
+			const earlier = JSON.parse(text) as ParityResults;
 			if (earlier.version !== 2 || earlier.arm !== parityArmName)
 				throw new Error(`${out} is not a results file of this measurement`);
 			if (earlier.commit !== commit)
@@ -595,7 +726,8 @@ export async function measureParity(
 	// Written whole through a rename, so a cut run leaves every review it finished, never a torn file. The temporary
 	// file is created afresh, so a file or link planted at its path fails the save rather than receiving it.
 	const save = () => {
-		const written = `${out}.${process.pid}.tmp`;
+		held.lock!.check(out);
+		const written = regularOrAbsent(`${out}.${process.pid}.tmp`);
 		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`, { flag: "wx" });
 		renameSync(written, out);
 	};
@@ -891,10 +1023,7 @@ export function checkoutCommit(directory: string, artefacts: readonly string[]):
 	const root = git("rev-parse", "--show-toplevel").trim();
 	for (const artefact of artefacts) {
 		const path = resolve(artefact);
-		let real = path;
-		try {
-			real = join(realpathSync(dirname(path)), basename(path));
-		} catch {}
+		const real = join(realpathSync(dirname(path)), basename(path));
 		const from = relative(root, real);
 		if (from !== ".." && !from.startsWith(`..${sep}`) && !isAbsolute(from))
 			throw new Error(

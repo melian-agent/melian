@@ -18,6 +18,9 @@ import { count, readEvents } from "./fixtures/spike.ts";
 const crashScript = fileURLToPath(new URL("./fixtures/probing-crash.ts", import.meta.url));
 const reminderCrashScript = fileURLToPath(new URL("./fixtures/probing-reminder-crash.ts", import.meta.url));
 const planReminderCrashScript = fileURLToPath(new URL("./fixtures/probing-plan-reminder-crash.ts", import.meta.url));
+const reminderFailoverCrashScript = fileURLToPath(
+	new URL("./fixtures/probing-reminder-failover-crash.ts", import.meta.url),
+);
 
 let dir: string;
 let repo: string;
@@ -98,6 +101,22 @@ describe("a level that probes across a crash", { timeout: 60_000 }, () => {
 			expect(record).toMatchObject({ status: "ran", level: "deep" });
 			expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
 			expect(asked).toEqual(["prober b", "prober b"]);
+		} finally {
+			await harness.close(context);
+		}
+	});
+
+	it("unlocks only the provider a prober's reminder failed over to, after a crash inside the reminder", async () => {
+		const database = join(dir, "state.sqlite");
+		const log = join(dir, "events.jsonl");
+		await crashInProber(database, log, reminderFailoverCrashScript, "prober-reminded");
+		const { harness } = await probingReview(repo, database, {
+			first: { planner: [], prober: [] },
+			second: { planner: [], prober: [] },
+		});
+		try {
+			// The planner and the prober's reminder both left `first`, so its credential is not asked for.
+			expect(await harness.resumedProviders(context)).toEqual(["second"]);
 		} finally {
 			await harness.close(context);
 		}

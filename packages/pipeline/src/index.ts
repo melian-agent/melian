@@ -144,6 +144,7 @@ export {
 } from "./probe.ts";
 export { type ProbingHost, probingHost } from "./probing.ts";
 export {
+	byMinting,
 	MembershipReader,
 	PullRequestRoundHistory,
 	type PullRequestRoundMember,

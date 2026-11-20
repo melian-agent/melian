@@ -45,6 +45,7 @@ export {
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
+	type ComparisonMiss,
 	type ComparisonUnmatch,
 	codexReviewSchema,
 	comparisonSchema,
@@ -415,10 +416,12 @@ export {
 	Adjudication as ComparisonAdjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
+	exportedMissReasons,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
-export { ComparisonExport } from "./comparison-export.ts";
+export { ComparisonExport, type MissCase, type MissesExport } from "./comparison-export.ts";
 export {
 	type ComparisonEntry,
 	ComparisonSet,
@@ -537,6 +540,7 @@ export {
 	type RecordJson,
 	RecordSet,
 	type RoundManifest,
+	recordLimit,
 	SharedRecord,
 } from "./record.ts";
 export {
@@ -598,6 +602,7 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
+export { envelopeAllowance, SightingBudget } from "./sighting-budget.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

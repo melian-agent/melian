@@ -84,13 +84,7 @@ export class PullRequestRoundHistory {
 				.map((round) => previous.find((old) => old.id === round.id)!.number),
 		);
 		let number = 0;
-		members.sort((left, right) => {
-			if (left.mintedAt === undefined && right.mintedAt !== undefined) return -1;
-			if (left.mintedAt !== undefined && right.mintedAt === undefined) return 1;
-			const a = left.mintedAt === undefined ? (left.date ?? Number.MAX_SAFE_INTEGER) : Date.parse(left.mintedAt);
-			const b = right.mintedAt === undefined ? (right.date ?? Number.MAX_SAFE_INTEGER) : Date.parse(right.mintedAt);
-			return a - b || left.id.localeCompare(right.id);
-		});
+		members.sort(byMinting);
 		const numbered = members
 			.map((round) => {
 				if (round.status === "unreachable")
@@ -224,4 +218,19 @@ export class MembershipReader {
 			? (stored.value as T)
 			: definition.migrate!(stored.value, stored.version);
 	}
+}
+
+/**
+ * The order membership numbers rounds in: legacy rounds first, by their head's commit date, then minted rounds by when
+ * they were minted, then by ID.
+ */
+export function byMinting(
+	left: { readonly id: string; readonly mintedAt?: string; readonly date?: number },
+	right: { readonly id: string; readonly mintedAt?: string; readonly date?: number },
+): number {
+	if (left.mintedAt === undefined && right.mintedAt !== undefined) return -1;
+	if (left.mintedAt !== undefined && right.mintedAt === undefined) return 1;
+	const a = left.mintedAt === undefined ? (left.date ?? Number.MAX_SAFE_INTEGER) : Date.parse(left.mintedAt);
+	const b = right.mintedAt === undefined ? (right.date ?? Number.MAX_SAFE_INTEGER) : Date.parse(right.mintedAt);
+	return a - b || left.id.localeCompare(right.id);
 }

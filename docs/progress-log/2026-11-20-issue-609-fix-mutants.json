@@ -1,0 +1,1857 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "4b691eab62bf753030dd1df4793e2ceb43f23be9",
+    "head": "de9d5c6af5fa4e1db44b489a3152f9870e0aa98d"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 650,
+      "column": 18,
+      "endLine": 650,
+      "endColumn": 37,
+      "mutatorName": "LogicalOperator",
+      "replacement": "reminder?.from && 0",
+      "status": "generated",
+      "id": "20e343c4efaeeffae1df78024998d9440ff9eed674ff715860de1818eb31f8c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 650,
+      "column": 18,
+      "endLine": 650,
+      "endColumn": 32,
+      "mutatorName": "OptionalChaining",
+      "replacement": "reminder.from",
+      "status": "generated",
+      "id": "28c031118e03158c029bdbc7b642bbbf3e138c8a4720a9ac34572649b7799653",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 651,
+      "column": 22,
+      "endLine": 656,
+      "endColumn": 43,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "ede8f9db5a08f12a2806a683ad357982954cc9add18142f55faa0c8502489f5c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner whose model's content filter refused the change to its next model, after its tool calls"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 652,
+      "column": 5,
+      "endLine": 652,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8f327ff9cb3a1e58b974863abb5fc3b86f4a46a5fec0de4a167873a45cff96e3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 652,
+      "column": 5,
+      "endLine": 652,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fdc25c048d3afa04d8986d3e1ef752ada91bbf2d35983ed91fa918a98328cd7b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 652,
+      "column": 5,
+      "endLine": 652,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reminder !== undefined",
+      "status": "generated",
+      "id": "588d584d99aa21d328d084c5268fb5dcc4299670ff4d73f8f90b3b74da371a98",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 653,
+      "column": 8,
+      "endLine": 653,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5a7b430926ffcc55c393cc7d0c4ac1fc6b4675c9aed2c3450923a1621b229653"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "08514f54c954f8ba143b5e5eada0b96e4a31f2498bd290cf3556897dbd7ecbe0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8c1cd3e3c0070a36f9a9ca7bb92cc1fa11c8dba47b8a5649e982da0bfc9e14db",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "keeps a reminder's own request ID, and adds the attempt only for a model it moved on to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 654,
+      "column": 8,
+      "endLine": 654,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "attempt !== first",
+      "status": "generated",
+      "id": "0cc74a50d6c5f0a9d99ca22a90ed31f2bee8990d3a97b4f4693eebf146c9deca",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "keeps a reminder's own request ID, and adds the attempt only for a model it moved on to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 656,
+      "column": 9,
+      "endLine": 656,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "03e280332a4d94db64a7cd5b2193de69134bdcf7e1aedeb633f9c112c6ce48fe"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 657,
+      "column": 20,
+      "endLine": 657,
+      "endColumn": 46,
+      "mutatorName": "LogicalOperator",
+      "replacement": "reminder?.requestId && key",
+      "status": "generated",
+      "id": "39c8bfb3e64556d659e6032c9751dfb4ad38dffcdbbccb9f50e7b2c23b6e4d0d",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "counts a reminder's moves apart from its conversation's, from the model it moved on to"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 657,
+      "column": 20,
+      "endLine": 657,
+      "endColumn": 39,
+      "mutatorName": "OptionalChaining",
+      "replacement": "reminder.requestId",
+      "status": "generated",
+      "id": "a14d5c2f6a1bdcfd20debb535495c5140aaa4d9d809f14acbb49dff03ab6fd25",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 661,
+      "column": 21,
+      "endLine": 661,
+      "endColumn": 51,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "0ee9e5237f22f9fbe4f5cd69932589552ce4b47a5c60a09cf339b1d116c6154e",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "still names a planner's refusal when its reminder goes to the model that answered"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 661,
+      "column": 26,
+      "endLine": 661,
+      "endColumn": 49,
+      "mutatorName": "LogicalOperator",
+      "replacement": "reminder?.refused && []",
+      "status": "generated",
+      "id": "0a3a3d918b051b7851138d48c93c9f73d813747d1ee26a88e691d5e8d946683b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 661,
+      "column": 26,
+      "endLine": 661,
+      "endColumn": 43,
+      "mutatorName": "OptionalChaining",
+      "replacement": "reminder.refused",
+      "status": "generated",
+      "id": "cb988f9aab9e36d1cd21d30490ac479132e3712ab104ce9470551deeb8e016df",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 661,
+      "column": 47,
+      "endLine": 661,
+      "endColumn": 49,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "76e46bd91a565adc095d5d0237e9e8fc1104bca0c7d8284a72fc8333acbd07f7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "fails a lens whose planner's every model refused the content, saying each refused"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 663,
+      "column": 27,
+      "endLine": 663,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "00cff5069a74b440b4526f3ccbf0180ab42fe4e53e40e35d1b98eee3ed1977d2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner whose model's content filter refused the change to its next model, after its tool calls"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 663,
+      "column": 27,
+      "endLine": 663,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "at <= attempt",
+      "status": "generated",
+      "id": "86cb3e18800f19e892146fe1ed31ed505fb65aeba51da0e796baa944cf4a902e",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "The extra attempt read is the one that answered, settled done, or one that failed without moving on, which is no refusal since every refusal moves on; on exhaustion the caller already reads past it. It survived the whole pipeline suite of 3,981 tests."
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 663,
+      "column": 27,
+      "endLine": 663,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "at >= attempt",
+      "status": "generated",
+      "id": "6b0f486ac7c6cf02df7d3b6e1b88a23b497cf965a7d03994703719953b622665",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "numeric-bound"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 663,
+      "column": 41,
+      "endLine": 663,
+      "endColumn": 45,
+      "mutatorName": "UpdateOperator",
+      "replacement": "at--",
+      "status": "generated",
+      "id": "2b7d1ff306614ddd524fcfabf7cfacafc2c8acd562dd2536327a7cd54fc1de45",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 672,
+      "column": 23,
+      "endLine": 672,
+      "endColumn": 57,
+      "mutatorName": "LogicalOperator",
+      "replacement": "started.attempts[counter] && first",
+      "status": "generated",
+      "id": "6af6e9b946dd027aa06cf5f8bb00c40bd43876c42e43de6a8d5cf3f425ad9fcf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 672,
+      "column": 61,
+      "endLine": 672,
+      "endColumn": 70,
+      "mutatorName": "UpdateOperator",
+      "replacement": "attempt--",
+      "status": "generated",
+      "id": "b8afb93281a106329e1b792f447d87a922f1f23786e21bc0f1a3638105e9002a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 678,
+      "column": 6,
+      "endLine": 678,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e485509ccc216cf7d2e56b089bb9991dd17d931f7b13f886e245ef90a7c7dce4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 678,
+      "column": 6,
+      "endLine": 678,
+      "endColumn": 23,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "24a94c09c665fff2183cd70f7630c54fbe9b4c55660b73312acccba57f972d9e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a prober's refutation that rests on a probe that failed, and keeps the carried finding"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 678,
+      "column": 6,
+      "endLine": 678,
+      "endColumn": 23,
+      "mutatorName": "EqualityOperator",
+      "replacement": "attempt !== first",
+      "status": "generated",
+      "id": "aac1118ccc41fafa965107cb3270cc8da93b7eb2b64d8159bd04a2554506e411",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 686,
+      "column": 13,
+      "endLine": 686,
+      "endColumn": 110,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "25d74e3659bf909cc7e3e28649f1e3c08d1e1ae06c06d68d636ae9a58c9d0684",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 686,
+      "column": 23,
+      "endLine": 686,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6bc32b8a8e305623ce9b98d3e205f320e5862f8c2ca5b3032ed0ec3984f32554"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 690,
+      "column": 9,
+      "endLine": 690,
+      "endColumn": 18,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "failover",
+      "status": "generated",
+      "id": "051769419ab13aea20b856b78dbfcf02e05eef920af365144ee2348ed7bc5458",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 690,
+      "column": 9,
+      "endLine": 690,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0380df3fe06bd8d85df271a2725d282d16f1e9ae02542fde06aeee30e546db4c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 690,
+      "column": 9,
+      "endLine": 690,
+      "endColumn": 18,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8c9441e71fb534c26deb1d6d308bd74ae0e5d8fb0e0d0bd41eaca8b3dda50800",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 690,
+      "column": 27,
+      "endLine": 690,
+      "endColumn": 94,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "53e243ef4b5922816dd70aca7c9027841af7f81f125861a018ab9428c1bf016f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 690,
+      "column": 37,
+      "endLine": 690,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ce9b22184d050b59c6cfe6915aa985888e0b83aea94f35614fba8b34e90d759c"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 701,
+      "column": 19,
+      "endLine": 701,
+      "endColumn": 98,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7c7efd422d0eb65da4fff000fc3dc7f5baa6205bb6e80f3e371220b1e5a1d4ab",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a prober whose model hits its usage limit to its next model"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 701,
+      "column": 46,
+      "endLine": 701,
+      "endColumn": 96,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "029ada8a853e3c2ded8f0210fc4055521c32b078d78876c85b4e2e3b44ebd987",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "counts a reminder's moves apart from its conversation's, from the model it moved on to"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "dropped-value"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 701,
+      "column": 83,
+      "endLine": 701,
+      "endColumn": 94,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "attempt - 1",
+      "status": "generated",
+      "id": "66fde547c089febf94eb91defd8cee7ecf179296cefdec2889450539c56202ec",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "counts a reminder's moves apart from its conversation's, from the model it moved on to"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 725,
+      "column": 8,
+      "endLine": 725,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6e3531893c4940d4ca01258f8e437f02f3d2be28056246d42704894ac24f31c8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 725,
+      "column": 8,
+      "endLine": 725,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c90b851413aa437d56f6a8c6cd56c70883811ac63bf2189aed71ce0ddf2a90a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 725,
+      "column": 8,
+      "endLine": 725,
+      "endColumn": 27,
+      "mutatorName": "LogicalOperator",
+      "replacement": "!owed || !submitted",
+      "status": "generated",
+      "id": "d252ed863739b6af12e26ec8ba01ec81f9450e0f41a6ba5eb4bd6d5397fee0be",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 725,
+      "column": 8,
+      "endLine": 725,
+      "endColumn": 13,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "owed",
+      "status": "generated",
+      "id": "987529fc36a9e2d436bc110e41047e4c6b7531c06dd08063915ca03f360076e0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 725,
+      "column": 17,
+      "endLine": 725,
+      "endColumn": 27,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "submitted",
+      "status": "generated",
+      "id": "947a6c70cf8f96f4d3bf109e92d45caaa809715d273b6bfd48d3767f5d157175",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 727,
+      "column": 61,
+      "endLine": 727,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "965d197c95a1f7e45b9c99f59edb871953de575db81d5c6de3f4e0efca9a84a7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 728,
+      "column": 8,
+      "endLine": 728,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ed8b5f6b6cb60a301315c58341ef867a829a25ca078709455721564fded81f92",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 728,
+      "column": 8,
+      "endLine": 728,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "02e7dabd56a6f8ebab877e68ffe9a2dd9127eec8d755b45e576fae678f6dfbe4",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "fails a lens whose planner's reminder every model refused, with the last model's own words"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 728,
+      "column": 8,
+      "endLine": 728,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "reminded.status === \"unanswered\"",
+      "status": "generated",
+      "id": "83ba0d3d036d1a42f01c8462173149bc90be42c45a9d5dc3f5e2252fcb660352",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 728,
+      "column": 28,
+      "endLine": 728,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5a15cae2305b5a7b407f1dfac8d181c4d0f553bf716c60db567970581d304a3b"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 729,
+      "column": 11,
+      "endLine": 729,
+      "endColumn": 81,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "9875ac69edb44ce432a51e5a5e22283acdf247102bebec7350979cf15e66da00",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 729,
+      "column": 34,
+      "endLine": 729,
+      "endColumn": 79,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "599333c8657b34ac841e860aff3eae02cbc335df87ef29a131a467bc389c23e5"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 746,
+      "column": 15,
+      "endLine": 746,
+      "endColumn": 80,
+      "mutatorName": "OptionalChaining",
+      "replacement": "(await runtime.snapshot(ProbingDocument, planner, context)).plan",
+      "status": "generated",
+      "id": "21047242b1a4fa1f01101f00cf9ed72a481f1edf733316fcbe27b7bb53127d1b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "reminds a planner that recorded no plan once, and fails the lens when it still records none"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 799,
+      "column": 8,
+      "endLine": 799,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b196e503c096fb881babf81b070fb94c1b81e6ffd5bab4f1cb8c8facf78f547f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner whose model's content filter refused the change to its next model, after its tool calls"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 799,
+      "column": 8,
+      "endLine": 799,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bf94265d7bddb2d9772fda95eb9cebb5094b5699f5793e3089ee37e30550c1a0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "leaves the review not reviewed when a reminder does not finish: the prober's, after it ran a probe that failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 799,
+      "column": 8,
+      "endLine": 799,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "answered.status === \"done\"",
+      "status": "generated",
+      "id": "e2293fe10d7167513ad11b1a9298187992c68a1bb8d4edd71d850ab47db15b5e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner whose model's content filter refused the change to its next model, after its tool calls"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 799,
+      "column": 28,
+      "endLine": 799,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1849ae8352f8b838cd868d94d806eeae22162573c6da83c5b6acb9f3045b71a7"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 826,
+      "column": 8,
+      "endLine": 826,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "dc0a835da42be17bbecc66868e1575d15c4d5eb5410896457ef2d0e41bbcbcbe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "runs a level without probes when the head itself refuses them, as one past its tree limits does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 826,
+      "column": 8,
+      "endLine": 826,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f034add0173883e557887f5a41769719f1244cdfa6ad68da45ea9396a83ee77f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 826,
+      "column": 8,
+      "endLine": 826,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "lens.probe === undefined",
+      "status": "generated",
+      "id": "0d767a92168981813521af004a8623c37b562c8b5a25895e1e7c49dd93dd9c7a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "runs a level without probes when the head itself refuses them, as one past its tree limits does"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 826,
+      "column": 34,
+      "endLine": 839,
+      "endColumn": 5,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "de2b5fdb47d16bda438349d88194d84c218fd7e75478e2b1e4d10468c1ef527c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 827,
+      "column": 18,
+      "endLine": 827,
+      "endColumn": 78,
+      "mutatorName": "OptionalChaining",
+      "replacement": "(await runtime.snapshot(ProbingDocument, id, context)).plan",
+      "status": "generated",
+      "id": "925675badf5f30d63790fb3e4f6524ba9f818c1a6f9f6f3250974d9409c8e0cb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 832,
+      "column": 23,
+      "endLine": 832,
+      "endColumn": 55,
+      "mutatorName": "LogicalOperator",
+      "replacement": "lens.probe.probesAs && lens.name",
+      "status": "generated",
+      "id": "f1c470fa25cc4e226120fb512afffe6df0eff90026aed733784d13142f70a3bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 833,
+      "column": 6,
+      "endLine": 833,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5aebff64b47f1df57a269eebf725751fe68c85a614cf54b47c77603cfb95c52d"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 834,
+      "column": 6,
+      "endLine": 834,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9c6fc755d896cfc2d36087cea684cb5bf5d13ef49578bf87b1a50a80dbd80e26"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 6,
+      "endLine": 835,
+      "endColumn": 83,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b4d50edcbb7d03b4ae2fbedff1569870b13e8f906cb47ef5e4a4b4f661463015",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 6,
+      "endLine": 835,
+      "endColumn": 83,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d0822e3ae692252c0b6287eb674c85cb04fc1dc63367b8994672708948d43393",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 6,
+      "endLine": 835,
+      "endColumn": 83,
+      "mutatorName": "LogicalOperator",
+      "replacement": "plan === undefined || (await budgetEnded(runtime, id, context)) === undefined",
+      "status": "generated",
+      "id": "185554cf1b588cff2446292432c8fd8105306d1174ee93e02876527650c728de",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 6,
+      "endLine": 835,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8410b2f73844259fc1e78c4a40e9160bf7523f8d81d12a9c36705b4de3c763f6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 6,
+      "endLine": 835,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "plan !== undefined",
+      "status": "generated",
+      "id": "684ed0ab5216a943ba4e78a9f679bd9d26bb81d63eaa98c8209b47b8c602aa8a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 28,
+      "endLine": 835,
+      "endColumn": 83,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "05dfe4f85d2db2ae4b6eeb7084e540e0a9e73061ef683374cdf396de40862a89",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "fails a lens whose planner's budget ended before it recorded a plan, and names the budget"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 835,
+      "column": 28,
+      "endLine": 835,
+      "endColumn": 83,
+      "mutatorName": "EqualityOperator",
+      "replacement": "(await budgetEnded(runtime, id, context)) !== undefined",
+      "status": "generated",
+      "id": "d2c3b1ff607fe4d800de2c4f39fe23d77105d403f5d363f51506835fb7d13962",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "moves a planner's reminder to the next model when the content filter refuses it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 838,
+      "column": 9,
+      "endLine": 838,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6e23ee8a526e981bd4a6b6ba60a4ce1f6ac2a1e8885f40d59c66c47e71ce3080",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 838,
+      "column": 9,
+      "endLine": 838,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6d7dc007a0f4221e42a9c453241add07fad4664db74614b6dcaa708a9cea686b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "leaves the review not reviewed when a reminder does not finish: the planner's, after it recorded a plan"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 838,
+      "column": 9,
+      "endLine": 838,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "planned.status === \"done\"",
+      "status": "generated",
+      "id": "58293e76b3f57321ea0abc0362c13f7413e831fd898f5c7a8d927e2e31c0b3fc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 838,
+      "column": 28,
+      "endLine": 838,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "319b395269a5b9c2a3a7c11d0556eb1d807c2feb631c08975738d5f4e8f88ef4"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2258,
+      "column": 6,
+      "endLine": 2258,
+      "endColumn": 65,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "f05b13ebcb6acb2b010512725bff9e5e5ac2ffb6b08b0205c52b836a683b5dd2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the model that refused apart from one that hit its limit, when every model failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2258,
+      "column": 7,
+      "endLine": 2258,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a714201892f0f15601357db59db38b8276718a28f608ce2c86f12d76b50d0fcf"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2258,
+      "column": 71,
+      "endLine": 2258,
+      "endColumn": 75,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "aeb2fc9f92991627c4b5c64dbce72a4a46981b9a1df59df6a4444bf890056f1f"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 13,
+      "endLine": 2262,
+      "endColumn": 80,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "a3f1f428c69e7015e783b43e741c119e02cf11b58189d7c1b8978c0975d4ba63",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 14,
+      "endLine": 2262,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "673d1504c3eeedba13adab4b7feb8e23c49db72642ebd69a345202a589963021"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 56,
+      "endLine": 2262,
+      "endColumn": 78,
+      "mutatorName": "LogicalOperator",
+      "replacement": "outcome?.refused && []",
+      "status": "generated",
+      "id": "be497c950834f84269986b2c9bda6e148958105793589e6404e4a1e322eb0599",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 56,
+      "endLine": 2262,
+      "endColumn": 72,
+      "mutatorName": "OptionalChaining",
+      "replacement": "outcome.refused",
+      "status": "generated",
+      "id": "2ce7b726d9304b050ea3a5a5b50dfb1ad310861610dd05846522ab92737c1954",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/run-stands.test.ts",
+          "path": [
+            "runStands",
+            "never lets a run stand with no outcome"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 76,
+      "endLine": 2262,
+      "endColumn": 78,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "eed87fd18e3f87d0aea7a549e2e45ba5515d638397ea9500a6a300bc5cc41589",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "ends an escalated level whose planner calls no tool as a lens that did not finish"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2262,
+      "column": 86,
+      "endLine": 2262,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ccd1d3bea0b41ee40e3effec75830a58defc8463f2b625ba8d6d67e6e2360ac3"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2263,
+      "column": 8,
+      "endLine": 2263,
+      "endColumn": 69,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a40685a6db37343d4ec37ee30e5bdf63a7390569f90615dfde143e3c6966bc1a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names an earlier refusal when the next model fails in a way that does not move on"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2263,
+      "column": 24,
+      "endLine": 2263,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c60d66807afd186991c1b1ae1a083d9b13af0d37b1af1b9b5ff29499c234d63c"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 8,
+      "endLine": 2268,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "370612668db550c09e48cd69c380728e148341f8a8a09ae0e6a40899c7b0d6dd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the model that refused apart from one that hit its limit, when every model failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 8,
+      "endLine": 2268,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "825291114e836f47418d2ca088473712ed17432967d9fb992dcff467802a3788",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "says only that every model failed when every model hit its limit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 8,
+      "endLine": 2268,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "refused.length !== 0",
+      "status": "generated",
+      "id": "c3fabbd43b030aeeab52ee8fdaaba5962270f566eac63eeda2afa4439037f207",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the model that refused apart from one that hit its limit, when every model failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 31,
+      "endLine": 2268,
+      "endColumn": 33,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "fd7ba1707b360af1a066ee723f70d43d25912b2c9cb933e3e31a538de915f7ed",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "says only that every model failed when every model hit its limit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 36,
+      "endLine": 2268,
+      "endColumn": 81,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "b170c10e2608261950d4d7ec8a66c1123f12d374807e293be8e2b36563f7daff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/probing-level.test.ts",
+          "path": [
+            "a level that probes",
+            "names the model that refused apart from one that hit its limit, when every model failed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 37,
+      "endLine": 2268,
+      "endColumn": 80,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d6b3ba529060644e1a032ed97cc77ec4793445931021ab03dc33516771d327b5"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2268,
+      "column": 53,
+      "endLine": 2268,
+      "endColumn": 57,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "604124d9cdc2b0c97b58dd1825efd998d068afdfb4c7bd117b0d73775491a331"
+    }
+  ],
+  "total": 90,
+  "omitted": 0,
+  "unmutated": []
+}
