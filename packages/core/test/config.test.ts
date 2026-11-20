@@ -92,6 +92,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			sources: [],
 			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
 			resolutionLayers: [],
+			preferences: [],
 		});
 		expect(loaded.config.stages).toEqual({
 			"pre-commit": "fast",
@@ -442,6 +443,7 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 			sources: [],
 			routes: { committed: {}, overridden: {}, lensTiers: {}, retiered: {} },
 			resolutionLayers: [],
+			preferences: [],
 		});
 	});
 
@@ -915,6 +917,20 @@ describe("the user-level preference file", () => {
 		expect(routes.overridden).toEqual({ heavy: preferences(), medium: "melian.local.yaml" });
 	});
 
+	it("lists each preference file it read, nearest first, with every value's dotted key", async () => {
+		writeFiles(home, {
+			"config.yaml": lines("models:", "  heavy:", "    model: user/heavy", "    fallbacks: [user/other]"),
+		});
+		writeFiles(repo, { "melian.local.yaml": lines("lenses:", "  security:", "    route: { model: clone/lens }") });
+
+		const { preferences: read } = await loadConfig(repo, worktree(), "a.ts");
+
+		expect(read).toEqual([
+			{ file: "melian.local.yaml", keys: ["lenses.security.route.model"] },
+			{ file: preferences(), keys: ["models.heavy.model", "models.heavy.fallbacks"] },
+		]);
+	});
+
 	it("is never read for a revision", async () => {
 		writeFiles(home, { "config.yaml": lines("models:", "  heavy:", "    model: user/heavy") });
 		const source = { kind: "revision" as const, commit: "HEAD" };
@@ -922,6 +938,7 @@ describe("the user-level preference file", () => {
 		expect(config.models.heavy?.model).toBe("root/heavy");
 		expect(sources).toEqual(["melian.yaml"]);
 		expect(routes.overridden).toEqual({});
+		expect((await loadConfig(repo, source, "a.ts")).preferences).toEqual([]);
 	});
 
 	it.each([

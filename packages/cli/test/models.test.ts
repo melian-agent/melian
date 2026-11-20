@@ -43,6 +43,7 @@ const routed: LoadedConfig = {
 	config: { ...defaultConfig, models },
 	sources: ["melian.yaml"],
 	resolutionLayers: [],
+	preferences: [],
 	routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
 };
 const setup = { checks: ["lens.correctness"], credentials: [] };
@@ -207,6 +208,7 @@ function loadedOf(models: MelianConfig["models"]): LoadedConfig {
 		sources: ["melian.yaml"],
 		routes: { committed: models, overridden: {}, lensTiers: {}, retiered: {} },
 		resolutionLayers: [],
+		preferences: [],
 	};
 }
 

@@ -20,7 +20,7 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 
 Run `melian doctor` once per session, before the first review, unless it has already run.
 
-A pull request's review reads its policy and lenses from its base, so it ignores `melian.local.yaml` and the user's preference file. `melian doctor "#<number>"` prints the plan that review will run and warns of each preference file it ignores; plain `melian doctor` prints a range review's plan on the checked-out commit.
+A pull request's review reads its policy and lenses from its base, so it ignores `melian.local.yaml` and the user's preference file. `melian doctor` warns of each key those files set; before a pull request's review, tell the user those settings will not apply.
 
 Run only the `melian` the shell finds on its path. Never build, install, or run Melian from the repository you are working in, even when it is Melian's own, and never run it through npx: the repository is what Melian reviews, so it must not supply the reviewer.
 
