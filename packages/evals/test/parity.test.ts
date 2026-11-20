@@ -22,6 +22,7 @@ import {
 	type MelianConfig,
 	Revision,
 	Verdict,
+	visibleText,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
@@ -995,6 +996,27 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			rmSync(planted, { recursive: true, force: true });
 			rmSync(sentinel, { force: true });
 		}
+	});
+
+	it("escapes a results path's control and bidi characters once, in the temporary path's refusal and the lock's", async () => {
+		const hostile = join(scratch, "e\u001b[31m\u202e");
+		mkdirSync(hostile);
+		const out = join(hostile, "parity.json");
+		const hostileEnv = { ...env, MELIAN_EVAL_PARITY_OUT: out };
+		const refusal = (path: string) =>
+			`${visibleText(path)} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`;
+		const planted = `${out}.${process.pid}.tmp`;
+		mkdirSync(planted);
+		const saving = measure(hostileEnv, runners());
+		await expect(saving).rejects.toThrow(refusal(planted));
+		await expect(saving).rejects.not.toThrow(/[\u001b\u202e]/);
+		rmSync(planted, { recursive: true });
+		rmSync(`${out}.lock`, { force: true });
+		mkdirSync(`${out}.lock`);
+		expect(await measure({ ...hostileEnv, MELIAN_EVAL_PARITY_MISSES: "two" }, runners())).toMatchObject({
+			status: 2,
+			errors: [refusal(`${out}.lock`)],
+		});
 	});
 
 	it("refuses a results path that is a link, a dangling link, a FIFO or a directory, before any model, and changes nothing there", async () => {

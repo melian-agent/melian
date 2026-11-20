@@ -456,7 +456,7 @@ function regularOrAbsent(path: string): string {
 	}
 	if (found !== undefined && !found.isFile())
 		throw new Error(
-			`${path} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+			`${visibleText(path)} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
 		);
 	return path;
 }
