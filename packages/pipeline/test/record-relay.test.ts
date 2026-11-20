@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
@@ -487,6 +487,24 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("invalidRecord");
 		await plant(at, `changesets/${changeset}/check/${"1".repeat(64)}/${"f".repeat(64)}.json`, "{}");
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("tooManyFiles");
+	}, 120_000);
+
+	it("walks the most entries it allows, and refuses one more before it keeps any", async () => {
+		const at = await artefact();
+		const kind = `changesets/${changeset}/check`;
+		await mkdir(join(at, kind), { recursive: true });
+		const listed = (await readdir(at, { recursive: true })).length;
+		// Empty slots: each costs the walk an entry, and the first one it opens refuses the batch for being empty.
+		for (let index = 0; index < relayLimits.entries - listed; index++)
+			await mkdir(join(at, kind, index.toString(16).padStart(64, "0")));
+		expect((await readdir(at, { recursive: true })).length).toBe(relayLimits.entries);
+		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("strayEntry");
+		await mkdir(join(at, kind, "f".repeat(64)));
+		const past = await refusal(RelayBatch.read(at, writer));
+		expect([past.code, past.message]).toEqual([
+			"tooManyEntries",
+			`melian records relay refused the batch: ${past.file} passes the relay's bound of ${relayLimits.entries} entries`,
+		]);
 	}, 120_000);
 
 	it("takes a file at its byte bound, and refuses one byte more", async () => {

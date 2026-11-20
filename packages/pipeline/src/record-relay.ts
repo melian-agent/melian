@@ -1,5 +1,5 @@
 import type { Dirent } from "node:fs";
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { lstat, opendir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
 	type AccountPayload,
@@ -22,12 +22,19 @@ import {
  * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
  * beside the round. Each is a small part of the store's own bounds on the branch, so a few rounds cannot fill it.
  */
-export const relayLimits = { files: 512, fileBytes: 1024 * 1024, bytes: 4 * 1024 * 1024, extras: 64 } as const;
+export const relayLimits = {
+	entries: 2048,
+	files: 512,
+	fileBytes: 1024 * 1024,
+	bytes: 4 * 1024 * 1024,
+	extras: 64,
+} as const;
 
 /** Why a relay refused its whole batch. */
 export type RelayRefusalCode =
 	| "strayEntry"
 	| "otherChangeset"
+	| "tooManyEntries"
 	| "tooManyFiles"
 	| "fileTooLarge"
 	| "batchTooLarge"
@@ -50,6 +57,7 @@ export type RelayRefusalCode =
 const says: Record<RelayRefusalCode, string> = {
 	strayEntry: "is no record file a review's directory store writes",
 	otherChangeset: "belongs to another changeset than the run's",
+	tooManyEntries: `passes the relay's bound of ${relayLimits.entries} entries`,
 	tooManyFiles: `passes the relay's bound of ${relayLimits.files} files`,
 	fileTooLarge: `is larger than the relay's bound of ${relayLimits.fileBytes} bytes`,
 	batchTooLarge: `takes the batch past the relay's bound of ${relayLimits.bytes} bytes`,
@@ -117,12 +125,30 @@ function fact(check: { name: string; status: CheckRecord["status"]; cause?: stri
 	return cause == null ? { name, status } : { name, status, cause: cause as CheckRecord["cause"] };
 }
 
-// Lists a directory without following a link. A link, even to a directory, is no entry a directory store writes.
-async function entries(root: string, path: string): Promise<Dirent[]> {
-	try {
-		return await readdir(join(root, path), { withFileTypes: true });
-	} catch {
-		throw new RelayRefusal("unreadable", path);
+// Lists a store's directories without following a link, which is no entry a directory store writes. It reads one entry
+// at a time and counts every entry of the walk, so a folder of a million entries costs no more than the bound.
+class TreeWalk {
+	readonly root: string;
+	#walked = 0;
+
+	constructor(root: string) {
+		this.root = root;
+	}
+
+	async entries(path: string): Promise<Dirent[]> {
+		const listed: Dirent[] = [];
+		try {
+			for await (const entry of await opendir(join(this.root, path))) {
+				this.#walked += 1;
+				if (this.#walked > relayLimits.entries)
+					throw new RelayRefusal("tooManyEntries", path === "." ? entry.name : `${path}/${entry.name}`);
+				listed.push(entry);
+			}
+		} catch (error) {
+			if (error instanceof RelayRefusal) throw error;
+			throw new RelayRefusal("unreadable", path);
+		}
+		return listed;
 	}
 }
 
@@ -225,24 +251,25 @@ export class RelayBatch {
 	// Every record file under the run's changeset, by path relative to `root`, refusing anything else the tree holds.
 	static async #files(root: string, changeset: string): Promise<string[]> {
 		const files: string[] = [];
-		for (const top of await entries(root, ".")) {
-			if (top.name === "tmp" && top.isDirectory() && (await entries(root, "tmp")).length === 0) continue;
+		const walk = new TreeWalk(root);
+		for (const top of await walk.entries(".")) {
+			if (top.name === "tmp" && top.isDirectory() && (await walk.entries("tmp")).length === 0) continue;
 			if (top.name !== "changesets" || !top.isDirectory()) throw new RelayRefusal("strayEntry", top.name);
 		}
-		for (const folder of await entries(root, "changesets")) {
+		for (const folder of await walk.entries("changesets")) {
 			const path = `changesets/${folder.name}`;
 			if (!folder.isDirectory()) throw new RelayRefusal("strayEntry", path);
 			if (folder.name !== changeset) throw new RelayRefusal("otherChangeset", path);
-			for (const kind of await entries(root, path)) {
+			for (const kind of await walk.entries(path)) {
 				const kindPath = `${path}/${kind.name}`;
 				if (!kind.isDirectory() || kind.name.startsWith(".")) throw new RelayRefusal("strayEntry", kindPath);
 				// The store makes a folder only for a record it adds, and an empty one counts against no bound.
-				const slots = await entries(root, kindPath);
+				const slots = await walk.entries(kindPath);
 				if (slots.length === 0) throw new RelayRefusal("strayEntry", kindPath);
 				for (const slot of slots) {
 					const slotPath = `${kindPath}/${slot.name}`;
 					if (!slot.isDirectory() || !hex64.test(slot.name)) throw new RelayRefusal("strayEntry", slotPath);
-					const held = await entries(root, slotPath);
+					const held = await walk.entries(slotPath);
 					if (held.length === 0) throw new RelayRefusal("strayEntry", slotPath);
 					for (const file of held) {
 						const filePath = `${slotPath}/${file.name}`;
