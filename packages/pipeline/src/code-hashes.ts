@@ -50,7 +50,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/graph.ts": "c4a1e0142d48f4b4793e32b468ee38ed7557715de633104e598575a0028a13c2",
 
-	"packages/core/src/guardrails.ts": "38dea0f4f2df5f1a87289d196557e2e9756d9c319ddb5fde4e4e9295e526c218",
+	"packages/core/src/guardrails.ts": "869db0f9a02b81dd0575af36cf3dc9d6f455898a53829861ba8e6ef9e85b9e79",
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 

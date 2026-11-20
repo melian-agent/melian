@@ -306,7 +306,9 @@ async function policyChanges(
 				}),
 			);
 			if (forced && baseIdentity === headIdentity) return undefined;
-			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}`) };
+			// Melian cannot see what a link's target holds, so a notice behind one asks again whenever the head's content changes.
+			const behind = linked.has(path) ? `:tree:${await treeOf(repoRoot, revision.head)}` : "";
+			const trigger = { file: path, index: 0, hash: snippetHash(`blob:${baseIdentity}:${headIdentity}${behind}`) };
 			const marked = (await resolutionChanged(repoRoot, revision, path)) ? { resolution: true as const } : {};
 			const override = guardrail.enabled
 				? ""
@@ -591,6 +593,12 @@ export async function packwerkNotices(
 	const paths = named.filter((path) => touched.has(path) || linked.has(path));
 	const hits = await policyChanges(input, paths, configLookup(input.repoRoot, input.source), new Set(paths), linked);
 	return hits.map((hit) => finding(hit, source));
+}
+
+async function treeOf(repoRoot: string, commit: string): Promise<string> {
+	const tree = await git(repoRoot, ["rev-parse", "--verify", "--end-of-options", `${commit}^{tree}`]);
+	if (tree.code !== 0) throw new CheckError("unreadable", check, `${commit}: ${tree.stderr.trim()}`);
+	return tree.stdout.trim();
 }
 
 // Enola follows a link, so a change behind one touches no path it names; git's tree says which paths are, or lie under, a link.

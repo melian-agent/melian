@@ -324,6 +324,43 @@ describe("packwerkNotices", () => {
 		}
 	});
 
+	it.each([
+		["a directory link", { "packs/c": "../lib/c" }, "lib/c/package.yml", "packs/c/package.yml"],
+		["a file link", { "packs/b/package.yml": "../../lib/shared.yml" }, "lib/shared.yml", "packs/b/package.yml"],
+	])("gives a notice behind %s a new trigger when only the link's target changes", async (_, links, target, path) => {
+		const base = commit({ ...packages, ...shared }, "base", [], links);
+		const first = commit({ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") }, "first");
+		const second = commit({ [target]: lines("enforce_dependencies: false") }, "second");
+		const triggers = await Promise.all(
+			[first, second].map(async (head) => {
+				const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+				const input = { repoRoot: repo, revision, source: { kind: "revision", commit: base } as const };
+				const notice = (await packwerkNotices(input, linkedRead, enola)).find(
+					(finding) => finding.properties.path === path,
+				);
+				return notice?.properties.trigger?.hash;
+			}),
+		);
+		expect(triggers[0]).toBeDefined();
+		expect(triggers[1]).toBeDefined();
+		expect(triggers[1]).not.toBe(triggers[0]);
+	});
+
+	it("keeps a linked notice's trigger across a head that changes no content", async () => {
+		const base = commit({ ...packages, ...shared }, "base", [], { "packs/c": "../lib/c" });
+		const first = commit({ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") }, "first");
+		const same = commit({}, "no change");
+		const triggers = await Promise.all(
+			[first, same].map(async (head) => {
+				const { revision } = await Changeset.resolve(repo, `${base}..${head}`);
+				const input = { repoRoot: repo, revision, source: { kind: "revision", commit: base } as const };
+				return (await packwerkNotices(input, linkedRead, enola)).map((finding) => finding.properties.trigger);
+			}),
+		);
+		expect(triggers[0]).toHaveLength(2);
+		expect(triggers[1]).toEqual(triggers[0]);
+	});
+
 	it("draws nothing for a link that holds no Packwerk file Enola read, or only shares a name's prefix", async () => {
 		const { findings } = await notices(
 			{ ...packages, ...shared },
