@@ -44,7 +44,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/findings.ts": "e56bea75941cd6786f606ec176d7f80d8aaaecf6bc86f1e1d96afb68cb6dcd2d",
 
-	"packages/core/src/git.ts": "7aa8ddd284792605fbcc1395158a338e08cd481d6ae8af39de34b941cb45301a",
+	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
 
 	"packages/core/src/graph-coverage.ts": "9825e427c7e6dd961612861d7a0a570d1356ff1766f63ca52ddee1e4d62f72b8",
 
@@ -210,7 +210,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/spans.ts": "cea8de44b60c2dbb45768ffe2db937a250605b33014d8b003a70c614aeac6f95",
 
-	"packages/pipeline/src/static.ts": "ceafab44b1dbae42b3baddc5c723f39311a1645799418ce4e7b2996279cad40a",
+	"packages/pipeline/src/static.ts": "44f2e46ace5a4acfb28ba88187a68fce432281283a3f03006c40632303db71e3",
 
 	"packages/pipeline/src/summarize.ts": "a2efff4992c69a6f4dea9441aaa4393aac05a4171a98fc6001b944b6b6f70936",
 

@@ -63,8 +63,9 @@ const repositoryLocalVariables = [
 ];
 
 /**
- * The environment Melian runs git in: this process's, without the repository-local variables a hook sets, so a command
- * reads the repository its `cwd` or `-C` names, and with replacement objects off, as {@link withoutReplacements} says.
+ * The environment every git call Melian makes runs with: this process's, without the variables that point git at
+ * another repository, with optional locks and replacement objects off. A caller's own git settings in
+ * `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS` go too, since git reads both before the repository's.
  */
 export function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
