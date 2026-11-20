@@ -62,7 +62,12 @@ const repositoryLocalVariables = [
 	"GIT_COMMON_DIR",
 ];
 
-function gitEnvironment(): NodeJS.ProcessEnv {
+/**
+ * The environment every git call Melian makes runs with: this process's, without the variables that point git at
+ * another repository, with optional locks and replacement objects off. A caller's own git settings in
+ * `GIT_CONFIG_COUNT` and `GIT_CONFIG_PARAMETERS` go too, since git reads both before the repository's.
+ */
+export function gitEnvironment(): NodeJS.ProcessEnv {
 	const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0" };
 	for (const name of repositoryLocalVariables) delete env[name];
 	return withoutReplacements(env);

@@ -1,0 +1,14 @@
+// A git object named <revision>:<path> skips the revision source's hash check. Known limit: matches within one function only.
+language js
+
+or {
+	JsTemplateExpression() as $name where { $name <: r"`(?:[^-+`\s][^`\s]*)?:(?:[^/`\s][^`\s]*)?`" },
+	JsStringLiteralExpression() as $name where { $name <: r"\"(?:[^-+\"\s][^\"\s]*)?:(?:[^/\"\s][^\"\s]*)?\"" }
+} where {
+	$name <: within or { JsFunctionBody(), JsArrowFunctionExpression() } as $scope,
+	$scope <: contains or { `"cat-file"`, `"show"` },
+	register_diagnostic(
+		span = $name,
+		message = "A git object named by path, <revision>:<path>, is read with no check of its hash, so a mislabelled object returns other content. Read policy, standards and lenses through the revision source in packages/core/src/source.ts, which resolves the commit and reads each file by its object ID, as AGENTS.md in packages/core says."
+	)
+}

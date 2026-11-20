@@ -68,6 +68,12 @@ describe("staticToolVersion", () => {
 		expect(staticToolVersion(repo, "tsc")).toBe(carried.version);
 	});
 
+	it("takes Melian's own copy when the checkout tracks node_modules, though GIT_INDEX_FILE names an empty index", () => {
+		commit(repo, { "node_modules/.bin/biome": "#!/bin/sh\n" });
+		vi.stubEnv("GIT_INDEX_FILE", join(repo, "no-such-index"));
+		expect(staticToolSource(repo, "biome").from).toBe("melian");
+	});
+
 	it("says unavailable for a manifest that names no version, or cannot be read", () => {
 		own(7);
 		expect(staticToolVersion(repo, "biome")).toBe("unavailable");
