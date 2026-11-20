@@ -182,6 +182,13 @@ describe("ParityArm", () => {
 		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", thinking: "high" });
 	});
 
+	it("gives a route that names no model its first accepted model alone, so no later accepted model answers", async () => {
+		const accept = ["h/heavy", "h/second"];
+		const accepting: MelianConfig = { ...config, models: { ...config.models, heavy: { accept } } };
+		const routed = new ParityArm(1000).routed(accepting, [await named("a", ["src/**"])], [file("src/x.ts", 0, 3)]);
+		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", accept, thinking: "high" });
+	});
+
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
 		const builtins = await Lens.builtins();
 		const graphed = Lens.from({
@@ -337,6 +344,52 @@ describe("the arms through a real review", { timeout: 120_000 }, () => {
 			rmSync(built.repo, { recursive: true, force: true });
 		}
 	}
+
+	it("stops the parity arm on a route that names no model when only a later accepted model holds credentials", async () => {
+		const built = buildGoldenRepository(failOpen);
+		try {
+			const fake = createFakeModels();
+			const bare = fake.withoutCredentials("bare");
+			scriptConversations(
+				fake,
+				lensNames.map((lens) => ({
+					match: `You are the ${lens} reviewer`,
+					replies: [fauxAssistantMessage("Reported 0 findings.")],
+				})),
+			);
+			const ref = fake.ref();
+			const accept = [`${bare.provider}/${bare.modelId}`, `${ref.provider}/${ref.modelId}`];
+			const arm = new ParityArm(1_000_000);
+			const target = {
+				repo: built.repo,
+				base: built.base,
+				range: `${built.base}...${built.head}`,
+				writer: { trusted: true, by: "reviewer" },
+			} as const;
+			const said = await runRange(target, {
+				kind: "live",
+				models: fake.review,
+				model: accept[1]!,
+				probing: {
+					routed: (config, lenses, files) =>
+						arm.routed(
+							{ ...config, models: { ...config.models, light: { accept }, medium: { accept }, heavy: { accept } } },
+							lenses,
+							files,
+						),
+				},
+			}).then(
+				(run) => [
+					...run.telemetry.stages.flatMap(({ error }) => (error === undefined ? [] : [error])),
+					...run.verdict.notRun.flatMap(({ reason }) => (reason === undefined ? [] : [reason])),
+				],
+				(error: unknown) => [error instanceof Error ? error.message : String(error)],
+			);
+			expect(said.some((text) => /with credentials/.test(text))).toBe(true);
+		} finally {
+			rmSync(built.repo, { recursive: true, force: true });
+		}
+	});
 
 	const nameOf = (subject: string) => subject.split("@")[0]!;
 	const levelOf = (subject: string) => subject.split("@").at(-1)!;
