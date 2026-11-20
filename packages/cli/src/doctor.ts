@@ -144,15 +144,21 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 			},
 			...(refusal === undefined ? [] : [{ name: "decisions", state: "fail", detail: refusal } satisfies Check]),
 			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
-			...loaded.preferences.map(
-				({ file, keys }): Check => ({
-					name: "plan",
-					state: "warn",
-					detail: visibleText(
-						`${file} sets ${keys.join(", ")}, which a pull request's review ignores: it reads its policy and lenses from its base, never a preference file`,
-					),
-				}),
-			),
+			...loaded.preferences.flatMap(({ file, keys }): Check[] => {
+				// Every review renders with `output` from the preference files, through `terminalEmoji` in commands.ts.
+				const ignored = keys.filter((key) => !key.startsWith("output."));
+				return ignored.length === 0
+					? []
+					: [
+							{
+								name: "plan",
+								state: "warn",
+								detail: visibleText(
+									`${file} sets ${ignored.join(", ")}, which a pull request's review ignores: it reads its policy and lenses from its base`,
+								),
+							},
+						];
+			}),
 		];
 	} catch (error) {
 		return [{ name: "plan", state: "warn", detail: error instanceof Error ? error.message : String(error) }];

@@ -62,7 +62,7 @@ async function plan(): Promise<string[]> {
 
 const ignored = (file: string, keys: string) =>
 	new RegExp(
-		`^warn {2}plan +${file.replaceAll(".", "\\.")} sets ${keys.replaceAll(".", "\\.")}, which a pull request's review ignores: it reads its policy and lenses from its base, never a preference file$`,
+		`^warn {2}plan +${file.replaceAll(".", "\\.")} sets ${keys.replaceAll(".", "\\.")}, which a pull request's review ignores: it reads its policy and lenses from its base$`,
 	);
 
 describe("doctor's plan beside a preference a pull request's review ignores", { timeout: 60_000 }, () => {
@@ -90,6 +90,19 @@ describe("doctor's plan beside a preference a pull request's review ignores", { 
 			expect.stringMatching(
 				ignored(preferences, "lenses.correctness.route.model, lenses.correctness.route.thinking"),
 			),
+		]);
+	});
+
+	it("leaves out output.emoji, which every review reads from the preference files for the terminal", async () => {
+		writeFileSync(join(repo, "melian.local.yaml"), "output:\n  emoji: off\n");
+		mkdirSync(join(home, "melian"));
+		const preferences = join(home, "melian", "config.yaml");
+		writeFileSync(preferences, `output:\n  emoji: on\nmodels:\n  heavy:\n    model: ${local}\n`);
+
+		const lines = await plan();
+
+		expect(lines.filter((line) => line.includes("review ignores"))).toEqual([
+			expect.stringMatching(ignored(preferences, "models.heavy.model")),
 		]);
 	});
 
