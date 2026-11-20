@@ -1837,11 +1837,16 @@ describe("checkoutCommit", () => {
 				checkoutCommit(repo, [join(beside, "parity.json"), join(scratch, "misses.json"), join(repo, "..")]),
 			).toBe(head);
 			symlinkSync(repo, join(scratch, "link"));
+			writeFileSync(join(repo, "kept.json"), "{}\n");
+			execFileSync("git", ["-C", repo, "add", "kept.json"]);
+			execFileSync("git", ["-C", repo, "commit", "-q", "-m", "keep results"]);
+			symlinkSync(join(repo, "kept.json"), join(scratch, "kept.json"));
 			for (const [named, inside] of [
 				[join(repo, "src", "parity.json"), join(repo, "src", "parity.json")],
 				[join(repo, "..parity.json"), join(repo, "..parity.json")],
 				[repo, repo],
 				[join(scratch, "link", "parity.json"), join(repo, "parity.json")],
+				[join(scratch, "kept.json"), join(repo, "kept.json")],
 			])
 				expect(() => checkoutCommit(repo, [join(scratch, "misses.json"), named])).toThrow(
 					`${inside} is inside the checkout ${repo}, which the run must leave unchanged; name a path outside it`,

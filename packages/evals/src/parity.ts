@@ -1008,10 +1008,15 @@ export function checkoutCommit(directory: string, artefacts: readonly string[]):
 	const root = git("rev-parse", "--show-toplevel").trim();
 	for (const artefact of artefacts) {
 		const path = resolve(artefact);
+		// Resolved as the results lock resolves it, so a link out of the checkout to a file inside it is refused too.
 		let real = path;
 		try {
-			real = join(realpathSync(dirname(path)), basename(path));
-		} catch {}
+			real = realpathSync(path);
+		} catch {
+			try {
+				real = join(realpathSync(dirname(path)), basename(path));
+			} catch {}
+		}
 		const from = relative(root, real);
 		if (from !== ".." && !from.startsWith(`..${sep}`) && !isAbsolute(from))
 			throw new Error(
