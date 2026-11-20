@@ -946,6 +946,74 @@ describe("melian compare misses", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("writes a miss on a file's last line and names one a line past it, with or without a closing newline", () => {
+		const { repo, files, env } = checkout();
+		writeFileSync(join(repo, "src", "ends.ts"), "export const a = 1;\nexport const b = 2;\nexport const c = 3;\n");
+		writeFileSync(join(repo, "src", "tail.ts"), "export const a = 1;\nexport const b = 2;\nexport const c = 3;");
+		git(repo, "add", "src/ends.ts", "src/tail.ts");
+		git(repo, "commit", "--quiet", "-m", "add a file with a closing newline and one without");
+		expect(melian(repo, ["review", range], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/ends.ts", line: 3, title: "Last line", body: "b" },
+					{ file: "src/ends.ts", line: 4, title: "One past the end", body: "b" },
+					{ file: "src/tail.ts", line: 3, title: "Last line, no newline", body: "b" },
+					{ file: "src/tail.ts", line: 4, title: "One past, no newline", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const exported = () =>
+			Object.values(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0] as {
+				base: string;
+				head: string;
+				external: Record<string, { title: string }>;
+			};
+		const stored = exported();
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [last, past, tail, tailPast] = [
+			"Last line",
+			"One past the end",
+			"Last line, no newline",
+			"One past, no newline",
+		].map(idOf);
+		for (const id of [last, past, tail, tailPast])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const result = melian(repo, ["compare", "misses", range, "--out", output], env);
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 2 misses to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${past} lines 4-4 run past src/ends.ts, which has 3 lines at ${stored.head}.`,
+				`Not exported: ${changeset}-${tailPast} lines 4-4 run past src/tail.ts, which has 3 lines at ${stored.head}.`,
+			].sort(),
+		);
+		const place = (name: string, file: string, line: number) => ({
+			name: `${changeset}-${name}`,
+			repo: realpathSync(repo),
+			base: stored.base,
+			head: stored.head,
+			file,
+			lines: [line, line],
+		});
+		expect(
+			(JSON.parse(readFileSync(output, "utf8")) as { name: string }[]).sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual(
+			[place(last!, "src/ends.ts", 3), place(tail!, "src/tail.ts", 3)].sort((a, b) => a.name.localeCompare(b.name)),
+		);
+	});
+
 	it("writes nothing when no valid miss remains", () => {
 		const { repo, files, env } = reviewed();
 		const path = codexFile(files, [codexFinding(400, "Unchecked token")]);
