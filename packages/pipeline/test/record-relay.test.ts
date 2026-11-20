@@ -287,6 +287,32 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(await artefact(...written, ...past), writer))).code).toBe("tooManyExtras");
 	});
 
+	it("refuses another round's telemetry the round names, which would pass the bound uncounted", async () => {
+		const biome = check();
+		const made = account([biome]);
+		const otherRound = records().round([biome, check("static.tsc")], undefined, [], []);
+		const other = records().telemetry(otherRound, { durationMs: 5, stages: [] });
+		const round = records().round([biome, made, other], undefined, [], []);
+		const found = await refusal(RelayBatch.read(await artefact(biome, made, other, round), writer));
+		expect([found.code, found.file]).toEqual(["otherTelemetry", `${other.id}.json`]);
+	});
+
+	it("counts triage records the round names against the same bound", async () => {
+		const biome = check();
+		const made = account([biome]);
+		const triage = (index: number) => records().triage(index.toString(16).padStart(64, "0"), { inputCut: false });
+		const named = (triages: SharedRecord[]) => [
+			biome,
+			made,
+			...triages,
+			records().round([biome, made, ...triages], undefined, [], []),
+		];
+		const at = Array.from({ length: relayLimits.extras }, (_, index) => triage(index));
+		expect((await RelayBatch.read(await artefact(...named(at)), writer)).records).toHaveLength(at.length + 3);
+		const past = [...at, triage(relayLimits.extras)];
+		expect((await refusal(RelayBatch.read(await artefact(...named(past)), writer))).code).toBe("tooManyExtras");
+	});
+
 	it("refuses a writer's round that names no account, or two", async () => {
 		const biome = check();
 		const bare = records().round([biome], undefined, [], []);
@@ -328,8 +354,8 @@ describe("RelayBatch", () => {
 				[],
 				{ name: "lens.correctness", status: "ran", version: "0123456789ab", level: "careful" },
 			);
-		const triaged = (inputCut: boolean) =>
-			records().triage(request, {
+		const triaged = (inputCut: boolean, key = request) =>
+			records().triage(key, {
 				decision: {
 					questionSet: { name: "lenses", version: "1" },
 					decider: "recorded",
@@ -352,6 +378,22 @@ describe("RelayBatch", () => {
 			expect(batch.records).toHaveLength(5);
 		});
 
+		it.each([
+			["disagree, one cut and one not", [triaged(true), triaged(false)]],
+			["agree", [triaged(false), triaged(false, "f".repeat(64))]],
+		])("refuses two decided triage records that %s", async (_, decided) => {
+			const found = await refusal(
+				RelayBatch.read(await artefact(...accounted([check(), lens(), ...decided], claim)), run),
+			);
+			expect(found.code).toBe("triageCount");
+		});
+
+		it("refuses a second decided triage record the account does not count", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const found = await refusal(RelayBatch.read(await artefact(...written, triaged(true)), run));
+			expect(found.code).toBe("triageCount");
+		});
+
 		it("refuses triage's skip when triage's input was cut", async () => {
 			const found = await refusal(
 				RelayBatch.read(await artefact(...accounted([check(), lens(), triaged(true)], claim)), run),
@@ -371,6 +413,22 @@ describe("RelayBatch", () => {
 			const written = accounted([check(), lens(), triaged(false)], claim);
 			const batch = await RelayBatch.read(await artefact(...written, early("e".repeat(64))), run);
 			expect(batch.records).toHaveLength(6);
+		});
+
+		it("counts early lens copies the round names against the same bound, with the round's triage", async () => {
+			const counted = [check(), lens(), triaged(false)];
+			const made = account(counted, claim);
+			const named = (copies: SharedRecord[]) => [
+				...counted,
+				made,
+				...copies,
+				records().round([...counted, made, ...copies], undefined, [], []),
+			];
+			const copy = (index: number) => early(index.toString(16).padStart(64, "0"));
+			const at = Array.from({ length: relayLimits.extras - 1 }, (_, index) => copy(index));
+			expect((await RelayBatch.read(await artefact(...named(at)), run)).records).toHaveLength(at.length + 5);
+			const past = [...at, copy(relayLimits.extras)];
+			expect((await refusal(RelayBatch.read(await artefact(...named(past)), run))).code).toBe("tooManyExtras");
 		});
 
 		it("refuses an early copy under a key the round reads no run of", async () => {

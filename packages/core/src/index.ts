@@ -250,6 +250,7 @@ export {
 	type GuardrailInput,
 	type GuardrailName,
 	guardrailLimits,
+	packwerkNotices,
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
