@@ -104,7 +104,7 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 		const kept = stored.requests![made.request] as Record<string, unknown>;
 		// Every static check stamps its sightings, so each asks under a version no build before the stamp asked.
 		expect(kept.checks).toEqual({
-			guardrails: 1,
+			guardrails: 2,
 			"static.biome": 3,
 			"static.tsc": 4,
 			"static.enola": 5,
