@@ -305,21 +305,43 @@ export class GitHubProvider implements ReviewProvider {
 	}
 
 	async permission(login: string): Promise<RepositoryPermission | undefined> {
+		let permission: string;
 		try {
 			const { data } = await this.octokit.rest.repos.getCollaboratorPermissionLevel({
 				owner: this.owner,
 				repo: this.repo,
 				username: login,
 			});
-			const permission = data.permission;
-			return permission === "admin" ||
-				permission === "maintain" ||
-				permission === "write" ||
-				permission === "triage" ||
-				permission === "read" ||
-				permission === "none"
-				? permission
-				: undefined;
+			permission = data.permission;
+		} catch {
+			return await this.ownPermission(login);
+		}
+		return permission === "admin" ||
+			permission === "maintain" ||
+			permission === "write" ||
+			permission === "triage" ||
+			permission === "read" ||
+			permission === "none"
+			? permission
+			: undefined;
+	}
+
+	// A cloud session's proxy refuses the collaborator endpoint. The repository's `permissions` speak for the token's
+	// own user alone, so they answer only for that login, read afresh from /user and never from the cached viewer.
+	private async ownPermission(login: string): Promise<RepositoryPermission | undefined> {
+		try {
+			const { data: viewer } = await this.octokit.rest.users.getAuthenticated();
+			if (viewer.login !== login) return undefined;
+			const { data } = await this.octokit.rest.repos.get({ owner: this.owner, repo: this.repo });
+			if (data.full_name.toLowerCase() !== `${this.owner}/${this.repo}`.toLowerCase()) return undefined;
+			const roles: unknown = data.permissions;
+			if (typeof roles !== "object" || roles === null || Array.isArray(roles)) return undefined;
+			const on = (role: string) => (roles as Record<string, unknown>)[role] === true;
+			if (on("admin")) return "admin";
+			if (on("maintain")) return "maintain";
+			if (on("push")) return "write";
+			if (on("triage")) return "triage";
+			return on("pull") ? "read" : "none";
 		} catch {
 			return undefined;
 		}
