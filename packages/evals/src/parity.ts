@@ -1,6 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+	closeSync,
+	constants,
+	existsSync,
+	fstatSync,
+	mkdirSync,
+	openSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
 	type ChangedFile,
@@ -451,11 +463,33 @@ class ResultsLock {
 			writeFileSync(path, claim, { flag: "wx" });
 		} catch (thrown) {
 			if ((thrown as NodeJS.ErrnoException).code !== "EEXIST") throw thrown;
+			const run = ResultsLock.claimant(path);
 			throw new Error(
-				`${path} says run ${readFileSync(path, "utf8").split(" ")[0]} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+				run === undefined
+					? `${path} is not a lock this measurement wrote, so it cannot say which run holds ${out}; if no run is using it, removing it lets this one start`
+					: `${path} says run ${run} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
 			);
 		}
 		return new ResultsLock(path, claim);
+	}
+
+	// The refusal prints what the path holds, so it reads only a regular file, opened without following a link, and
+	// only one that reads whole as a claim; anything else could be a link to a file whose text is private.
+	private static claimant(path: string): string | undefined {
+		let fd: number;
+		try {
+			fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+		} catch {
+			return undefined;
+		}
+		try {
+			if (!fstatSync(fd).isFile()) return undefined;
+			return /^(\d+) [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\n$/.exec(
+				readFileSync(fd, "utf8"),
+			)?.[1];
+		} finally {
+			closeSync(fd);
+		}
 	}
 
 	// Read and then acted on: a lock deleted while its run lives, and taken by a second run between the read and the act,

@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -1008,6 +1008,59 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(results().attempts.map(({ miss, arm }) => [miss, arm])).toEqual([
 			["two", "committed"],
 			["two", "parity"],
+		]);
+	});
+
+	it("refuses a lock path that is a link, a directory or a file of other text, and says nothing the path holds", async () => {
+		const out = env.MELIAN_EVAL_PARITY_OUT!;
+		const lock = `${out}.lock`;
+		const secret = join(scratch, "secret");
+		writeFileSync(secret, "PRIVATE_TOKEN_7f30a data\n");
+		const plant: Record<string, () => void> = {
+			link: () => symlinkSync(secret, lock),
+			directory: () => mkdirSync(lock),
+			text: () => writeFileSync(lock, "PRIVATE_TOKEN_7f30a data\n"),
+			"claim after other text": () => writeFileSync(lock, "PRIVATE 4242 00000000-0000-4000-8000-000000000000\n"),
+			"claim before other text": () => writeFileSync(lock, "4242 00000000-0000-4000-8000-000000000000\nPRIVATE\n"),
+		};
+		for (const [kind, planted] of Object.entries(plant)) {
+			planted();
+			const using = runners();
+			expect([kind, await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)]).toMatchObject([
+				kind,
+				{
+					status: 2,
+					errors: [
+						`${lock} is not a lock this measurement wrote, so it cannot say which run holds ${out}; if no run is using it, removing it lets this one start`,
+					],
+				},
+			]);
+			expect(using.range).not.toHaveBeenCalled();
+			expect(existsSync(out)).toBe(false);
+			rmSync(lock, { recursive: true });
+		}
+		expect(readFileSync(secret, "utf8")).toBe("PRIVATE_TOKEN_7f30a data\n");
+	});
+
+	it("stops without saving or releasing when a claim of its own process but another run took its lock", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const other = `${process.pid} 00000000-0000-4000-8000-000000000000\n`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock);
+				writeFileSync(lock, other);
+				return ran(committedStages);
+			}),
+		});
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(readFileSync(lock, "utf8")).toBe(other);
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
 		]);
 	});
 
