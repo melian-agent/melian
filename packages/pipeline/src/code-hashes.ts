@@ -80,7 +80,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/process-tree.ts": "2707b8c6a10a0bc7266f3f276eedd8f59aec82d7a3bf5ed63e2d035f5702ce2b",
 
-	"packages/core/src/publication.ts": "624c417046c10ab2d8aa788a7b7c5bdf3bffebaa5b43aa143b4dc4015317557f",
+	"packages/core/src/publication.ts": "fb5476361a779c2bf5e9e2996fde1b60336e0a95fd2e7ce248e1ec134fb64cf8",
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
@@ -140,7 +140,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
-	"packages/pipeline/src/checks.ts": "4c8e3f33c0ff10557857a73e877ba49b51765f9fdd79e4353c101001a5511584",
+	"packages/pipeline/src/checks.ts": "0a11de34bc28e080bb944ba6a12eb5c62cf78b5700d94c7f0d0f39bd49474f19",
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 

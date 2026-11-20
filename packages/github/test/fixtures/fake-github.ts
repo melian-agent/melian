@@ -40,6 +40,8 @@ export type FakeActivity = {
 
 export type FakeState = {
 	branchRules?: unknown[];
+	// The repository's default branch, `main` unless a test names another.
+	defaultBranch?: string;
 	readFailures?: Record<string, number>;
 	owner: string;
 	repo: string;
@@ -159,6 +161,7 @@ export function fakeGitHub(
 			ref: state.pull.base.ref,
 			sha: state.pull.base.sha,
 			repo: {
+				default_branch: state.defaultBranch ?? "main",
 				clone_url: `https://github.com/${state.owner}/${state.repo}.git`,
 				name: state.repo,
 				owner: { login: state.owner },

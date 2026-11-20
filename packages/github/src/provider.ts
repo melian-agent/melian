@@ -265,7 +265,7 @@ export class GitHubProvider implements ReviewProvider {
 			...(data.user == null ? {} : { author: data.user.login }),
 			url: data.html_url,
 			state: data.state === "open" ? "open" : "closed",
-			base: { ref: data.base.ref, sha: data.base.sha },
+			base: { ref: data.base.ref, sha: data.base.sha, defaultBranch: data.base.repo.default_branch },
 			head: {
 				ref: data.head.ref,
 				sha: data.head.sha,
