@@ -1884,13 +1884,13 @@ export class Finding {
 	// The reports the finding holds, as the walk reads them.
 	#claims(): ResolutionClaim[] {
 		const { severity, source, reportedBy = [source], guardrail } = this.properties;
-		const own =
-			source.check === "guardrails"
-				? []
-				: reportedBy.map(
-						({ check, version }) =>
-							withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
-					);
+		// Every other reporter keeps its claim whichever sighting speaks, so the answer does not depend on which won.
+		const own = reportedBy
+			.filter(({ check }) => check !== "guardrails")
+			.map(
+				({ check, version }) =>
+					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
+			);
 		// A guardrail notice another check raised, as Enola's Packwerk notice is, resolves under both, the stricter standing.
 		if (guardrail === undefined)
 			return source.check === "guardrails" ? [{ check: "guardrails", group: this.ruleId, severity }] : own;

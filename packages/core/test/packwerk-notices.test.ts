@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Changeset, CheckError, EnolaFacts, type Finding, loadConfig } from "@melian-agent/core";
+import { Changeset, CheckError, EnolaFacts, Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails, packwerkNotices } from "../src/guardrails.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
@@ -206,6 +206,23 @@ describe("packwerkNotices", () => {
 		expect(await resolveAt(findings[0]!, "packs/a/package.yml", input.revision.base)).toBe("block");
 	});
 
+	it("keeps Enola's claim when a guardrails sighting of the same notice speaks for the merged finding", async () => {
+		const policy = lines(
+			"resolution:",
+			"  checks:",
+			"    static.enola: { P2: block }",
+			"    guardrails: { P2: silent }",
+		);
+		const head = { "packs/a/package.yml": lines("enforce_dependencies: false") };
+		const { findings, input } = await notices({ ...packages, "melian.yaml": policy }, head);
+		const { properties } = findings[0]!.toJSON();
+		const merged = Finding.from({
+			...findings[0]!.toJSON(),
+			properties: { ...properties, source: { check: "guardrails" }, reportedBy: [{ check: "guardrails" }, enola] },
+		});
+		expect(await resolveAt(merged, "packs/a/package.yml", input.revision.base)).toBe("block");
+	});
+
 	it("lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's", async () => {
 		const policy = lines(
 			"resolution:",
@@ -284,6 +301,24 @@ describe("packwerkNotices", () => {
 			expect(finding.properties.explanation.what).toContain(linkNote(finding.properties.path));
 			expect(finding.properties.severity).toBe("P2");
 		}
+	});
+
+	it("notices the paths behind a directory link the head deletes", async () => {
+		const { findings } = await notices(
+			{ ...packages, ...shared },
+			{},
+			{
+				read: linkedRead,
+				remove: ["packs/c"],
+				baseLinks: { "packs/c": "../lib/c" },
+			},
+		);
+		expect(findings.map((finding) => finding.properties.path)).toEqual([
+			"packs/c/package.yml",
+			"packs/c/package_todo.yml",
+		]);
+		for (const finding of findings)
+			expect(finding.properties.explanation.what).toContain(linkNote(finding.properties.path));
 	});
 
 	it("notices a link the base and head both hold on every change, though the change touches nothing there", async () => {
