@@ -31,7 +31,14 @@ const tier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome"]
 	loaded: [],
 	selected: [],
 });
-const fork = { changeset, revision: `${revision.base}..${revision.head}`, fork: true, tier };
+// This file tests how the relay reads a record, so its fork may hand over the one check its records name.
+const fork = {
+	changeset,
+	revision: `${revision.base}..${revision.head}`,
+	fork: true,
+	tier,
+	handedOver: ["static.biome"],
+};
 
 let directory = "";
 afterEach(async () => {

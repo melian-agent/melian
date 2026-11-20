@@ -44,7 +44,8 @@ export type RelayRefusalCode =
 	| "tooManyExtras"
 	| "accountCount"
 	| "tierAccount"
-	| "otherCheck";
+	| "otherCheck"
+	| "notHeadCode";
 
 const says: Record<RelayRefusalCode, string> = {
 	strayEntry: "is no record file a review's directory store writes",
@@ -66,6 +67,7 @@ const says: Record<RelayRefusalCode, string> = {
 	accountCount: "is a round that reads no account, or more than one",
 	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
 	otherCheck: "names a check the base's tier does not give",
+	notHeadCode: "is a check the job that holds the keys runs itself, so a fork's job may not hand it over",
 };
 
 const hex64 = /^[0-9a-f]{64}$/;
@@ -105,6 +107,8 @@ export type RelayRun = {
 	readonly revision: string;
 	readonly fork: boolean;
 	readonly tier: TierAccount;
+	/** The checks whose records a fork's job may hand over: those that run the head's code, as `headCodeChecks` names. */
+	readonly handedOver: readonly string[];
 };
 
 // A stored check as `TierAccount` reads it: a record leaves out with `null` what a check record leaves out.
@@ -282,6 +286,8 @@ export class RelayBatch {
 		// hold. The relay holds the base's, so this is where a check name is closed.
 		if (RelayBatch.#checkNames(checked).some((name) => !run.tier.checks.includes(name)))
 			throw new RelayRefusal("otherCheck", file);
+		if (run.fork && RelayBatch.#checkNames(checked).some((name) => !run.handedOver.includes(name)))
+			throw new RelayRefusal("notHeadCode", file);
 		return checked;
 	}
 

@@ -37,7 +37,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import type { CheckRunRecord } from "../src/checks.ts";
+import { type CheckRunRecord, headCodeChecks } from "../src/checks.ts";
 import { FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, Tx } from "../src/harness.ts";
 import { RelayBatch } from "../src/record-relay.ts";
@@ -260,6 +260,7 @@ describe("a review that names a record store", () => {
 				revision: Revision.key(changeset.revision),
 				fork: false,
 				tier: TierAccount.of(config, "full", selection.tierLenses()),
+				handedOver: headCodeChecks,
 			});
 			expect(batch.records).toHaveLength(stored.length);
 		} finally {

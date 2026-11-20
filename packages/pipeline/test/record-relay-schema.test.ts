@@ -10,7 +10,8 @@ const base = "a".repeat(40);
 const head = "b".repeat(40);
 const changeset = pullRequestChangesetId("github", { owner: "octo", name: "repo" }, 7);
 const tier = TierAccount.of(defaultConfig, "full", { loaded: [], selected: [] });
-const fork = { changeset, revision: `${base}..${head}`, fork: true, tier };
+// This file tests how the relay reads a record, so its fork may hand over the one check its records name.
+const fork = { changeset, revision: `${base}..${head}`, fork: true, tier, handedOver: ["static.biome"] };
 
 const directories: string[] = [];
 afterEach(async () => {

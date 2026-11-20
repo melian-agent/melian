@@ -27,7 +27,8 @@ const tier = TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome"]
 	loaded: [],
 	selected: [],
 });
-const writer = { changeset, revision, fork: false, tier };
+// A writer's batch is judged by its round, so the checks a fork's job may hand over decide nothing for it.
+const writer = { changeset, revision, fork: false, tier, handedOver: [] };
 // A tier that gives a second check, for batches whose refusal comes before the account's.
 const wide = {
 	...writer,
@@ -36,7 +37,17 @@ const wide = {
 		selected: [],
 	}),
 };
-const fork = { changeset, revision, fork: true, tier };
+// A fork's job hands over only what runs the head's code, so its tier gives a check it may not hand over beside one it may.
+const fork = {
+	changeset,
+	revision,
+	fork: true,
+	tier: TierAccount.of({ ...defaultConfig, tiers: { relay: ["static.biome", "static.mutation"] } }, "relay", {
+		loaded: [],
+		selected: [],
+	}),
+	handedOver: ["static.mutation"],
+};
 
 const records = () => ReviewRecords.of(changeset, { base, head });
 const check = (name = "static.biome") =>
@@ -104,14 +115,19 @@ describe("RelayBatch", () => {
 		expect((await store.list(changeset)).map((each) => each.kind).sort()).toEqual(["account", "check", "round"]);
 	});
 
-	it("takes a fork's check record", async () => {
+	it("takes a fork's record of a check that runs the head's code", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
-		await (await RelayBatch.read(await artefact(check()), fork)).into(store);
+		await (await RelayBatch.read(await artefact(check("static.mutation")), fork)).into(store);
 		expect(await store.list(changeset)).toHaveLength(1);
 	});
 
+	// The key-holding job runs every other check itself, so a fork's record of one would stand in for its own run.
+	it("refuses a fork's record of a check the key-holding job runs itself", async () => {
+		expect((await refusal(RelayBatch.read(await artefact(check()), fork))).code).toBe("notHeadCode");
+	});
+
 	it("refuses a round from a fork's head, so a made-up round is never added", async () => {
-		const biome = check();
+		const biome = check("static.mutation");
 		const found = await refusal(
 			RelayBatch.read(await artefact(biome, records().round([biome], undefined, [], [])), fork),
 		);

@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { Lens, loadConfig, RecordError, Revision, reviewPayloads, TierAccount } from "@melian-agent/core";
-import { ChangeLenses, RelayBatch } from "@melian-agent/pipeline";
+import { ChangeLenses, headCodeChecks, RelayBatch } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
 import { type Io, ReviewSource, writerTrust } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
@@ -43,6 +43,7 @@ export async function relayRecords(
 		revision: Revision.key(changeset.revision),
 		fork,
 		tier: TierAccount.of(config, tier, selection.tierLenses()),
+		handedOver: headCodeChecks,
 	});
 	if (options.check === true) {
 		io.stdout(

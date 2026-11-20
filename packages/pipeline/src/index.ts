@@ -5,6 +5,7 @@ export {
 	type CheckRunRecord,
 	checksExtension,
 	checksExtensionFor,
+	headCodeChecks,
 	type RunChecksInput,
 	type RunIdentity,
 	readCheckRecords,

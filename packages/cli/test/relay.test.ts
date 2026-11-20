@@ -55,6 +55,7 @@ async function pullRequest(
 		mainMoved?: Record<string, string>;
 		// The branch GitHub says the pull request merges into, when it is not the repository's default.
 		baseRef?: string;
+		check?: string;
 	} = {},
 ) {
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
@@ -98,7 +99,7 @@ async function pullRequest(
 	const records = ReviewRecords.of(changeset.id, changeset.revision);
 	const check = records.check(
 		request,
-		{ name: "static.biome", status: "ran", version: "2.0.0", findings: 0, notes: [] },
+		{ name: options.check ?? "static.biome", status: "ran", version: "2.0.0", findings: 0, notes: [] },
 		[],
 	);
 	const account = records.account({
@@ -198,7 +199,11 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 	});
 
 	it("refuses a fork's round, and melian/state is never created", async () => {
-		const { check, round, relay, onState, err } = await pullRequest({ fork: true });
+		const { check, round, relay, onState, err } = await pullRequest({
+			fork: true,
+			policy: "trust:\n  writers: true\ntiers:\n  full: [static.biome, static.mutation]\n",
+			check: "static.mutation",
+		});
 		expect(await relay(await artefact(check, round))).toBe(1);
 		expect(onState()).toBeUndefined();
 		expect(err()).toBe(
@@ -207,10 +212,23 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 	});
 
 	it("hands over what a fork's head may when the pusher is no writer", async () => {
-		const { check, round, relay, onState } = await pullRequest({ permission: "read" });
+		const { check, round, relay, onState } = await pullRequest({
+			permission: "read",
+			policy: "trust:\n  writers: true\ntiers:\n  full: [static.biome, static.mutation]\n",
+			check: "static.mutation",
+		});
 		expect(await relay(await artefact(check, round))).toBe(1);
 		expect(await relay(await artefact(check))).toBe(0);
 		expect(onState()).toEqual([check.path]);
+	});
+
+	it("refuses a fork's record of a check the key-holding job runs itself", async () => {
+		const { check, relay, onState, err } = await pullRequest({ permission: "read" });
+		expect(await relay(await artefact(check))).toBe(1);
+		expect(onState()).toBeUndefined();
+		expect(err()).toBe(
+			`melian: melian records relay refused the batch: ${check.id}.json is a check the job that holds the keys runs itself, so a fork's job may not hand it over\n`,
+		);
 	});
 
 	it("refuses a pull request that moved from the approved head", async () => {
