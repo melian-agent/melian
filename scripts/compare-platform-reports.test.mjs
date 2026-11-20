@@ -391,6 +391,34 @@ describe("how the comparison names a test", () => {
 		]);
 	});
 
+	it("accepts two passed tests of one name in a file the list does not name, since nothing compares them by name", () => {
+		const unlisted = "packages/cli/test/cli.test.ts";
+		const { errors } = compare({
+			linux: report(...rows(linux()), { file: unlisted, title: "prints its help" }),
+			mac: [
+				report(
+					...rows(macWhole()),
+					{ file: unlisted, title: "prints its help" },
+					{ file: unlisted, title: "prints its help" },
+				),
+				macTagged(),
+			],
+			list,
+		});
+		expect(errors).toEqual([]);
+	});
+
+	it("refuses two passed tests of one name in a file the list names", () => {
+		const { errors } = compare({
+			linux: report(...rows(linux()), { file: tagged, title: "records a plan" }),
+			mac: [macWhole(), macTagged()],
+			list,
+		});
+		expect(errors).toEqual([
+			`the Linux report holds two tests named ${tagged} > a suite > records a plan, which cannot be told apart: rename one`,
+		]);
+	});
+
 	it("refuses a macOS report holding two tests of one name", () => {
 		const { errors } = compare({
 			linux: linux(),

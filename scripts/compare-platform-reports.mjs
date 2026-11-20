@@ -24,11 +24,12 @@ const testsOf = (report) =>
 		}));
 	});
 
-// Vitest's report gives two tests of one name nothing else to tell them apart by, so neither is compared.
-const duplicates = (tests) => {
+// Vitest's report gives two tests of one name nothing else to tell them apart by, so neither is compared. Only a listed
+// file's tests are compared by name, and a Linux skip in any other file fails as unlisted, so only listed files are read.
+const duplicates = (tests, listed) => {
 	const seen = new Set();
 	const repeated = new Map();
-	for (const test of tests) {
+	for (const test of tests.filter((test) => listed.has(test.file))) {
 		if (seen.has(test.key)) repeated.set(test.key, test.id);
 		seen.add(test.key);
 	}
@@ -37,7 +38,7 @@ const duplicates = (tests) => {
 
 /**
  * Checks seven things, and returns what it counted and every way they failed:
- * no report holds two tests of one name; every macOS run succeeded; the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
+ * no report holds two tests of one name in a listed file; every macOS run succeeded; the Linux report shows a skipped test; every file Linux skipped a test in is listed; every test Linux skipped passed
  * on macOS; each named suite ran whole, and each tagged file's tagged tests passed; and no test macOS ran failed.
  */
 export function compare({ linux, mac, list }) {
@@ -53,8 +54,8 @@ export function compare({ linux, mac, list }) {
 	const skipped = linuxTests.filter((test) => test.status !== "passed");
 	const skippedFiles = [...new Set(skipped.map((test) => test.file))].sort();
 	const lines = [`Linux skipped tests in: ${skippedFiles.join(", ")}`];
-	const linuxRepeated = duplicates(linuxTests);
-	const macRepeated = duplicates(macTests);
+	const linuxRepeated = duplicates(linuxTests, listed);
+	const macRepeated = duplicates(macTests, listed);
 	const repeated = new Set([...linuxRepeated.keys(), ...macRepeated.keys()]);
 	const errors = [
 		...[...linuxRepeated.values()].map(
