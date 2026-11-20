@@ -14,7 +14,7 @@ A Biome Grit plugin, `biome/object-by-path.grit`, reports a string or template s
 
 It leaves alone a colon that is not an object name: a refspec, which starts with `+` or names a ref on both sides; a URL, whose colon is followed by `/`; an option such as `--format=%H:%T`; a message with spaces; a peeled name such as `<sha>^{commit}`; and a label in a function that runs neither command.
 
-One file offends today. `blobText` in `packages/core/src/guardrails.ts` reads `package.json`, `melian.yaml` and analyser configuration by path. It is the plugin's one exclusion in `biome.json`, until [issue #591](https://github.com/melian-agent/melian/issues/591) moves it onto the revision source. A test fails once an excluded file stops offending, so the list only shrinks.
+One file offends today. `blobText` in `packages/core/src/guardrails.ts` reads `package.json`, `melian.yaml` and analyser configuration by path. It is the plugin's one exclusion in `biome.json`, until [issue #591](https://github.com/melian-agent/melian/issues/591) moves it onto the revision source. The exclusion covers the whole file, so a test lints it with the exclusion lifted and requires exactly the one read it was excused for. A second read added anywhere in it fails the test, and so does removing `blobText`'s, so the list only shrinks.
 
 ## Known limit
 
@@ -22,4 +22,4 @@ The rule matches within one function. An argument array built in one function an
 
 ## Proof
 
-`scripts/object-by-path.test.mjs` lints scratch files with the plugin wired as the root's `biome.json` wires it. It reports six shapes: a template naming a revision and a path, one held in a variable, a literal, an index path, `[c, p].join(":")` and an arrow function's body. It passes six others: those listed above. It checks that each grandfathered file is excluded while another source file is reported, and that each grandfathered file still offends with its exclusion lifted.
+`scripts/object-by-path.test.mjs` lints scratch files with the plugin wired as the root's `biome.json` wires it. It reports six shapes: a template naming a revision and a path, one held in a variable, a literal, an index path, `[c, p].join(":")` and an arrow function's body. It passes six others: those listed above. It checks that each grandfathered file is excluded while another source file is reported, and that each grandfathered file, with its exclusion lifted, reports exactly the reads the test records for it.

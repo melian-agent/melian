@@ -11,6 +11,9 @@ const plugin = plugins.find((each) => each.path.endsWith("object-by-path.grit"))
 
 let dir;
 
+// Each file the plugin excludes, with the number of reads it reports there once the exclusion is lifted.
+const grandfathered = { "packages/core/src/guardrails.ts": 1 };
+
 function excluded() {
 	return plugin.includes.filter((glob) => glob.startsWith("!")).map((glob) => glob.replace(/^!\*\*\//, ""));
 }
@@ -92,10 +95,11 @@ describe("the object-by-path Biome plugin", { timeout: 30_000 }, () => {
 		expect(lint("packages/core/src/source.ts", source)).toEqual([3]);
 	});
 
-	it("reports each grandfathered file once its exclusion is lifted, so the list holds no file that has stopped offending", () => {
+	it("finds in each grandfathered file exactly the reads it was excused for, so the file gains none and the list only shrinks", () => {
+		expect(excluded().sort()).toEqual(Object.keys(grandfathered).sort());
 		for (const path of excluded()) {
 			const lines = lint(path, readFileSync(join(root, path), "utf8"), ["**/packages/*/src/**"]);
-			expect(lines.length, path).toBeGreaterThan(0);
+			expect(lines.length, path).toBe(grandfathered[path]);
 		}
 	});
 });
