@@ -3149,7 +3149,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		const ran = record((await run).verdict);
 		expect(ran.status).toBe("ran");
-		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1");
 	});
 
 	it("says only that every model failed when every model hit its limit", async () => {
@@ -3221,7 +3221,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.status).toBe("ran");
 		expect(seen).toEqual(["first", "first", "second", "second"]);
 		expect(ran.reason).toBe(
-			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
 		);
 	});
 
@@ -3252,7 +3252,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		const ran = record((await run).verdict);
 		expect(ran.status).toBe("ran");
 		expect(ran.reason).toBe(
-			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
 		);
 	});
 
@@ -3364,7 +3364,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		const ran = record((await run).verdict);
 		expect(ran.reason).toBe(
-			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack`,
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
 		);
 	});
 
