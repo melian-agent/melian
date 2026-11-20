@@ -415,6 +415,22 @@ describe("RelayBatch", () => {
 			expect(batch.records).toHaveLength(6);
 		});
 
+		it("counts early lens copies the round names against the same bound, with the round's triage", async () => {
+			const counted = [check(), lens(), triaged(false)];
+			const made = account(counted, claim);
+			const named = (copies: SharedRecord[]) => [
+				...counted,
+				made,
+				...copies,
+				records().round([...counted, made, ...copies], undefined, [], []),
+			];
+			const copy = (index: number) => early(index.toString(16).padStart(64, "0"));
+			const at = Array.from({ length: relayLimits.extras - 1 }, (_, index) => copy(index));
+			expect((await RelayBatch.read(await artefact(...named(at)), run)).records).toHaveLength(at.length + 5);
+			const past = [...at, copy(relayLimits.extras)];
+			expect((await refusal(RelayBatch.read(await artefact(...named(past)), run))).code).toBe("tooManyExtras");
+		});
+
 		it("refuses an early copy under a key the round reads no run of", async () => {
 			const written = accounted([check(), lens(), triaged(false)], claim);
 			const stray = early("f".repeat(64));
