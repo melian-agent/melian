@@ -308,7 +308,13 @@ describe("measureParity", { timeout: 60_000 }, () => {
 	afterEach(() => rmSync(repo, { recursive: true, force: true }));
 
 	const snapshot = `sha256:${"e".repeat(64)}`;
-	const probeHost = { platform: "linux", sandbox: "runtime", sandboxVersion: "0.0.1", arch: "x64", node: "24.0.0" } as const;
+	const probeHost = {
+		platform: "linux",
+		sandbox: "runtime",
+		sandboxVersion: "0.0.1",
+		arch: "x64",
+		node: "24.0.0",
+	} as const;
 	const committedStages = [
 		lensStage(),
 		lensStage({ id: "v", name: "melian.verification", subject: "verifier", usage: usage({ model: 30 }, 10) }),
@@ -665,7 +671,10 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect((await measure(env, runners())).status).toBe(1);
 		const current = results();
 		const { host: _, ...older } = current;
-		for (const other of [{ ...older, version: 1 }, { ...current, arm: "Another arm" }]) {
+		for (const other of [
+			{ ...older, version: 1 },
+			{ ...current, arm: "Another arm" },
+		]) {
 			writeFileSync(env.MELIAN_EVAL_PARITY_OUT!, JSON.stringify(other));
 			const old = runners();
 			expect(await measure(env, old), other.arm).toMatchObject({
