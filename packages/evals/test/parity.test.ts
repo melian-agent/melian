@@ -841,6 +841,23 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(lines).toContain("    correctness@1@deep prober ended at its tokens share of no limit, 1 attacks open");
 	});
 
+	it("counts a covered file a cut lens read as seen, whichever other files it read, and one it read only beside as unread", async () => {
+		const cut = (id: string, read: string[]) =>
+			lensStage({
+				id,
+				ended: "tokens",
+				limits: { tokens: 50 },
+				coverage: { scope: "", paths: ["src/**"], nearer: [] },
+				shown: [],
+				read: read.map((path) => ({ path, ranges: [[1, 2]] as [number, number][] })),
+			});
+		await measure(
+			{ ...env, MELIAN_EVAL_PARITY_MISSES: "one" },
+			runners([[cut("s", ["README.md", "src/scan.ts"]), cut("b", ["README.md"])]]),
+		);
+		expect(results().attempts[0]!.stages.map(({ unread }) => unread)).toEqual([[], ["src/scan.ts"]]);
+	});
+
 	it("resumes from its results file, skipping what it finished, and refuses one another commit measured", async () => {
 		await measure({ ...env, MELIAN_EVAL_PARITY_STOP_RUN: "200" }, runners());
 		expect(results().stopped).toMatch(/the run's 360 tokens reached MELIAN_EVAL_PARITY_STOP_RUN, 200/);
