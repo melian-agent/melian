@@ -12,13 +12,13 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/checks.ts": "e7481774eeb3141a6b9e5f063cffba1e7e04b959a14818594b4ebccb80d45429",
 
-	"packages/core/src/comparison-adjudication.ts": "0f88c3f91b1cede518c9e8d9cdd72f496fee5ebffb6fa6f453f826f2c6727562",
+	"packages/core/src/comparison-adjudication.ts": "2c676b0f19c015d52b42b92c905c6d4087f3db0a1ea5d535b04b70794ce7181c",
 
-	"packages/core/src/comparison-export.ts": "478dba3c12b761be90e7a627409174c7e7b7dd28011dd618a79727509c275031",
+	"packages/core/src/comparison-export.ts": "9a0ea0a3a7d21a8369922ad19817f43f2cba4132fec59a169afa5f5e8ca4e0c8",
 
 	"packages/core/src/comparison-set.ts": "8f56f2e3e5a3846bc66820bf95540f8a77da4cfaf63a402aa43df998a8497ade",
 
-	"packages/core/src/comparison.ts": "6b65f1d6c50802fefd9705af4d31b14d60406b239a88ee35fc484eb1d90fb6f0",
+	"packages/core/src/comparison.ts": "e86847d78aa8dd6df21dd9dfa4147074b391afaad89b6a1aef806fdae48d74f0",
 
 	"packages/core/src/config.ts": "7bdeeb890b93c90f520e2bb603b6965bf0188f69c94dabd315258fe276a77dde",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "9aa9efd2060b1ac5d54dea1993f29808b211ec5f19c67ba5412b7a88ada775f7",
+	"packages/core/src/index.ts": "2da5c2d062708ce2ac65d42758e1d72ef134e825924f71c6cb763d0294ae2e02",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -200,7 +200,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/publish.ts": "c2fb72bc237ae6967f787fb517c71dbf25801f07d81eb0916e05836e1c9a525a",
 
-	"packages/pipeline/src/pull-request-rounds.ts": "03c1998aa13678cacf7e7a058c9d93d3eb4f0ffebfb67b7ad435d98a59135de3",
+	"packages/pipeline/src/pull-request-rounds.ts": "ccbf04c1d99807b934fcb8e40863419d9956975877de1dd30d1c0e36b1073fd8",
 
 	"packages/pipeline/src/reasoning.ts": "fa1d55fd64f338400837c4fe49c0bf10da91ddfd487cdd0b9b8bd5d1cd2234e9",
 
