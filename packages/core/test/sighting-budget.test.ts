@@ -230,6 +230,25 @@ describe("a record's sighting budget", () => {
 		});
 	});
 
+	it("keeps whole a finding whose Why here is as long as the longest note, and abridges one a byte longer", () => {
+		const rest = Array.from({ length: 20 }, (_, index) => notice(index));
+		// The longest note names every file: the twenty, `even` and `over`.
+		const longest = note(22).length;
+		const [even, over] = [200, 201].map((index) =>
+			notice(index, { what: "Changes it.", whyHere: "w".repeat(index === 200 ? longest : longest + 1) }),
+		);
+		const all = [...rest, even!, over!];
+		// Neither sorts first, so at the floor both fall after the cut.
+		expect([even!.id, over!.id]).not.toContain(byId(all)[0]!.id);
+		const fitted = new SightingBudget(floor(all)).fit(all);
+		expect(fitted[20]).toBe(even);
+		expect(fitted[21]!.properties.explanation).toEqual({
+			what: "Changes it.",
+			whyHere: note(21),
+			whatToDo: over!.properties.explanation.whatToDo,
+		});
+	});
+
 	it("measures multi-byte detail in bytes at the bound and one past it", () => {
 		const wide = Array.from({ length: 50 }, (_, index) => notice(index, { what: "€".repeat(1500) }));
 		const exact = bytes(wide);
