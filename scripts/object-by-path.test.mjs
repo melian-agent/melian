@@ -11,8 +11,26 @@ const plugin = plugins.find((each) => each.path.endsWith("object-by-path.grit"))
 
 let dir;
 
-// Each file the plugin excludes, with the number of reads it reports there once the exclusion is lifted.
-const grandfathered = { "packages/core/src/guardrails.ts": 1 };
+// Each file the plugin excludes, with the function and argument of each read it reports there once the exclusion is lifted.
+const grandfathered = {
+	"packages/core/src/guardrails.ts": [{ function: "blobText", argument: "const object = `#{commit}:#{path}`;" }],
+};
+
+// The line of each excused read: its argument's line within its function, which ends at the next closing brace in the
+// first column.
+function excusedLines(source, reads) {
+	const lines = source.split("\n");
+	return reads.flatMap((read) => {
+		const start = lines.findIndex((line) => new RegExp(`function ${read.function}\\(`).test(line));
+		const end = lines.findIndex((line, index) => index > start && line === "}");
+		const argument = read.argument.replaceAll("#{", "${");
+		const found = lines.flatMap((line, index) =>
+			start >= 0 && index > start && index < end && line.trim() === argument ? [index + 1] : [],
+		);
+		expect(found, `${read.function}: ${argument}`).toHaveLength(1);
+		return found;
+	});
+}
 
 function excluded() {
 	return plugin.includes.filter((glob) => glob.startsWith("!")).map((glob) => glob.replace(/^!\*\*\//, ""));
@@ -105,8 +123,9 @@ describe("the object-by-path Biome plugin", { timeout: 30_000 }, () => {
 	it("finds in each grandfathered file exactly the reads it was excused for, so the file gains none and the list only shrinks", () => {
 		expect(excluded().sort()).toEqual(Object.keys(grandfathered).sort());
 		for (const path of excluded()) {
-			const lines = lint(path, readFileSync(join(root, path), "utf8"), ["**/packages/*/src/**"]);
-			expect(lines.length, path).toBe(grandfathered[path]);
+			const source = readFileSync(join(root, path), "utf8");
+			const lines = lint(path, source, ["**/packages/*/src/**"]);
+			expect(lines, path).toEqual(excusedLines(source, grandfathered[path]));
 		}
 	});
 });
