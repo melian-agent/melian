@@ -199,4 +199,11 @@ describe("npm scripts", () => {
 			'It removes the npm script "check,]".',
 		]);
 	});
+
+	it("strips one leading byte order mark, as npm does", () => {
+		expect(switchOffs("package.json", base, `﻿${manifest({ check: "true", lint: "biome lint" })}`, [])).toEqual([
+			'It changes the npm script "check".',
+		]);
+		expect(switchOffs("package.json", base, `﻿﻿${manifest({ check: "true" })}`, [])).toEqual([]);
+	});
 });

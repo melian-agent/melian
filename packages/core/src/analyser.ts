@@ -138,10 +138,11 @@ export function switchOffs(
 	return found;
 }
 
-// npm reads package.json with JSON.parse; `parseJsonc` would also drop a comma before a bracket inside a string.
+// npm's json-parse-even-better-errors strips one leading byte order mark, then calls JSON.parse. `parseJsonc` would
+// also drop a comma before a bracket inside a string.
 function strictJson(text: string | undefined): unknown {
 	try {
-		return text === undefined ? undefined : JSON.parse(text);
+		return text === undefined ? undefined : JSON.parse(text.replace(/^\uFEFF/, ""));
 	} catch {
 		return undefined;
 	}
