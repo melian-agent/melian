@@ -1,0 +1,1260 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "0786299864a29d5d7827790abe26819401ad3831",
+		"head": "d7a7a6f2f3735a2a01e2c703668fecd8397602f2"
+	},
+	"claimsIn": [
+		"packages/core/src/guardrails.ts",
+		"packages/core/src/enola-graph.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4a31f9e61456f1b813c5e8a72a37f7b7b72985b69c13f634956512f5448eeb95",
+	"mutants": [
+		{
+			"file": "packages/core/src/enola-graph.ts",
+			"line": 26,
+			"column": 21,
+			"endLine": 26,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f79de65a189faa969f5029a80a9396f628066f3af17f4ac1be661951ed703473"
+		},
+		{
+			"file": "packages/core/src/enola-graph.ts",
+			"line": 86,
+			"column": 6,
+			"endLine": 86,
+			"endColumn": 69,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "82692ae876aab14e6d5996014d7a591ae28fa022f8d2134cfe590b8b91003248",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"EnolaFacts.packwerkFiles",
+						"names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml, and nothing without one"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 337,
+			"column": 8,
+			"endLine": 337,
+			"endColumn": 79,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "debd63cc99e987ad1ef4040049f7e7d67c5d53ad7c5740751ef3cdbabd457a8a"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 338,
+			"column": 8,
+			"endLine": 338,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "87ce1144003232724a9a76ea70ff0fb0dce2bab72da13442c3895e36cf600ce1"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 341,
+			"column": 7,
+			"endLine": 349,
+			"endColumn": 29,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "[...(link ? [`${path} configures ${analyser}.`, `${path} reaches Enola through a symbolic link, so Melian cannot tell whether this change altered it.`] : [`This revision changes ${path}, which configures ${analyser}.`]), ...switched].join(\" \") - override",
+			"status": "generated",
+			"id": "b1c483dd709f623600cb7f4c8fa5604b7d38960de5adc96a203f27cb1e5a8714",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 341,
+			"column": 7,
+			"endLine": 349,
+			"endColumn": 8,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d363b17c3dc93e68fd5726bc5668232151c6cb8f91cb018ea361dbf172167963",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 343,
+			"column": 11,
+			"endLine": 346,
+			"endColumn": 11,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "44a5f03603bdc3cba6eac3a09ccb71b0f8f1c9baddc701533a246097b22c939e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 344,
+			"column": 11,
+			"endLine": 344,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2c59888c836bafa386702f9d21f46fee52d7d6db8a3a0066c5e0d96665354592"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 345,
+			"column": 11,
+			"endLine": 345,
+			"endColumn": 113,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "838665fcf87d9a8d713121a8890f6911526a5a8e5c6b949ddb2e9fb823889cd4"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 347,
+			"column": 11,
+			"endLine": 347,
+			"endColumn": 75,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "fc30216aaa2ef71d2ab482f77f15ef3f6b441407367af4d385cd189a785fb6f1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a head that records its own new violation in package_todo.yml"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 347,
+			"column": 12,
+			"endLine": 347,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b852c19ecbcc7d157e1b51696825b1b3eec6bc914783c4924179d77610218337"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 349,
+			"column": 14,
+			"endLine": 349,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ae30703ca7370bba222c46c3256ce74af50608ecd45ead74ed5dd06ee925e58b"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 353,
+			"column": 9,
+			"endLine": 353,
+			"endColumn": 112,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ae074445ebe704af4b6ad5d9b2c55b014085f04dba2e97e6c8b6e57c80c0e81f"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 354,
+			"column": 9,
+			"endLine": 354,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7dc83d4b795ead79d523f85ac5cb3ba5e40484bca0082d4e87d8f4ae991b74bb"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 589,
+			"column": 15,
+			"endLine": 589,
+			"endColumn": 44,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(packwerk)]",
+			"status": "generated",
+			"id": "3fe6cd65e658ccacc6f5db7d32912cbeacaa8ab36d5d7d7b496a82e42de6590c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices each changed file once, in path order, whatever order Enola's facts gave"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 589,
+			"column": 15,
+			"endLine": 589,
+			"endColumn": 37,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c3dccad170df6820ca26d29675383abd31497b23019173abd06dabeb628372d5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 591,
+			"column": 15,
+			"endLine": 591,
+			"endColumn": 76,
+			"mutatorName": "MethodExpression",
+			"replacement": "named",
+			"status": "generated",
+			"id": "8ec904853c40a613c354224333ceb3b2cccfb06e5f944adad96b2b7288b270a5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 591,
+			"column": 28,
+			"endLine": 591,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "9d5150f4022bf79ba35471f8d4c8fc80ba402b2fa71edfa7b4323a51f99f53a2",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 591,
+			"column": 38,
+			"endLine": 591,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9cabe6431d923e7ba2ad883c41bd1d164b329283f3945eaaaeca2a88c62dfb65",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 591,
+			"column": 38,
+			"endLine": 591,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fb69d615739ace6e023fa7e673e4b74bc53c1d406fe4578b500eb34f009db1c9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 591,
+			"column": 38,
+			"endLine": 591,
+			"endColumn": 75,
+			"mutatorName": "LogicalOperator",
+			"replacement": "touched.has(path) && linked.has(path)",
+			"status": "generated",
+			"id": "db3fd716446ea353009d50e2b55e283934e8ebed82868fdd9744ff2e3ddcb970",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 597,
+			"column": 98,
+			"endLine": 619,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c5d129c54057a0c22c345919c74a794565c570338c78590ccdb36144bb05a1f0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 598,
+			"column": 18,
+			"endLine": 602,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "30c0507cbca83e25831ba03ab09aa1b038749dba9000ad923d8778636a0d089a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 17,
+			"endLine": 600,
+			"endColumn": 104,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "13e4c984afe5897f178d74e732c1f4e6a2b5c2853aad1c0997141ce79664bcd0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 38,
+			"endLine": 600,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a727559afcf34672610666cc76e4114468f3f4a3e4ceb60658ba7faf1bf8b9db"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 47,
+			"endLine": 600,
+			"endColumn": 103,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "88a7fbc44bc57c7ed5478639a8f5188390681781f04af1b2fa6d1845dfed21ff",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 68,
+			"endLine": 600,
+			"endColumn": 93,
+			"mutatorName": "MethodExpression",
+			"replacement": "parts",
+			"status": "generated",
+			"id": "dcf59a833790b1b20836ccc1b16b8632c175d7cf98e80f913f975e39b9c26392",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 83,
+			"endLine": 600,
+			"endColumn": 92,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "index - 1",
+			"status": "generated",
+			"id": "93c0e85ab3ca8b7037d6587eb6d4fe2e9bc4353dfdc6542cbcfa307a20f3226c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 99,
+			"endLine": 600,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2d7d3c3b7732e8b993589def7cc05fb891b43558ebc05ef4a777c398711bb73b"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 603,
+			"column": 5,
+			"endLine": 603,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "88f63f66b8aa47aa20af439837a5a1dbac1ba18ee50139d1f63669db08b933ac",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 603,
+			"column": 5,
+			"endLine": 603,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4b025817e12da2ede6171a7ef2421c75e9fd2760fa340fd1e7f294c41673c7e9",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Forcing the empty-list test false runs git ls-tree with no pathspec, which lists the root alone; filtering an empty path list over it still yields no linked path, so only two git calls differ."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 603,
+			"column": 5,
+			"endLine": 603,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "prefixes.length !== 0",
+			"status": "generated",
+			"id": "8c54d37c806904fbf7a51762b809849aed3f86255360f4f3937163c900a61759",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 604,
+			"column": 25,
+			"endLine": 604,
+			"endColumn": 27,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "ed8fd9f47cc6c12e2f439338c3e37fdd7f0f373facd98c31862fce6f592296f8",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Seeding the link list with a made-up entry adds a link no Packwerk path equals or lies under, since Enola's paths are repository paths and never that text."
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 605,
+			"column": 22,
+			"endLine": 605,
+			"endColumn": 64,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c062b67ad60a62ae5134df7b8baa17d039af69b37c5d2c22469a14a656ac9d95",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 605,
+			"column": 66,
+			"endLine": 617,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "16c1497dd99670b1826caaa0036bde75f57d0569237b9958b66274465b963f2b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 606,
+			"column": 43,
+			"endLine": 614,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9888bb3178d8a2f75179941257ecb664c650c8593610672ef9c6277b42c60f1f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 607,
+			"column": 3,
+			"endLine": 607,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b277588287939b50043defd88cdf4e7fe0ef5305ecd8c8c3806a663209f9f14b"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 608,
+			"column": 3,
+			"endLine": 608,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "387afab8b270005b270d85dfec1ffef97440c45ad04fd2cc95024fd132bb9c56"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 609,
+			"column": 3,
+			"endLine": 609,
+			"endColumn": 7,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "def5379a44171bf0c44ea9f1e217d5da758944f8cc92f25c72bf0a9c1032f330"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 610,
+			"column": 3,
+			"endLine": 610,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ca08ae86a7e8ab8859b83d8753baba086c31d061d16f33a0584d2f582b3f26bc"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 612,
+			"column": 3,
+			"endLine": 612,
+			"endColumn": 7,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c24f61a36519f08d30a73867abd3ef49275e53dde5ba9d45d54a005d8c1520f5"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 6,
+			"endLine": 615,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ce9322c116fdcbf917a76f6243b40f989e3e5062a34f9e8be59154c54b63bbd8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 6,
+			"endLine": 615,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "54ea83fa13066c56fd4c9a3fb36aa3b1521d02622d35068e99a267c4ecd5e797",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"fails as unreadable when git cannot list a revision's tree"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 6,
+			"endLine": 615,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "listed.code === 0",
+			"status": "generated",
+			"id": "c7e62a90b0b3091fe466adc0f395ebc7aec883a545f9456fec78331c881c60c7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 46,
+			"endLine": 615,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e5df4d9d5364f9bee71186b943ef82858a01462637a4580deead4b65a8e13e83"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 67,
+			"endLine": 615,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e84dbf1198ac4fc64693c3774420392e72c657862b5ebba9990507f0c91bf94c"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 615,
+			"column": 81,
+			"endLine": 615,
+			"endColumn": 101,
+			"mutatorName": "MethodExpression",
+			"replacement": "listed.stderr",
+			"status": "generated",
+			"id": "912f82e2f4a00155995ccccc07f51a55c993c47cfe541584f0a995ab758a3075",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"fails as unreadable when git cannot list a revision's tree"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 42,
+			"endLine": 616,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "342ca5239a913c8bfb616f0017ad41e24a841068a932c0c658522375277a93dc"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 53,
+			"endLine": 616,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2aa3915da98f48708e9905aa08cdbd2507c1bdc9ab407c9e2716b516103a2026",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 53,
+			"endLine": 616,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "eb5e5b6f811a8a825dbd7a3565e5aaef959bb19453eedbf721aadd315b6fd0e4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 53,
+			"endLine": 616,
+			"endColumn": 80,
+			"mutatorName": "MethodExpression",
+			"replacement": "entry.endsWith(\"120000 \")",
+			"status": "generated",
+			"id": "4cd8d161d2e404ad434f1c151e1bea19d4a3cd9fe618d8b6a8e4e91dd31c746d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 70,
+			"endLine": 616,
+			"endColumn": 79,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cad58d8df849084cdabbae42909c004acd194506bd5d977ec548686b71023265"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 616,
+			"column": 93,
+			"endLine": 616,
+			"endColumn": 107,
+			"mutatorName": "MethodExpression",
+			"replacement": "entry",
+			"status": "generated",
+			"id": "5cedaa796b2724c7b389183aff17f9f3cd4122bbbc8ffc14dfe3c4211811c881",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 16,
+			"endLine": 618,
+			"endColumn": 106,
+			"mutatorName": "MethodExpression",
+			"replacement": "paths",
+			"status": "generated",
+			"id": "d900f179795ba2d025765150da328985d1b727e68186cb4aa002ed1a400d214a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 29,
+			"endLine": 618,
+			"endColumn": 105,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "546ca55325a6c738fb53ac07e4c191371b4d5644837c6ea32f909e434c994862",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 39,
+			"endLine": 618,
+			"endColumn": 105,
+			"mutatorName": "MethodExpression",
+			"replacement": "links.every(link => path === link || path.startsWith(`${link}/`))",
+			"status": "generated",
+			"id": "4441b879a60344e4c7c6b018995702057475753bb049ed0385be90ce2f5a3256",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a head that records its own new violation in package_todo.yml"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 50,
+			"endLine": 618,
+			"endColumn": 104,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "8d25ad16f295a635e0d3fcff0305b07a49e5da5394172379541e653c5165267d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 60,
+			"endLine": 618,
+			"endColumn": 104,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "823cab54c72ec7cbff83455b7c5d1ead67b036a45da5fa18018b1a8109946fd1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 60,
+			"endLine": 618,
+			"endColumn": 104,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0ff59fa4c7134065abb039e861b53d4bbb6eadb3a349f1e14e2ea6249df905ab",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 60,
+			"endLine": 618,
+			"endColumn": 104,
+			"mutatorName": "LogicalOperator",
+			"replacement": "path === link && path.startsWith(`${link}/`)",
+			"status": "generated",
+			"id": "f072d75152861f12876ebc55cee468c9bbab190b60b0cf0abad846690dd89011",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 60,
+			"endLine": 618,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9bbde5634c44d71626bd28d6150b32bd2302f2208ff5bda953afaeab15297fb3",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a head that makes a Packwerk file a link, saying it cannot tell what changed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 60,
+			"endLine": 618,
+			"endColumn": 73,
+			"mutatorName": "EqualityOperator",
+			"replacement": "path !== link",
+			"status": "generated",
+			"id": "c2d70e3eb296708fa7ebe6bf543a0e684c5502a0404037ce06a14792930e8970",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 77,
+			"endLine": 618,
+			"endColumn": 104,
+			"mutatorName": "MethodExpression",
+			"replacement": "path.endsWith(`${link}/`)",
+			"status": "generated",
+			"id": "85906297ec33e907d186899e16fb285f813a92b2018a0d592c44c48000f33165",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"notices a link the base and head both hold on every change, though the change touches nothing there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 618,
+			"column": 93,
+			"endLine": 618,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5cade3a613d3264576f6fa39889bc4fc677f499a77c1577a16a69537704b3ed0"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 35,
+			"column": 37,
+			"endLine": 35,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4ee8069c22b6b2c5eb0eca18b2fae81676570ccca2019534538c221d6b068393"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 53,
+			"column": 36,
+			"endLine": 53,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b2f9533f3e4d399b57cc6a9f13afb67f49b99ac39553987886c1b3d84fbf149"
+		}
+	],
+	"total": 66,
+	"omitted": 0,
+	"unmutated": []
+}

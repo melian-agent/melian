@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { Changeset, EnolaFacts, type Finding, loadConfig } from "@melian-agent/core";
+import { Changeset, CheckError, EnolaFacts, type Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails, packwerkNotices } from "../src/guardrails.ts";
 import { gitIn, isolatedGitEnv, lines, removeDirectory, temporaryDirectory, writeFiles } from "./fixtures/repo.ts";
@@ -306,6 +306,22 @@ describe("packwerkNotices", () => {
 		expect(findings[0]!.properties.explanation.whatToDo).toBe(
 			"Have a maintainer read packs/c/package.yml and what its link points to, or replace the link with the file itself.",
 		);
+	});
+
+	it("fails as unreadable when git cannot list a revision's tree", async () => {
+		const { input } = await notices(packages, { "packs/a/app/models/alpha.rb": lines("class A") });
+		const elsewhere = temporaryDirectory();
+		try {
+			const failure = await packwerkNotices({ ...input, repoRoot: elsewhere }, read, enola).catch(
+				(error: unknown) => error,
+			);
+			expect(failure).toBeInstanceOf(CheckError);
+			expect((failure as CheckError).message).toBe(
+				`${input.revision.base}: fatal: not a git repository (or any of the parent directories): .git`,
+			);
+		} finally {
+			removeDirectory(elsewhere);
+		}
 	});
 
 	it("draws nothing for a link that holds no Packwerk file Enola read, or only shares a name's prefix", async () => {
