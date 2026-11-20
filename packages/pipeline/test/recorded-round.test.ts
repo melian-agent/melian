@@ -1243,6 +1243,21 @@ describe("the dismissal records a reader applies", () => {
 		expect("refused" in contents ? contents.refused : contents.dismissals).toEqual([]);
 	});
 
+	it("reads a dismissal as ended, naming the round, once a round reviewed another revision and the author returned to the dismissed one", async () => {
+		const { id, elsewhere, first, second, handedAfter } = await citedAcross("lens", revisionOf("0", "1"));
+		const contents = await handedAfter([second], [first, second, elsewhere], [first]);
+		expect("refused" in contents ? contents.refused : contents.dismissals).toEqual([]);
+		expect("refused" in contents ? contents.refused : contents.ended).toEqual([
+			{
+				finding: id,
+				record: expect.any(String),
+				madeAt: revisionOf("0", "1"),
+				round: second.id,
+				at: revisionOf("1", "2"),
+			},
+		]);
+	});
+
 	it("reopens an introduced dismissal once a round since sights it as affected with a new trigger, as the host does", async () => {
 		const { id, proof, first, roundOn, citingAt, readAfter, revision } = await citedAcross(
 			"lens",
