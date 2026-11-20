@@ -16,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { moveTo, pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { ReviewRecords } from "../../pipeline/src/review-records.ts";
-import { baseAndHead, gitIn, isolatedGitEnv } from "../../pipeline/test/fixtures/repo.ts";
+import { baseAndHead, gitIn, isolatedGitEnv, writeFiles } from "../../pipeline/test/fixtures/repo.ts";
 import { main } from "../src/main.ts";
 import { relayRecords } from "../src/relay.ts";
 import * as targets from "../src/target.ts";
@@ -45,7 +45,15 @@ function scratch(): string {
 // A pull request #7 whose base is `policy`, pushed by octocat with `permission`, in a clone whose origin is a bare
 // repository standing for GitHub's.
 async function pullRequest(
-	options: { policy?: string; permission?: string; fork?: boolean; origin?: string; env?: NodeJS.ProcessEnv } = {},
+	options: {
+		policy?: string;
+		permission?: string;
+		fork?: boolean;
+		origin?: string;
+		env?: NodeJS.ProcessEnv;
+		// Files of a commit main takes after the gate approved the pull request, with the head unchanged.
+		mainMoved?: Record<string, string>;
+	} = {},
 ) {
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
 	cleanup.push(repo);
@@ -56,6 +64,14 @@ async function pullRequest(
 	const changeset = range.withId(pullRequestChangesetId("github", { owner: "melian-agent", name: "example" }, 7));
 	const state = pullRequestState();
 	moveTo(state, changeset);
+	if (options.mainMoved !== undefined) {
+		gitIn(repo, "checkout", "--quiet", "main");
+		writeFiles(repo, options.mainMoved);
+		gitIn(repo, "add", "--all");
+		gitIn(repo, "commit", "--quiet", "-m", "main moved");
+		state.pull.base.sha = gitIn(repo, "rev-parse", "HEAD");
+		gitIn(repo, "checkout", "--quiet", "feature");
+	}
 	state.author = "octocat";
 	state.permissions = { octocat: options.permission ?? "write" };
 	if (options.fork === true) state.headRepository = { owner: "someone", name: "example" };
@@ -215,6 +231,52 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 		expect(err()).toBe(
 			"melian: melian/state refused or failed the relay (unreachable); repeat the relay, which completes a batch that landed in part\n",
 		);
+	});
+
+	describe("after main moves on from the base the gate approved", () => {
+		it.each([false, true])("relays a round of the approved head, with --check %s", async (checkOnly) => {
+			const { check, account, round, relay, onState } = await pullRequest({ mainMoved: { "b.ts": "1\n" } });
+			const code = await relay(await artefact(check, account, round), undefined, ...(checkOnly ? ["--check"] : []));
+			expect(code).toBe(0);
+			if (!checkOnly) expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+		});
+
+		it("judges the records under the policy the round read, not the base's tip", async () => {
+			const { check, account, round, relay, onState } = await pullRequest({
+				mainMoved: { "melian.yaml": "tiers:\n  full: [static.biome]\n" },
+			});
+			expect(await relay(await artefact(check, account, round))).toBe(0);
+			expect(onState()?.sort()).toEqual([check.path, account.path, round.path].sort());
+		});
+
+		it("refuses when only the base's tip trusts writers", async () => {
+			const { check, account, round, relay, onState, err } = await pullRequest({
+				policy: "tiers:\n  full: [static.biome]\n",
+				mainMoved: { "melian.yaml": trusting },
+			});
+			expect(await relay(await artefact(check, account, round))).toBe(1);
+			expect(err()).toContain("does not set trust.writers: true");
+			expect(onState()).toBeUndefined();
+		});
+
+		it("refuses a base named by a branch, which resolves to the tip", async () => {
+			const { changeset, check, account, round, relay, onState, err } = await pullRequest({
+				mainMoved: { "b.ts": "1\n" },
+			});
+			expect(await relay(await artefact(check, account, round), { ...changeset.revision, base: "main" })).toBe(1);
+			expect(err()).toContain("must be whole commit IDs, so nothing was relayed");
+			expect(onState()).toBeUndefined();
+		});
+
+		it("decides a check and a relay with one guard", async () => {
+			const guard = vi.spyOn(targets, "checkApproved");
+			const { changeset, check, account, round, relay } = await pullRequest({ mainMoved: { "b.ts": "1\n" } });
+			const batch = await artefact(check, account, round);
+			expect(await relay(batch, undefined, "--check")).toBe(0);
+			expect(await relay(batch)).toBe(0);
+			const approved = { base: changeset.revision.base, head: changeset.revision.head };
+			expect(guard.mock.calls.map((call) => ({ ...call[2] }))).toEqual([approved, approved]);
+		});
 	});
 
 	it("relays a batch again, once the first relay has released the store", async () => {

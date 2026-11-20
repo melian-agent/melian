@@ -105,6 +105,8 @@ export async function fetchedPullRequest(
 	return { pullRequest, changeset: await asPullRequest(cwd, number) };
 }
 
+const commitId = /^[0-9a-f]{40}$/;
+
 // Refuses a pull request that moved from the base and head the caller approved, such as the melian round workflow's
 // gate approved. The fetched refs are checked too, since a second fetch of the pull request in this clone can move them
 // after GitHub answered. `outcome` ends each message, saying what did not happen.
@@ -122,6 +124,39 @@ export async function checkExpected(
 	if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
 		throw new CliError(
 			`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so ${outcome}`,
+		);
+}
+
+// Refuses records a round reviewed at the approved base and head once the pull request no longer names their revision.
+// Main may move on from the approved base, as it does several times during a round: the records still name the
+// revision when the head is the same, the approved base is in the base tip's history, and the head's merge base with
+// the approved base is the one the pull request diffs from now. Both commits must be whole IDs, since a name such as
+// `main` resolves to the tip the caller meant to rule out. `outcome` ends each message, saying what did not happen.
+export async function checkApproved(
+	pullRequest: PullRequest,
+	fetched: Changeset,
+	expect: { readonly base: string; readonly head: string },
+	outcome: string,
+): Promise<void> {
+	if (!commitId.test(expect.base) || !commitId.test(expect.head))
+		throw new CliError(`the approved base and head must be whole commit IDs, so ${outcome}`);
+	if (pullRequest.head.sha !== expect.head || fetched.revision.head !== expect.head)
+		throw new CliError(
+			`pull request #${pullRequest.number} is at head ${pullRequest.head.sha}, and its fetched refs at ${fetched.revision.head}, not the approved head ${expect.head}, so ${outcome}`,
+		);
+	const { repoRoot } = fetched;
+	const descends = await git(repoRoot, ["merge-base", "--is-ancestor", expect.base, pullRequest.base.sha]).then(
+		() => true,
+		() => false,
+	);
+	if (!descends)
+		throw new CliError(
+			`pull request #${pullRequest.number}'s base ${pullRequest.base.sha} does not hold the approved base ${expect.base} in its history, so ${outcome}`,
+		);
+	const mergeBase = await git(repoRoot, ["merge-base", expect.base, expect.head]);
+	if (fetched.revision.base !== mergeBase)
+		throw new CliError(
+			`pull request #${pullRequest.number} diffs from ${fetched.revision.base}, not ${mergeBase}, the merge base its approved base and head share, so ${outcome}`,
 		);
 }
 

@@ -4,12 +4,12 @@ import { ChangeLenses, RelayBatch } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
 import { type Io, ReviewSource, writerTrust } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
-import { checkExpected, fetchedPullRequest, gitHubFor, parseTarget } from "./target.ts";
+import { checkApproved, fetchedPullRequest, gitHubFor, parseTarget } from "./target.ts";
 
 /**
  * Adds the records a pull request's round left in a directory store to the clone's `melian/state`, checked whole by
  * `RelayBatch`. The changeset, revision and whether the head is a fork come from GitHub's answer for the pull request,
- * never from the batch, and the tier its round must account for from the base's policy, as the round's review read it.
+ * never from the batch, and the tier its round must account for from the approved base's policy, which the round's review read.
  * With `check`, it checks the batch the same way and writes nothing.
  */
 export async function relayRecords(
@@ -25,9 +25,10 @@ export async function relayRecords(
 	if (target.kind !== "pullRequest") throw new CliError(`records relay takes a pull request such as "#12"`);
 	const provider = await gitHubFor(io.cwd, io.env);
 	const { pullRequest, changeset } = await fetchedPullRequest(io.cwd, provider, target.number);
-	await checkExpected(pullRequest, changeset, options.expect, "nothing was relayed");
+	await checkApproved(pullRequest, changeset, options.expect, "nothing was relayed");
 	const { repoRoot } = changeset;
-	const source = { kind: "revision", commit: pullRequest.base.sha } as const;
+	// The records are judged under the policy that produced them: the approved base, which the round's review read.
+	const source = { kind: "revision", commit: options.expect.base } as const;
 	if (!(await ReviewSource.of(changeset, source).trustsWriters()))
 		throw new CliError("the base's melian.yaml does not set trust.writers: true, so nothing was relayed");
 	// A head whose writer Melian cannot establish hands over what a fork's may, which is less.
