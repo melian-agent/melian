@@ -780,6 +780,33 @@ describe("policy-change-review", () => {
 		});
 	});
 
+	describe("this repository's macOS test list and comparator", () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const scripts = ["scripts/compare-platform-reports.mjs", "scripts/macos-tests.json"];
+		const notices = (findings: Finding[]) =>
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => [finding.properties.path, finding.properties.severity]);
+		const stripped = scripts.reduce((policy, path) => policy.replace(`, "${path}"`, ""), own);
+
+		it("raises a blocking notice for an edit to either", async () => {
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(scripts.map((path) => [path, "P1"]));
+		});
+
+		it("keeps both notices when the head strips them, because the base's policy decides", async () => {
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ "melian.yaml": stripped, [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(expect.arrayContaining(scripts.map((path) => [path, "P1"])));
+		});
+	});
+
 	it("covers a Stryker configuration at the root and in a package, whatever its extension", async () => {
 		const { findings } = await guardrails(
 			{ "src/a.ts": lines("a") },
