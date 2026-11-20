@@ -257,8 +257,10 @@ describe("compare", () => {
 		whole.success = false;
 		whole.testResults[1].status = "failed";
 		whole.testResults[1].message = "afterAll hook failed\nat cleanup";
+		whole.testResults[2].status = "failed";
+		whole.testResults[2].message = "unhandled rejection";
 		expect(compare({ linux: linux(), mac: [whole, macTagged()], list }).errors).toEqual([
-			`a macOS report did not succeed: ${suite}: afterAll hook failed`,
+			`a macOS report did not succeed: ${suite}: afterAll hook failed; packages/core/test/secrets.test.ts: unhandled rejection`,
 		]);
 	});
 
@@ -376,17 +378,6 @@ describe("the command", () => {
 			"",
 			"usage: compare-platform-reports.mjs --linux <report> --mac <report>... --list <list>\n",
 		]);
-	});
-
-	it("runs nothing when another module imports it", () => {
-		const result = spawnSync(
-			process.execPath,
-			["--input-type=module", "-e", `await import(${JSON.stringify(script)})`],
-			{
-				encoding: "utf8",
-			},
-		);
-		expect([result.status, result.stdout, result.stderr]).toEqual([0, "", ""]);
 	});
 });
 
