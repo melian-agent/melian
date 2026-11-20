@@ -1011,18 +1011,45 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		]);
 	});
 
-	it("finishes a run whose lock was removed while it ran", async () => {
+	it("stops without saving or releasing when another run took its lock while it ran", async () => {
 		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
 		const using = runners(undefined, {
 			range: vi.fn(async () => {
-				rmSync(lock, { force: true });
+				rmSync(lock);
+				writeFileSync(lock, "999 other\n");
 				return ran(committedStages);
 			}),
 		});
-		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).status).toBe(1);
-		expect(results().attempts.map(({ miss, arm, error }) => [miss, arm, error])).toEqual([
-			["two", "committed", undefined],
-			["two", "parity", undefined],
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(using.range).toHaveBeenCalledTimes(1);
+		expect(readFileSync(lock, "utf8")).toBe("999 other\n");
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
+		]);
+	});
+
+	it("stops without saving when its lock was removed while it ran", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock);
+				return ran(committedStages);
+			}),
+		});
+		expect(await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).toMatchObject({
+			status: 2,
+			errors: [
+				`${lock} no longer holds this run's claim, so another run may own ${env.MELIAN_EVAL_PARITY_OUT}; this run stopped without saving`,
+			],
+		});
+		expect(existsSync(lock)).toBe(false);
+		expect(results().attempts.map(({ miss, arm, pending }) => [miss, arm, pending])).toEqual([
+			["two", "committed", true],
 		]);
 	});
 
@@ -1537,7 +1564,7 @@ describe("measureParity", { timeout: 60_000 }, () => {
 			await reviewed;
 			// The dead run's lock is left, and refuses a resume until a person who knows no run is using it removes it.
 			const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
-			expect(readFileSync(lock, "utf8")).toBe(`${process.pid}\n`);
+			expect(readFileSync(lock, "utf8")).toMatch(new RegExp(`^${process.pid} [0-9a-f-]{36}\\n$`));
 			expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, runners())).status).toBe(2);
 			rmSync(lock);
 		}

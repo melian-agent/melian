@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import {
@@ -420,35 +421,62 @@ export async function measureParity(
 	const held: { lock?: ResultsLock } = {};
 	try {
 		return await measureHeld(env, runners, print, printError, held);
+	} catch (thrown) {
+		if (!(thrown instanceof LostLock)) throw thrown;
+		printError(visibleText(thrown.message));
+		return 2;
 	} finally {
 		held.lock?.close();
 	}
 }
 
+class LostLock extends Error {}
+
 // Two runs on one results file would each save over the other's attempts, so a run holds the file from before it reads
-// it until it ends. A lock a run that died left stays, and the next run refuses until a person removes it.
+// it until it ends. A lock a run that died left stays, and the next run refuses until a person removes it. The lock
+// carries a claim of this run's own, so a run whose lock another took saves nothing and leaves that lock in place.
 class ResultsLock {
 	readonly path: string;
+	private readonly claim: string;
 
-	private constructor(path: string) {
+	private constructor(path: string, claim: string) {
 		this.path = path;
+		this.claim = claim;
 	}
 
 	static take(out: string): ResultsLock {
 		const path = `${out}.lock`;
+		const claim = `${process.pid} ${randomUUID()}\n`;
 		try {
-			writeFileSync(path, `${process.pid}\n`, { flag: "wx" });
+			writeFileSync(path, claim, { flag: "wx" });
 		} catch (thrown) {
 			if ((thrown as NodeJS.ErrnoException).code !== "EEXIST") throw thrown;
 			throw new Error(
-				`${path} says run ${readFileSync(path, "utf8").trim()} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
+				`${path} says run ${readFileSync(path, "utf8").split(" ")[0]} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
 			);
 		}
-		return new ResultsLock(path);
+		return new ResultsLock(path, claim);
+	}
+
+	// Read and then acted on, so a run that takes the lock between the two still races; a person removing a live run's
+	// lock opens that window, and the guideline says to remove one only once its run is gone.
+	holds(): boolean {
+		try {
+			return readFileSync(this.path, "utf8") === this.claim;
+		} catch {
+			return false;
+		}
+	}
+
+	check(out: string): void {
+		if (!this.holds())
+			throw new LostLock(
+				`${this.path} no longer holds this run's claim, so another run may own ${out}; this run stopped without saving`,
+			);
 	}
 
 	close(): void {
-		rmSync(this.path, { force: true });
+		if (this.holds()) rmSync(this.path, { force: true });
 	}
 }
 
@@ -638,6 +666,7 @@ async function measureHeld(
 	// Written whole through a rename, so a cut run leaves every review it finished, never a torn file. The temporary
 	// file is created afresh, so a file or link planted at its path fails the save rather than receiving it.
 	const save = () => {
+		held.lock!.check(out);
 		const written = `${out}.${process.pid}.tmp`;
 		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`, { flag: "wx" });
 		renameSync(written, out);
