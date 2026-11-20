@@ -1,4 +1,4 @@
-import { dirname } from "node:path";
+import { dirname, posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { SymbolSite } from "./graph-coverage.ts";
@@ -22,6 +22,8 @@ const factSchema = Type.Object({
 });
 // The one Packwerk path Enola's facts never name. Enola 0.4.40 ignores a nested copy and `packwerk.yaml`; raise with the pin.
 const packwerkConfig = "packwerk.yml";
+// Enola 0.4.40 reads a package's recorded violations from here; it opens deprecated_references.yml too, but its facts ignore it.
+const packwerkTodo = "package_todo.yml";
 /** An Enola contract fact. */
 export type EnolaFact = Static<typeof factSchema>;
 const impactSchema = Type.Object({
@@ -81,7 +83,7 @@ export class EnolaFacts {
 			fact.kind === "module" &&
 			fact.file !== undefined &&
 			(fact.props as { packwerk?: unknown } | undefined)?.packwerk === true
-				? [fact.file]
+				? [fact.file, posix.join(posix.dirname(fact.file), packwerkTodo)]
 				: [],
 		);
 		return packages.length === 0 ? [] : [...new Set([...packages, packwerkConfig])].sort();

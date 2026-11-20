@@ -741,7 +741,13 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		});
 		const result = await runStaticTool(input(base, head), context);
 		if (result.status !== "ran") throw new Error("Enola did not run");
-		expect(result.packwerk).toEqual(["packs/a/package.yml", "packs/b/package.yml", "packwerk.yml"]);
+		expect(result.packwerk).toEqual([
+			"packs/a/package.yml",
+			"packs/a/package_todo.yml",
+			"packs/b/package.yml",
+			"packs/b/package_todo.yml",
+			"packwerk.yml",
+		]);
 		const plain = commit(repo, { "src/a.ts": "export const a = 3;\n" }, ["packs/b/package.yml", "packwerk.yml"]);
 		const after = await runStaticTool(input(plain, commit(repo, { "src/a.ts": "export const a = 4;\n" })), context);
 		if (after.status !== "ran") throw new Error("Enola did not run");

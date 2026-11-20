@@ -265,6 +265,7 @@ async function policyChanges(
 	paths: readonly string[],
 	configFor: ConfigLookup,
 	packwerk: ReadonlySet<string> = new Set(),
+	linked: ReadonlySet<string> = new Set(),
 ): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
@@ -322,6 +323,7 @@ async function policyChanges(
 				const text = (blob: { text?: string; why?: string }) =>
 					blob.text ?? (blob.why === "absent" ? undefined : "");
 				const switched = switchOffs(path, text(base), text(head), changed);
+				const link = linked.has(path);
 				return {
 					guardrail: "policy-change-review",
 					file: path,
@@ -331,13 +333,25 @@ async function policyChanges(
 					// The maintainer's ruling of 2026-11-18: the Packwerk finding it can hide is advisory, so its notice asks for acknowledgement.
 					severity: read ? guardrail.severity : guardrail.analyserSeverity,
 					match: { notice: "analyser", ...marked },
-					message: `Review the change to ${path}, which configures ${analyser}.`,
+					message: link
+						? `Review ${path}, which configures ${analyser} through a symbolic link.`
+						: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
 						what:
-							[`This revision changes ${path}, which configures ${analyser}.`, ...switched].join(" ") + override,
+							[
+								...(link
+									? [
+											`${path} configures ${analyser}.`,
+											`${path} reaches Enola through a symbolic link, so Melian cannot tell whether this change altered it.`,
+										]
+									: [`This revision changes ${path}, which configures ${analyser}.`]),
+								...switched,
+							].join(" ") + override,
 						whyHere:
 							"The head's configuration drives the static run on the head, so this change decides how the head's own results are judged, and a switched-off check reads as a clean one.",
-						whatToDo: `Have a maintainer read the change to ${path}, or land it in its own pull request first.`,
+						whatToDo: link
+							? `Have a maintainer read ${path} and what its link points to, or replace the link with the file itself.`
+							: `Have a maintainer read the change to ${path}, or land it in its own pull request first.`,
 					},
 				};
 			}
@@ -572,9 +586,36 @@ export async function packwerkNotices(
 	source: FindingSource,
 ): Promise<Finding[]> {
 	const touched = new Set(touchedPaths(input.revision.files));
-	const paths = [...new Set(packwerk)].filter((path) => touched.has(path)).sort();
-	const hits = await policyChanges(input, paths, configLookup(input.repoRoot, input.source), new Set(paths));
+	const named = [...new Set(packwerk)].sort();
+	const linked = await linkedPaths(input, named);
+	const paths = named.filter((path) => touched.has(path) || linked.has(path));
+	const hits = await policyChanges(input, paths, configLookup(input.repoRoot, input.source), new Set(paths), linked);
 	return hits.map((hit) => finding(hit, source));
+}
+
+// Enola follows a link, so a change behind one touches no path it names; git's tree says which paths are, or lie under, a link.
+async function linkedPaths(input: GuardrailInput, paths: readonly string[]): Promise<Set<string>> {
+	const prefixes = [
+		...new Set(
+			paths.flatMap((path) => path.split("/").map((_, index, parts) => parts.slice(0, index + 1).join("/"))),
+		),
+	];
+	if (prefixes.length === 0) return new Set();
+	const links: string[] = [];
+	for (const commit of [input.revision.base, input.revision.head]) {
+		const listed = await git(input.repoRoot, [
+			"--literal-pathspecs",
+			"ls-tree",
+			"-z",
+			"--format=%(objectmode) %(path)",
+			commit,
+			"--",
+			...prefixes,
+		]);
+		if (listed.code !== 0) throw new CheckError("unreadable", check, `${commit}: ${listed.stderr.trim()}`);
+		for (const entry of listed.stdout.split("\0")) if (entry.startsWith("120000 ")) links.push(entry.slice(7));
+	}
+	return new Set(paths.filter((path) => links.some((link) => path === link || path.startsWith(`${link}/`))));
 }
 
 export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckReport> {

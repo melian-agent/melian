@@ -1,3 +1,5 @@
+import { mkdirSync, rmSync, symlinkSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { Changeset, EnolaFacts, type Finding, loadConfig } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { evaluateGuardrails, packwerkNotices } from "../src/guardrails.ts";
@@ -16,9 +18,19 @@ afterEach(() => {
 	removeDirectory(repo);
 });
 
-function commit(files: Record<string, string>, message: string, remove: string[] = []): string {
+function commit(
+	files: Record<string, string>,
+	message: string,
+	remove: string[] = [],
+	links: Record<string, string> = {},
+): string {
 	writeFiles(repo, files);
 	for (const path of remove) gitIn(repo, "rm", "--quiet", path);
+	for (const [path, target] of Object.entries(links)) {
+		rmSync(join(repo, path), { recursive: true, force: true });
+		mkdirSync(dirname(join(repo, path)), { recursive: true });
+		symlinkSync(target, join(repo, path));
+	}
 	gitIn(repo, "add", "--all");
 	gitIn(repo, "commit", "--quiet", "--allow-empty", "-m", message);
 	return gitIn(repo, "rev-parse", "HEAD");
@@ -32,17 +44,29 @@ const packages = {
 	"packs/b/package.yml": enforcing,
 	"packs/a/app/models/alpha.rb": lines("class Alpha", "end"),
 };
-// What Enola's facts name for `packages`: each package's package.yml, and packwerk.yml beside them.
-const read = ["packs/a/package.yml", "packs/b/package.yml", "packwerk.yml"];
+// What Enola's facts name for `packages`: each package's package.yml and package_todo.yml, and packwerk.yml beside them.
+const read = [
+	"packs/a/package.yml",
+	"packs/a/package_todo.yml",
+	"packs/b/package.yml",
+	"packs/b/package_todo.yml",
+	"packwerk.yml",
+];
 const enola = { check: "static.enola", version: "0.4.40" };
 
 async function notices(
 	base: Record<string, string>,
 	head: Record<string, string>,
-	options: { read?: string[]; remove?: string[]; source?: Parameters<typeof packwerkNotices>[2] } = {},
+	options: {
+		read?: string[];
+		remove?: string[];
+		source?: Parameters<typeof packwerkNotices>[2];
+		baseLinks?: Record<string, string>;
+		headLinks?: Record<string, string>;
+	} = {},
 ) {
-	const baseCommit = commit(base, "base");
-	const headCommit = commit(head, "head", options.remove);
+	const baseCommit = commit(base, "base", [], options.baseLinks);
+	const headCommit = commit(head, "head", options.remove, options.headLinks);
 	const { revision } = await Changeset.resolve(repo, `${baseCommit}..${headCommit}`);
 	const input = { repoRoot: repo, revision, source: { kind: "revision", commit: baseCommit } as const };
 	return { input, findings: await packwerkNotices(input, options.read ?? read, options.source ?? enola) };
@@ -197,11 +221,106 @@ describe("packwerkNotices", () => {
 		});
 		expect(await resolveAt(findings[0]!, "packs/a/package.yml", input.revision.base)).toBe("silent");
 	});
+
+	it("notices a head that records its own new violation in package_todo.yml", async () => {
+		const todo = lines("---", "packs/b:", '  "::Beta":', "    violations:", "    - dependency", "    files:");
+		const { findings } = await notices(packages, {
+			"packs/a/package_todo.yml": lines(todo, "    - packs/a/app/models/alpha.rb"),
+			"packs/a/app/models/alpha.rb": lines("class Alpha", "  def f = Beta.new", "end"),
+		});
+		expect(summary(findings)).toEqual([
+			[
+				"packs/a/package_todo.yml",
+				"P2",
+				enola,
+				"Review the change to packs/a/package_todo.yml, which configures Enola's Packwerk check.",
+				"This revision changes packs/a/package_todo.yml, which configures Enola's Packwerk check.",
+			],
+		]);
+	});
+
+	const shared = { "lib/c/package.yml": enforcing, "lib/shared.yml": enforcing };
+	const linkedRead = [...read, "packs/c/package.yml", "packs/c/package_todo.yml"];
+	const linkNote = (path: string) =>
+		`${path} reaches Enola through a symbolic link, so Melian cannot tell whether this change altered it.`;
+	it.each([
+		[
+			"a head that makes a Packwerk file a link",
+			{
+				head: { "lib/shared.yml": lines("enforce_dependencies: false") },
+				headLinks: { "packs/b/package.yml": "../../lib/shared.yml" },
+			},
+			["packs/b/package.yml"],
+		],
+		[
+			"a head that adds a directory link to a package",
+			{ head: { "lib/c/package.yml": lines("enforce_dependencies: false") }, headLinks: { "packs/c": "../lib/c" } },
+			["packs/c/package.yml", "packs/c/package_todo.yml"],
+		],
+		[
+			"a head that edits the target of a directory link the base holds",
+			{
+				head: { "lib/c/package.yml": lines("enforce_dependencies: false") },
+				baseLinks: { "packs/c": "../lib/c" },
+			},
+			["packs/c/package.yml", "packs/c/package_todo.yml"],
+		],
+		[
+			"a head that edits the target of a file link the base holds",
+			{
+				head: { "lib/shared.yml": lines("enforce_dependencies: false") },
+				baseLinks: { "packs/b/package.yml": "../../lib/shared.yml" },
+			},
+			["packs/b/package.yml"],
+		],
+	])("notices %s, saying it cannot tell what changed", async (_, shape, paths) => {
+		const { findings } = await notices({ ...packages, ...shared }, shape.head, {
+			read: linkedRead,
+			...("baseLinks" in shape ? { baseLinks: shape.baseLinks } : {}),
+			...("headLinks" in shape ? { headLinks: shape.headLinks } : {}),
+		});
+		expect(findings.map((finding) => finding.properties.path)).toEqual(paths);
+		for (const finding of findings) {
+			expect(finding.properties.explanation.what).toContain(linkNote(finding.properties.path));
+			expect(finding.properties.severity).toBe("P2");
+		}
+	});
+
+	it("notices a link the base and head both hold on every change, though the change touches nothing there", async () => {
+		const { findings } = await notices(
+			{ ...packages, ...shared },
+			{ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") },
+			{ read: linkedRead, baseLinks: { "packs/c": "../lib/c" } },
+		);
+		expect(summary(findings)[0]).toEqual([
+			"packs/c/package.yml",
+			"P2",
+			enola,
+			"Review packs/c/package.yml, which configures Enola's Packwerk check through a symbolic link.",
+			`packs/c/package.yml configures Enola's Packwerk check. ${linkNote("packs/c/package.yml")}`,
+		]);
+		expect(findings.map((finding) => finding.properties.path)).toEqual([
+			"packs/c/package.yml",
+			"packs/c/package_todo.yml",
+		]);
+		expect(findings[0]!.properties.explanation.whatToDo).toBe(
+			"Have a maintainer read packs/c/package.yml and what its link points to, or replace the link with the file itself.",
+		);
+	});
+
+	it("draws nothing for a link that holds no Packwerk file Enola read, or only shares a name's prefix", async () => {
+		const { findings } = await notices(
+			{ ...packages, ...shared },
+			{ "packs/a/app/models/alpha.rb": lines("class Alpha", "  def g; end", "end") },
+			{ baseLinks: { "packs/ab": "../lib/c", "docs/c": "../lib/c" } },
+		);
+		expect(findings).toEqual([]);
+	});
 });
 
 describe("EnolaFacts.packwerkFiles", () => {
 	const fact = (fields: Record<string, unknown>) => JSON.stringify({ id: String(Math.random()), ...fields });
-	it("names each Packwerk module's package.yml and packwerk.yml, and nothing without one", () => {
+	it("names each Packwerk module's package.yml and package_todo.yml, and packwerk.yml, and nothing without one", () => {
 		const facts = EnolaFacts.parse(
 			[
 				fact({ kind: "module", name: "packs/b", file: "packs/b/package.yml", props: { packwerk: true } }),
@@ -212,7 +331,13 @@ describe("EnolaFacts.packwerkFiles", () => {
 				fact({ kind: "module", name: "packs/d", props: { packwerk: true } }),
 			].join("\n"),
 		);
-		expect(facts.packwerkFiles()).toEqual(["packs/a/package.yml", "packs/b/package.yml", "packwerk.yml"]);
+		expect(facts.packwerkFiles()).toEqual([
+			"packs/a/package.yml",
+			"packs/a/package_todo.yml",
+			"packs/b/package.yml",
+			"packs/b/package_todo.yml",
+			"packwerk.yml",
+		]);
 		expect(
 			EnolaFacts.parse(
 				fact({ kind: "module", name: "src", file: "src/a.ts", props: { packwerk: "yes" } }),
