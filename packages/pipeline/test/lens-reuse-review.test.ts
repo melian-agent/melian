@@ -574,13 +574,11 @@ describe("a repeat review copies a lens run only from a task shown the same call
 describe("a repeat review keys the instrumenter that answers list_mutants", () => {
 	const listing: LensToolName[] = ["read_file", "search", "list_mutants"];
 	const instrumenter = (toolVersion: string, source: "checkout" | "melian") =>
-		vi
-			.spyOn(TypeScriptMutationAdapter, "open")
-			.mockResolvedValue({
-				identity: { toolVersion },
-				source,
-				installedPackages: () => `packages beneath ${toolVersion}`,
-			} as unknown as TypeScriptMutationAdapter);
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockResolvedValue({
+			identity: { toolVersion },
+			source,
+			installedPackages: () => `packages beneath ${toolVersion}`,
+		} as unknown as TypeScriptMutationAdapter);
 
 	afterEach(() => {
 		vi.restoreAllMocks();
