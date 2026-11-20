@@ -354,6 +354,18 @@ describe("compare", () => {
 		expect([...lines, ...errors].join("\n")).not.toMatch(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f‮]/);
 	});
 
+	it("escapes control characters in a skipped file's name where it prints the files Linux skipped in", () => {
+		const file = "packages/core/test/\u001b[2Jforged.test.ts";
+		const { lines } = compare({
+			linux: report(...rows(linux()), { file, title: "hides", status: "skipped" }),
+			mac: [macWhole(), macTagged()],
+			list,
+		});
+		expect(lines[0]).toBe(
+			`Linux skipped tests in: packages/core/test/\\u001b[2Jforged.test.ts, packages/core/test/secrets.test.ts, ${gated}, ${suite}`,
+		);
+	});
+
 	it("escapes the Arabic letter mark, a bidi control core's visibleText escapes", () => {
 		const { errors } = compare({
 			linux: report(...rows(linux()), { file: gated, title: "reads \u061c backwards", status: "skipped" }),
