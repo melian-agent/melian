@@ -437,15 +437,20 @@ jobs:
             echo "::error::the default branch is at $current, not $SHA, and this run's round did not check $SHA; start a new round"
             exit 1
           fi
-      # Without these rules this job's token could push to main, or rewrite or delete melian/state. A rule applies only
-      # when GitHub says it does, and each ruleset that applies one must let this token bypass it never.
-      - name: Refuse unless rulesets keep main and melian/state
+      # Without these rules this job's token could push to the default branch, or rewrite or delete melian/state. A rule
+      # applies only when GitHub says it does, and each ruleset that applies one must let this token bypass it never.
+      - name: Refuse unless rulesets keep the default branch and melian/state
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          for branch in main melian/state; do
-            if [ "$branch" = main ]; then want="deletion non_fast_forward pull_request merge_queue"; else want="deletion non_fast_forward"; fi
+          default=$(gh api "repos/$REPOSITORY" --jq .default_branch) || default=""
+          if [ -z "$default" ]; then
+            echo "::error::GitHub did not answer which branch is the default, so nothing is relayed"
+            exit 1
+          fi
+          for branch in "$default" melian/state; do
+            if [ "$branch" = "$default" ]; then want="deletion non_fast_forward pull_request merge_queue"; else want="deletion non_fast_forward"; fi
             rules=$(gh api "repos/$REPOSITORY/rules/branches/$branch" --jq '.[] | "\(.type) \(.ruleset_id)"') || {
               echo "::error::GitHub did not answer which rules apply to $branch, so nothing is relayed"
               exit 1

@@ -1521,7 +1521,7 @@ describe("the melian round workflow", () => {
 		expect(JSON.stringify(record)).not.toContain("secrets.");
 		// A round outlasts several merges to main, so the record job carries on after a move as the report job does.
 		expect(record.steps[0]).toEqual(workflow.jobs.report.steps[0]);
-		expect(record.steps[1].name).toBe("Refuse unless rulesets keep main and melian/state");
+		expect(record.steps[1].name).toBe("Refuse unless rulesets keep the default branch and melian/state");
 		const download = record.steps.find((step) => step.uses?.startsWith("actions/download-artifact@"));
 		expect(download.with).toEqual({
 			name: actions("needs.round.outputs.records"),
@@ -1593,15 +1593,16 @@ describe("the melian round workflow", () => {
 		}
 	});
 
-	it("relays nothing unless rulesets no token may bypass keep main and melian/state", () => {
+	it("relays nothing unless rulesets no token may bypass keep the default branch and melian/state", () => {
 		const { run } = workflow.jobs.record.steps.find(
-			(step) => step.name === "Refuse unless rulesets keep main and melian/state",
+			(step) => step.name === "Refuse unless rulesets keep the default branch and melian/state",
 		);
 		const jq = '.[] | "\\(.type) \\(.ruleset_id)"';
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
 		try {
-			// A fake gh answers only the rules of the two branches, in the form the step's jq asks for, and each ruleset's
-			// bypass for this token.
+			// A fake gh answers only the repository's default branch, the rules of a branch, in the form the step's jq asks
+			// for, and each ruleset's bypass for this token. The default branch's rules sit on RULED, and any other branch
+			// has none, as GitHub answers for a branch no ruleset targets.
 			writeFileSync(
 				join(dir, "gh"),
 				[
@@ -1611,9 +1612,11 @@ describe("the melian round workflow", () => {
 					'  if [ "$2" = "repos/o/r/rulesets/$ODD" ]; then printf "%s" "$ODD_BYPASS"; else printf never; fi',
 					"  exit ;;",
 					"esac",
+					'if [ "$2" = repos/o/r ]; then [ "$1 $3 $4" = "api --jq .default_branch" ] || exit 9; [ "$DEFAULT" = fail ] && { printf "%s" "{\\"message\\":\\"Not Found\\"}"; exit 1; }; printf "%s" "$DEFAULT"; exit; fi',
 					'[ "$1 $3" = "api --jq" ] && [ "$4" = "$JQ" ] || exit 9',
-					'if [ "$2" = repos/o/r/rules/branches/main ]; then [ "$MAIN" = fail ] && exit 1; printf "%s" "$MAIN"; exit; fi',
+					'if [ "$2" = "repos/o/r/rules/branches/$RULED" ]; then [ "$MAIN" = fail ] && exit 1; printf "%s" "$MAIN"; exit; fi',
 					'if [ "$2" = repos/o/r/rules/branches/melian/state ]; then printf "%s" "$STATE"; exit; fi',
+					'case "$2" in repos/o/r/rules/branches/*) exit ;; esac',
 					"exit 9",
 					"",
 				].join("\n"),
@@ -1628,6 +1631,8 @@ describe("the melian round workflow", () => {
 						PATH: `${dir}:${process.env.PATH}`,
 						REPOSITORY: "o/r",
 						JQ: jq,
+						DEFAULT: "main",
+						RULED: "main",
 						MAIN: main.join("\n"),
 						STATE: state.join("\n"),
 						ODD: "",
@@ -1671,6 +1676,27 @@ describe("the melian round workflow", () => {
 			expect(step({ STATE: [...state, "deletion x"].join("\n") })).toEqual([
 				1,
 				"::error::a rule on melian/state names no ruleset ID\n",
+			]);
+			// The rules that keep the token from pushing are the default branch's, whatever its name.
+			expect(step({ DEFAULT: "trunk" })).toEqual([
+				1,
+				"::error::no ruleset applies deletion to trunk, so nothing is relayed\n",
+			]);
+			expect(step({ DEFAULT: "trunk", RULED: "trunk" })).toEqual([0, ""]);
+			expect(
+				step({
+					DEFAULT: "trunk",
+					RULED: "trunk",
+					MAIN: main.filter((line) => !line.startsWith("merge_queue ")).join("\n"),
+				}),
+			).toEqual([1, "::error::no ruleset applies merge_queue to trunk, so nothing is relayed\n"]);
+			expect(step({ DEFAULT: "fail" })).toEqual([
+				1,
+				"::error::GitHub did not answer which branch is the default, so nothing is relayed\n",
+			]);
+			expect(step({ DEFAULT: "" })).toEqual([
+				1,
+				"::error::GitHub did not answer which branch is the default, so nothing is relayed\n",
 			]);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
