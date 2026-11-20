@@ -12,3 +12,11 @@
 ## Mutation inventory
 
 The inventory is [2026-11-20-issue-526-viewer-permission-mutants.json](2026-11-20-issue-526-viewer-permission-mutants.json), version 2 from `melian mutants list c2e68c4e...6373cae4 --claims-in packages/github/src/provider.ts --json --all`. It lists 74 mutants: 55 generated and 19 ignored by configuration. Of the 55, 54 are `killed` and 1 is `equivalent`. That one replaces `roles === null` with `false`: a null `permissions` then throws on the first role read, inside the `try`, and the catch returns unknown, which is what the guard returns. Each kill ran by hand at 6373cae4, against its named test alone, which passed unmutated first and failed under the mutant. [The runs](2026-11-20-issue-526-viewer-permission-mutant-runs.json) record each.
+
+## Reviews at b48d1996
+
+Codex's adversarial review approved with no findings. Melian's round set `melian/review` to `success`, with two acknowledge findings. One is the policy notice on `AGENTS.md`, which awaits the maintainer's read. The other said `docs/guidelines/github.md` still described a refused collaborator lookup as absent; 142db9fa describes the fallback there.
+
+The Opus review of record found that a 200 from the collaborator endpoint with a JSON `null` body fell back to the repository endpoint, against rule 1. The role read threw inside the request's `try`, and the catch meant for a failed request took it. The new case in `viewer-permission.test.ts` failed at 142db9fa with `expected 'admin' to be undefined`. e190c238 reads the role after the `try`, and all 40 tests in the file pass.
+
+[2026-11-20-issue-526-fix-pass-1-mutants.json](2026-11-20-issue-526-fix-pass-1-mutants.json) is version 2 from `melian mutants list 142db9fa...e190c238 --claims-in packages/github/src/provider.ts --json --all`. It lists 1 mutant, which removes the optional chain; it is `killed`, run by hand at e190c238 against the null-body test alone, which passed unmutated first. [The run](2026-11-20-issue-526-fix-pass-1-mutant-runs.json) records it.
