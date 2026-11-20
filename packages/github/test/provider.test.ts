@@ -141,6 +141,16 @@ describe("provider identity", () => {
 		});
 	});
 
+	it("reads the default branch from the repository, not from the pull request's base", async () => {
+		const { state, provider } = fixture();
+		state.pull.base.ref = "release";
+		expect((await provider.pullRequest(7)).base).toEqual({
+			ref: "release",
+			sha: state.pull.base.sha,
+			defaultBranch: "main",
+		});
+	});
+
 	it("reads the pull request author and repository permission for each login", async () => {
 		const { state, provider } = fixture();
 		state.author = "contributor";

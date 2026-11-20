@@ -53,6 +53,8 @@ async function pullRequest(
 		env?: NodeJS.ProcessEnv;
 		// Files of a commit main takes after the gate approved the pull request, with the head unchanged.
 		mainMoved?: Record<string, string>;
+		// The branch GitHub says the pull request merges into, when it is not the repository's default.
+		baseRef?: string;
 	} = {},
 ) {
 	const repo = baseAndHead({ "melian.yaml": options.policy ?? trusting, "a.ts": "1\n" }, { "a.ts": "2\n" });
@@ -72,6 +74,7 @@ async function pullRequest(
 		state.pull.base.sha = gitIn(repo, "rev-parse", "HEAD");
 		gitIn(repo, "checkout", "--quiet", "feature");
 	}
+	if (options.baseRef !== undefined) state.pull.base.ref = options.baseRef;
 	state.author = "octocat";
 	state.permissions = { octocat: options.permission ?? "write" };
 	if (options.fork === true) state.headRepository = { owner: "someone", name: "example" };
@@ -256,6 +259,13 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 			});
 			expect(await relay(await artefact(check, account, round))).toBe(1);
 			expect(err()).toContain("does not set trust.writers: true");
+			expect(onState()).toBeUndefined();
+		});
+
+		it("refuses a pull request GitHub reports merging into a branch other than the default", async () => {
+			const { check, account, round, relay, onState, err } = await pullRequest({ baseRef: "release" });
+			expect(await relay(await artefact(check, account, round))).toBe(1);
+			expect(err()).toContain("merges into release, not the default branch main,");
 			expect(onState()).toBeUndefined();
 		});
 
