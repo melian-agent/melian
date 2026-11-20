@@ -155,8 +155,10 @@ function strictJson(text: string | undefined): unknown {
 // workflows says which ones a gate runs. Names come from the base alone, so no head text reaches the notice.
 function scriptChanges(before: unknown, after: unknown): string[] {
 	const was = field(before, "scripts");
-	if (typeof after !== "object" || after === null || Array.isArray(after)) return [];
 	if (typeof was !== "object" || was === null) return [];
+	// A link's blob is its target's path and an oversized file reads as empty, though npm follows the one and runs the other.
+	if (typeof after !== "object" || after === null || Array.isArray(after))
+		return Object.keys(was).length > 0 ? ["Melian cannot read the npm scripts in the head's package.json."] : [];
 	const is = field(after, "scripts");
 	const now = typeof is === "object" && is !== null ? (is as Json) : {};
 	const names = Object.keys(was);

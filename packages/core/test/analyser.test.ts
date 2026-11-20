@@ -166,9 +166,9 @@ describe("npm scripts", () => {
 			['It changes the npm script "check".'],
 		],
 		["only an added script", manifest({ check: "vitest --run", lint: "biome lint", precheck: "true" }), []],
-		["a head that does not parse", "{", []],
-		["a head that is an array", "[]", []],
-		["a head that is null", "null", []],
+		["a head that does not parse", "{", ["Melian cannot read the npm scripts in the head's package.json."]],
+		["a head that is an array", "[]", ["Melian cannot read the npm scripts in the head's package.json."]],
+		["a head that is null", "null", ["Melian cannot read the npm scripts in the head's package.json."]],
 	])("reports %s", (_, head, expected) => {
 		expect(switchOffs("package.json", base, head, [])).toEqual(expected);
 	});
@@ -179,6 +179,14 @@ describe("npm scripts", () => {
 		expect(switchOffs("package.json", manifest({ "0": "vitest --run" }), manifest(["true"]), [])).toEqual([
 			'It changes the npm script "0".',
 		]);
+	});
+
+	it("says the scripts cannot be read when the head is a link, too large, or not an object", () => {
+		const unread = ["Melian cannot read the npm scripts in the head's package.json."];
+		expect(switchOffs("package.json", base, "real.json", [])).toEqual(unread);
+		expect(switchOffs("package.json", base, "", [])).toEqual(unread);
+		expect(switchOffs("package.json", JSON.stringify({}), "real.json", [])).toEqual([]);
+		expect(switchOffs("package.json", manifest({}), "real.json", [])).toEqual([]);
 	});
 
 	it("names every base script when the head deletes package.json", () => {
@@ -260,7 +268,9 @@ describe("npm scripts", () => {
 		expect(switchOffs("package.json", base, `﻿${manifest({ check: "true", lint: "biome lint" })}`, [])).toEqual([
 			'It changes the npm script "check".',
 		]);
-		expect(switchOffs("package.json", base, `﻿﻿${manifest({ check: "true" })}`, [])).toEqual([]);
+		expect(switchOffs("package.json", base, `﻿﻿${manifest({ check: "true" })}`, [])).toEqual([
+			"Melian cannot read the npm scripts in the head's package.json.",
+		]);
 	});
 
 	it("keeps a byte order mark inside a script, so removing it is a change", () => {
