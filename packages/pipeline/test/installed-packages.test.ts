@@ -180,22 +180,28 @@ describe("installedPackages", () => {
 		]);
 	});
 
-	it("takes the install root from every copy, when npm nests a root beneath a workspace package and hoists what it needs", () => {
+	it("takes the install root from every copy, when npm nests a root beneath a workspace package and hoists one of what it needs", () => {
 		rmSync(join(scratch, "node_modules", "pi"), { recursive: true });
 		const workspace = join(scratch, "packages", "pipeline");
 		mkdirSync(join(workspace, "node_modules", "pi"), { recursive: true });
+		mkdirSync(join(workspace, "node_modules", "tool"), { recursive: true });
 		writeFileSync(
 			join(workspace, "package.json"),
 			JSON.stringify({ name: "@melian-agent/pipeline", version: "0.0.0" }),
 		);
 		writeFileSync(
 			join(workspace, "node_modules", "pi", "package.json"),
-			JSON.stringify({ name: "pi", version: "1.1.0", dependencies: { sdk: "^2" } }),
+			JSON.stringify({ name: "pi", version: "1.1.0", dependencies: { sdk: "^2", tool: "^1" } }),
+		);
+		writeFileSync(
+			join(workspace, "node_modules", "tool", "package.json"),
+			JSON.stringify({ name: "tool", version: "1.0.0" }),
 		);
 		roots = [{ name: "pi", from: pathToFileURL(join(workspace, "package.json")).href, by: "@melian-agent/pipeline" }];
 		expect(installedPackages(roots)).toEqual([
 			"node_modules/sdk sdk@2.0.0",
 			"packages/pipeline/node_modules/pi pi@1.1.0",
+			"packages/pipeline/node_modules/tool tool@1.0.0",
 		]);
 	});
 
