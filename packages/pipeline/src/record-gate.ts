@@ -1,0 +1,265 @@
+import {
+	type AccountPayload,
+	Changeset,
+	type CheckRecord,
+	git,
+	type LegacyAccountPayload,
+	type MelianConfig,
+	type RecordEnvelope,
+	RecordError,
+	RecordSet,
+	type RepositorySource,
+	type Resolution,
+	type ResolvedFinding,
+	Revision,
+	reviewPayloads,
+	type SharedRecord,
+	type TierAccount,
+	Verdict,
+} from "@melian-agent/core";
+import { type EndedDismissal, RecordedRound } from "./recorded-round.ts";
+import { roundFacts } from "./review-records.ts";
+
+/** What the merge gate judges a head against, all read from the base tip, never from the records. */
+export type RecordGateContext = {
+	/** The checkout git answers ancestry and diffs in. */
+	readonly repoRoot: string;
+	/** The base tip the head would merge into, G. */
+	readonly target: string;
+	/** The merge's own diff, from merge-base(G, H) to the head H. */
+	readonly revision: Revision;
+	/** The base tip's configuration and the source it was read from, which every round's findings are decided under. */
+	readonly config: MelianConfig;
+	readonly policy: RepositorySource;
+	/** The checks the base tip's tier requires of the merge's diff. */
+	readonly tier: TierAccount;
+	/** Whose records count, as `RecordSet.of` requires. */
+	readonly counts: (record: SharedRecord) => boolean;
+};
+
+/** One round the gate counted, and the checks it covers for the merge, or why it covers none. */
+export type GateRound = {
+	readonly id: string;
+	/** The revision the round reviewed. */
+	readonly revision: string;
+	readonly covers: readonly string[] | { readonly refused: string };
+};
+
+const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
+
+/**
+ * The merge gate's answer for one head against one base tip, from a changeset's shared records alone. It counts every
+ * round at the head whose base the base tip holds, and every such round's findings on the merge's diff, decided under
+ * the base tip's policy, so a round that reads not reviewed still hands its findings over. A finding is dismissed only
+ * when every counted round that sighted it holds a dismissal of it. Coverage comes only from a round of exactly the
+ * merge's diff whose records stand as reviewed under the base tip's policy and tier, and a required check no such round
+ * ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
+ * whose records cannot stand for it each leave the gate not reviewed.
+ */
+export class RecordGate {
+	/** The merged verdict: the findings that count and those dismissed, with each failure and gap as a check not run. */
+	readonly verdict: Verdict;
+	/** The rounds counted, in record ID order. */
+	readonly rounds: readonly GateRound[];
+	/** Each dismissal a counted round reads as ended by a round at another revision. */
+	readonly ended: readonly EndedDismissal[];
+	/** Why the records cannot decide the gate, each naming the record or round. */
+	readonly failures: readonly string[];
+
+	private constructor(fields: {
+		verdict: Verdict;
+		rounds: GateRound[];
+		ended: EndedDismissal[];
+		failures: string[];
+	}) {
+		this.verdict = fields.verdict;
+		this.rounds = fields.rounds;
+		this.ended = fields.ended;
+		this.failures = fields.failures;
+	}
+
+	/** The gate over `records` of `changeset` under `context`. Git answers each round's ancestry and diff. */
+	static async decide(
+		records: readonly RecordEnvelope[],
+		changeset: string,
+		context: RecordGateContext,
+	): Promise<RecordGate> {
+		let set: RecordSet;
+		try {
+			set = RecordSet.of(records, { counts: context.counts, payloads: reviewPayloads });
+		} catch (error) {
+			if (!(error instanceof RecordError)) throw error;
+			return RecordGate.#failed([`a record fails its checks: ${error.message}`]);
+		}
+		const { revision, repoRoot } = context;
+		const failures: string[] = [];
+		const counted: SharedRecord[] = [];
+		for (const round of set.records()) {
+			if (round.kind !== "round" || round.changeset !== changeset) continue;
+			const sides = Revision.parseKey(round.revision ?? "");
+			if (sides === undefined || sides.head !== revision.head) continue;
+			const holds = await ancestor(repoRoot, sides.base, context.target);
+			if (holds === undefined)
+				failures.push(
+					`git cannot tell whether round ${round.id}'s base ${sides.base} is in the base tip's history`,
+				);
+			else if (holds) counted.push(round);
+		}
+		for (const round of counted) {
+			const missing = set.missing(round);
+			if (missing.length > 0)
+				failures.push(
+					`round ${round.id} names records the store does not hold: ${missing.map(({ id }) => id).join(", ")}`,
+				);
+		}
+		if (failures.length > 0) return RecordGate.#failed(failures);
+		const gate = Revision.key(revision);
+		const rounds: GateRound[] = [];
+		const ended: EndedDismissal[] = [];
+		const verdicts: Verdict[] = [];
+		const covered = new Set<string>();
+		for (const round of counted) {
+			const read = RecordedRound.of(records, round.id, context.counts);
+			const sides = Revision.parseKey(round.revision!)!;
+			const own = (await Changeset.resolve(repoRoot, { base: sides.base, head: sides.head, mode: "twoDot" }))
+				.revision;
+			const under = { revision: own, config: context.config, repoRoot, policy: context.policy };
+			const findings = await read.findingsUnder(under);
+			if ("refused" in findings) {
+				failures.push(`round ${round.id} ${findings.refused}`);
+				continue;
+			}
+			verdicts.push(findings);
+			const contents = read.contents(own);
+			if (!("refused" in contents)) ended.push(...contents.ended);
+			const covers =
+				round.revision !== gate
+					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
+					: await coverage(set, round, read, { ...under, revision }, context.tier);
+			if (!("refused" in covers)) for (const name of covers) covered.add(name);
+			rounds.push({ id: round.id, revision: round.revision!, covers });
+		}
+		if (counted.length === 0) failures.push(`no round reviewed head ${revision.head} at a base the base tip holds`);
+		const gaps: CheckRecord[] = context.tier.checks
+			.filter((name) => !covered.has(name))
+			.map((name) => ({ name, status: "skipped", reason: `no round of ${gate} that stands as reviewed ran it` }));
+		return new RecordGate({
+			verdict: RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]),
+			rounds,
+			ended,
+			failures,
+		});
+	}
+
+	static #failed(failures: string[]): RecordGate {
+		return new RecordGate({
+			verdict: RecordGate.#merged([], [], failures.map(asFailure)),
+			rounds: [],
+			ended: [],
+			failures,
+		});
+	}
+
+	/** Whether the head may merge: every required check is covered, and no finding blocks or awaits an answer. */
+	passes(): boolean {
+		const { verdict } = this;
+		return (
+			verdict.status !== "not-reviewed" && verdict.findings.block.length + verdict.findings.acknowledge.length === 0
+		);
+	}
+
+	// One verdict of every round's findings on `paths`: a finding counts at its strictest resolution in any round, and is
+	// dismissed only when no round holds it live and some round dismissed it.
+	static #merged(verdicts: readonly Verdict[], paths: readonly string[], notRun: CheckRecord[]): Verdict {
+		const onDiff = new Set(paths);
+		const proves = ({ properties: { path, trigger } }: ResolvedFinding) =>
+			[
+				path,
+				...(trigger === undefined ? [] : [trigger.file, ...(trigger.proof ?? []).map(({ file }) => file)]),
+			].some((file) => onDiff.has(file));
+		const live = new Map<string, ResolvedFinding>();
+		const dismissed = new Map<string, ResolvedFinding>();
+		for (const verdict of verdicts) {
+			for (const finding of Object.values(verdict.findings).flat().filter(proves)) {
+				const held = live.get(finding.id);
+				if (held === undefined || RecordGate.#stricter(finding, held)) live.set(finding.id, finding);
+			}
+			for (const finding of verdict.dismissed.filter(proves))
+				if (!dismissed.has(finding.id)) dismissed.set(finding.id, finding);
+		}
+		for (const id of live.keys()) dismissed.delete(id);
+		const findings = Object.fromEntries(
+			strictness.map((resolution) => [
+				resolution,
+				[...live.values()]
+					.filter((finding) => finding.properties.resolution === resolution)
+					.sort(RecordGate.#byPlace),
+			]),
+		) as Record<Resolution, ResolvedFinding[]>;
+		const attention = findings.block.length + findings.acknowledge.length + findings.advisory.length;
+		return new Verdict({
+			status: notRun.length > 0 ? "not-reviewed" : attention > 0 ? "findings" : "passed",
+			blocking: findings.block.length > 0,
+			findings,
+			dismissed: [...dismissed.values()].sort(RecordGate.#byPlace),
+			notRun,
+		});
+	}
+
+	static #stricter(finding: ResolvedFinding, than: ResolvedFinding): boolean {
+		const rank = strictness.indexOf(finding.properties.resolution) - strictness.indexOf(than.properties.resolution);
+		return rank < 0 || (rank === 0 && finding.properties.severity < than.properties.severity);
+	}
+
+	static #byPlace(left: ResolvedFinding, right: ResolvedFinding): number {
+		const [leftLine] = left.lines();
+		const [rightLine] = right.lines();
+		return (
+			(left.properties.path < right.properties.path ? -1 : left.properties.path > right.properties.path ? 1 : 0) ||
+			leftLine - rightLine ||
+			(left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+		);
+	}
+}
+
+// Whether `commit` is in `tip`'s history, or `undefined` when git cannot say, such as for a commit the clone lacks.
+async function ancestor(repoRoot: string, commit: string, tip: string): Promise<boolean | undefined> {
+	const { code } = await git(repoRoot, ["merge-base", "--is-ancestor", commit, tip]);
+	return code === 0 ? true : code === 1 ? false : undefined;
+}
+
+// The checks `round` covers for a merge of its own diff: those that ran, and those skipped with the tier's leave, when
+// its records stand as reviewed under the base tip's policy and account for its tier; otherwise why they cannot.
+async function coverage(
+	set: RecordSet,
+	round: SharedRecord,
+	read: RecordedRound,
+	under: Parameters<RecordedRound["reviewed"]>[0],
+	tier: TierAccount,
+): Promise<readonly string[] | { readonly refused: string }> {
+	const manifest = round.manifest()!;
+	if (manifest.replaces.length > 0) return { refused: `replaces ${manifest.replaces.join(", ")}` };
+	const byId = new Map(set.records().map((record) => [record.id, record]));
+	const elsewhere = manifest.read.find(({ id }) => byId.get(id)?.revision !== round.revision);
+	if (elsewhere !== undefined) return { refused: `names record ${elsewhere.id} of another revision` };
+	const account = set.account(round);
+	if (account === undefined) return { refused: "names no account, or more than one" };
+	const claim = account.payload as AccountPayload | LegacyAccountPayload;
+	const facts = roundFacts(
+		claim.records.flatMap((id) => byId.get(id) ?? []),
+		claim,
+	);
+	const refusal = tier.refusal(claim, facts);
+	if (refusal !== undefined) return { refused: `does not account for the base tip's tier (${refusal})` };
+	const reviewed = await read.reviewed(under);
+	if ("refused" in reviewed) return reviewed;
+	const leave = new Set(tier.allowSkip(facts));
+	return [
+		...(reviewed.ran ?? []).map(({ name }) => name),
+		...reviewed.notRun.filter(({ status, name }) => status === "skipped" && leave.has(name)).map(({ name }) => name),
+	];
+}
+
+function asFailure(reason: string): CheckRecord {
+	return { name: "records", status: "failed", reason };
+}

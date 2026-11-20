@@ -89,6 +89,7 @@ export {
 	readPublished,
 	type SupersededPublication,
 } from "./publish.ts";
+export { type GateRound, RecordGate, type RecordGateContext } from "./record-gate.ts";
 export {
 	type EndedDismissal,
 	RecordedRound,
