@@ -466,7 +466,7 @@ describe("a review that names a record store", () => {
 	});
 });
 
-const dismissal = { by: "Maintainer", reason: "a is meant to be 2 now.", at: "2026-11-16T00:00:00Z" };
+const dismissal = { by: "Maintainer", reason: "a is meant to be 2 now.", at: "2026-11-16T00:00:00.000Z" };
 const dismissalsOf = (stored: RecordEnvelope[]) => stored.filter(({ kind }) => kind === "dismissal");
 
 // A review, and its finding dismissed as `melian dismiss --records` dismisses it, into `store`, or with no store when
@@ -559,7 +559,7 @@ describe("a review that names a record store after a dismissal", () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
-		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
 		const made = await recordDismissal({
 			harness: harness!,
 			repoRoot: repo,
@@ -601,7 +601,7 @@ describe("a review that names a record store after a dismissal", () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
-		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
 		await recordDismissal({
 			harness: harness!,
 			repoRoot: repo,
@@ -632,7 +632,7 @@ describe("a review that names a record store after a dismissal", () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { first, id } = await dismissedReview(store);
 		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
-		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00Z" };
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
 		const made = await recordDismissal({
 			harness: harness!,
 			repoRoot: repo,
@@ -1144,7 +1144,7 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 					await reviewOn(oracle, undefined);
 				}
 				if (step.kind === "dismiss" && host.latest !== undefined) {
-					const at = new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString().replace(".000", "");
+					const at = new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString();
 					const before = (await store.list(host.latest.changeset.id)).length;
 					await dismissOn(host, host, store, at);
 					// A host that dismisses again what it holds dismissed records nothing, so the oracle, which would dismiss at its

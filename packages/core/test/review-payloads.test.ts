@@ -5,13 +5,20 @@ import {
 	type RecordJson,
 	reviewPayloads,
 	SharedRecord,
+	withheld,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 
 const head = "b".repeat(40);
 const revision = `${"a".repeat(40)}..${head}`;
 const dismissed = "0123456789abcdef";
 const dismissalRecord = "c".repeat(64);
+const lensVersion = "0123456789ab";
+const verifierVersion = "0123456789abcdef";
+const blindCallers = "callers were unavailable for every changed site, so no lens saw who calls the changed code";
+const hash = (digit: string) => digit.repeat(64);
+const snapshotId = `sha256:${hash("e")}`;
 
 function finding(check: string, version: string | undefined): RecordJson {
 	return Finding.create({
@@ -30,10 +37,10 @@ function finding(check: string, version: string | undefined): RecordJson {
 
 const snapshot = {
 	commit: head,
-	snapshotId: "snap",
-	receipt: "receipt",
-	cacheKey: "cache",
-	coverage: { graph: "g", review: "r", test: "t" },
+	snapshotId,
+	receipt: JSON.stringify({ format_version: 1, snapshot_id: snapshotId, enola_version: "0.4.0" }),
+	cacheKey: hash("f"),
+	coverage: { graph: hash("1"), review: hash("2"), test: hash("3") },
 };
 const budgetEnded = { budget: "tokens", limit: 10, tokens: 11, tools: 2 };
 const verification = {
@@ -42,7 +49,7 @@ const verification = {
 	matches: { [dismissed]: "same" },
 	executor: "llm",
 	model: "anthropic/opus",
-	version: "v1",
+	version: verifierVersion,
 };
 const lineage = {
 	model: "openai/terra",
@@ -56,23 +63,23 @@ const lineage = {
 const decided = (name: string, version: string, level: string | null) => ({
 	name,
 	status: "ended",
-	reason: "its budget ran out",
-	error: "budget",
+	reason: withheld,
+	error: "timeout",
 	version,
 	level,
 	budgetEnded,
-	caveats: ["no lens saw callers"],
-	coverage: { graph: "g", review: "r", test: "t" },
+	caveats: [blindCallers],
+	coverage: { graph: hash("4"), review: hash("5"), test: hash("6") },
 	lineage,
 });
-const lens = (outcome: RecordJson, check: RecordJson | null = decided("lens.security", "abc", "careful")) => ({
+const lens = (outcome: RecordJson, check: RecordJson | null = decided("lens.security", lensVersion, "careful")) => ({
 	v: 1,
 	name: "security",
-	version: "abc",
+	version: lensVersion,
 	level: "careful",
 	probe: false,
 	outcome,
-	sightings: [finding("lens.security", "abc@careful")],
+	sightings: [finding("lens.security", `${lensVersion}@careful`)],
 	delivery: null,
 	check,
 });
@@ -88,7 +95,7 @@ const samples: [string, RecordJson][] = [
 				status: "ran",
 				version: "2.0.0",
 				findings: 1,
-				notes: ["a note"],
+				notes: [],
 				snapshots: [snapshot],
 			},
 			sightings: [finding("static.biome", "2.0.0")],
@@ -101,10 +108,10 @@ const samples: [string, RecordJson][] = [
 			result: {
 				name: "static.mutation",
 				status: "provisional",
-				version: "1",
+				version: "1.0.0",
 				findings: 0,
 				notes: [],
-				reason: "reused",
+				reason: withheld,
 			},
 			sightings: [],
 		},
@@ -113,13 +120,13 @@ const samples: [string, RecordJson][] = [
 		"check",
 		{
 			v: 1,
-			result: { name: "static.mutation", status: "skipped", reason: "a fork", cause: "headNotAllowed" },
+			result: { name: "static.mutation", status: "skipped", reason: withheld, cause: "headNotAllowed" },
 			sightings: [],
 		},
 	],
 	[
 		"check",
-		{ v: 1, result: { name: "static.tsc", status: "failed", reason: "it crashed", error: "exit 2" }, sightings: [] },
+		{ v: 1, result: { name: "static.tsc", status: "failed", reason: "toolFailed", error: withheld }, sightings: [] },
 	],
 	[
 		"lens",
@@ -138,17 +145,17 @@ const samples: [string, RecordJson][] = [
 			usage: { models: ["anthropic/opus"], tokens: 100, costMicros: 2_500_000 },
 		}),
 	],
-	["lens", lens({ status: "unanswered", reason: "no answer" }, null)],
+	["lens", lens({ status: "unanswered", reason: withheld }, null)],
 	[
 		"lens",
 		lens(
-			{ status: "exhausted", tried: ["anthropic/opus"], reason: "every model failed" },
+			{ status: "exhausted", tried: ["anthropic/opus"], reason: "aborted" },
 			{
 				name: "lens.security",
 				status: "failed",
-				reason: "every model failed",
+				reason: "failed",
 				error: null,
-				version: "abc",
+				version: lensVersion,
 				level: "careful",
 				budgetEnded: null,
 				caveats: null,
@@ -161,14 +168,16 @@ const samples: [string, RecordJson][] = [
 		"verification",
 		{
 			v: 1,
-			claims: [{ id: dismissed, source: { check: "lens.security", version: "abc@careful" }, verification }],
+			claims: [
+				{ id: dismissed, source: { check: "lens.security", version: `${lensVersion}@careful` }, verification },
+			],
 			dismissals: [{ finding: dismissed, record: dismissalRecord }],
 			outcomes: [
-				{ candidate: "one", outcome: { status: "done", model: "anthropic/opus" } },
-				{ candidate: "two", outcome: { status: "ended", budgetEnded } },
-				{ candidate: "three", outcome: { status: "unanswered", reason: "no answer" } },
+				{ candidate: "1111111111111111", outcome: { status: "done", model: "anthropic/opus" } },
+				{ candidate: "2222222222222222", outcome: { status: "ended", budgetEnded } },
+				{ candidate: "3333333333333333", outcome: { status: "unanswered", reason: withheld } },
 			],
-			check: decided("verifier", "v1", null),
+			check: decided("verifier", verifierVersion, null),
 		},
 	],
 	[
@@ -193,7 +202,7 @@ const samples: [string, RecordJson][] = [
 				model: "anthropic/opus",
 				answers: [{ question: "security", distribution: { careful: 750_000, deep: 250_000 }, chosen: "careful" }],
 			},
-			failure: "a reason",
+			failure: withheld,
 			inputCut: false,
 		},
 	],
@@ -211,7 +220,7 @@ const samples: [string, RecordJson][] = [
 					tokens: 100,
 					cacheRead: 50,
 					costMicros: 1_200_000,
-					outcome: "done",
+					outcome: "completed",
 					tools: 4,
 					limits: { tokens: 1000, tools: 10 },
 					ended: "tools",
@@ -228,11 +237,11 @@ const samples: [string, RecordJson][] = [
 			reason: "Not a defect",
 			at: "2026-11-15T00:00:00.000Z",
 			severity: "P1",
-			sighting: { revision, finding: finding("lens.security", "abc@careful") },
+			sighting: { revision, finding: finding("lens.security", `${lensVersion}@careful`) },
 			head,
 			rounds: [dismissalRecord],
 			frontier: ["1".repeat(64), dismissalRecord],
-			trigger: { hash: "h", proof: [{ file: "src/run.ts", hash: "p" }] },
+			trigger: { hash: hash("7"), proof: [{ file: "src/run.ts", hash: hash("8") }] },
 		},
 	],
 ];
@@ -245,7 +254,7 @@ const account = {
 		{
 			name: "decisions.triage",
 			status: "skipped",
-			reason: "no decision provider",
+			reason: "no record",
 			error: null,
 			version: null,
 			level: null,
@@ -254,14 +263,14 @@ const account = {
 			coverage: null,
 			lineage: null,
 		},
-		{ ...decided("lens.design", "abc", "careful"), status: "failed" },
-		{ ...decided("lens.design", "abc", "careful"), status: "failed", reason: "refused" },
+		{ ...decided("lens.design", lensVersion, "careful"), status: "failed" },
+		{ ...decided("lens.design", lensVersion, "careful"), status: "failed", reason: "unexpected" },
 	],
 	allowSkip: ["decisions.triage", "lens.design"],
 	producers: [
 		{ check: "guardrails", version: null, ids: null },
-		{ check: "lens.security", version: "abc@careful", ids: null },
-		{ check: "lens.security", version: "abc@quick", ids: [dismissed, "1123456789abcdef"] },
+		{ check: "lens.security", version: `${lensVersion}@careful`, ids: null },
+		{ check: "lens.security", version: `${lensVersion}@quick`, ids: [dismissed, "1123456789abcdef"] },
 	],
 	resolutionPolicy: "2:0123456789abcdef",
 };
@@ -316,7 +325,7 @@ const variants: readonly [string, string, RecordJson][] = [
 	["lens", "outcome/budgetEnded/budget", "tools"],
 	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tokens" }],
 	["lens", "outcome/escalation/trigger", { kind: "budget", budget: "tools" }],
-	["verification", "outcomes/2/outcome", { status: "exhausted", reason: "every model failed" }],
+	["verification", "outcomes/2/outcome", { status: "exhausted", reason: withheld }],
 	["telemetry", "stages/0/ended", "tokens"],
 	["telemetry", "stages/0/ended", null],
 	["account", "filled/1/status", "skipped"],
@@ -371,13 +380,13 @@ describe("review payload checks", () => {
 	it.each([null, "noProductionLines", "headNotAllowed", "timeout", "unmutated"])(
 		"accepts a skipped check whose cause is %j",
 		(cause) => {
-			const result = { name: "static.mutation", status: "skipped", reason: "a fork", cause };
+			const result = { name: "static.mutation", status: "skipped", reason: withheld, cause };
 			expect(check("check", { v: 1, result, sightings: [] })).toBeUndefined();
 		},
 	);
 
 	it("refuses a skipped check whose cause is none of those", () => {
-		const result = { name: "static.mutation", status: "skipped", reason: "a fork", cause: "bored" };
+		const result = { name: "static.mutation", status: "skipped", reason: withheld, cause: "bored" };
 		expect(check("check", { v: 1, result, sightings: [] })).toMatch(/schema/);
 	});
 
@@ -392,17 +401,17 @@ describe("review payload checks", () => {
 	it("refuses a check record whose sighting another check reported", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [finding("static.tsc", "2.0.0")] })).toBe(
-			"holds a sighting at /sightings/0 from static.tsc@2.0.0, not static.biome@2.0.0",
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 		expect(check("check", { ...payload, sightings: [finding("static.biome", "1.0.0")] })).toMatch(
-			/not static.biome@2.0.0/,
+			/than the record's$/,
 		);
 	});
 
 	it("names a sighting with no version against a check with one", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [finding("static.biome", undefined)] })).toBe(
-			"holds a sighting at /sightings/0 from static.biome@, not static.biome@2.0.0",
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 	});
 
@@ -434,8 +443,8 @@ describe("review payload checks", () => {
 			sightings: [finding("static.biome", undefined)],
 		};
 		expect(check("check", unversioned)).toBeUndefined();
-		expect(check("check", { ...unversioned, sightings: [finding("static.biome", "2.0.0")] })).toMatch(
-			/from static.biome@2.0.0, not static.biome@$/,
+		expect(check("check", { ...unversioned, sightings: [finding("static.biome", "2.0.0")] })).toBe(
+			"holds a sighting at /sightings/0 from another producer than the record's",
 		);
 	});
 
@@ -455,6 +464,41 @@ describe("review payload checks", () => {
 		expect(check("check", { ...payload, sightings: [] })).toBeUndefined();
 	});
 
+	it("refuses a receipt whose Enola version is not in semver's own form of at most 64 characters", () => {
+		const payload = samples[0]?.[1] as { v: 1; result: Record<string, RecordJson>; sightings: RecordJson };
+		const receipt = (enola_version: string) =>
+			check("check", {
+				...payload,
+				result: {
+					...payload.result,
+					snapshots: [
+						{
+							...snapshot,
+							receipt: JSON.stringify({ format_version: 1, snapshot_id: snapshotId, enola_version }),
+						},
+					],
+				},
+			});
+		const refusal = "names a version at /result/snapshots/0/receipt that is not one Melian writes";
+		expect(receipt("0")).toBe(refusal);
+		expect(receipt("01.2.3")).toBe(refusal);
+		expect(receipt("0.4.40")).toBeUndefined();
+		expect(receipt(`0.0.1-${"a".repeat(58)}`)).toBeUndefined();
+		expect(receipt(`0.0.1-${"a".repeat(59)}`)).toMatch(
+			/^does not match its schema at \/result\/snapshots\/0\/receipt/,
+		);
+	});
+
+	it("refuses a verification outcome whose candidate is not a finding ID", () => {
+		const payload = samples.find(([kind]) => kind === "verification")?.[1] as { outcomes: RecordJson[] };
+		const outcome = { outcome: { status: "done", model: "anthropic/opus" } };
+		const holding = (candidate: string) =>
+			check("verification", { ...payload, outcomes: [{ candidate, ...outcome }] } as RecordJson);
+		expect(holding("8f3f919a7c886b44")).toBeUndefined();
+		expect(holding("anthropic/claude")).toMatch(/^does not match its schema at \/outcomes\/0\/candidate/);
+		expect(holding("a".repeat(64))).toMatch(/^does not match its schema at \/outcomes\/0\/candidate/);
+	});
+
 	it("refuses a sighting that is not a finding", () => {
 		const payload = samples[0]?.[1] as Record<string, RecordJson>;
 		expect(check("check", { ...payload, sightings: [{ ruleId: "unsafe" }] })).toMatch(
@@ -464,14 +508,13 @@ describe("review payload checks", () => {
 
 	it("refuses a lens record whose sighting is another lens's, or another level's", () => {
 		const payload = samples.find(([kind]) => kind === "lens")?.[1] as Record<string, RecordJson>;
-		expect(check("lens", { ...payload, sightings: [finding("lens.tests", "abc@careful")] })).toMatch(
-			/from lens.tests@abc@careful, not lens.security@abc@careful/,
+		const refusal = "holds a sighting at /sightings/0 from another producer than the record's";
+		expect(check("lens", { ...payload, sightings: [finding("lens.tests", `${lensVersion}@careful`)] })).toBe(refusal);
+		expect(check("lens", { ...payload, sightings: [finding("lens.security", `${lensVersion}@quick`)] })).toBe(
+			refusal,
 		);
-		expect(check("lens", { ...payload, sightings: [finding("lens.security", "abc@quick")] })).toMatch(
-			/not lens.security@abc@careful/,
-		);
-		expect(check("lens", { ...payload, sightings: [finding("lens.security", "abd@careful")] })).toMatch(
-			/not lens.security@abc@careful/,
+		expect(check("lens", { ...payload, sightings: [finding("lens.security", "0123456789ac@careful")] })).toBe(
+			refusal,
 		);
 	});
 
@@ -479,31 +522,37 @@ describe("review payload checks", () => {
 		const payload = samples.find(([kind]) => kind === "lens")?.[1] as Record<string, RecordJson>;
 		const holding = (name: string, version: string | null, level: string | null) =>
 			check("lens", { ...payload, check: decided(name, version as string, level) });
-		expect(holding("lens.security", "abc", "careful")).toBeUndefined();
-		expect(holding("lens.tests", "abc", "careful")).toBe(
-			"holds the check of lens.tests@abc at careful, not lens.security@abc at careful",
-		);
-		expect(holding("lens.security", "abd", "careful")).toBe(
-			"holds the check of lens.security@abd at careful, not lens.security@abc at careful",
-		);
-		expect(holding("lens.security", null, "careful")).toBe(
-			"holds the check of lens.security@ at careful, not lens.security@abc at careful",
-		);
-		expect(holding("lens.security", "abc", "deep")).toBe(
-			"holds the check of lens.security@abc at deep, not lens.security@abc at careful",
-		);
-		expect(holding("lens.security", "abc", null)).toBe(
-			"holds the check of lens.security@abc at no level, not lens.security@abc at careful",
-		);
+		const refusal = "holds the check of another lens, version or level than its own";
+		expect(holding("lens.security", lensVersion, "careful")).toBeUndefined();
+		expect(holding("lens.tests", lensVersion, "careful")).toBe(refusal);
+		expect(holding("lens.security", "0123456789ac", "careful")).toBe(refusal);
+		expect(holding("lens.security", null, "careful")).toBe(refusal);
+		expect(holding("lens.security", lensVersion, "deep")).toBe(refusal);
+		expect(holding("lens.security", lensVersion, null)).toBe(refusal);
 		expect(check("lens", { ...payload, check: null })).toBeUndefined();
 	});
 
 	it("refuses a verification that holds a check other than the verifier's", () => {
 		const payload = samples.find(([kind]) => kind === "verification")?.[1] as Record<string, RecordJson>;
-		expect(check("verification", { ...payload, check: decided("lens.security", "v1", null) })).toBe(
-			"holds the check of lens.security, not the verifier's",
+		expect(check("verification", { ...payload, check: decided("lens.security", lensVersion, null) })).toBe(
+			"holds the check of another check than the verifier",
 		);
 		expect(check("verification", { ...payload, check: null })).toBeUndefined();
+	});
+
+	// A version 1 lens task resumes with no level, so a source names the bare lens version or that version at a level.
+	it("takes a lens source's version bare or at a level, and refuses any other", () => {
+		const payload = samples.find(([kind]) => kind === "account")?.[1] as Record<string, RecordJson>;
+		const naming = (version: string) =>
+			check("account", { ...payload, producers: [{ check: "lens.security", version, ids: null }] });
+		const refusal = "names a version at /producers/0/version that is not one Melian writes";
+		expect(naming(lensVersion)).toBeUndefined();
+		expect(naming(`${lensVersion}@careful`)).toBeUndefined();
+		expect(naming(`${lensVersion}@loud`)).toBe(refusal);
+		expect(naming(`${lensVersion}@careful@careful`)).toBe(refusal);
+		expect(naming(`${lensVersion}@`)).toBe(refusal);
+		expect(naming("0123456789a")).toBe(refusal);
+		expect(naming("0123456789a@careful")).toBe(refusal);
 	});
 
 	it("refuses a verification that matches a claim against a dismissal it does not name", () => {
@@ -572,12 +621,16 @@ describe("review payload checks", () => {
 		["lists its producers out of order, or one twice", { producers: [account.producers[2], account.producers[1]] }],
 		["lists its producers out of order, or one twice", { producers: [account.producers[0], account.producers[0]] }],
 		[
-			"keeps the findings of lens.security out of order, or one twice",
-			{ producers: [{ check: "lens.security", version: "abc@quick", ids: ["1123456789abcdef", dismissed] }] },
+			"keeps the findings at /producers/0/ids out of order, or one twice",
+			{
+				producers: [
+					{ check: "lens.security", version: `${lensVersion}@quick`, ids: ["1123456789abcdef", dismissed] },
+				],
+			},
 		],
 		[
-			"keeps the findings of lens.security out of order, or one twice",
-			{ producers: [{ check: "lens.security", version: "abc@quick", ids: [dismissed, dismissed] }] },
+			"keeps the findings at /producers/0/ids out of order, or one twice",
+			{ producers: [{ check: "lens.security", version: `${lensVersion}@quick`, ids: [dismissed, dismissed] }] },
 		],
 	])("refuses an account that %s, case %#", (reason, fields) => {
 		expect(check("account", { ...account, ...fields } as RecordJson)).toBe(reason);
@@ -624,7 +677,7 @@ describe("review payload checks", () => {
 			v: 1,
 			changeset: "pull-0123456789abcdef",
 			kind: "walkthrough",
-			key: "w",
+			key: recordKey("w"),
 			revision,
 			payload: { v: 1 },
 		};

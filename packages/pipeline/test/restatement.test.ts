@@ -104,7 +104,7 @@ const restatement = {
 const dismissal = {
 	by: "Tal <tal@melian.invalid>",
 	reason: "Every user here has a manager.",
-	at: "2026-10-04T01:00:00Z",
+	at: "2026-10-04T01:00:00.000Z",
 };
 
 const deterministicRan = [
@@ -929,7 +929,11 @@ describe("a dismissal carrying to a restatement", () => {
 		pushElsewhere("other");
 		script([restatement]);
 		await review();
-		const replaced = { ...dismissal, reason: "Managers are always set by the loader.", at: "2026-10-05T01:00:00Z" };
+		const replaced = {
+			...dismissal,
+			reason: "Managers are always set by the loader.",
+			at: "2026-10-05T01:00:00.000Z",
+		};
 		const first = await Changeset.resolve(repo, "main...feature~1");
 		await recordDismissal({ harness, revision: first.revision, id: root, dismissal: replaced, repoRoot: repo });
 		// The link names the old dismissal, which no longer stands, so a read shows the restatement live.
@@ -1154,7 +1158,7 @@ describe("a dismissal carrying to a restatement", () => {
 		const imported = await foreignDismissal(changeset, root);
 		await store.add([imported.toJSON()]);
 		const { revision: dismissedAt } = await Changeset.resolve(repo, "main...feature~1");
-		const again = { ...dismissal, reason: "Managers are always set by the loader.", at: "2026-10-05T01:00:00Z" };
+		const again = { ...dismissal, reason: "Managers are always set by the loader.", at: "2026-10-05T01:00:00.000Z" };
 		await recordDismissal({
 			harness,
 			revision: dismissedAt,

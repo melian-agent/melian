@@ -5,6 +5,7 @@ import {
 	verificationMatchesSchema,
 	verificationQuestions,
 	verificationSchema,
+	verifierVersionDigits,
 } from "@melian-agent/core";
 import Type, { type Static } from "typebox";
 import { evidenceWordingOf, probeEvidenceRenderings, probingWording } from "./probing.ts";
@@ -67,7 +68,7 @@ export function computeVerifierVersion(
 	return createHash("sha256")
 		.update(JSON.stringify({ instructions, schema, questions, probeEvidence }))
 		.digest("hex")
-		.slice(0, 16);
+		.slice(0, verifierVersionDigits);
 }
 
 export const verifierVersion = computeVerifierVersion();

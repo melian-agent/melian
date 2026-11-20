@@ -1,0 +1,976 @@
+{
+	"head": "05a703488f23e14f046578909f5a7e1f95c0bd8e",
+	"base": "77e4f2a527bf61d2b29ad8f46ae742bd3952e7b8",
+	"method": "Each generated mutant was applied alone in the worktree, its named test was run by its anchored file, describe and title pattern, and the run counted only when exactly one test was collected and it passed on the unmutated head first. One runner ran at a time, and the source was restored after each mutant.",
+	"equivalentNotRun": [
+		{
+			"id": "e0e452f0a1b51c28049f7536de74cc422363a3eed8d5e8128cd426b736d137a3",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 430,
+			"reason": "Finding.parse throws only FindingError, so the guard is true wherever it runs and forcing it true changes nothing"
+		}
+	],
+	"runs": [
+		{
+			"id": "a2cc7dfe4a6485e55ac845a939d4b9fd441cbf427cc654df8c8c31ac9ed1b716",
+			"file": "packages/core/src/findings.ts",
+			"line": 718,
+			"column": 8,
+			"mutatorName": "MethodExpression",
+			"replacement": "createHash(\"sha256\").update(input).digest(\"hex\")",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"takes the ID a finding is given as a dismissal's key"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "a93c37d8b85fc579a242cad1797a1d6297b2c52ae7ce1004c7412490e4c6d241",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 112,
+			"column": 30,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/review-payloads.test.ts",
+				"path": [
+					"review payload checks",
+					"refuses a lens payload whose outcome/escalation/carried/0 is \"0123456789abcdeg\""
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "698289c40e2dc530eb7d487550739593278890fefc2ddeb11d54b056955ac3b1",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 352,
+			"column": 23,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the telemetry sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "d2cb8771e2a4a610c1fcb1e2cc4216dc9fac35ea81a172e4fefbe18a3ac98f50",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 416,
+			"column": 15,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "dfbf7c2c6b1bdaac493addbf732fdc7faf7d690ee918b52bc28fb9936b7677e7",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses a field no schema has without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "6918f18768687bcdab47e0fef850a07ffd6934aaa2cb1adaf27c1860c33978dd",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "b09b863e071497bd17226daaac0b3fa32937b3c74f1d07a8f6000b84e69fcaae",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "LogicalOperator",
+			"replacement": "/^\\d+$/.test(segment) && `${error.schemaPath}/`.includes(`/properties/${segment}/`)",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "c8ba25fa7171cc39027eb263e26d726021a8793d41358b80eb79f8c4230b97a5",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "Regex",
+			"replacement": "/\\d+$/",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "698d709ffc8decfc7286bde1ad4fb0a062e8a6ab64152150b3334c5122257e12",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "Regex",
+			"replacement": "/^\\d+/",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "49386dfb9440c515e6bfee184445bf01d07db38e9656f43e996a5c982af98bcb",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "Regex",
+			"replacement": "/^\\d$/",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "91fa992180a51cded68f343ff02fcb1d658a5aa3fbd3ffd54d287ce545525113",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 417,
+			"column": 2,
+			"mutatorName": "Regex",
+			"replacement": "/^\\D+$/",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses a field no schema has without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "a435db8658728cffc4747ef807ac1e5b1ce519bfa4c8fab978c8577d6f8c0562",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 418,
+			"column": 15,
+			"mutatorName": "MethodExpression",
+			"replacement": "error.instancePath.split(\"/\")",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "2a49b8874152069588204db92e989a6fa52505a30e7e957ee2c033916abeeb51",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 421,
+			"column": 7,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "584f38a8cb06855c9dc2870852e21915afe12cf0c29277233842233ca9181fec",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 423,
+			"column": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "4f27bc3fb326caf789977115bc22ea49657e471f3db9adfc79198a31ed24c29f",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 423,
+			"column": 40,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/review-payloads.test.ts",
+				"path": [
+					"review payload checks",
+					"names where a payload breaks its schema"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "92f314bf031db976f3a1b65909c229207b8ebfea8f4bdef54fdc0465f23cb8a9",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 423,
+			"column": 40,
+			"mutatorName": "EqualityOperator",
+			"replacement": "error.instancePath !== \"\"",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"names an array index in the path and masks a key that holds digits"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "b0ce11569cfb14ab9414328a43c904b686db1fac39af84334db1d6b08b5a04b8",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 430,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses a sighting that is not a finding without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "b293ba02ead7d0575e17425c0f41f40b70cca40a053ae5de01f155218c9d154c",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "fa8ee3d62bdd73e9b856d2663d6552e57a690b103331b1d83e0f52af4017baf3",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses the verifier check's name without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "89381909d9b28e9b277df203a71003a7c7a1cef474ffe9e471d391ccd4866240",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 6,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check !== null || check.name !== \"verifier\"",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "503fb4645f7a56dd1ff0844ddfaa9fe51cc19776d5f45879816aa6bbb600d9e5",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/review-payloads.test.ts",
+				"path": [
+					"review payload checks",
+					"refuses a verification that holds a check other than the verifier's"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "9cf597d59020aadb9709974ab3ac39e21b6247bab93db49f03d871a215dcd10d",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 6,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check === null",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses the verifier check's name without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "5d976c0d34770a7827e7f8ef8c150b62e0fb8ea7f6e7a00f20d4c3b1e682fda5",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "82ea22b63ec82db62c408f9984d5db4e348b477ebe6109cad0ce8a2b57dd77b3",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 491,
+			"column": 24,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check.name === \"verifier\"",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "6157d44f0c6a39828f99fcfc0964c0163ef2d86b1fc617979f1f48d9ae29e68e",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 493,
+			"column": 35,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses free text in the verification sample's claims/0/verification/version"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "a7108c47c40ed6860e2b90a41dcc334918c111398b03729e91bc57b0b72eca5e",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 493,
+			"column": 46,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "verifierVersion.test(claim.verification.version)",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "088a0a18a93ed8fc5796c9a5ffd8304e630bb9214fc83efac2fb3180bde6ccd9",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 494,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "d790f5af7c72cd54c65677ea976606d6fb810d1992e1c98b1a761cc37bcf96dd",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 494,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"refuses free text in the verification sample's claims/0/verification/version"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "d6184523df9983ebc5d7b78c7800adf2c4c373ca73df6d8643d4412ce07c6f7a",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 494,
+			"column": 6,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stamped === -1",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "38037851f0293757eb9e218325b5510063124eefb0194ed417f92ddf97e04a97",
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 494,
+			"column": 18,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"test": {
+				"file": "packages/core/test/record-payload-classes.test.ts",
+				"path": [
+					"a shared record's classed fields",
+					"accepts the verification sample, as Melian writes it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "bfca987a77c0c4c176566bb503b939d578c90163c04c92b94cbc4394699326f9",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "8a6aa5505eb31d900e232ff888cb93c24d267e477a3ed4667156410617c5115a",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "280cc625eaf40b3b925f14f911486d43cbde6078accbedcee9c9a3b1c4f6e11e",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "e6b7c56bee63d6bc484857ba9a1b7834d3809697ae52d283942d77f1887485de",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 5,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a finding's ID for a dismissal"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "7daf7947ab85f97a466dfaff990f6dbd29beaa71b220f22175f42b6f23e63bb3",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 5,
+			"mutatorName": "EqualityOperator",
+			"replacement": "kind !== \"dismissal\"",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "f731db45b1ec9339f2dee567ef2f32fa7a0c2da73693fb8d7164cf8717d50f7e",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 28,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "findingIdKey.test(value)",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a finding's ID for a dismissal"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "ebbbc61cfae37e7b4672a345f83e08c3b33134047a21c1eac478f48e238e2178",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "5aa8e3a9c452a310d93f8bdc2dcebd39a93dd668674659dcd3916eda2b344dcf",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "42e7b884fc94be52e49107e1dddce3b5ce0f5066880dbf007e93ded9f44d0686",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 56,
+			"mutatorName": "LogicalOperator",
+			"replacement": "writerRelayed.has(kind) || !recordId.test(value)",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "5835019ede95851e73646dfad2e9be9eadf05b54a2814d6fb44ccb59e434f2a9",
+			"file": "packages/core/src/record.ts",
+			"line": 159,
+			"column": 83,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "recordId.test(value)",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "52316c1063c8ae568a1f7a81ebfd284c1cacdcdebf16381c7f496d0a9a48653f",
+			"file": "packages/core/src/record.ts",
+			"line": 174,
+			"column": 2,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key, or a finding's ID, wherever a round names one"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "9aba9630245684372b425a608e8b9af9ab9e8d454ab5ccc0aaa473be4517cb3c",
+			"file": "packages/core/src/record.ts",
+			"line": 181,
+			"column": 2,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key, or a finding's ID, wherever a round names one"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "c91cdb9d44aaf0e5f656556cfb938b4be0af5689d0e36e1005c5ff3f2c7ca7a3",
+			"file": "packages/core/src/record.ts",
+			"line": 246,
+			"column": 7,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "fields.has(field)",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "1e60c658fc66918b38da3cbc01a7e5ee48ff668418f1eb77f315ef70fc489d6f",
+			"file": "packages/core/src/record.ts",
+			"line": 246,
+			"column": 7,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "b5b46fb98007293d4a844d114654f6bacd314076c1b4db46c2d0076d66900c2d",
+			"file": "packages/core/src/record.ts",
+			"line": 246,
+			"column": 7,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"names a field it does not know without repeating it"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "11b8182fd63b6a2ce6212bb2f9174e40074ba63ef68f0a7a7c77a0fca146ceb6",
+			"file": "packages/core/src/record.ts",
+			"line": 255,
+			"column": 2,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"test": {
+				"file": "packages/core/test/record-keys.test.ts",
+				"path": [
+					"a shared record's key",
+					"is a request's key for a check record"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "35c6798089f7da69395dca5629420d3e2ba3fbde207aaf17858e8cf012dcd12b",
+			"file": "packages/core/src/testing.ts",
+			"line": 63,
+			"column": 49,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record.test.ts",
+				"path": [
+					"SharedRecord",
+					"is named by the SHA-256 of its canonical bytes"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "f4a2c9944fb8c183e4aa46e186cd746244e8fddc21058e9f232b884eab9aaf39",
+			"file": "packages/core/src/testing.ts",
+			"line": 65,
+			"column": 1,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"test": {
+				"file": "packages/state-git/test/fetch.test.ts",
+				"path": [
+					"reading the branch",
+					"fetches the whole history into its own repository, and never touches the clone"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "e6a6e4b36315a68ab383fd6cb68398d46165acf32f93c17c0587f6d12f2a9b23",
+			"file": "packages/core/src/testing.ts",
+			"line": 70,
+			"column": 50,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record.test.ts",
+				"path": [
+					"SharedRecord",
+					"validation",
+					"lets a dismissal supersede"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "67f727ccd7b52d3292eb3f549cc2bd3e7992bd40994f062c8e3492034593f271",
+			"file": "packages/core/src/testing.ts",
+			"line": 71,
+			"column": 8,
+			"mutatorName": "MethodExpression",
+			"replacement": "createHash(\"sha256\").update(label).digest(\"hex\")",
+			"test": {
+				"file": "packages/core/test/record.test.ts",
+				"path": [
+					"SharedRecord",
+					"validation",
+					"lets a dismissal supersede"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "8be5ebd44f0faff8ad072d206a671b9833cbd9cabcaa37eacbacd36ea11c1552",
+			"file": "packages/core/src/testing.ts",
+			"line": 75,
+			"column": 45,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/state-git/test/fetch.test.ts",
+				"path": [
+					"reading the branch",
+					"fetches the whole history into its own repository, and never touches the clone"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "503321080b63a46f54e05d8f03120fcb6d61eb94bc3987ce0532835c245896ad",
+			"file": "packages/core/src/testing.ts",
+			"line": 76,
+			"column": 8,
+			"mutatorName": "LogicalOperator",
+			"replacement": "labels.get(key) && key",
+			"test": {
+				"file": "packages/state-git/test/fetch.test.ts",
+				"path": [
+					"reading the branch",
+					"fetches the whole history into its own repository, and never touches the clone"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "93ddd2312f3ad771e26776dca01dae46d9b98c11358cc8dc4b3a82f2de1533d9",
+			"file": "packages/core/src/testing.ts",
+			"line": 86,
+			"column": 8,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"add: the same bytes added twice are one record, and a repeat completes a batch"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "c38fd33d7a59dab211a74956cb34f77d9a7665ff9a355640f7d99f25011a2724",
+			"file": "packages/core/src/testing.ts",
+			"line": 92,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"add: the same bytes added twice are one record, and a repeat completes a batch"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "06085151df699ec8035ad58993b75d2c826e17b990913d9aaf5a14ddbc270f64",
+			"file": "packages/core/src/testing.ts",
+			"line": 92,
+			"column": 6,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"list: returns every record whose add returned before it, on any handle, and only its changeset's"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "3fa7432fb42d8445afb21c6f14ffaea16bf1e301afe98759bb7a1eff743bf517",
+			"file": "packages/core/src/testing.ts",
+			"line": 92,
+			"column": 6,
+			"mutatorName": "EqualityOperator",
+			"replacement": "kind !== \"round\"",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"add: the same bytes added twice are one record, and a repeat completes a batch"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "4aa8a52a94996af5e3742afdd2993d78b28d5e55b4fb0285e9ebeff0e17a5b03",
+			"file": "packages/core/src/testing.ts",
+			"line": 92,
+			"column": 25,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"list: returns every record whose add returned before it, on any handle, and only its changeset's"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "57b14b7dabd3c9ba3eeb54f770c69758b47cf286713e653f719cefa262f10e26",
+			"file": "packages/core/src/testing.ts",
+			"line": 132,
+			"column": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"add: the same bytes added twice are one record, and a repeat completes a batch"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		},
+		{
+			"id": "505719f3dc6fd583dc5927257ad5bfed4064ce18ba17b49da5350b73a152eeec",
+			"file": "packages/core/src/testing.ts",
+			"line": 133,
+			"column": 15,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"test": {
+				"file": "packages/core/test/record-store.test.ts",
+				"path": [
+					"the record store conformance suite on the memory adapter",
+					"add: the same bytes added twice are one record, and a repeat completes a batch"
+				]
+			},
+			"result": "killed: the named test passed unmutated and failed mutated, the only test collected"
+		}
+	],
+	"handRuns": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 593,
+			"mutation": "outcomes.has(each.outcome) forced true, then false",
+			"test": {
+				"file": "packages/pipeline/test/review-records.test.ts",
+				"path": [
+					"ReviewRecords",
+					"keys telemetry by its round's ID and writes cost in millionths"
+				]
+			},
+			"result": "killed both ways: the enumerator lists no mutant there under ignoreStatic, so it was run by hand at ff1756c1a"
+		}
+	]
+}

@@ -26,6 +26,7 @@ import {
 	standardsLimits,
 	Verdict,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import {
 	type PrepareRecord,
@@ -636,7 +637,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const exported = await records.list(changeset!);
 		const round = exported.find(({ kind }) => kind === "round")!;
 		await records.add([
-			{ ...round, key: `${round.key}-elsewhere`, revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
+			{ ...round, key: recordKey(`${round.key}-elsewhere`), revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
 		]);
 		// The store lists in no order, so add rounds until it lists them in neither ID order nor its reverse, which a
 		// sort that ignores the IDs could produce.
@@ -647,7 +648,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		let ids: string[] = [];
 		let mixed = false;
 		for (let n = 0; n < 20 && !mixed; n++) {
-			await records.add([{ ...round, key: `${round.key}-again-${n}` }]);
+			await records.add([{ ...round, key: recordKey(`${round.key}-again-${n}`) }]);
 			const order = await listed();
 			ids = [...order].sort();
 			mixed = order.join() !== ids.join() && order.join() !== [...ids].reverse().join();

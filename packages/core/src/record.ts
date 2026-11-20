@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { RecordError } from "./errors.ts";
+import { findingIdPattern } from "./findings.ts";
 
 /** A JSON value as a record holds it: every number a safe integer. */
 export type RecordJson = null | boolean | number | string | RecordJson[] | { [key: string]: RecordJson };
@@ -72,7 +73,10 @@ const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
 const dotted = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 const revisionPattern = /^(?:[0-9a-f]{40}\.\.[0-9a-f]{40}|[0-9a-f]{64}\.\.[0-9a-f]{64})$/;
-const recordId = /^[0-9a-f]{64}$/;
+/** A SHA-256 hash in lowercase hex, as Melian computes a request's key, a record's ID, a cache key or a coverage ID. */
+export const hashPattern = "^[0-9a-f]{64}$";
+const recordId = new RegExp(hashPattern);
+const findingIdKey = new RegExp(findingIdPattern);
 const signatureBytes = 64;
 
 function invalid(message: string): RecordError {
@@ -148,8 +152,12 @@ function fieldsExactly(value: unknown, names: readonly string[], what: string): 
 	return value as { [field: string]: unknown };
 }
 
-function key(value: unknown, what: string): void {
+// A dismissal's key is its finding's ID, and each kind a review writes, the kinds a writer's job relays, is keyed by its
+// request. The kinds no command writes yet keep any non-empty key until one does.
+function key(value: unknown, kind: string, what: string): void {
 	if (typeof value !== "string" || value === "") throw invalid(`${what} is a non-empty string`);
+	if (kind === "dismissal" ? !findingIdKey.test(value) : writerRelayed.has(kind) && !recordId.test(value))
+		throw invalid(`${what} is not a key Melian writes for a ${kind} record`);
 }
 
 function manifestOf(payload: unknown): void {
@@ -163,14 +171,14 @@ function manifestOf(payload: unknown): void {
 			!(kinds.has(named.kind) || supersedingKinds.has(named.kind))
 		)
 			throw invalid("a record a round read has a kind no round reads");
-		key(named.key, "a record a round read's key");
+		key(named.key, named.kind as string, "a record a round read's key");
 		idList([named.id], "a round's read");
 		if (index > 0 && (named.id as string) <= (manifest.read[index - 1] as NamedRecord).id)
 			throw invalid("a round's read is sorted by ID, with no ID twice");
 	}
 	if (manifest.walkthrough !== null) {
 		const walkthrough = fieldsExactly(manifest.walkthrough, ["key", "id"], "a round's walkthrough");
-		key(walkthrough.key, "a round's walkthrough's key");
+		key(walkthrough.key, "walkthrough", "a round's walkthrough's key");
 		idList([walkthrough.id], "a round's walkthrough");
 	}
 	idList(manifest.replaces, "a round's replaces");
@@ -235,7 +243,7 @@ export class SharedRecord {
 		const bytes = canonicalJson(value);
 		const envelope = frozen(JSON.parse(bytes) as { [field: string]: unknown });
 		for (const field of Object.keys(envelope))
-			if (!fields.has(field)) throw invalid(`a record holds no field ${field}`);
+			if (!fields.has(field)) throw invalid("a record holds a field no record has");
 		if (envelope.v !== 1) throw invalid("a record's v is 1");
 		if (typeof envelope.changeset !== "string" || !dotted.test(envelope.changeset))
 			throw invalid("a record's changeset is dot-joined segments of [a-z0-9-]");
@@ -244,8 +252,7 @@ export class SharedRecord {
 		const supersedes = supersedingKinds.has(envelope.kind);
 		if (!supersedes && !kinds.has(envelope.kind))
 			throw new RecordError("unknownKind", `no record has the kind ${envelope.kind}`);
-		if (typeof envelope.key !== "string" || envelope.key === "")
-			throw invalid("a record's key is a non-empty string");
+		key(envelope.key, envelope.kind, "a record's key");
 		if (!("payload" in envelope)) throw invalid("a record has a payload");
 		if ("revision" in envelope) {
 			if (typeof envelope.revision !== "string" || !revisionPattern.test(envelope.revision))

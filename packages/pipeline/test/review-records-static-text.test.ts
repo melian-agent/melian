@@ -283,11 +283,11 @@ describe("an exported record keeps what a static finding shares", () => {
 		const { stored, records } = await mutation([mutant({ replacement: `"${token}"` })]);
 		const lens: StoredFinding[] = stored.map((finding) => ({
 			...finding,
-			properties: { ...finding.properties, source: { check: "lens.correctness", version: "1@careful" } },
+			properties: { ...finding.properties, source: { check: "lens.correctness", version: "0123456789ab@careful" } },
 		}));
 		const run = {
 			name: "correctness",
-			version: "1",
+			version: "0123456789ab",
 			level: "careful",
 			request: "d".repeat(64),
 			probe: false,
@@ -320,9 +320,10 @@ describe("an exported record keeps what a static finding shares", () => {
 		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${token} ${snapshotId}` }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, snapshot_id: `${snapshotId} ${token}` }))).toBe(withheld);
 		expect(exported(JSON.stringify({ ...fields, enola_version: `0.4.37 ${token}` }))).toBe(withheld);
-		const longest = { ...fields, enola_version: `0${"1".repeat(63)}` };
+		expect(exported(JSON.stringify({ ...fields, enola_version: "0" }))).toBe(withheld);
+		const longest = { ...fields, enola_version: `0.0.1-${"a".repeat(58)}` };
 		expect(exported(JSON.stringify(longest))).toBe(JSON.stringify(longest));
-		expect(exported(JSON.stringify({ ...fields, enola_version: `0${"1".repeat(64)}` }))).toBe(withheld);
+		expect(exported(JSON.stringify({ ...fields, enola_version: `0.0.1-${"a".repeat(59)}` }))).toBe(withheld);
 	});
 	describe("Enola's snapshot identities, which Melian computes as hashes", () => {
 		const records = ReviewRecords.of("c".repeat(64), { base: "a".repeat(40), head: "b".repeat(40) });
