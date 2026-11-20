@@ -683,7 +683,12 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const request = { type: "input", content, requestId: requestOf(attempt) } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
 					if (settled.status === "done")
-						return { status: "done", model: modelName(route[attempt]!), attempt, ...(await refusedBefore(attempt)) };
+						return {
+							status: "done",
+							model: modelName(route[attempt]!),
+							attempt,
+							...(await refusedBefore(attempt)),
+						};
 					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
