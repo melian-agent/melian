@@ -40,6 +40,8 @@ A producer is keyed by its own set, so a move beneath the instrumenter asks only
 
 A root, or a required dependency, that does not resolve fails the key with the package's name and who needs it: "Melian cannot find the installed package sdk, which pi@1.1.0 needs." So does a manifest that is not JSON, names another package, or gives no version. The key never holds an empty or partial list. An adjudication task whose `packages` differs from the running install's fails, as one with another build's `code` does, and decides nothing.
 
+`packages` takes no task version. The task has no input schema, so a build reads an unknown field without complaint. Any build that does not know the field also has other adjudication code, so its `code` check fails the task before the field matters, and the next review decides again. Run against main's own code at 56f7fb059, a pending task this build wrote failed with "another build's adjudication code created this task", and made no model call. The other direction is a test: `adjudication-key-reopen.test.ts` reopens a version 8 task that main's own code left pending, from `fixtures/adjudication-key-main/pending-8.sqlite`. It fails, and the next review decides again with no model call.
+
 ## What it leaves out, and what that gives up
 
 - **`@types/*`.** It never runs.
