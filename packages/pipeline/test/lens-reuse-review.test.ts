@@ -574,14 +574,12 @@ describe("a repeat review copies a lens run only from a task shown the same call
 
 describe("a repeat review on an install Melian cannot identify", () => {
 	const unidentified = () =>
-		vi
-			.spyOn(codeVersionModule, "melianInstall")
-			.mockReturnValue({
-				digest: "linked",
-				identified: false,
-				outside: ["node_modules/yaml"],
-				entries: [],
-			} as never);
+		vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest: "linked",
+			identified: false,
+			outside: ["node_modules/yaml"],
+			entries: [],
+		} as never);
 
 	afterEach(() => {
 		vi.restoreAllMocks();
