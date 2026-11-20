@@ -173,6 +173,14 @@ describe("npm scripts", () => {
 		expect(switchOffs("package.json", base, head, [])).toEqual(expected);
 	});
 
+	// @npmcli/package-json keeps a `scripts` array, since it is an object, so `npm run 0` runs its first entry.
+	it("reads a head scripts array by its indexes, as npm does", () => {
+		expect(switchOffs("package.json", manifest({ "0": "vitest --run" }), manifest(["vitest --run"]), [])).toEqual([]);
+		expect(switchOffs("package.json", manifest({ "0": "vitest --run" }), manifest(["true"]), [])).toEqual([
+			'It changes the npm script "0".',
+		]);
+	});
+
 	it("names every base script when the head deletes package.json", () => {
 		expect(switchOffs("package.json", base, undefined, [])).toEqual([
 			"The head deletes package.json.",
