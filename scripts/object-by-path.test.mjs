@@ -18,8 +18,6 @@ function excluded() {
 	return plugin.includes.filter((glob) => glob.startsWith("!")).map((glob) => glob.replace(/^!\*\*\//, ""));
 }
 
-// Lints `source` at `path` in a scratch repository whose biome.json wires the plugin as the root's does, and returns the
-// line of each diagnostic.
 function lint(path, source, includes = plugin.includes) {
 	mkdirSync(dirname(join(dir, path)), { recursive: true });
 	writeFileSync(join(dir, path), source);
