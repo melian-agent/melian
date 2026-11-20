@@ -1,50 +1,50 @@
 [
   {
-    "id": "d4ea82795f2905e754e969377139ce7a5cc9671663a99e5e9f50277b4d8df7f2",
+    "id": "59060f441f28839a2e0c09b92ad1e7fb9adeb6fd9df50fadaec658215ffb810b",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 186,
+    "line": 185,
     "column": 107,
-    "endLine": 190,
+    "endLine": 189,
     "endColumn": 2,
     "mutatorName": "BlockStatement",
     "replacement": "{}",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "2a80f65957ac4a20f6d6370e9ab544b3d26ae4770892dfd35189a8c8805a275b",
+    "id": "53f988908463be6a301e20da9d7802d34c02e442d0e6b0d503bb422b1e3560d4",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 187,
+    "line": 186,
     "column": 6,
-    "endLine": 187,
+    "endLine": 186,
     "endColumn": 39,
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "b470d1ab713d2fa3a1bed7e507c1562a34a40c63f8422140c07f6bd7fa3f63b3",
+    "id": "d0c746ea5638c26a431ef498173bdac5cda92e60603488290f8914f1915110a2",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 187,
+    "line": 186,
     "column": 6,
-    "endLine": 187,
+    "endLine": 186,
     "endColumn": 39,
     "mutatorName": "ConditionalExpression",
     "replacement": "false",
@@ -52,59 +52,59 @@
     "test": {
       "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "CompareHarness evidence",
-        "selects no round and gathers nothing for an unattributed comparison"
+        "CompareHarness ownedRun",
+        "selects no round and owns no run of an unattributed comparison"
       ],
-      "pattern": "^CompareHarness evidence > selects no round and gathers nothing for an unattributed comparison$"
+      "pattern": "^CompareHarness ownedRun > selects no round and owns no run of an unattributed comparison$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "29d1081806ddb0e9c70581a7482e871ca9abdc8f7f209efcde2ab35c791727a3",
+    "id": "f917724ac80874ee30070b6abd097349e82362189675322806ee5507df77a3f3",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 187,
+    "line": 186,
     "column": 6,
-    "endLine": 187,
+    "endLine": 186,
     "endColumn": 39,
     "mutatorName": "EqualityOperator",
     "replacement": "revision.round !== \"unattributed\"",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+        "CompareHarness ownedRun",
+        "selects no round and owns no run of an unattributed comparison"
       ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
+      "pattern": "^CompareHarness ownedRun > selects no round and owns no run of an unattributed comparison$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "618d0188c478082139a02398bd3aa8a3f15bf622ed00b6177ca662cd27bd30be",
+    "id": "0f10abafd4c60f49d33c444a62adcb97756f9ddefc39f582b77d2ea77fa619cc",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 189,
+    "line": 188,
     "column": 21,
-    "endLine": 189,
+    "endLine": 188,
     "endColumn": 65,
     "mutatorName": "ArrowFunction",
     "replacement": "() => undefined",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "132929d3d5f70063acb47cf5cfd1b830b6fac34b1ffef5644f7b9e19a761487d",
+    "id": "def5f6f1493791d12d349ca6d779ffc92419e614def2444fcc66cf07978190a6",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 201,
-    "column": 38,
-    "endLine": 213,
+    "line": 199,
+    "column": 105,
+    "endLine": 210,
     "endColumn": 2,
     "mutatorName": "BlockStatement",
     "replacement": "{}",
@@ -117,14 +117,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "04f208ac166915f900322d7f20ec74e3f68d3dd58c0496aa9d18993a51fe8b0b",
+    "id": "85c611be78895221ba4231f90fbfe9e78b5d41366cf7d36762272040cd0f993d",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 202,
+    "line": 200,
     "column": 6,
-    "endLine": 202,
+    "endLine": 200,
     "endColumn": 39,
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
@@ -137,14 +137,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "4476c32bffee0ed854f33bd711f290f9e754b4d0ad330957183c5a0bbba1168b",
+    "id": "bf7d39c8b41e3ff976cc1a5397868db5f04d42422af9bf51f2f500fa002dcf00",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 202,
+    "line": 200,
     "column": 6,
-    "endLine": 202,
+    "endLine": 200,
     "endColumn": 39,
     "mutatorName": "ConditionalExpression",
     "replacement": "false",
@@ -152,39 +152,39 @@
     "test": {
       "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "CompareHarness evidence",
-        "selects no round and gathers nothing for an unattributed comparison"
+        "CompareHarness ownedRun",
+        "selects no round and owns no run of an unattributed comparison"
       ],
-      "pattern": "^CompareHarness evidence > selects no round and gathers nothing for an unattributed comparison$"
+      "pattern": "^CompareHarness ownedRun > selects no round and owns no run of an unattributed comparison$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "493e8e3ae7d9f91907fb1fb93e554343a9c606939856cfa51c1514c4234e7ed4",
+    "id": "4f8d9801214c3e592b8e14870c83176b0f01047fbc4791228c8e0058fc659757",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 202,
+    "line": 200,
     "column": 6,
-    "endLine": 202,
+    "endLine": 200,
     "endColumn": 39,
     "mutatorName": "EqualityOperator",
     "replacement": "revision.round !== \"unattributed\"",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+        "CompareHarness ownedRun",
+        "selects no round and owns no run of an unattributed comparison"
       ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
+      "pattern": "^CompareHarness ownedRun > selects no round and owns no run of an unattributed comparison$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "c7a441dd53cacf42cb90abe6644bbbe0b764dc523bef28bdb84ff6ceae3aefcc",
+    "id": "cc5b61a055dbb63177330908f37107009aca6ebe1e1a25b7df270caa8e99b20c",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 204,
-    "column": 48,
-    "endLine": 211,
+    "line": 202,
+    "column": 35,
+    "endLine": 209,
     "endColumn": 3,
     "mutatorName": "BlockStatement",
     "replacement": "{}",
@@ -197,14 +197,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "d854369321b5909b2f65f370156d056d63a25b566ffebbbcf5583b23e1a5936e",
+    "id": "a0a65bef42808d074a3cefcad810a00ca4df4507911c296f5d135d0918a25758",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 207,
+    "line": 205,
     "column": 17,
-    "endLine": 207,
+    "endLine": 205,
     "endColumn": 102,
     "mutatorName": "OptionalChaining",
     "replacement": "(await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()]?.adjudication.task",
@@ -212,19 +212,19 @@
     "test": {
       "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "CompareHarness evidence",
-        "gathers nothing for a round when its revision's review has no adjudication yet"
+        "CompareHarness ownedRun",
+        "owns no run of a round when its revision's review has no adjudication yet"
       ],
-      "pattern": "^CompareHarness evidence > gathers nothing for a round when its revision's review has no adjudication yet$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when its revision's review has no adjudication yet$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "dcebd76a1d138768f016b3a6a244e1571672c31b50f8180c95683326a3ef6733",
+    "id": "0c054585c0fe44d3c6001a42d88caa68a5c9330e9cdb39351fa2cf71ebc7c1fb",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 207,
+    "line": 205,
     "column": 17,
-    "endLine": 207,
+    "endLine": 205,
     "endColumn": 96,
     "mutatorName": "OptionalChaining",
     "replacement": "(await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()].adjudication",
@@ -232,39 +232,39 @@
     "test": {
       "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "CompareHarness evidence",
-        "gathers nothing for a round when the review index holds no review of its revision"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^CompareHarness evidence > gathers nothing for a round when the review index holds no review of its revision$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "782817e49e2b5eee5bbe25e8c8fbbdaca3c938aacc12de4c1e830cdb23e5fadd",
+    "id": "dfe638baac8a8e37103bfc2431d13bb20e9c3e9a27cf01f597da96a7ab47baff",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 10,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 84,
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^melian compare evidence > keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "c7bc52817fd30773961a6469586e19ee3f5da5a82e0e9cee61c1ef9ccd27e61d",
+    "id": "3b0b6834e3536ec6d70b7d1a6c2f15f0c6743cf33a0d92a17f3ef817f6bac749",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 10,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 84,
     "mutatorName": "ConditionalExpression",
     "replacement": "false",
@@ -277,46 +277,46 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "dd97ae25e71aee16247bb800930cabf5d7089ffa85dadd0be8d9a2f51efbe3d1",
+    "id": "ee5303dd2544f2d01309ce4e20e75814462d990f09bda4e1e0e902b94808f4b5",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 10,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 84,
     "mutatorName": "LogicalOperator",
     "replacement": "verdict !== undefined || round.stored.tasks.some(task => task === owner)",
     "result": "killed",
     "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
+      "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "melian compare evidence",
-        "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^melian compare evidence > keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "da5682373a20ea525525e1f064ca432f365520d3816e3440f1ec79acc84105ae",
+    "id": "ac476aff1547b3e3de710e14a800b1bb81c0299bce42f259756d237f26f273b7",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 10,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 31,
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
     "result": "survived",
-    "note": "equivalent: selected() throws notReviewed unless the stored round has a verdict, so round.verdict() is never undefined here"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, selected() throws notReviewed unless the stored round has a verdict, so round.verdict() is never undefined here"
   },
   {
-    "id": "e332ff3d9f18d208ff1208191b9bf37a311bd8c007be5978fa68b990e01b2b37",
+    "id": "45a6b01811d76d583bfdd7baf5572d301784e6b2f5d4d1cf908939a415518d3c",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 10,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 31,
     "mutatorName": "EqualityOperator",
     "replacement": "verdict === undefined",
@@ -329,14 +329,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "967c27e446645b2f742f053ea58c9d93c982debfd83355116d0d2252a8f18a30",
+    "id": "4e6fa4495fc0a244adfbd6c9d7b53e9bdc37b1f8449a0ed934585464eee238dc",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 35,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 84,
     "mutatorName": "MethodExpression",
     "replacement": "round.stored.tasks.every(task => task === owner)",
@@ -344,19 +344,19 @@
     "test": {
       "file": "packages/pipeline/test/compare-evidence.test.ts",
       "path": [
-        "CompareHarness evidence",
-        "gathers nothing for a round when the review index holds no review of its revision"
+        "CompareHarness ownedRun",
+        "owns no run of a round when the review index holds no review of its revision"
       ],
-      "pattern": "^CompareHarness evidence > gathers nothing for a round when the review index holds no review of its revision$"
+      "pattern": "^CompareHarness ownedRun > owns no run of a round when the review index holds no review of its revision$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "48e19a1d018ca4660595c471bdec4b1aa2e24568d9407a70be59ab0860c18fe8",
+    "id": "145e020d4fa7d78b5b9ed2f4a61bba8ffd71644a3a0bf765b05e295a873b33a9",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 59,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 83,
     "mutatorName": "ArrowFunction",
     "replacement": "() => undefined",
@@ -369,14 +369,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "42cb16279928882d51ada3194d1a55f106fc84a97510546e9674d36529e654ee",
+    "id": "947feda9febf2ed310599f32d401f489496800546fb65bab2ebee68be0494dd1",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 69,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 83,
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
@@ -389,14 +389,14 @@
       ],
       "pattern": "^melian compare evidence > keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "ceaba2486fc1ac2aa8abf58fc1c818284ee7615f3f04a8ee05771189dc08e68b",
+    "id": "825c053d825ef28f02db603bceb70de4fa3b145c24387d2bbcb77e067f39b5eb",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 69,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 83,
     "mutatorName": "ConditionalExpression",
     "replacement": "false",
@@ -409,14 +409,14 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "8ce1af2dd76a69f1e3026f830ac6bc9ecba27af9c389bbb9e8eba4132fa5657b",
+    "id": "3f1bd4fb01eb5f4b5378f429336dbb12fee620e252f2f0ffbdae38bf0f2fb05c",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 208,
+    "line": 206,
     "column": 69,
-    "endLine": 208,
+    "endLine": 206,
     "endColumn": 83,
     "mutatorName": "EqualityOperator",
     "replacement": "task !== owner",
@@ -429,15 +429,15 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
-    "id": "9c584c310ba7e9298f451ca8989948a7ffb02e1cf1bc8d589dfa4bfeb456622e",
+    "id": "69a2be1ee122987de2603239bb68a48aeca0651bc26cfdf13d70199266661166",
     "file": "packages/pipeline/src/compare.ts",
-    "line": 209,
+    "line": 207,
     "column": 6,
-    "endLine": 209,
-    "endColumn": 24,
+    "endLine": 207,
+    "endColumn": 47,
     "mutatorName": "ObjectLiteral",
     "replacement": "{}",
     "result": "killed",
@@ -449,87 +449,7 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
-  },
-  {
-    "id": "adb308449df7d12b98159e612fbd293e6e0d444344751b487e5a9347a845ccf4",
-    "file": "packages/pipeline/src/compare.ts",
-    "line": 212,
-    "column": 9,
-    "endLine": 212,
-    "endColumn": 28,
-    "mutatorName": "ConditionalExpression",
-    "replacement": "true",
-    "result": "killed",
-    "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
-      "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-      ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
-    },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
-  },
-  {
-    "id": "fa604ce53b3233ef48cd1bec81496f4e64674492a4cdd9d4946d111b162f34ec",
-    "file": "packages/pipeline/src/compare.ts",
-    "line": 212,
-    "column": 9,
-    "endLine": 212,
-    "endColumn": 28,
-    "mutatorName": "ConditionalExpression",
-    "replacement": "false",
-    "result": "killed",
-    "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
-      "path": [
-        "melian compare evidence",
-        "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
-      ],
-      "pattern": "^melian compare evidence > keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation$"
-    },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
-  },
-  {
-    "id": "6b6b6c6d1cbfcd00e0e46bf33a5c7cce9cc5acb90581c68b5e6490c176cc018d",
-    "file": "packages/pipeline/src/compare.ts",
-    "line": 212,
-    "column": 9,
-    "endLine": 212,
-    "endColumn": 28,
-    "mutatorName": "EqualityOperator",
-    "replacement": "owned !== undefined",
-    "result": "killed",
-    "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
-      "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-      ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
-    },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
-  },
-  {
-    "id": "aaf13ba7fdfeae5dc3576a0d072c767d6f85212e3275743fe8fa6e2a8e1c5950",
-    "file": "packages/pipeline/src/compare.ts",
-    "line": 212,
-    "column": 77,
-    "endLine": 212,
-    "endColumn": 98,
-    "mutatorName": "ObjectLiteral",
-    "replacement": "{}",
-    "result": "killed",
-    "test": {
-      "file": "packages/cli/test/compare-evidence.test.ts",
-      "path": [
-        "melian compare evidence",
-        "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-      ],
-      "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
-    },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a79f61d98fdb92e495b550e4d738aa5a8f57b5ce63938b57f0af7237fd6217dc",
@@ -549,7 +469,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe round with a prefix before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e11c9c3c992ba6d1394801f516c32c3e9794a4b59658026ddb70501101160c73",
@@ -569,7 +489,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe round with a suffix before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a8e9f0b1f827139d18c290661d952824a9c7bf1a39512efc91c64e05f0bffc77",
@@ -589,7 +509,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "34d6b57a26b502f08d852dbd35784202320d7753edc6234482aa9cd58555f33f",
@@ -609,7 +529,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7f02cdae7120e9bfdb755246b088fa921adf71ec12bc17e9e1b113d9b952c65e",
@@ -629,7 +549,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe round with a suffix before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "eab398049feb87896c500d728329bca4fa35dd3681de26537267c15459020dfa",
@@ -649,7 +569,7 @@
       ],
       "pattern": "^EvidenceStore > keeps the evidence of round k0123456789abcdef in its own directory$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "09f032eb907b2e1a7326ca0490545e3a20a20e66858852bb7e4fc267b0c2a882",
@@ -669,7 +589,7 @@
       ],
       "pattern": "^EvidenceStore > keeps the evidence of round k0123456789abcdef in its own directory$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4d5fac94d02e3f429b8a233934010eba41ca8f680dd6369cab3845e6d0f43078",
@@ -689,7 +609,7 @@
       ],
       "pattern": "^EvidenceStore > refuses the stage ID xconversation:1, which is not a conversation's$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3edb2a82e0fb97bdf75e543ebed700811c844951048ad1fb50825da98297724d",
@@ -709,7 +629,7 @@
       ],
       "pattern": "^EvidenceStore > refuses the stage ID conversation:1x, which is not a conversation's$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "71f349117bf2e62dd15f2376a214de2122265957be9dabc2a67eb7f9a45ceb17",
@@ -729,7 +649,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8870a25b4b298e61859156c6e95bac29678e556f7098ddad8c33d41e58c1956c",
@@ -749,7 +669,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "50ba6948a003e797496e7b8146655c47dff86b7fa5fc5c6993ba803de509ab98",
@@ -769,7 +689,7 @@
       ],
       "pattern": "^EvidenceStore > refuses the stage ID conversation:1x, which is not a conversation's$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "84459b8f434f4bd9272074e892eb447f8a8a48c2435c716f29812a154c13da95",
@@ -789,7 +709,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe external ID with a prefix before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "839eb40f8057eac6fc1d002d64dbe2a55194e4b6c013a79914ca83aa87898821",
@@ -809,7 +729,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe external ID with a suffix before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c02e28c7b354d04439961e1eae72212360ca1649b1d71e7f292ac1febbec348b",
@@ -829,7 +749,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f31c1a43a0b700acb6a57f825a3c39fc801dd1f43807c3a45192336469233d56",
@@ -849,7 +769,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2858d252b8fce141112a93051668152497314c0618ff2526b7b3ed640469ba17",
@@ -869,7 +789,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a link at evidence, and writes nothing through it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8084fc80e497a6e08c4497dbf0cb55ee3c4a6282d4297ee0900217d421f77596",
@@ -889,7 +809,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "bbd1323420ab5fe87ca4462fd4af07d3b1bf90399314dc07eee6f8d953525bde",
@@ -909,7 +829,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "83e23ed6e16ae85f8d469d1b0228ddccfdc9c50d810f353278acba4c19696d25",
@@ -929,7 +849,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "32d9e81635aa49fa310dae92bfd69bd7b8d38e87987d11166658d6632f0bd17b",
@@ -949,7 +869,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9cebed354842837c914a56ea052134e861eaef3a7bb2fb0040163ac354c0608d",
@@ -969,7 +889,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f96102fd591550032cb4d2df57bf932b0b736095af512b2970bbf11eb7e42531",
@@ -989,7 +909,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "540668365d284eb487c48e513ee67f14d870a33089454af32f0eed1d96a0ce4e",
@@ -1009,7 +929,7 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "afa51684d4e8e9f0c094f376e2d818891be13a23d1de08a85b84a48cb8f5772d",
@@ -1029,7 +949,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3be023b977c1d127fbb7862ab544ec8199db62e040c80dd2cf71e4cbef14939c",
@@ -1049,7 +969,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "86214c24688446a9ea0215b58036fe28c6474ecf213446344dcbc7a089e1bf10",
@@ -1069,7 +989,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e259c7f34478b9dcde54b3d74bb3f188b7f13c3c42e2b0d56dd3382c42f4dddc",
@@ -1089,7 +1009,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with config, for a round that records no provenance, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7b6fd73d39afbffa1d84390eb46eaa9ac24ffbd23774cf674f48d1fb027fcc39",
@@ -1109,7 +1029,7 @@
       ],
       "pattern": "^MissEvidence > gathers a pointer to the round's commits with the round's policy, and nothing a clone without its run holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b88048130c3002ea843923fbff850a43c2e554ae2a8058b5e2a42a8631d86846",
@@ -1121,7 +1041,7 @@
     "mutatorName": "ArrayDeclaration",
     "replacement": "[\"Stryker was here\"]",
     "result": "survived",
-    "note": "equivalent: MissEvidence.from replaces the pointer's stages with the IDs of the stages it is given"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, MissEvidence.from replaces the pointer's stages with the IDs of the stages it is given"
   },
   {
     "id": "f1ae8e9b4d61d86dce6f896c2edf73df8e31e7296ffa8a3f56d47f663b309799",
@@ -1139,9 +1059,9 @@
         "MissEvidence.stagesAt",
         "keeps no run for a miss with no site"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no run for a miss with no site$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no run for a miss with no site$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ec09e3e04d56175a5fe00580c0f42629599e8290cb96daf73c8c23aa7c43ce09",
@@ -1159,9 +1079,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "11f17d76b9e6c1e87972f4d527e6dcf937aa91fb1016c8f21be5df72ab43967b",
@@ -1179,9 +1099,9 @@
         "MissEvidence.stagesAt",
         "keeps no run for a miss with no site"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no run for a miss with no site$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no run for a miss with no site$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "968a4399be508b7154b807808ed5721fac0723c7d3b364d72b277e76c9217386",
@@ -1199,9 +1119,9 @@
         "MissEvidence.stagesAt",
         "keeps no run for a miss with no site"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no run for a miss with no site$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no run for a miss with no site$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "889af80895b36abc3eb09e9da21b7bc17dbea90fcfac5607e229e4fde1d2996c",
@@ -1219,9 +1139,9 @@
         "MissEvidence.stagesAt",
         "keeps no run for a miss with no site"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no run for a miss with no site$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no run for a miss with no site$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "74806f28b6da73ef16d031a4951a6c1e0f4f5f92d4cc187a91d3bb2734be7c5f",
@@ -1239,9 +1159,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c6c17038ae4aac3f38321201f35bc0831accd294ebd73ee4502842cb1a9e8345",
@@ -1259,9 +1179,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d8dcdcf47e5960ca49206bcb28f1b10974336f411c639a979bad1fdc85c4911a",
@@ -1279,9 +1199,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "28b2875950ef9c94b0382a7843c4e73ff2fa78dfb7659f1e5f4272826f4a8ecc",
@@ -1299,9 +1219,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "cd2da743e7207e1ed83c48cf1ab86b3600a132980feed508d08cb5a0c2697af4",
@@ -1319,9 +1239,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6be66a36fa345dde1b01b00127652e3d1ff669076d3511d3304d1013b415ea89",
@@ -1339,9 +1259,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "348670a43a7d326dfbe1e650903eb5064f7dc64a90f387447376785f78a623db",
@@ -1359,9 +1279,9 @@
         "MissEvidence.stagesAt",
         "keeps no verifier of a finding at another file, or of a check's finding"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d66d1ea0f7797dc8d165a0fd002c70c82760b34a7f7e4d7372ad0c4a08881d52",
@@ -1379,9 +1299,9 @@
         "MissEvidence.stagesAt",
         "keeps no verifier of a finding at another file, or of a check's finding"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7cd8b18d192e0074e4a89e329c5411c9035d1b608d711d5dda881803d68729f6",
@@ -1399,9 +1319,9 @@
         "MissEvidence.stagesAt",
         "keeps no verifier of a finding at another file, or of a check's finding"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps no verifier of a finding at another file, or of a check's finding$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c5dfa7d36002f207fab3c018150732ae310ce3b55686aac5605ef62ad0cd49b5",
@@ -1419,9 +1339,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4778070aabcc1c0ad1e8b9c4ae38a80959dac98476d44dfc99738aa354b103d5",
@@ -1439,9 +1359,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8dadfb0a911f89ce76e309994340aed9be5d42b13a573e91114347543b5da2ac",
@@ -1459,9 +1379,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "11f6613d924c44580caae3a92b3201f550dcc45ca6a05486d274338090b62cda",
@@ -1479,9 +1399,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "11247568cb377b962f86a601a2fbfd5d127e282d4a05c1d43a7d5f950f6d91a6",
@@ -1499,9 +1419,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6e58b38c72366abea2a1d5e28d753255f274f90f131e9501e6dbc32f360fe21d",
@@ -1519,9 +1439,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9f694d77a8d16c3e93c98c3134f0bbc2769b15ba033c737c4acb74d595cec52d",
@@ -1539,9 +1459,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2c0627bf78aeaf5787bd141e3971219671ac0ed4931c054a7995929c6cddc0c8",
@@ -1559,9 +1479,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d11688b10425c433d04079734622fab0175b885fed00933c16309bd6331d724c",
@@ -1579,9 +1499,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "409014c84adfa64c8d16caefacb78ceb73409b5f9b634d19d8f9f80c7586ab39",
@@ -1599,9 +1519,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e4cb5a34577ef1727f53a4ea3508d0939e66e846246db3ff0b550e3b998619a2",
@@ -1619,9 +1539,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "864fef9fca82d6f105d623c5906df05d55f772adb265345099254074e495a4be",
@@ -1639,9 +1559,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d4ab6c9881a1b3afda54016833e5262c5057c51221146409b6771edda9352f9c",
@@ -1659,9 +1579,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b494c962be80569b60dbb77f3b4b5b14661a66538d5ac7a0e2bc13eaac7c7a01",
@@ -1679,9 +1599,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1792fa3031d30e376d70ba91b2cbca82fef2674e2b9a57d33f8b21127e374a8c",
@@ -1699,9 +1619,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ae60fada7be5f8174656713b779e36219f961f43b5963e84c5de6134d3ec94ae",
@@ -1719,9 +1639,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2f6db275a1b721d0ea76d884a7ab39580e810b5b1940f0c445182a69c7fad7af",
@@ -1739,9 +1659,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8d0246747483df3808f3052a2fcb5477d71bc072ff58a88417de8c8df355517e",
@@ -1753,7 +1673,7 @@
     "mutatorName": "ArrayDeclaration",
     "replacement": "[\"Stryker was here\"]",
     "result": "survived",
-    "note": "equivalent: the replacement adds claim.id of a string, undefined, to the sighted set, and a verifier's subject splits only into strings"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, the replacement adds claim.id of a string, undefined, to the sighted set, and a verifier's subject splits only into strings"
   },
   {
     "id": "34d011b1fc8aa8c12a389abab6d6f959fbf08e2ffe4196cf8130e71559b8e559",
@@ -1771,9 +1691,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7ef6dc652160ff46ee337a68db55a5f1eb2f8ae17bc674a2353af45f4dcc1c28",
@@ -1791,9 +1711,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b74776dcec4e23c1e2b470a01b0bcc3fa0056fd92e48d277ccd00b105a96358d",
@@ -1811,9 +1731,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "82f59b955af6722a481d8b459739801600896475b00afd0f130aab79a741b15c",
@@ -1831,9 +1751,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "501ff874087722c24361666a2ed3befab2dcb1bb2a9072b1d7c7977930df53e9",
@@ -1851,9 +1771,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "bf4e659f0a55f7dfeb3b775a542d306a385af732a62adb7fb370d09168c27a1f",
@@ -1871,9 +1791,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "59d712ed653f63187812ff2fb175642b69514f3dcb26e7243d1b6bb7028c6d3b",
@@ -1891,9 +1811,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6d4779b30b69d0ced8b786ac2add93e4933620b0b70b1ea16bec8103843aad41",
@@ -1911,9 +1831,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "be9d54f0f1f3de29d827bb045ff40482810555f018505fec6072325ee367b152",
@@ -1931,9 +1851,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "529f561f941ad9d3d0ca2390fa6209317035333b3a4fdbb63a9b38f37988a11c",
@@ -1951,9 +1871,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e5f59b9a4f679491236f655fdca83be79a4b3017a35cf0300ddf61d2b3b22b28",
@@ -1971,9 +1891,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d7b3ea589844a0b0f85958bc8595053f8b62f2c2b77956eebf6db8719415aa9a",
@@ -1991,9 +1911,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2f4625988a5e5caf2b8898717f651d73c77d289da7e7254dbaeaf909ff92c57c",
@@ -2011,9 +1931,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2e4bcc075690e6a3a9f614a9a1af2069fc73aeec5db6edeaf71a609cb1904ce3",
@@ -2031,9 +1951,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "fdc9ab18c95277eeb70aad95fb28c4406a5962c7813f618dda4f818ad334df7c",
@@ -2051,9 +1971,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "39f5e9992e2a638ed533f424b54ace7842c628aaff383cdba46eb6dc14a6b3c4",
@@ -2071,9 +1991,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e278e62f2a80bc9699b31df9376fa4b4e8158112d5b486dfb54f4932da82af0e",
@@ -2091,9 +2011,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8cdb6ae6b89fd9d15d626f9336399e9e93e129dce88d37d0727aa3015c15c223",
@@ -2111,9 +2031,9 @@
         "MissEvidence.stagesAt",
         "keeps each lens run whose coverage holds the file, and no other run"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps each lens run whose coverage holds the file, and no other run$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "496aaabefab2f2858c4946f56fb0aebb277f4df18e3ad5b6d89431c85ebd74db",
@@ -2131,9 +2051,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "65ef76261bd90ca2c7284e74363c6f3a8313fc68e1b4ee5c9716f939708e3f68",
@@ -2151,9 +2071,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3efdfb8126fe590bbef05f289f3c44cb1a9dc96b299a7c9b3b9056e02a49be04",
@@ -2171,9 +2091,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f0a3ed16e7c990e41fad3fa59b789f9f3492956a88a6eda4c0087c08b283c534",
@@ -2191,9 +2111,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7b5381d0193e2b98344d97350a587fd2f1dffd22d9be522e57bebed1a3cf8827",
@@ -2211,9 +2131,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of any claim the site's finding carries, from a lens"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of any claim the site's finding carries, from a lens$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "79bc3dd302e60b73820e4f71812fef64103d9ad440a8490b1a15ca93991349db",
@@ -2231,9 +2151,9 @@
         "MissEvidence.stagesAt",
         "keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them"
       ],
-      "pattern": "^MissEvidence.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
+      "pattern": "^MissEvidence\\.stagesAt > keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "78759e82fef21b737f2acb2c1bbdd4fce1faef3dc4901a7842472d8bf9340102",
@@ -2253,7 +2173,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "dc605134797ef826eab93e6a4b9c0b872bd8e9310cea0746397bea59a3c2dea1",
@@ -2273,7 +2193,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "18d9b1d7856dcdab72e48016e35183006fe7843e9f25ace173c4e846b49f9ef1",
@@ -2293,7 +2213,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9bcfeaef5b0d0704ffaee87943854efb701cb694fe59b58e80908c78352df551",
@@ -2313,7 +2233,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "24328da8179d4c7187610ec8f92164b2a83e0656fb790c9c3fc56c610923701a",
@@ -2333,7 +2253,7 @@
       ],
       "pattern": "^melian compare evidence > keeps each covering lens run once for two misses, and prints them visibly from a later process$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "acf1a17918dc1462e572280f33643fa18916487f345e40fdd01033d6906ef904",
@@ -2353,7 +2273,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2c2128f2f6155925eede2b49bb9afd3803e8e8ed9ac8928794db0c64f87e9a2d",
@@ -2373,7 +2293,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c0a93b9fdb3dd3ab51ca4ae21c8459693573e1fb358ad5525e699daf15c476c8",
@@ -2393,7 +2313,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1a75f4180a1d7d1a386acc2b525a3bdc44d1c4a2ce720d18cf08e3c558cdf122",
@@ -2413,7 +2333,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "38def51eefc410619ae3ab7e4ce5369321ea9bfe4c21992ab3775855e5b3a573",
@@ -2433,7 +2353,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ccee87f380f323bd44317c0dfc1280eb77bff9738cc073cb7197eb3a310f7a29",
@@ -2453,7 +2373,7 @@
       ],
       "pattern": "^MissEvidence > reads every page of a stage's conversation, oldest first, asking only for that conversation$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "338d67e9d6c8a36d83d699343ae72258b2bf746483dee32c9dca17528583b058",
@@ -2473,7 +2393,7 @@
       ],
       "pattern": "^MissEvidence > takes the lens files it is given in place of the pointer's, as copies$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e55eaa7ac578806ab3c1e94cdb684f13a3c57e638d8888f27c88c1641a0818c8",
@@ -2493,7 +2413,7 @@
       ],
       "pattern": "^MissEvidence > takes the lens files it is given in place of the pointer's, as copies$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f0f987af9d3030b534d6845299d2b1c017a58f3be21a385c1b4da74a8e490693",
@@ -2513,7 +2433,7 @@
       ],
       "pattern": "^MissEvidence > takes the lens files it is given in place of the pointer's, as copies$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7862cb51883b4400b530e3777dd5de5b8c141731e8c01ddfc911da7c693fe6bc",
@@ -2533,7 +2453,7 @@
       ],
       "pattern": "^MissEvidence > takes the lens files it is given in place of the pointer's, as copies$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e7e1f4e7e61e5e4c9a754a1058ff60e946e19763c80e240c6c891ce970588080",
@@ -2553,7 +2473,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ca42100d00ac96df169653ff131cc9116fe36529faa8bfd9b23af94486f702d7",
@@ -2573,7 +2493,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1253a0e7f98b0c815f9e0db4c21bece9160cd5c14dc3d6daea05fc8a23f5222b",
@@ -2593,7 +2513,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d8aa9f250a0d2813cdd8f37b7ccd1edc5dd5f5e6735992d22a123d5594d4e7de",
@@ -2613,7 +2533,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9e6b91aca1b4bbaad47f7dc2b490307658782a1cfcb6f3f0be23606b7fa07d9a",
@@ -2633,7 +2553,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3c8a8dbf8f7b29c1dc7da0c92aacfede96f716355fc16ccc3ed07971dbc5c5ba",
@@ -2653,7 +2573,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "72b4c8ecd1065318092a622f67aea8e6b493538bf75df99db82065f793ba877b",
@@ -2673,7 +2593,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a09123dc82f30ea4db288b64815f1934dd41d0827c9d80b2ff04cb0577c35a10",
@@ -2693,7 +2613,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "fee593f6f6f097d1759df62761ecd7efa3e4298eb86d99e3918b8e179e026484",
@@ -2713,7 +2633,7 @@
       ],
       "pattern": "^MissEvidence > names each lens of its lens runs once, by name and version, and no verifier$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "10c6451921ac0624c29aa1e4bf4fd25f7205a414386bcc0569d2b8cfe372fd56",
@@ -2733,7 +2653,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "998d9c021d06ccd49d61a60b5eeaf6288c9bf77dc55447d4a3c233abb270c77b",
@@ -2753,7 +2673,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0e6f27f3265a6ab374710376c2daf55f12f781f6b6ad3789536e2ee5f2fc5267",
@@ -2774,7 +2694,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d6b2e8bda500032951cef0011fc16e2e940f303d654f96b5ce566ae7024ff6be",
@@ -2795,7 +2715,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4c95ca65cad85780168aaa6178415d1a104e4579e5b27996d258fe484f5d16a5",
@@ -2815,7 +2735,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5f174374a84506cbfc488360d053e813be69a3220bbcdcd82726de237849aafd",
@@ -2835,7 +2755,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2caf6e973a25f7519d8feeb8e6d5e8509d0024ad7a4274c2923b97097b78c965",
@@ -2855,7 +2775,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4f0981c4c51ef88593cf96fcdaf86e1c724a5db74f2c9d332cfe866e0d0aaed5",
@@ -2875,7 +2795,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "37cc3e35d2bd1cc6f4ad55632193744b5adf02c628bb2ed29fa151cfce089d84",
@@ -2895,7 +2815,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "966236c57e8652204ace33629ac64a4a89bcecc7fdbf3f14f4503264424a3a09",
@@ -2915,7 +2835,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "eae86b52e07ce97fa8ee55b0d1fcbb7283a435aeae4a90eb24bb006ef3eecfbc",
@@ -2935,7 +2855,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8fe85d213f725689e1c95b7dc3fce0b26a28e8891fcbe522ec652ee5c520a33c",
@@ -2955,7 +2875,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c7a563a0878377f6a3cd288b60d74f85b182affc942030402f6d46356d4a313a",
@@ -2975,7 +2895,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "374f4a781eba3ae9f68d966981ab46451e7c3c6bb2330d16584e622ff5f8504c",
@@ -2995,7 +2915,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d1891a3272520621223c87160f4f64c3762437ede24079c3c7b934d8e27e585b",
@@ -3016,7 +2936,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > accepts a write that fills the budget exactly, counting what the directory holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c5ce686cba784c2d3801e2a40112d862883d9d82ba221d2a6a97afc0e71ca4bb",
@@ -3036,7 +2956,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7dd47e9fa63ed9013eda83f5e820e28e179a2e77e18e8d51cce0c9c3b1aabb6b",
@@ -3057,7 +2977,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > accepts a write that fills the budget exactly, counting what the directory holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "86dec6e45ba4c477663be7b0622f403df35f7fd218df142fe2f30c82fb8a7748",
@@ -3078,7 +2998,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > accepts a write that fills the budget exactly, counting what the directory holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d1eb11c5acbfecdecb7258ff3ac4e65583222db06fa9ca46ebf0d1dcf9776bf1",
@@ -3099,7 +3019,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d9414e421cdb4d9452dd04c769bb9976e9ded8996b3990ca935e1f26a487679f",
@@ -3120,7 +3040,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "02468da64d192db6d57ffead3a62154c66254f1fefa8f0ec40511b3656dc8ea6",
@@ -3140,7 +3060,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a3ae881d11b4c22262076790a9402b1fd6be16dbb7c830e83a6f09f88e703ab5",
@@ -3161,7 +3081,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "bcea576d534e9362c4703843791a1fb3d0f9cdab317ef8a99b7002a5832ceecc",
@@ -3182,7 +3102,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > accepts a write that fills the budget exactly, counting what the directory holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ab937bdae28187c1c2560f0889cbf48a2d5a5e8052b9d5bbf34dfad326004403",
@@ -3202,7 +3122,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d72c430aec720c14fd7dfa7e79cab58f3595f87cec98db94b6147e9963d4e6ca",
@@ -3223,7 +3143,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f5db270da528216bf8e1e9f95ae4f26d3d3ba34f5d4637d4a9b58c0734995709",
@@ -3244,7 +3164,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > refuses a write one byte past the budget, naming the directory and prune, and writes none of it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "13ff1736609d387d606dc6faa49ad4b9dc70452dc2d40b7a8d2753ecd605b042",
@@ -3264,7 +3184,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9dde1ef2df0c2f9e26432520a57f5bd0ddd1fe74954bccc2d0c33a1dae05e250",
@@ -3284,7 +3204,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d70d00fc579f66aba5ce8e87ddf0cf7bdb73dc1d2b17e4e4d61eb2f3d9884926",
@@ -3304,7 +3224,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "95e256d041c756b695daa1efc2169a9f2fbbadc636c972eb23e69713e9cb4e88",
@@ -3316,7 +3236,7 @@
     "mutatorName": "ArrayDeclaration",
     "replacement": "[\"Stryker was here\"]",
     "result": "survived",
-    "note": "equivalent: only a failed write reads the list, and rmdir of a relative name that no failed write made fails and is caught"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, only a failed write reads the list, and rmdir of a relative name that no failed write made fails and is caught"
   },
   {
     "id": "afcfe9046b7fc2bc129ac471ddd2f9c169b8921148aac7eb2e395ea802113fab",
@@ -3336,7 +3256,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5e9db1cd4695c04071bb19e8c4e10a600d8a33e3dd3e065c565c7614df7becdc",
@@ -3356,7 +3276,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1831c08060a3413b2cf1bc782657bad5ac92b679561da889e7f8ab42476e0a41",
@@ -3376,7 +3296,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c672d09cc3e7ff563a2a0c7b941e2ed3ed38e1dbb8e6e1be1a5f402b779ef86c",
@@ -3396,7 +3316,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c0c5594fafeabcc5a6ce7b7b101c6f729e7dd5358457afc4509bd2fddf37b56f",
@@ -3416,7 +3336,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "cabeb815f20ff055fc3ab484a8f52595e8a13b64f3f8262f5f597b297d499925",
@@ -3436,7 +3356,7 @@
       ],
       "pattern": "^EvidenceStore > leaves no file behind when a write fails part-way$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9fdcee82f9bb26978e379968e9d065d7113acdc1e0d8dd8d6b89ffd99ac20c4d",
@@ -3448,7 +3368,7 @@
     "mutatorName": "MethodExpression",
     "replacement": "created",
     "result": "survived",
-    "note": "equivalent: unlinking the files a failed write created in another order leaves the same directory"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, unlinking the files a failed write created in another order leaves the same directory"
   },
   {
     "id": "f3dc42d52e12fd464a7b3a1f21b28406ee28f2d49d2faa06d1e8dc27a0cfbbaf",
@@ -3468,7 +3388,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6902cd94bb1bafd3e6682ac3671ed8214175705393f01b00535073dc57798a43",
@@ -3488,7 +3408,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e707261519a7ef1aa54945d062f2ff07d9bb44f5abe1cdbc7007e5712333f79e",
@@ -3508,7 +3428,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "59a970a3e46efece7a3bb1faa4797636a35a8947ab73ee7dfd2636f68ac77fa1",
@@ -3528,7 +3448,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9f18bceaa3f32603addcd5b9f9c73ec923fbcda00a8e9e9c4f769455320e58ab",
@@ -3548,7 +3468,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "173ef9681e47f2f77bb709fb6f15161ca478bdcaee2296e9b9ec8cc758b4f227",
@@ -3568,7 +3488,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8c4828b1fe3b30479944a59b0c51ab50238a7f67181e3cc65036622d7b24eccc",
@@ -3588,7 +3508,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "cdbb1cee415b398539a2ff3c665a83851d9683464169da2b9c48ebe3fdf67c3f",
@@ -3608,7 +3528,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "18149761c43dc8ec6039070ae27a0bf7400bd6c096c80db212431bef7f35723f",
@@ -3628,7 +3548,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8eb85366e8445bd46187d609cee357241fca4d0597e913f017a3a10acdfc51b4",
@@ -3648,7 +3568,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e199aca090acdfd7196912895c0d96fc46f83aa38823740fb6410390d9f0640e",
@@ -3669,7 +3589,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another miss$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9b50cd80815268c9a44bb8fb13b89bd266338a51bf74fd21ecd25fc9d5897236",
@@ -3690,7 +3610,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another miss$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3de0f7122b31c4ab9273b1a6e614b59bb309e40f09fd439d18a631941569cd34",
@@ -3711,7 +3631,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another round$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c2317e4164c2c38668bd0b4764623afbfd59744de73c3fb98c57c0e26e0b05db",
@@ -3732,7 +3652,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another round$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "536cb19e82afaae68dbc5dd3a98ccae1f2e577401672cc6da8f771974764b20f",
@@ -3753,7 +3673,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer of another version$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4d87aad2d214c42068ec6f491d20dc338922e6fd6fbea2be6fa0acd3a431e65b",
@@ -3773,7 +3693,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4d59f7eab23318c89dc30c5876c138771ba97c43da1db9356d99214baad72d0e",
@@ -3794,7 +3714,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another round$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5a37ab8227eefdf04eb0a035bf06db39e4bb4fb8fb46d90d26961ae3692a292d",
@@ -3814,7 +3734,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0b9957d77c9875a8295f91b7ad9aa4fbd51f0d0377a808af23282e20fe9c47da",
@@ -3835,7 +3755,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another miss$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "36df336f62967bce1cae71f61b6e892ead71052faef8103709a826c24681b46e",
@@ -3855,7 +3775,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "03a6a1d3a80afa5c40e7f0c0dbb16198e798b6110839a974c2f6e83b51b79e6a",
@@ -3876,7 +3796,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer that names another miss$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6d7798bc3a8b048e6a657909204d402211ea44720a6b592064ad6ed1b388df6f",
@@ -3896,7 +3816,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0efed8e210f9259168f0bc79fbab4d760bf1fa851c8e948c7042819deb30af20",
@@ -3916,7 +3836,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "29e396d8f425e6b3d3ac9896079ca290a1b770cf553467c136431583003241d1",
@@ -3936,7 +3856,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0cdeedc0fc5310110760ac8e8670e908c7fcb8ca21b8e620eacc704fe98e5436",
@@ -3956,7 +3876,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7d7094d0d264d5a213caac70dc4e99aaef1632aa86e6f367b8a17094890da5a0",
@@ -3977,7 +3897,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer whose stage file is missing$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d72a574f8cca79b7af8a5b1204f9435c0fd54fad8625054e3c0b18c6dcefec2a",
@@ -3997,7 +3917,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e0f351062c23dbfde1c21daac058508dda50a217dff84ffbd66620239a985444",
@@ -4018,7 +3938,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > refuses a pointer whose stage file is missing$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0c8ff70c2ceaa9b4e2978d7dd1b0809ee821ccf23c919e0ec465c37da2c884bc",
@@ -4038,7 +3958,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4f60ddf8ec6a1f4f4ab534a1308595343e7868f13583962d4fbf9913f4c28e56",
@@ -4058,7 +3978,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2068c61714c723bfea0a52378f8cd84b39c74c292306182f37446408e4a6047d",
@@ -4078,7 +3998,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ddef91dedf02162734b5fa5a0ba2954815255b5c334bcbc83cace815fc382b65",
@@ -4099,7 +4019,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6beb6219bf146089788eeb6b88b1c62b58a57e60e6cffe6c3949b2bf5e5c039a",
@@ -4120,7 +4040,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a01288c40ddfd007c553fe9cd9290fcc4ad8128b3f005175675988f14d265f7b",
@@ -4141,7 +4061,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "088d4ba122ebe3db0b84d4b1e922955f9a104b4c245a2d9a4ce2d64b08c0c7e3",
@@ -4162,7 +4082,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2fa3d5f13b5fef0ca7196235b8b6569c5b872344e333bf8d5500db3bbf7eba2a",
@@ -4183,7 +4103,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps every entry of a conversation at the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "82edb7a2f71ea835962df8550858a56d11d24065ef7b71645db2a829a37d1293",
@@ -4204,7 +4124,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps every entry of a conversation at the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9241df99a404b40548864ba14f6bdee5a619156c0c1b8b4b0d0c8e2911a4dc82",
@@ -4225,7 +4145,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "240c347a23c48b10124dfb8c3c1e4cd3945f9902c50e26d17ace8ba6105b2d7f",
@@ -4237,7 +4157,7 @@
     "mutatorName": "ConditionalExpression",
     "replacement": "false",
     "result": "survived",
-    "note": "equivalent: the loop calls bytes only while kept is above 0, and the entries line tests kept === 0 itself"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, the loop calls bytes only while kept is above 0, and the entries line tests kept === 0 itself"
   },
   {
     "id": "335f2a90d34b20b1eba93d32c2b2c110ce5c880c33749b95118f52d696623be6",
@@ -4258,7 +4178,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "00740809ac76d538884bd4d3f161b2e2d1911374db9c3baa85185728ef5fedef",
@@ -4279,7 +4199,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "08e2e58ba211d1d4777e39ee0e2596715d1e97cb546f7afd7ddfe8ec335fc97c",
@@ -4300,7 +4220,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps every entry of a conversation at the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6365fcd6f6d5122624d4ede841d57fa10ae7d11285cbd556d18ca935d050ad85",
@@ -4321,7 +4241,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2293a2071527deab740b80e48fb4d2c7757fe9f0fcdf234eb6f26dc14b958da9",
@@ -4342,7 +4262,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b8de5036d5d61bff90eff363e101a5152c26a4d51ec1a8564909e468e15da474",
@@ -4363,7 +4283,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "183c8494b8e233f90115129051fdb98b12c8238ee0b0630b11865d29bbb2d769",
@@ -4384,7 +4304,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "12b00f9ca29f040c5376660160ae9cdcc3c26b7e357ff987ac6eddd66d9b5aa7",
@@ -4405,7 +4325,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "84ffe9ef67348eb1037d82cc0981aa99cb021aec1c09f969fb609e02c8bed0f2",
@@ -4426,7 +4346,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9b198c235b8f719991cd3508136c5caae05f544f17b9acb546f7803bc2c0bf4e",
@@ -4446,7 +4366,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5b779cb7fe71bca997175a770b4e114d2f0c338f7bbceeacbdaa974efabdab78",
@@ -4458,7 +4378,7 @@
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
     "result": "survived",
-    "note": "equivalent: at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
   },
   {
     "id": "86045cf675505364c479b14a087b43ad131f8207b0a9a6cc323327fae7c6d100",
@@ -4470,7 +4390,7 @@
     "mutatorName": "EqualityOperator",
     "replacement": "kept >= 0",
     "result": "survived",
-    "note": "equivalent: at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
   },
   {
     "id": "bf38828e8c360876a625f1643ed7686d0c2e1953cc316b4a209c21639a32ed10",
@@ -4491,7 +4411,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c16510018c09e5196a55abfe9b1b36e8dcb7cb73c2e6d41fd527df7de4d697cc",
@@ -4511,7 +4431,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "425b09a5aa8fc0190de5f0648236d40040731b5d7d0f47b2e1ce11a5404f9c78",
@@ -4532,7 +4452,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps every entry of a conversation at the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "27ff5b7744c13c732041b8e0f1d6c39c52a462bea3726866b4af3e2160eba813",
@@ -4552,7 +4472,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2c652331b155ab3c34e69aa9a9c8767d76b8cbc02f4573c9c2b3a3e65ef51f7a",
@@ -4573,7 +4493,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps the first entry and the last that fit, one byte past the bound, and counts the rest$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "345b6d083e4c7562d9e479b9b63f8ce71af2e428aea2806ae2cd4286934a27e3",
@@ -4593,7 +4513,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c011c4d09619b754ff4159eff993a4593f57028a871aa2b5288ac9188a77c698",
@@ -4613,7 +4533,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "dc4a513868ebea8ccf7154459285085538c054f969cfa99c25e7cacfd21c1554",
@@ -4634,7 +4554,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps no entry when the first alone passes the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d0d68d44f425f427475b9235e6167681308704c48b3a1deece02c49758b0a183",
@@ -4654,7 +4574,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2c4c4564844fa3ecddd51dd75e53f3c50378306d91da691f18d32bccaeb8a206",
@@ -4675,7 +4595,7 @@
       ],
       "pattern": "^EvidenceStore > the 16 MiB stage bound > keeps no entry when the first alone passes the bound$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9ed64f5718b8c03ccd231d7a9feffd9136a08a31ffaf51f0ec17065fb1239933",
@@ -4695,7 +4615,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e9c3f0997d249f9bf882372d7d63225fafbcef9f68123b04b3b2e133e89a0a7e",
@@ -4715,7 +4635,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "bb14ee2d0a02f89572adcb7499f1703c598d4c8d30e65e33b49409ac0137723c",
@@ -4735,7 +4655,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6629c6607406941dba450de80da48a78f71d3796f2a9945c0705780a51b93d33",
@@ -4755,7 +4675,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8eea8dc7017ec250bd88877f1cd0a7334e17b9e60a8db216f0eb2f9ce6154416",
@@ -4775,7 +4695,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b232bab8aeee717cf0a6e550d043eb7f4258832b8c0f0db8dd732e7f070db005",
@@ -4795,7 +4715,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "df53f7afaa74fd36155898e9037cda3f0dbbb8113d04456a0a1af5b880d1d298",
@@ -4815,7 +4735,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "90ad16e904ef0effac727455f36f1dc59565256e6ecd3f715fd1bc2fddab18af",
@@ -4835,7 +4755,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9eed6075b7f0944e50a4f16c5d4f6dc663b841e43b1b215b74acd6a083af2a6c",
@@ -4855,7 +4775,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe changeset before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8b85a16cbe1ef1c4c3acdea485bbe30e11360442bfb459e75567eb20b926e0e4",
@@ -4875,7 +4795,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe changeset before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8b75c97b3127dd91856ccc4697c8662e40efa4d0fb9ac7ba60b376625c242ea2",
@@ -4895,7 +4815,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e3ccdab342a88c77da80bfea59c162ae966265a1e53bf81c35aac47ae5cfc701",
@@ -4915,7 +4835,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "76c34c8a4defa98cad0c1fe187aae3a31be336b2d167522456b295ac652432d7",
@@ -4935,7 +4855,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "40325933734ae03517b862c3f741d8faf5691f33bc542666666e42f852613375",
@@ -4955,7 +4875,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2de0a54079185a0b2cee4ccc4972798cc51db0b698d41378b1c9083abf0a6e78",
@@ -4975,7 +4895,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f93ba64ce95ed1bfa8df07c08c0dbd12a5396d6883aa7d89cda9d9ccc6d5b5cd",
@@ -4995,7 +4915,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe round before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4cd83a6ffb1d8cb014f8fa358b013fe52a6f91efac3d97ff4e5dbe9acaaa4a7c",
@@ -5015,7 +4935,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe round before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4961d94f4b36f19a15f3d1637474541419bd615c9f23d1384f7b2c0c077cb875",
@@ -5035,7 +4955,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a2adcc16f04c9149060bd84e0ec98eb647ebfb9e4a8f36da8508f936253ec08f",
@@ -5055,7 +4975,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ee8701db11760f082f73016f4815a7de935cf801029b50ad34909e8c830af978",
@@ -5075,7 +4995,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1440fcabbbf8eea0f729571369e35223156b2d766a2857ee3e8db0a6ba995af0",
@@ -5093,9 +5013,9 @@
         "EvidenceStore",
         "refuses the stage ID conversation:../1, which is not a conversation's"
       ],
-      "pattern": "^EvidenceStore > refuses the stage ID conversation:../1, which is not a conversation's$"
+      "pattern": "^EvidenceStore > refuses the stage ID conversation:\\.\\./1, which is not a conversation's$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "eccc542251ee9b4408ca981420339474797c64a333bb4d5498001fc5a7e473f1",
@@ -5115,7 +5035,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6d96b55a924221e4bd17963e63c2721debefd378ea1dce9d24442c0be65866ca",
@@ -5133,9 +5053,9 @@
         "EvidenceStore",
         "refuses the stage ID conversation:../1, which is not a conversation's"
       ],
-      "pattern": "^EvidenceStore > refuses the stage ID conversation:../1, which is not a conversation's$"
+      "pattern": "^EvidenceStore > refuses the stage ID conversation:\\.\\./1, which is not a conversation's$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8c1358a9fc4a77fcd77d149bbaa2d172ea66964ead0e29aef95894bd4540e4b2",
@@ -5155,7 +5075,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "eec0377a5edab06f05d4af2ab43511d7de38632571f17ac65a043ef943cb47ae",
@@ -5175,7 +5095,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d0ea6f6caf5202ce5c9538caea79c78818d7cd9f206c09ae9576ca88f21e771b",
@@ -5195,7 +5115,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2360bd6a5315fa2a5dd2fcc3a7d45620d75b03c360c986fbe9523321add842ac",
@@ -5215,7 +5135,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe external ID before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3ca9ed808b7fe38d823ef9f2a2a51d966c356835bf6100769880785e0b5b69d1",
@@ -5235,7 +5155,7 @@
       ],
       "pattern": "^EvidenceStore > refuses an unsafe external ID before it reaches a path$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b5d5427c9311ab479078f1dfb8401258cb68ab3f1f0af42f7eb61e0c74ede02d",
@@ -5255,7 +5175,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7e9f967ab6133affc59dd0a745c63c28597521a532e053af75c6ea5470bd9886",
@@ -5275,7 +5195,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a1f0242376524a91693c78b9d94e8762392ebc3ea5928b5cc255252cb40ce92c",
@@ -5295,7 +5215,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8201fc6d07570787e4fb6b622bdd663cdc6a139f27e7f1b76fc432d97b56e63e",
@@ -5316,7 +5236,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d42ed19c50798a9881570a9aa1f65aebafa1d158a300e48b3681b233256aa096",
@@ -5337,7 +5257,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3e999d1bf598199a175a942954da6ce4e9194c6f0e46bbf00b787e4abaaa4f4d",
@@ -5357,7 +5277,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7660d1c4e48873941851a0cd86371f5c300bcfae72909e5cd848ddb83408e577",
@@ -5377,7 +5297,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "80abedc812a75508be27296cd320c45e50855cf3ad407822ee779c055e2a3de0",
@@ -5397,7 +5317,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "b1b5facd17fc088b421bfecb80e0ff54363bc4454f2aa93cb13ac9e70dad990d",
@@ -5417,7 +5337,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6a05bf8aad9b7ed895b42dfe191e3bd2d45b178c414b1db5d952e2ca167b105c",
@@ -5437,7 +5357,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "da2bf7c7ac42da4fd126d4ed01c17dc9d0d9c04af2b749504c2543f08ba85ce1",
@@ -5457,7 +5377,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "60d78bb745c2ac5661c070a88516080a55c88a87466316eba4232bfd9695528f",
@@ -5477,7 +5397,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a link at evidence, and writes nothing through it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "34da7d6a7f95967d4c78aa6592da909932d51f966fe06fe567ba693453396fe1",
@@ -5497,7 +5417,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a link at evidence, and writes nothing through it$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "43dfb58be86299e3b46623839a9ea0b8ee9c7bcdbc85c9b4a850592102e9f5de",
@@ -5517,7 +5437,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "92aaae3cef43ff100762bfda9dc383a117996c61e67deb6168bf1a671da37ba3",
@@ -5537,7 +5457,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ae2244499af6a1b9712b1f97cbbcc632b42444d95da518779716c9a3d173ff38",
@@ -5557,7 +5477,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a6acb9a351ec294aad0d355bec984e5eb8fb27d01d11b9bd1ebabba67cb02bbc",
@@ -5578,7 +5498,7 @@
       ],
       "pattern": "^EvidenceStore > the budget > accepts a write that fills the budget exactly, counting what the directory holds$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "deb598fca451d1c972839b5b7994e8b4bfe285782208cc202b0c6c9b748f6775",
@@ -5598,7 +5518,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "29ddbccf35c0b5c8af1cfaa61e07aa849306425a1e70466b579b4445615cf39a",
@@ -5618,7 +5538,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d96364441b254e7dfdccc15be068eb2c69b5a58160b9adb98a94788d4a60f1be",
@@ -5638,7 +5558,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0fe6d0b730e1f614b8c0a273610a67dfbba48222f300a55d1d05c2cf3b5d3699",
@@ -5658,7 +5578,7 @@
       ],
       "pattern": "^EvidenceStore > writes files at mode 0600 and directories at 0700$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "8cc0ab6ca0faf5654a683866b2cc8476f57709aae10805ce1c4be0fc723ff8a5",
@@ -5678,7 +5598,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3fb7e53bc9a277c51bf2bd58accda013bf60de9cb4cd7b989b0c2165c2ce4a6c",
@@ -5698,7 +5618,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "9a2e54367eb77d386949d8b467e158e145a4976d68a474997f9275d2f839f3d4",
@@ -5710,7 +5630,7 @@
     "mutatorName": "BlockStatement",
     "replacement": "{}",
     "result": "survived",
-    "note": "equivalent: for every mkdir failure but EEXIST, the lstat of the same path that follows throws, so the write still fails and cleans up"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, for every mkdir failure but EEXIST, the lstat of the same path that follows throws, so the write still fails and cleans up"
   },
   {
     "id": "38ca4f8dc582032970a71f17bc06af3f1f668cc9d956c9cd09d3797fa92af42a",
@@ -5722,7 +5642,7 @@
     "mutatorName": "ConditionalExpression",
     "replacement": "true",
     "result": "survived",
-    "note": "equivalent: for every mkdir failure but EEXIST, the lstat of the same path that follows throws, so the write still fails and cleans up"
+    "note": "run at 94f5da0b6: survived every candidate test file; equivalent, for every mkdir failure but EEXIST, the lstat of the same path that follows throws, so the write still fails and cleans up"
   },
   {
     "id": "663d32bce4ba602337742d84d1dd4e3cc88d4cd332df10b4344a97ccb64072af",
@@ -5742,7 +5662,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "abe1844ed2b09a1650ed61ac2e90f3e381b45ebb94673a3c6848b97704a993c0",
@@ -5762,7 +5682,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "40349382d2c5c119af31c54fa2ce0aff1485a9c448819d238d3fb9cf8527b62c",
@@ -5782,7 +5702,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0892df1ab7e853f1ef766483e368e6c3e9ece9504a54b550f311370c712e9e87",
@@ -5802,7 +5722,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "ffcdf91a8df9ea045942d8ef5c304cc400b7100e6a613acda3840caac6962f17",
@@ -5822,7 +5742,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stages directory another writer made a link after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "74e2e02c68750dffbf214e08915a78a85f79972a8b53b877f12f0ae50208d26c",
@@ -5842,7 +5762,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stages directory another writer made a link after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e7fa6a73c617cb3977eee0dc4b42c96b437e0b5273e3270bec8a853375682e48",
@@ -5862,7 +5782,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d4017941d08a79a39d6bd831444f1776f99b198681bc77d6bfb3e70d739d47bf",
@@ -5882,7 +5802,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7e464fc4c1f3468d3e0edc5abff0273cf058737a7088f34c69e38915ae27087e",
@@ -5902,7 +5822,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stages directory another writer made a file after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0db824c5868b87c03282da73531aac4d0583f7deca3477c7f20efa79289d60de",
@@ -5922,7 +5842,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stages directory another writer made a file after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7baf04dc8f6f4b1889c56490f625c7e11dcf722dff35fe333d6f36da3be268e8",
@@ -5942,7 +5862,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "535d49a649bbd76ebb96bdc2f3ca31f796cf6898af3f5ca6e901a1510a602e4c",
@@ -5962,7 +5882,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "4fd9006ae986b6ee06771271977bc06f3a2991e38b86c76664abbd0c1dad8b74",
@@ -5982,7 +5902,7 @@
       ],
       "pattern": "^EvidenceStore > removes the directories it made when a write fails, and keeps the ones it found$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "62aea0eecc67e0c59c01d77ef9d44700113ad9d55023b2ac51647caf89e0f9ca",
@@ -6002,7 +5922,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c965ab6dc0011881067d8f85fa2bb338c52973dce789580f70069c73ad31e44b",
@@ -6022,7 +5942,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "05069c4811ce82cc4811c7e50772f66efc5b486bd378bff8f6fb8ae322d6a92f",
@@ -6042,7 +5962,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "1b6fd6ec2da42082145b4ab09fdc1f0189e225e8082d0209d44096a8a4dfcb1d",
@@ -6062,7 +5982,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stage file another writer made a link after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f21c6ab16f3c0b0dc0bca877e31775ce0bb770c8cf375848889c7ec544d47481",
@@ -6082,7 +6002,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6cdb4492761d1ee9d58269366682d84da20c48a9128f73f62461c08bf5830218",
@@ -6102,7 +6022,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "bc0488cdf3c9b974320d45c3b23fa8117880ba3b7665a0d56a393ef8d725a2e0",
@@ -6122,7 +6042,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stage file another writer made a link after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5a35ceee66816e1aa049698b56bce0cd22cea43a0c732249e805e4a25bf62622",
@@ -6142,7 +6062,7 @@
       ],
       "pattern": "^EvidenceStore > refuses a stage file another writer made a link after the check$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "f5d605cec5ce521eada862cadf60462f948aae0da325d4d1c49a3fbbf0f890fd",
@@ -6162,7 +6082,7 @@
       ],
       "pattern": "^EvidenceStore > leaves no file behind when a write fails part-way$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "7ac5969f6dda0ba4776eff9972d55d34d941340c069ebe3ae1cfdd1ade109e5e",
@@ -6182,7 +6102,7 @@
       ],
       "pattern": "^EvidenceStore > leaves no file behind when a write fails part-way$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0caff70681f5fbaff79c6a3c137dee2b8bc08f68e6594f57dd35b0905ae288d4",
@@ -6203,7 +6123,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "fa583e0d0deec5cea24025dc05015ada98734cd75c5f0c82975df53fcf21f315",
@@ -6224,7 +6144,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6da0af570de3199de2ef90ce495dcb1932d6279b216909b8b2cb1f17bf623f4e",
@@ -6245,7 +6165,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > passes on an error other than a missing path, in a read and in its size$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "6461bd689019734ded11e020e23cca543cca3a2356b4cd780df89e5560153fdd",
@@ -6265,7 +6185,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "d8f60d94cec1052b4431a9b8f1a1e2929dfdf98ca104f99dcc0da23db19f0e18",
@@ -6285,7 +6205,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "409b560afd155134150e6fc6bd3d8279a0d6ad4aef87334ad9426e4d1f696f4e",
@@ -6306,7 +6226,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > sizes every file at every depth, and no link$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "cec0a03952135677db8b873f7f012b2a9e06765ec5b9068157fb61422bd2097a",
@@ -6326,7 +6246,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c020914efea1e84a2825ee19c1f7205b9166a8f51edb63095b5e19a0d5856e0e",
@@ -6346,7 +6266,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "206f6c442da465b6adc56fc07ced097aedca18c0df8b5b19a5dd5dffed3a0704",
@@ -6366,7 +6286,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "da34ca138fbfb4b1333dde772073905907d7c92beaa7ce279bdde08f912f89e2",
@@ -6386,7 +6306,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "c6bfaa28ac27ed4c471f7fc16d7714f09780c04bceaaf43221dd647da5fc078b",
@@ -6407,7 +6327,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > sizes every file at every depth, and no link$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "99407887d6f0d6f2c3b87bb99f60970bb2fa834a4135dec5dd16a9e8376d62e0",
@@ -6428,7 +6348,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > sizes every file at every depth, and no link$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "eff5d34a672e965fabba042fde3eccf6e3931ad767b995bf279980a88bde07bb",
@@ -6448,7 +6368,7 @@
       ],
       "pattern": "^EvidenceStore > writes a stage once for two misses of one round, and a pointer for each$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "27d70ed355272551c22f1266b8bc3ca6167192d366cbfed40dd2750ef21f38e3",
@@ -6469,7 +6389,7 @@
       ],
       "pattern": "^EvidenceStore > reading back > sizes every file at every depth, and no link$"
     },
-    "note": "run at aabaf0c01; the named test passed unmutated first"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2bbd487b1f6e967f9e1175a9f5cf8a2c31e154cde1cb4eb12dce5bccc85b9f60",
@@ -6488,7 +6408,7 @@
       ],
       "pattern": "^lists a linked evidence directory as not recognised and counts none of it$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "295d6ed25c2e8d943eb84407a7ccffd623015ce680b8c3c7c2490b7128a6b618",
@@ -6507,7 +6427,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "a9c60172a65ff6969dc94392bd7f09cd3924b71d833b1802a072e61bd103a70a",
@@ -6526,7 +6446,7 @@
       ],
       "pattern": "^keeps the evidence directory as durable, however old, and counts its bytes$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "0e34a3159d3966aa842340a1162587abc3a4118e95382b5d16cdb7f1d6a726b9",
@@ -6545,7 +6465,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "789cd13e589f641be2b9ac94fb9c76f4f4d6a2582b808cf54d3ff3bf5905f644",
@@ -6564,7 +6484,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "2d01f1c9ab73d340ea559c6f1a0a7edf61a640ef49227014cfdd63ff8cacc2cb",
@@ -6583,7 +6503,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "32e8138b55679aec99b8d2147b7ef4a90c12e61df9a6fb04e0ffdd42dee9ce16",
@@ -6602,7 +6522,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "5bd1a47443e17a5d522666d196aaeb4974a0823b9ecc0f52f399c430553176b9",
@@ -6621,7 +6541,7 @@
       ],
       "pattern": "^keeps changesets, scripted stores, links, scratch and anything it does not recognise$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "e4544f8c525b1b4bf6f48012ca648ed93a0a9c0f257eee2572b7c297bf8088cd",
@@ -6640,7 +6560,7 @@
       ],
       "pattern": "^keeps the evidence directory as durable, however old, and counts its bytes$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   },
   {
     "id": "3008aa429435131a4bc8bc8c1c7d65e14e82592abc783f62dd4233eba9e748eb",
@@ -6659,6 +6579,6 @@
       ],
       "pattern": "^removes a graph older than seven days whose tree no live commit holds, with its coverage$"
     },
-    "note": "run at d79f365a6, whose file and named test are unchanged at aabaf0c01"
+    "note": "run at 94f5da0b6: the named test passed alone unmutated and failed alone mutated"
   }
 ]

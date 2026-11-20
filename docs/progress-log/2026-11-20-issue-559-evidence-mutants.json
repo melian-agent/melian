@@ -2,7 +2,7 @@
   "melianMutants": 2,
   "range": {
     "base": "c2e68c4e77de66f8a996dd88d58c41e822d0ddb4",
-    "head": "aabaf0c01625685b9b3b03ec20b5798c513c890c"
+    "head": "94f5da0b61c12c09a945667912a73bcb34495b6d"
   },
   "claimsIn": [
     "packages/pipeline/src/evidence.ts",
@@ -587,13 +587,13 @@
       "line": 390,
       "column": 12,
       "endLine": 390,
-      "endColumn": 92,
+      "endColumn": 178,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "6111db224726e602bc5db0b07deed91c9a2a1ef544a4affad004c848a6386eae"
+      "id": "106a991594790ddc93f6fa96b4096a97006028d6295227c080cbfe4a2ac45c44"
     },
     {
       "file": "packages/cli/src/evidence.ts",
@@ -704,56 +704,56 @@
       "file": "packages/cli/src/evidence.ts",
       "line": 44,
       "column": 100,
-      "endLine": 66,
+      "endLine": 68,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "2d6a2303e3b0e60ada705c7c704eb940de16b8752d3e8af01b0b9b9b4aecedca"
+      "id": "ec88a60e32987840c1bf5ae4dca8cd36da65e2b6043791bb6140e1489809bd3e"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 47,
       "column": 6,
       "endLine": 47,
-      "endColumn": 28,
+      "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "34fbc13aa7ecf96a9d26bc30f14a3295e37ab347d5d37967a5444a4cdf91d68b"
+      "id": "c96947682bf58ecb6d08ea185f53a367ee5bae676d983c448113143d2c4a42fb"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 47,
       "column": 6,
       "endLine": 47,
-      "endColumn": 28,
+      "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "c506d5fa77912aab592783b61c765d3e47d5b5d394d3bb38269f37e0d9a3eef9"
+      "id": "235359c8e99f5cf3565d94cc10e5bd133b4603e5b35c27c182433e6b4ef89b97"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 47,
       "column": 6,
       "endLine": 47,
-      "endColumn": 28,
+      "endColumn": 25,
       "mutatorName": "EqualityOperator",
-      "replacement": "gathered !== undefined",
+      "replacement": "owned !== undefined",
       "status": "generated",
-      "id": "44dae15cd7e6dc8316c0be1a1344b2181398dcfce5b3a25168e367f3778f3e1e"
+      "id": "45b0d3ed2f6d590baeb25e301bdb9dc0a54642efbc999f29489dc2cca229aee4"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 47,
-      "column": 30,
+      "column": 27,
       "endLine": 52,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "5e0905408c3fbdfba8e934866dc5f7a4bdbbf10a11a2679f875fb5adcecbd246"
+      "id": "92d0e182949a063edac1eacaee9d661de3a301e24af1f4cc00fad1281eb610e3"
     },
     {
       "file": "packages/cli/src/evidence.ts",
@@ -781,1662 +781,1673 @@
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 53,
-      "column": 6,
-      "endLine": 59,
-      "endColumn": 3,
-      "mutatorName": "BlockStatement",
+      "line": 54,
+      "column": 54,
+      "endLine": 54,
+      "endColumn": 73,
+      "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "f6305b8759869cfdb8deaab52463269a74e58f5c6a32580fcdf4453e36456118"
+      "id": "987331bdc2220046e3bb1e965945b13e74198e55de33a83a0dde349f289192be"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 55,
+      "column": 6,
+      "endLine": 61,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2aa71205b37c7bee2a3bee95ad24c69e83b58f8952e4755a5a231851ff88709c"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 57,
       "column": 3,
-      "endLine": 57,
+      "endLine": 59,
       "endColumn": 5,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "0240e86771ed911005437e8aa27e4d8c15b9f4ec5238c24a16bda288028a7742"
+      "id": "cc574fde652520cc8f9b07d9ccd8593fe169867c1e8c8002dc16e219b572f9c8"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 56,
+      "line": 58,
       "column": 4,
-      "endLine": 56,
+      "endLine": 58,
       "endColumn": 144,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "6b1bed4775f6211a6beb633f46459cede12facff6070de3260f16342f7aa4718"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 59,
-      "column": 18,
-      "endLine": 65,
-      "endColumn": 3,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "53e580a9c077acc0525b20db13d90cfaee48920ea16aca03bab87a83e49b44c5"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 60,
-      "column": 7,
-      "endLine": 60,
-      "endColumn": 40,
-      "mutatorName": "BooleanLiteral",
-      "replacement": "error instanceof EvidenceError",
-      "status": "generated",
-      "id": "7f58d88094e65135ef5d05aaa33745e9e8e046e6aa59f6969bf8851afe251a50"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 60,
-      "column": 7,
-      "endLine": 60,
-      "endColumn": 40,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "78198a5eaba9a284e58497abe28ef09892262509ef092768b20a031a6cb162c4"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 60,
-      "column": 7,
-      "endLine": 60,
-      "endColumn": 40,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "b31f0989b7abdd189134dbfe6ca4f295794508929e619289ff5a3e0002ec64c4"
+      "id": "9da362d4f3b035189324cf56044113e2f70c7d2b37bc217ba88974a486c2896a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 61,
-      "column": 3,
-      "endLine": 63,
-      "endColumn": 5,
-      "mutatorName": "CallExpression",
-      "replacement": ";",
+      "column": 18,
+      "endLine": 67,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
       "status": "generated",
-      "id": "184cbf118b4dc136c209380a95136b629abc19398d2baedc87f8b61298840947"
+      "id": "ef00c32b2e1c348015f40c5e1ab1868be82c8a8acbdedde7bd872f59538b0314"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 62,
-      "column": 4,
+      "column": 7,
       "endLine": 62,
+      "endColumn": 40,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "error instanceof EvidenceError",
+      "status": "generated",
+      "id": "67fbbc428a68c155af886e821ceab0d17a735a8f2b92da74c1f48e2ff27eed29"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 62,
+      "column": 7,
+      "endLine": 62,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "b0da95f9c59880fc4531a5c320691267d1edbc120c46a61ee5b9f5de82c2980c"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 62,
+      "column": 7,
+      "endLine": 62,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9fb51a135dcc6af6be8f0840cb6be0fac99f5fb71b111ff2e5bef515bdfd996d"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 65,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "33847740df145f1e0ac39b34ca266acee61d80c9eb1b154be45bc7c505c8155b"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 64,
+      "column": 4,
+      "endLine": 64,
       "endColumn": 101,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "c14f2f51a2b52c2c5dc6afe228e6e4b37812524734dc67602ec47fbd0a9ffa70"
+      "id": "3533646cc55b04ee48ec9944157d10f0090d6270d193ce19692ebf0f7ff5c9c2"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 69,
+      "line": 71,
       "column": 91,
-      "endLine": 90,
+      "endLine": 92,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "9b9e96974a7dda5c0367a960bedf4e178268ddb8d00abb3a37353848e03cb1be"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 71,
-      "column": 6,
-      "endLine": 71,
-      "endColumn": 24,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "fca453d2f0e427792d24fd7db0e33f5459f7327970a77fe2612e5dfe161b166a"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 71,
-      "column": 6,
-      "endLine": 71,
-      "endColumn": 24,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "6edc6229be35981f8f6afbf8df2137677f7dd75db740a5b2891669a4c9dcf133"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 71,
-      "column": 6,
-      "endLine": 71,
-      "endColumn": 24,
-      "mutatorName": "EqualityOperator",
-      "replacement": "read !== undefined",
-      "status": "generated",
-      "id": "991fe11923c443ecc77dd877fd5576143dd1375c6434c6f43862fde4997c2b63"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 71,
-      "column": 26,
-      "endLine": 76,
-      "endColumn": 3,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "57e1301298eeae2d3d5b186802fc0bfeaebf33bb42ac5fd45b44c15ffed79f82"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 72,
-      "column": 3,
-      "endLine": 74,
-      "endColumn": 5,
-      "mutatorName": "CallExpression",
-      "replacement": ";",
-      "status": "generated",
-      "id": "116ff57808b7f66d8d6508418d86f8db1ced5af832b6e036cbf3feca3eb03861"
+      "id": "b896a83e0be259a505ff73056974665b51b277578c5a64e37712073b811e302f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 73,
-      "column": 4,
+      "column": 6,
       "endLine": 73,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "2c431a5191aa7c3272b7c024a964d5359ba4844a1d6667e04b71fa122036caeb"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 73,
+      "column": 6,
+      "endLine": 73,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a535228171e7b11304b28f30e3f1081210f28199def835373244311b991ed6ad"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 73,
+      "column": 6,
+      "endLine": 73,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "read !== undefined",
+      "status": "generated",
+      "id": "7422ddb96bf2aeaef92118845a4ad29976b0aa2b09dd5187acc732aed7107d33"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 73,
+      "column": 26,
+      "endLine": 78,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "df6329680ee1b6560cfb007d053e2bea3778ce7fdc13cb3165c4eb0cd8a392a4"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 74,
+      "column": 3,
+      "endLine": 76,
+      "endColumn": 5,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "01b4268447e8b2449584bf7f87723f832ca77bc4b9e5db833b559367586e4d9c"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 75,
+      "column": 4,
+      "endLine": 75,
       "endColumn": 120,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "3e8b42796ab1d39a8dbc307cf3324360f4130f492fd1b15ddd4a3d58f22d935d"
+      "id": "92a877cabb1217e8d85188bd91d23e93a804fe9da8eeefdc85c5b5217cb2ff33"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 77,
+      "line": 79,
       "column": 6,
-      "endLine": 77,
+      "endLine": 79,
       "endColumn": 10,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "b2229ff2b62c099a907b8a6403aa02682d0b58edecdefd43dc84455a95a078f2"
+      "id": "7123aca9572fa59cac85e1cff9064f74ce2d8f780ccafe56f9b68f0a28040166"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 77,
+      "line": 79,
       "column": 6,
-      "endLine": 77,
+      "endLine": 79,
       "endColumn": 10,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "3c93855fdfa24fcc42724b9bb3a4ca9ba83111f275394ff7e7d46ec787a8b73a"
+      "id": "8f210750c72ef745f4b478338849abc75d9399812496318524a5d76bcfb3d92d"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 77,
+      "line": 79,
       "column": 12,
-      "endLine": 81,
+      "endLine": 83,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "eb2cd652c072f6e6b4eb4009e43e5d9ac6b4561997a9a65538d46db9fa341c2f"
+      "id": "15f3190e11333694f9541aa0ec2c3558132a09ade3b4cf624a2306ee53ac1e8a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 79,
+      "line": 81,
       "column": 3,
-      "endLine": 79,
+      "endLine": 81,
       "endColumn": 60,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "a957c75e60ced38878df9f43895244a9b68cf047249547d2b0ff9ca4f7b4d0b5"
+      "id": "7362709ac6f87a4ded9f0bbcd2ba254f0a4e4f6f3bf4ef08e39b533709a929bb"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 79,
+      "line": 81,
       "column": 18,
-      "endLine": 79,
+      "endLine": 81,
       "endColumn": 58,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "42039ea6cfab9387d5ab1f6035b8f6d54bb4d11e38b474e85c42aec49aa43401"
+      "id": "bfb12e9ae61bd83cec568ec014138697cd7a76667e0dff49e4e96e82e490f99d"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 83,
+      "line": 85,
       "column": 16,
-      "endLine": 87,
+      "endLine": 89,
       "endColumn": 3,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[]",
       "status": "generated",
-      "id": "f46974ac49896a05696b5468ebd95179298b5f16ecd7020cb435ccae1e61bf26"
+      "id": "a43ef461af12eeda34a0e224ef7b50208a6f08ff7d7f703d7a591a6495ac418f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 84,
+      "line": 86,
       "column": 3,
-      "endLine": 84,
+      "endLine": 86,
       "endColumn": 139,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "49453b2b9a401b464b03266a69ed2be29b449b77e379d293b1eb818bcec9b928"
+      "id": "7bd95058af0005d6383272405b12828ed6a245e4276bb460d2cd7c2baba11db5"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 85,
+      "line": 87,
       "column": 28,
-      "endLine": 85,
+      "endLine": 87,
       "endColumn": 110,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "92f2d3cdc7761cf98ac6fa530306c751aac70d43939251850fcc9e7766efcb18"
+      "id": "c29a095966a1ef5d0c8760e00fac58d0aa0fb33fcfdcf75b555a84ad64569e67"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 85,
+      "line": 87,
       "column": 38,
-      "endLine": 85,
+      "endLine": 87,
       "endColumn": 110,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "4422b44cff9e063952730955d0507254008da8569ebb4faef655d25703e108ba"
+      "id": "0ea1f72f7403c1c7bec0e5a2d4d9785c990b3d338aac95eeb05c1839e2ec03bc"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 86,
+      "line": 88,
       "column": 26,
-      "endLine": 86,
+      "endLine": 88,
       "endColumn": 68,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "e3de4a8cd7541fc741c017b7b8fb43fbb0c9095291dcfa9f17b09fb322a085e5"
+      "id": "f2803274872548c2f280bdc99ebb08d91c2af62e9c8be28bbb5b3fce91f506dd"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 88,
+      "line": 90,
       "column": 2,
-      "endLine": 88,
+      "endLine": 90,
       "endColumn": 42,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "1dc94d3fe2210f85e77e16a499e76e31be5ccb0599a430c5d579e889c2843721"
+      "id": "2c3af386280898fa3dbb40fb34fc66524b7ce8c91b3780e018b41b52cfe16e22"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 88,
+      "line": 90,
       "column": 17,
-      "endLine": 88,
+      "endLine": 90,
       "endColumn": 40,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "65cd856fd8954be66fd61936d1e17137a81822863455ca02d529440ecf3fc167"
+      "id": "cd45d172390e47bed359118172a4308aafee882339aa6dc16d3fa84ff446f782"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 88,
+      "line": 90,
       "column": 31,
-      "endLine": 88,
+      "endLine": 90,
       "endColumn": 35,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "819ca76d37b9f58c315eb7245957f55d64d9cdfc96c6910079aa25762473f2b3"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 92,
-      "column": 104,
-      "endLine": 115,
-      "endColumn": 2,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "28a0bc5414273d73cb7fe8418cd3146fc77ce03ee16106b6d023b62a2d1963c9"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 93,
-      "column": 17,
-      "endLine": 93,
-      "endColumn": 79,
-      "mutatorName": "OptionalChaining",
-      "replacement": "/^revision:([0-9a-f]{40})$/.exec(evidence.pointer.policy)[1]",
-      "status": "generated",
-      "id": "c88309876012d2619bd3b07fed45cec543eac4972e3268d902e639bc945d83a1"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 93,
-      "column": 17,
-      "endLine": 93,
-      "endColumn": 44,
-      "mutatorName": "Regex",
-      "replacement": "/revision:([0-9a-f]{40})$/",
-      "status": "generated",
-      "id": "7aba150ce480e68acfe05b05f1c9a177c30d57439a03e5e1e612df7715e34880"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 93,
-      "column": 17,
-      "endLine": 93,
-      "endColumn": 44,
-      "mutatorName": "Regex",
-      "replacement": "/^revision:([0-9a-f]{40})/",
-      "status": "generated",
-      "id": "1c96d15be29d60a47637d007d7631febffe794b862b3a78cf1bad183764a0496"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 93,
-      "column": 17,
-      "endLine": 93,
-      "endColumn": 44,
-      "mutatorName": "Regex",
-      "replacement": "/^revision:([0-9a-f])$/",
-      "status": "generated",
-      "id": "65ce72597846e121cefbbfd08e3e15bcc86cca6ebfda4b783ce9287dff1a6489"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 93,
-      "column": 17,
-      "endLine": 93,
-      "endColumn": 44,
-      "mutatorName": "Regex",
-      "replacement": "/^revision:([^0-9a-f]{40})$/",
-      "status": "generated",
-      "id": "12f028c2e698ea69122ffd94a34e7192f93c67e452766582fb48f7e076acae3b"
+      "id": "badfa4cdee0c780b93313880abfa46fa6d034c7d9af8555b98278d31b21b2b9b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 94,
+      "column": 104,
+      "endLine": 117,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "24f6bcdf69a7f15fc2a55359ad9a3b3801581bf41de4929e986dfb53e1787b5a"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 95,
+      "column": 17,
+      "endLine": 95,
+      "endColumn": 79,
+      "mutatorName": "OptionalChaining",
+      "replacement": "/^revision:([0-9a-f]{40})$/.exec(evidence.pointer.policy)[1]",
+      "status": "generated",
+      "id": "a578dfe8f10f0e48ad7b953a02277a52ee57fc126c7aa0b74d69ba40214c563f"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 95,
+      "column": 17,
+      "endLine": 95,
+      "endColumn": 44,
+      "mutatorName": "Regex",
+      "replacement": "/revision:([0-9a-f]{40})$/",
+      "status": "generated",
+      "id": "12f32484815d077eb16a69e2934d2b7e2facd5e3aa579659e39c938a56704823"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 95,
+      "column": 17,
+      "endLine": 95,
+      "endColumn": 44,
+      "mutatorName": "Regex",
+      "replacement": "/^revision:([0-9a-f]{40})/",
+      "status": "generated",
+      "id": "79fcee6dc98eed7d1ce56d8f0da621ed1263ce8f688d1636ff044c1b63067123"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 95,
+      "column": 17,
+      "endLine": 95,
+      "endColumn": 44,
+      "mutatorName": "Regex",
+      "replacement": "/^revision:([0-9a-f])$/",
+      "status": "generated",
+      "id": "885a1d10915208868fa1244a4345de20cae69edbbc7ffe869f81f5895266d29b"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 95,
+      "column": 17,
+      "endLine": 95,
+      "endColumn": 44,
+      "mutatorName": "Regex",
+      "replacement": "/^revision:([^0-9a-f]{40})$/",
+      "status": "generated",
+      "id": "93a6106e86c766e180ee2f7cd8435d0328eda51b71a30caa74c90c0530aa304c"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 96,
       "column": 15,
-      "endLine": 94,
+      "endLine": 96,
       "endColumn": 35,
       "mutatorName": "OptionalChaining",
       "replacement": "finding.site().file",
       "status": "generated",
-      "id": "e3efa8c4d234265ec776e3264f22d8a278acf80d32dbef2e74c0ba4a36d8e76b"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 6,
-      "endLine": 95,
-      "endColumn": 48,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "5e42a123151916e7bb864e595f0910f5bc852bc4419c58dbeb0887bdd090f214"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 6,
-      "endLine": 95,
-      "endColumn": 48,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "acbe4108bc32f8296297e5c83e1071d555ffd063e86b7c210a8587a485926e73"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 6,
-      "endLine": 95,
-      "endColumn": 48,
-      "mutatorName": "LogicalOperator",
-      "replacement": "commit === undefined && file === undefined",
-      "status": "generated",
-      "id": "fd9fd6a3877ef6cc0694462fd25c67fe777ec7efa902cc83ad7fa39e9b8d6e8a"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 6,
-      "endLine": 95,
-      "endColumn": 26,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "7f656a9d5f6ad4c955aa982d717703fc703a533591c2ff5d5ca437588caf84f6"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 6,
-      "endLine": 95,
-      "endColumn": 26,
-      "mutatorName": "EqualityOperator",
-      "replacement": "commit !== undefined",
-      "status": "generated",
-      "id": "cbe3ff7347d8e0e416e54704d369f3845aa5eb917da52f62f25433abe9c1bdc5"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 30,
-      "endLine": 95,
-      "endColumn": 48,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "8b53a289cadd4a5493a19d23c32f9c6b6c4dc2eb820d514910e9e7d75724d16e"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 30,
-      "endLine": 95,
-      "endColumn": 48,
-      "mutatorName": "EqualityOperator",
-      "replacement": "file !== undefined",
-      "status": "generated",
-      "id": "308559ef7a23a16f38915d2c4dc5a2cb71e32f8e56bd32ba305763a134ac3100"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 95,
-      "column": 57,
-      "endLine": 95,
-      "endColumn": 59,
-      "mutatorName": "ArrayDeclaration",
-      "replacement": "[\"Stryker was here\"]",
-      "status": "generated",
-      "id": "ef6c7f6b4d6c5bb32eba2f0dfe82a1de81b2096ee209d301695cbafc8152e5d0"
+      "id": "d1057f417d5dee2a05e5a90ad86cf9170060380bb49c4fa526ed31b1264304ee"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 97,
       "column": 6,
-      "endLine": 99,
+      "endLine": 97,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8cf18bffb7f77ba74c97c42f3cd5eb9b81e4eb28e59817fa8a971a890950f3ca"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 6,
+      "endLine": 97,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "57e1e78745a3bbfa0bbf2950f9265c81b5e5133e61ef2f89e42ccdde7d8b103a"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 6,
+      "endLine": 97,
+      "endColumn": 48,
+      "mutatorName": "LogicalOperator",
+      "replacement": "commit === undefined && file === undefined",
+      "status": "generated",
+      "id": "69d7cf0be1492d69c791ade7cd381e4e11ff2b191af3648faab37e5ae53dcc27"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 6,
+      "endLine": 97,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0222fd35b337d665192f8422fc2b2fa980f0af228845029d83cf7e64cc4981d1"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 6,
+      "endLine": 97,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "commit !== undefined",
+      "status": "generated",
+      "id": "792904ea814811bb8e26334de572e0922a1479fb9749d1e4fad614782fad9eb2"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 30,
+      "endLine": 97,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5ad6903b4c6d25fc08066aac38c107c94991dfd56f078aa1eb98dda7e702ec87"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 30,
+      "endLine": 97,
+      "endColumn": 48,
+      "mutatorName": "EqualityOperator",
+      "replacement": "file !== undefined",
+      "status": "generated",
+      "id": "7b0d4e0cd73797e9cfb1ca9a0372417850833c30adfc73e71ce73c340d3134ee"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 97,
+      "column": 57,
+      "endLine": 97,
+      "endColumn": 59,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "9a6f2dcb3a7d9fd2738e604bb194c910276e081c38735afcfc7d77f0711519cd"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 99,
+      "column": 6,
+      "endLine": 101,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "cd5ee4491fd8d3890090fc847b986070de21581aebace5cfe421d81c00872a22"
+      "id": "8d11d612cccf916039133cf98c9d6730e04c3b3704b1da4f62c4c101c5a56ad4"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 98,
+      "line": 100,
       "column": 43,
-      "endLine": 98,
+      "endLine": 100,
       "endColumn": 71,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "3f50a09248978dfbeb808fb3901be529a72dda775d9a06731df846a605335dcf"
+      "id": "ccd154f6f690ccf459ab4295f1ab9214bef2060c3a3fa01f1a1341b80635ae16"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 98,
+      "line": 100,
       "column": 51,
-      "endLine": 98,
+      "endLine": 100,
       "endColumn": 61,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "f943f8f7c524edca8f15f4ae9719d88250e30c2b1e24488edbd098440608ab43"
+      "id": "f343104c306bcc1913d1f12c6ecd18c86619a2f047dd2d7a01b4ca0054656cce"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 98,
+      "line": 100,
       "column": 73,
-      "endLine": 98,
+      "endLine": 100,
       "endColumn": 79,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[]",
       "status": "generated",
-      "id": "ca8b76884eb6bd39c5d3bd83b733afa079d08ca15c88e26d4717c03827f3aaa7"
+      "id": "0f5e85cefbed559f96052d4584b54cff268175a73586fe40e136efad856a0e1b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 99,
+      "line": 101,
       "column": 18,
-      "endLine": 103,
+      "endLine": 105,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "fa0a3a13c6150f074f55f04fcdd6ad267321b0d46a8cd4fd1bd8d020ad46ede1"
+      "id": "dcd7ef26dbed7f8d295d05d3bc6c52e98f6f1a745276e2d14c776704b88a2ef2"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 100,
+      "line": 102,
       "column": 7,
-      "endLine": 100,
+      "endLine": 102,
       "endColumn": 36,
       "mutatorName": "BooleanLiteral",
       "replacement": "error instanceof LensError",
       "status": "generated",
-      "id": "c1e926715cff69eba1c87c2292f89e050453fc70f721bbdcfe834e19b388fa53"
+      "id": "2f80b38525eeabbabd532a1244ab1c81fb8c3dbd62b10854049cbb5340e8ee35"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 100,
+      "line": 102,
       "column": 7,
-      "endLine": 100,
+      "endLine": 102,
       "endColumn": 36,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "b37b209a199189ed1921f23186f8ce4f01e5eceaf5b9adaec5c56a980783ccd4"
+      "id": "58c57299de8eabd69022198c16a3cf5636c3b4255ea3bb24e8115f97cefd2f52"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 100,
+      "line": 102,
       "column": 7,
-      "endLine": 100,
+      "endLine": 102,
       "endColumn": 36,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "f05253b8bc4acc1a6a5658161dfb90d1f546fa6fde87411c74731c20933f81ae"
+      "id": "533b660b9a8dca4fc365e4e64c462c69a3181342f479713d34f38afead0c82a4"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 101,
+      "line": 103,
       "column": 3,
-      "endLine": 101,
+      "endLine": 103,
       "endColumn": 97,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "8e9ec206f57b34ec319933e994eb2b742268de1fbca2d75dbec6cae61fc6bc88"
+      "id": "344bdbf782d4ac1a7f6ae2f3bd90cc7cdbad304cea2746ba71afd44816aba565"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 101,
+      "line": 103,
       "column": 18,
-      "endLine": 101,
+      "endLine": 103,
       "endColumn": 95,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "d38c0725329ac14b25e497110311e61a37544d4b2b8963967fdff91e8f9e8a75"
+      "id": "1281c9921ef3d40a4f5dff6a929eab5d723fe3717c894ad9c8ad9a9f7aa4c126"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 102,
+      "line": 104,
       "column": 10,
-      "endLine": 102,
+      "endLine": 104,
       "endColumn": 12,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[\"Stryker was here\"]",
       "status": "generated",
-      "id": "d9abd9d2bbebe8c54bd9480478f7b3e2251ce45dd775b5b5288451dec3f50423"
+      "id": "559bb4e68460d5567750fea89d28865acdd4dc86c07cd77315f6b59182bddd47"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 105,
+      "line": 107,
       "column": 36,
-      "endLine": 105,
+      "endLine": 107,
       "endColumn": 38,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[\"Stryker was here\"]",
       "status": "generated",
-      "id": "e3091c5ee42b6586a0e38442be03f10af8e81a5ec4a38cf1a038685a885578ea"
+      "id": "3a4128d5428d243542b0be0d266945ffea56cfa86094441a4a437b4b213e8cbb"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 106,
+      "line": 108,
       "column": 29,
-      "endLine": 113,
+      "endLine": 115,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "9584155c047b1fe4d01bbae3f4ec9a84cf6a646ddb5f9436a1134550022448f9"
+      "id": "3487d384dcf6e4768c9387b650d9418b00fdb3a6267d3ae96c8d44f7cf30af3b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 107,
+      "line": 109,
       "column": 7,
-      "endLine": 107,
+      "endLine": 109,
       "endColumn": 49,
       "mutatorName": "BooleanLiteral",
       "replacement": "named.has(`${lens.name}@${lens.version}`)",
       "status": "generated",
-      "id": "b4a9d62a850ddb1c152e1dca65269c0fd6644cc7d2dda918a76a5c590e3d9879"
+      "id": "82a91a66aa39f228593a93f8d7b17246aaccaa399240b7ce4815d8ef0a944aeb"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 107,
+      "line": 109,
       "column": 7,
-      "endLine": 107,
+      "endLine": 109,
       "endColumn": 49,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "fea1900e0c5aed6d22c653a1bb21a0fdac0da337840b06edea397c94defe8095"
+      "id": "d643e4301f56cc4f1c1d9d77034595f1394f934f9924232558269f6904672dc5"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 107,
+      "line": 109,
       "column": 7,
-      "endLine": 107,
+      "endLine": 109,
       "endColumn": 49,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "24d072a905ec0f183575597e76eb95e79c1a88aa78da2a74fe159ee0a4faad78"
+      "id": "fbd62ad234bd527e4855e9b097d82c6a0bb0dff670ec6ee850176d74cb854373"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 107,
+      "line": 109,
       "column": 18,
-      "endLine": 107,
+      "endLine": 109,
       "endColumn": 48,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "3751546a974b3fd3d4e01a491c7c2753aac1701b90a6b29a724c3ce20b83b5ef"
+      "id": "175b3d9286d2ea6600a331884e4eea528a6aae07b3c2ddd83711e56253cdf641"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 109,
+      "line": 111,
       "column": 41,
-      "endLine": 109,
+      "endLine": 111,
       "endColumn": 103,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[]",
       "status": "generated",
-      "id": "97297dcc39206652b8c6e03244c5fd2f0e306aaaff03c8850c355b4fa776b96d"
+      "id": "d4f69ddbb4b6857eaa7d1255dc8fe0b504728dc76bfb8cf503072a1cc905c110"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 109,
+      "line": 111,
       "column": 42,
-      "endLine": 109,
+      "endLine": 111,
       "endColumn": 53,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "7894ead5989990d7ca9e96985b43d16c2c0e35a49b2c9fe2bdca485c1fc63713"
+      "id": "9f089c32ff025a997232f1329e3e0859d909702c8ce2af8bd82715de563f68a9"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 109,
+      "line": 111,
       "column": 55,
-      "endLine": 109,
+      "endLine": 111,
       "endColumn": 65,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "e020a9e08dab4eb33bf9b2b5d86913d55b2d0c0f2888141bf72586b1e2971c44"
+      "id": "59eab2ebffd2604690c91a78164a1849f34e42be32bb6614be09ec8992a102cf"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 109,
+      "line": 111,
       "column": 67,
-      "endLine": 109,
+      "endLine": 111,
       "endColumn": 76,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "e48f6bd5a9a688f395c8e487148c11808b8cc66796ac7bd5c3ec239f973393e9"
+      "id": "2b5937ac9bebd3670c896af205ea90b98ee82a3020e23231021672fb8a83fc55"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 109,
+      "line": 111,
       "column": 78,
-      "endLine": 109,
+      "endLine": 111,
       "endColumn": 102,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "f8ec904b9728f2b1bfa2291b662567d10062162066708ed72e209e0fe57ab88a"
+      "id": "bec25420163f5201fe0b02b2e3ec8f6bc2118441bffea4d3bcba25e878686733"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 112,
+      "line": 114,
       "column": 7,
-      "endLine": 112,
+      "endLine": 114,
       "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "1c9bfb1573dafe85e121f790128f691e86db967324d249b38993d410bdbeb31f"
+      "id": "97f615b0707496542e25bc92a43759a6e6d2a97a6ff857351ef1b8c93171121c"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 112,
+      "line": 114,
       "column": 7,
-      "endLine": 112,
+      "endLine": 114,
       "endColumn": 25,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "0b7cc5dac1889f647bf3eb713a0e1007b1cd668007217ddd015b31d40bc1b088"
+      "id": "a17e88b64d0659a9e7528bd89b3ac3dd35d37822acd55dca5f221ad66dbe0e14"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 112,
+      "line": 114,
       "column": 7,
-      "endLine": 112,
+      "endLine": 114,
       "endColumn": 25,
       "mutatorName": "EqualityOperator",
       "replacement": "blob === undefined",
       "status": "generated",
-      "id": "962e01b2f4fc10a9e30195b613cc044ae6843a884bd210f0025a189417322ec3"
+      "id": "805ff03f58bcd4f50d05583ac8df1bfe94e42ffd79ff1a885d9c03d0b43c2999"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 112,
+      "line": 114,
       "column": 38,
-      "endLine": 112,
+      "endLine": 114,
       "endColumn": 101,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "d2a6013542708aad0d76aae9f0db6dcdf3a6383916f035bf4e1c335773939479"
+      "id": "7f4cfaf9c9d0eb7dd2b6099c2fab3deed5e575372737fb636dc715037afc3a5c"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 112,
+      "line": 114,
       "column": 46,
-      "endLine": 112,
+      "endLine": 114,
       "endColumn": 76,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "452982293d2d6d65af9aed4f6a8b9c22b0b3fb16d708effca677321ded305a5b"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 117,
-      "column": 81,
-      "endLine": 122,
-      "endColumn": 2,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "b1c42109bfb569bfe18c6e1739603b11d242c7e88a4bf6cb8c56350847ab1eeb"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 118,
-      "column": 9,
-      "endLine": 121,
-      "endColumn": 3,
-      "mutatorName": "ArrayDeclaration",
-      "replacement": "[]",
-      "status": "generated",
-      "id": "e8333db098e67222b9d25d3d46502575ab9d7e0cf23fe0dd41419cf3f8ef4261"
+      "id": "f1087be3e425c8f5c07ae761932d637f3109b6dc5914646c7fcd3797b7c24330"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 119,
+      "column": 81,
+      "endLine": 124,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "fd7495f26c382ad6f6125d2dad738fb507715246706c096772a7800ba1bb438a"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 120,
+      "column": 9,
+      "endLine": 123,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "debb8ee32fab619a66208ed5588130b35294572b0826c362d84fb5661e414535"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 121,
       "column": 3,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 169,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "8ad92e5febe62072a84bea198b975267b75454dace49d28069f3af1fe69d16ec"
+      "id": "416f13a120202eaaf7ea25afb000d0ce0654d542d20325b458e737ded91ecd11"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 119,
+      "line": 121,
       "column": 98,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 111,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "9c7b0b081204ef7905e018b54c83d88d588e2bf2b43efe5337466c92ee799ee8"
+      "id": "37395383946cbf526a6a4707c536587851477be3124783a34b49f01398ecb753"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 119,
+      "line": 121,
       "column": 98,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 111,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "119c9a6e63a1a0ba35367ce7f91aeb6f0924f07cc78e24d06305deb09afb9000"
+      "id": "41f119cafc615f5a32d50a11677ab1454d054f8f27e8cbd7c2663e52c9fde01a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 119,
+      "line": 121,
       "column": 98,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 111,
       "mutatorName": "EqualityOperator",
       "replacement": "dropped !== 0",
       "status": "generated",
-      "id": "8b82945c4b4e835bc7d065706acc6f6cc1f84c8913ea67b7260d3b731058f64e"
+      "id": "d4f0919204a59b5615255ed4b89edd163b4578fcfc816553c95c0f5fdccedc1f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 119,
+      "line": 121,
       "column": 114,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 116,
       "mutatorName": "StringLiteral",
       "replacement": "\"Stryker was here!\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "08a4d843e40da7e5bbdd9e11dca8da8450a2a5ec4727e6f8dc0c22f854d3682d"
+      "id": "81dedea4a00bb807d38feb5862d47f50319921cbe960c43808794410baca2378"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 119,
+      "line": 121,
       "column": 119,
-      "endLine": 119,
+      "endLine": 121,
       "endColumn": 166,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "b351f22cca790d921c14057c8441775bf680ed8c33f054c5cbc1fbe97b8bed78"
+      "id": "03f730e17e013e176455c7b67c21ef4e35ce8595871b9728d3f1ebf29fdcf86a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 120,
+      "line": 122,
       "column": 22,
-      "endLine": 120,
+      "endLine": 122,
       "endColumn": 64,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "9fdc45304cf51b9cb074be0c9cd3285d8846d6ee7308db976c3d077e956306cc"
+      "id": "60dc6cff739d580db88e6b78a36bf36f05d29a860c2200eb47b417ae464d28e3"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 124,
+      "line": 126,
       "column": 57,
-      "endLine": 144,
+      "endLine": 146,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "92a01f23ad35a82d562ee785c079208cde31855405164207ca2f96bbd2aca1d5"
+      "id": "7897cfc846ab3b8abc24fa15c0c08f4412e157527443821939b00b9d60f69f8b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 126,
+      "line": 128,
       "column": 6,
-      "endLine": 126,
+      "endLine": 128,
       "endColumn": 27,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "4af5dc2ace83ce97c4d8d65bc68b2d42a900982c9d051ed8fcb48eb7b25b108c"
+      "id": "9ccd56f443a4bbab004cb8c2fda5da6882845f0929c579dd780bb68501d49e52"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 126,
+      "line": 128,
       "column": 6,
-      "endLine": 126,
+      "endLine": 128,
       "endColumn": 27,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "d8509dad9c6df6444cd2266cb2b14f1f0cecfdca595b504e4676c398edae69ec"
+      "id": "ba6e5d4fed54d722e773087e7e4bb4edcd05e31d9db51b813b76c866151443ba"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 126,
+      "line": 128,
       "column": 6,
-      "endLine": 126,
+      "endLine": 128,
       "endColumn": 27,
       "mutatorName": "EqualityOperator",
       "replacement": "messages.length !== 0",
       "status": "generated",
-      "id": "3f5482f4beff0061af329349dc90af367c1a778146d4dd507a571594d5a382fb"
+      "id": "eaa90f7f587f1542005d39dcab8f2cc2c837dc0916a5d63a3a7d4a227d83fc7b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 126,
+      "line": 128,
       "column": 59,
-      "endLine": 126,
+      "endLine": 128,
       "endColumn": 113,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "ea04578d34c15f3c0e36a4a11c0c4668f7ecca59a6f0ea097b9c4105b1ecb0ff"
+      "id": "a007a503913b89ee7a22922a30bd3d2515dea45737458cac55f91fad5433bb4a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 126,
+      "line": 128,
       "column": 92,
-      "endLine": 126,
+      "endLine": 128,
       "endColumn": 110,
       "mutatorName": "LogicalOperator",
       "replacement": "entry.data && null",
       "status": "generated",
-      "id": "5b7f3a5dfbf5b8256ccf1a37bbe7c6d9e9b75d50570393e31d240e32696f0380"
+      "id": "9d2da9e9529eaf9e82a59fda90cd0c8c71272134976789ce748e263762dac377"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 127,
+      "line": 129,
       "column": 39,
-      "endLine": 143,
+      "endLine": 145,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "22bb2796e9f9a8176ee3adaaf4c359623b994674a180a9af7ea7db1c83f46dca"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 4,
-      "endLine": 129,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "79044fc14396eba6e580367457b6d37301b53adcd7b230fce56658fa5b172583"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 4,
-      "endLine": 129,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "f6fecbc624cbed6fa0224bff93e7d5d4f42241f737773fe5196e432b30813a48"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 4,
-      "endLine": 129,
-      "endColumn": 39,
-      "mutatorName": "EqualityOperator",
-      "replacement": "typeof message.content !== \"string\"",
-      "status": "generated",
-      "id": "916167cf186a759c675ad514262f23ab6f54fb84460e35960c459ac828af1549"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 31,
-      "endLine": 129,
-      "endColumn": 39,
-      "mutatorName": "StringLiteral",
-      "replacement": "\"\"",
-      "status": "ignored",
-      "ignoredBy": "config",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "5d8361a28eaf8c9418880f65b02cd6717dff5e118876ca32603209c42c1c0ecb"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 42,
-      "endLine": 129,
-      "endColumn": 83,
-      "mutatorName": "ArrayDeclaration",
-      "replacement": "[]",
-      "status": "generated",
-      "id": "6fded72eecbfd3e8f379cd223c6e3da2b2aa84ace9026b6abd434dab8509fc88"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 43,
-      "endLine": 129,
-      "endColumn": 82,
-      "mutatorName": "ObjectLiteral",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "f98c3b6287fcc1fd75199feec6cdc99b7ca2b11ff565dd7da906d71633ba95eb"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 129,
-      "column": 51,
-      "endLine": 129,
-      "endColumn": 57,
-      "mutatorName": "StringLiteral",
-      "replacement": "\"\"",
-      "status": "ignored",
-      "ignoredBy": "config",
-      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "e574b65600c229483bdf269b505c7256c6afa4712e921b8c466aca03f5078d26"
-    },
-    {
-      "file": "packages/cli/src/evidence.ts",
-      "line": 130,
-      "column": 10,
-      "endLine": 142,
-      "endColumn": 4,
-      "mutatorName": "ArrayDeclaration",
-      "replacement": "[]",
-      "status": "generated",
-      "id": "25446716a1e6988ad0d035282b59fc298cc9ad91b112ddc1a564ac730e541987"
+      "id": "86ed73dec1b1e8d7439660e455f8eea8c4590006c4b456e94901e063e2f95efa"
     },
     {
       "file": "packages/cli/src/evidence.ts",
       "line": 131,
       "column": 4,
       "endLine": 131,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "aa569cd1f4cf06b0526088d3314a918735e3a65be8fb1c65c43d8d6bfea76054"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 4,
+      "endLine": 131,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "83a329101e6189e7611168ea0052eedfd0181243c0853a98245b88ee3ce69ea2"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 4,
+      "endLine": 131,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof message.content !== \"string\"",
+      "status": "generated",
+      "id": "a7e25f71d5bd4fa42d43714b063ea5eaf8355ebc680ea3b10e344dce93021ea4"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 31,
+      "endLine": 131,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3548ad21692ccc4d517377f974706a97170c61a256b62a3d9d1a39e9aab77016"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 42,
+      "endLine": 131,
+      "endColumn": 83,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "2e8a83cb40411a33a6d6732090ea030f2eea8cf6545057e5b281fb8601db8fa3"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 43,
+      "endLine": 131,
+      "endColumn": 82,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "70acaf831dba9c1616ccbd79f2f0bb7a432b1cee67e0f10b2a2cb548df65a209"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 131,
+      "column": 51,
+      "endLine": 131,
+      "endColumn": 57,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e9470df7a6ccead8096f70da65eb2950735ef6f745dfe9bbe2ada7b654030bf0"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 132,
+      "column": 10,
+      "endLine": 144,
+      "endColumn": 4,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "0c2a081669657e6a7b3993f5ffb7a0d56a596088770410262a7f6f68b5d6417e"
+    },
+    {
+      "file": "packages/cli/src/evidence.ts",
+      "line": 133,
+      "column": 4,
+      "endLine": 133,
       "endColumn": 45,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "3ad71d69b46f5b60f8d9f91ccb535380deb0996b2e894afce2a472edb3b27103"
+      "id": "4f6383ff0285d11a09ac8f459300402e0ce3c2e18a87ff0862c5e5a223cf37d1"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 132,
+      "line": 134,
       "column": 39,
-      "endLine": 132,
+      "endLine": 134,
       "endColumn": 41,
       "mutatorName": "ArrayDeclaration",
       "replacement": "[\"Stryker was here\"]",
       "status": "generated",
-      "id": "2960dfcb4dff49cca111e349f422f9f60a8646a6c8a87350b89c79b8ccf8256e"
+      "id": "6b43bbae4fc4c9563b5be3333bb53a2b00fcbfbe8c2d932a740cf03948ab521b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 133,
+      "line": 135,
       "column": 5,
-      "endLine": 140,
+      "endLine": 142,
       "endColumn": 7,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "3af7b2a7ce0c56d8220735035486ec0cc50f8c1efb6a92f04a47577cfdd65d25"
+      "id": "7b25b5032f12b517e28d34a37fd839a3eb8cffb28de508e9f2d4889fb0688129"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 7,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "2569d02462cf56ec771c0942153b15b8f4ecb7c62effe5f1c93944fdf5453232"
+      "id": "632ff0767498117f4e62e5a5a0d3be84e2ae8213240077144b0d1a8bae7545ca"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 7,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "71655ed6a8ebbf95df22c6fa6268f565f4e86823c09b8b5638ff97b24c2dfdf7"
+      "id": "66406bb4736fe58b0d17977002b8ce3337955fbd1200c49a072cc066348a8564"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 7,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "LogicalOperator",
       "replacement": "part.type === \"text\" || typeof part.text === \"string\"",
       "status": "generated",
-      "id": "a5a13775fb63b97951f3fcdadf4348715310296c28b00b34a9c3a038c07f90be"
+      "id": "0c2d50811c9601f547965401024de358fd5bcf483fc03faadfbfe16caa183fa2"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 7,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 27,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "6abc99ce0f3b164766282e6a92b45ce347762b8f980a5f8c3b751ef8e2066888"
+      "id": "fc9efbff41d318f991b8dd65730dcac5b9391f6148ffdbbfa08cf397d99ad560"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 7,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 27,
       "mutatorName": "EqualityOperator",
       "replacement": "part.type !== \"text\"",
       "status": "generated",
-      "id": "b991cc9c3e0e88510f7f1e027e87352ad126b47ec84147853bd9c58dc8e5a313"
+      "id": "a0cf6f2c0b9f9a46bcce2fd7706aedb0cfb564c2d1837ecef1cf3d9d5155d421"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 21,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 27,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "d3b7f9d75316e2323dc0d4d19312f2bcd2144a5dd6f483950986d4d88c5743a7"
+      "id": "616ad5d8be73f9b9c4ec51001b6f9c473ed17e71eef20af2884e06ed975f1e8f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 31,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "8f7268a5fc70021f7f1c3154237c3789c4f2f4e9a4e8ec4891bce9c142a7036b"
+      "id": "ddb428a53f673daa0b37da4a74ead2677b42ff3c439915f47764f6e744604c6a"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 31,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "EqualityOperator",
       "replacement": "typeof part.text !== \"string\"",
       "status": "generated",
-      "id": "488059aaff564b0ca0bcf580fcebe35ef7755960d55e795cde5299e5ec28a2f7"
+      "id": "456d4fed6f228f7c9e31dd1a199bbebb3beafff2303171eeb7513047c64bc4a8"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 135,
+      "line": 137,
       "column": 52,
-      "endLine": 135,
+      "endLine": 137,
       "endColumn": 60,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "0516a5ab83ead95010de87ecd614d214d43a02d5db09abf5101e9f0f7ce392c8"
+      "id": "74bad76a4da3cc92917957188ec50c1602277c78da6b15a69810bb42103a47d9"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 10,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "3a46ad2d8253ca9a4bc25d2841641d1f4760f22050350331481d8128b5f51547"
+      "id": "c39a51a3a608e6bdf6d251223a20aa4d9cfa9260abd3692cd668cad1a2a0ae89"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 10,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "6ee14e5a3599fabaab542dd138535a434478d0b22ec71458708e5901e5a5fe06"
+      "id": "675fe84042aa7128d374636cc4949458166e210060fae252c732c9f302873f6f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 10,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "LogicalOperator",
       "replacement": "part.type === \"thinking\" || typeof part.thinking === \"string\"",
       "status": "generated",
-      "id": "c4089131758ad344fbb875d9a18f5396108fd33f36325fd3fa7c48a74cb34269"
+      "id": "8c0243e515680527df4e768d4b0175e94384f7b4eb0e760ae601e40a6d65ff7d"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 10,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 34,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "ab0c1b8a08233ef61041491d28771568c55fd58f3e96c88b085a9cbe4f175aed"
+      "id": "817f201b0f09cb9b28315e5ccfcfe4caff51f4cad236d4d111eccbc48e5ff66b"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 10,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 34,
       "mutatorName": "EqualityOperator",
       "replacement": "part.type !== \"thinking\"",
       "status": "generated",
-      "id": "d2780fe72467e07768051a57928dfbb80c883da0974c80a00f0090170dc4b68d"
+      "id": "909bead29e92815ec55333a6c6283c6d40807c23e5a89af12a0436589713401f"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 24,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 34,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "f50fc82941803a41cfc09ee954fa364f07bc23baf846a30b614cb94f6068e7dc"
+      "id": "b3c7a129841199e87efa3bae7d037e44d950b043ed9381d4828bf8b820b1a5dd"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 38,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "92f1d2cf422e78bd79191bb92bd3f53f25c41bcf10c06bd9c73717ef2c559d55"
+      "id": "ea9b3ddd675b2523afe478db52ee52eaf36e2b991d99918ac28ace0778c5a7d5"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 38,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "EqualityOperator",
       "replacement": "typeof part.thinking !== \"string\"",
       "status": "generated",
-      "id": "618b0456fdbedb6143070c9e4792edef4b18d91db99730e4a27a7295f5aaa8a8"
+      "id": "2bfb59e5eae79f2b135069878afdd49aca0dc6536825670c70b7aa4ac4557e18"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 137,
+      "line": 139,
       "column": 63,
-      "endLine": 137,
+      "endLine": 139,
       "endColumn": 71,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "90459c8bbd65bc9826cda6248d1b79af43550cd5b19788366900c9e25170dc29"
+      "id": "16905c32b2b5108904a438749c14c4625b5357dbae21e016c1dbe3b27469e684"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 138,
+      "line": 140,
       "column": 11,
-      "endLine": 138,
+      "endLine": 140,
       "endColumn": 39,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "9df76522a3f3bc657f6bfe33eefeb111083fac3c94a64d90b20f194a6550fc9f"
+      "id": "6963612af15a0215c43223b7f77b96b893daee08ad5107845a9a26299fe94782"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 146,
+      "line": 148,
       "column": 49,
-      "endLine": 148,
+      "endLine": 150,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "7b1a841a8ec3504f8fa3c1391f5ee91829672d988576add1b0b389201d2384db"
+      "id": "a4dce5f61d3bd3c27229bf7febf7f9fbe13e7f9e474bcb45616e464187c3f5d5"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 147,
+      "line": 149,
       "column": 20,
-      "endLine": 147,
+      "endLine": 149,
       "endColumn": 27,
       "mutatorName": "Regex",
       "replacement": "/\\r\\n/",
       "status": "generated",
-      "id": "6d8cb99a17a723dab57a0207733154f08cd8fe8df32f4fcb4755ccf8ddffd245"
+      "id": "bee14a29ca863f88f99dccc3995b2b9063afbf83534a939a602a154c1052988e"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 147,
+      "line": 149,
       "column": 33,
-      "endLine": 147,
+      "endLine": 149,
       "endColumn": 69,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "74890b646a7cd12d375862892979ba4624f684e7015f8c367c51aee041a90a33"
+      "id": "96322a97d5c59c0cbfd1e75a9e6f9a8805957e257692e576393b6898247a9ec2"
     },
     {
       "file": "packages/cli/src/evidence.ts",
-      "line": 147,
+      "line": 149,
       "column": 43,
-      "endLine": 147,
+      "endLine": 149,
       "endColumn": 69,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "1fcb40abeadbe7383ec0c120aa356c0116fb57da71cc0816714967f9bc90ba0e"
+      "id": "c088ad25231c4cab65598bbc8c659b42810f267590cfaa04a15eb931cb8e2633"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 444,
+      "line": 446,
       "column": 8,
-      "endLine": 444,
+      "endLine": 446,
       "endColumn": 28,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "9370bbedd1374c6ee6467099dbc2fa2a27771deb9424ca3f1c72fdc1e0c6489a"
+      "id": "cb862859ed55dd6a5c9ebd028a2ffdde5d26513d300016c75f2d9dd37213fbba"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 444,
+      "line": 446,
       "column": 8,
-      "endLine": 444,
+      "endLine": 446,
       "endColumn": 28,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "35ac3ff5e69f39ad8692803335c727d2438e8829460929a75039816d3f074004"
+      "id": "992ec220a6f784758951d0c4a489d4782bc2968f82a551d4e9d7a21df4c99f36"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 444,
+      "line": 446,
       "column": 8,
-      "endLine": 444,
+      "endLine": 446,
       "endColumn": 28,
       "mutatorName": "EqualityOperator",
       "replacement": "first !== \"evidence\"",
       "status": "generated",
-      "id": "28c36bc131d68fc3b3450a301fc6f47a657fc5de2c23283be0480b4c69e7dd21"
+      "id": "0f002ae0f5b8718fb69f09ee2837cbd9561a69d042713876783696e080c55a15"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 444,
+      "line": 446,
       "column": 18,
-      "endLine": 444,
+      "endLine": 446,
       "endColumn": 28,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "4bd37130431c84cf36c345fe895bfd7087cd00495752419e03524c75ecb0809e"
+      "id": "89bc39e837fd0544beadd33fa97d7fbf27be09c7ad816d7ec41cbf7f2458dd40"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 444,
+      "line": 446,
       "column": 30,
-      "endLine": 453,
+      "endLine": 455,
       "endColumn": 5,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "4a922fc71f1d95ffe1ae29104a660576d326f868ec1967bdd1eae1565979cd1a"
+      "id": "783e3ebbae8f0c2d9d089533347462878663936f832f0a0c91d53ab697792f48"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 445,
+      "line": 447,
       "column": 9,
-      "endLine": 445,
+      "endLine": 447,
       "endColumn": 28,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "5a06add7bd6e9f871bf6de4ddebdae82e8008fc2645378cda701ea7b9169da1b"
+      "id": "7a4f9545e6014a3a9898f373b363eba689ba5bae0a9bac9b513f1f826b6365d4"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 445,
+      "line": 447,
       "column": 9,
-      "endLine": 445,
+      "endLine": 447,
       "endColumn": 28,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "0ced111a0df14023d7f4faa447f85dd72b8b6d6ea5da94de64ca85ce9cc0c6ee"
+      "id": "d8119d01711a74279bb121f4c26b4a3fea5a794f8538732440c54a02e6b77252"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 445,
+      "line": 447,
       "column": 9,
-      "endLine": 445,
+      "endLine": 447,
       "endColumn": 28,
       "mutatorName": "EqualityOperator",
       "replacement": "others.length === 2",
       "status": "generated",
-      "id": "dc138d624b77b5104b31748c4ab9dfcd1f00c720b9179176ba72820661a02b99"
+      "id": "30e6d3a92ce98d0491fde44241042271360832889fc93e526038ab6e3f1061f4"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 446,
+      "line": 448,
       "column": 6,
-      "endLine": 446,
+      "endLine": 448,
       "endColumn": 104,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "aac86da854a3886a2941c328c9b7787ccb35e48697bc61f7f2a3259d4d17e80e"
+      "id": "9a996d1cc0fd2088f66be40679272764960d7921f65615462e373921250365cb"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 446,
+      "line": 448,
       "column": 27,
-      "endLine": 446,
+      "endLine": 448,
       "endColumn": 102,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "2190a29cbdb64ad729da08ced27e59420d96006003848279c6c4e45043336728"
+      "id": "59afbe5b380a689dc5896f38bb6e5eefc0db67a828908a8fc5964a2449462b98"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 9,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 35,
       "mutatorName": "BooleanLiteral",
       "replacement": "/^[0-9a-f]{16}$/.test(id)",
       "status": "generated",
-      "id": "aab39de52309a3a30124f53933ba6b83ced3530052e2f7ecd88ccabd801621e3"
+      "id": "68e01419ed2d0bcd1a6b167b12dedb61e26b27fc0250ec806b25d7dd4cebb025"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 9,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 35,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "f7019fc75a0101b18ba10e70eae6066336f529b3f69b97ae8624a57e6e787716"
+      "id": "519837fc581671d1b7e558b8b21b01c3308f3551ed9fd8dacfb254b4dccd9612"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 9,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 35,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "e52b5a020aac0c843ef28e8c5c304a5f78b77f58b4d10c48b3cb86e6041483d3"
+      "id": "b9464a1cb3a6deb2b5ece5550ba14ab9a0e9cc64e4db14815bc9e6df8fe60abc"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 10,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 26,
       "mutatorName": "Regex",
       "replacement": "/[0-9a-f]{16}$/",
       "status": "generated",
-      "id": "2fc620198f8be7f48a7287e873447b7216919b162a4bc2827ecd22424e2f40f0"
+      "id": "d8cf4abb985c999923125c84e06cad4adfb991fe05820bf7232d80019df5a3f0"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 10,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 26,
       "mutatorName": "Regex",
       "replacement": "/^[0-9a-f]{16}/",
       "status": "generated",
-      "id": "2b8297dcacb01d5e386e2b5ffabd284c29992ac89d50befb0a2cda8704b44f5d"
+      "id": "9d1b4275da0f4db804275c1a854355fef3e88fda6829e923db00e5494636c1fa"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 10,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 26,
       "mutatorName": "Regex",
       "replacement": "/^[0-9a-f]$/",
       "status": "generated",
-      "id": "0c0f265ebe1f049936c21e5f1b0c2126c1a6ad83b2e6fc7452a3d6705e01e4ec"
+      "id": "b3b05f146269f07b1103033ae1b5528db5d541d91f483f2f072aa07735a54c47"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 10,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 26,
       "mutatorName": "Regex",
       "replacement": "/^[^0-9a-f]{16}$/",
       "status": "generated",
-      "id": "6bd504c64977ccf8e4d920cc38468c383db7d0b863f799da11132533be08a830"
+      "id": "647e2b22f6cc96969a7333eebe794e0611e3d0bd5ee8aeb4c9b8f00f8dbc5a98"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 37,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 91,
       "mutatorName": "CallExpression",
       "replacement": ";",
       "status": "generated",
-      "id": "1e49a75c4062fce063e7fa666b6e60118e25b16e4601b8cb4dfc03aed8e0a4d3"
+      "id": "ee49da42d24249065d6a04cdab8e82a2ca004385c9f0840b34d2acc68693f40f"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 448,
+      "line": 450,
       "column": 58,
-      "endLine": 448,
+      "endLine": 450,
       "endColumn": 89,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "0d8728d4ea6c868cea7e57f6a1438922d4ddb8e9b5f068585de00515c5c31b00"
+      "id": "2f354f5e07c17641d2ab53a410c365651f6360227e9d97130e628863657764d6"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 449,
+      "line": 451,
       "column": 57,
-      "endLine": 452,
+      "endLine": 454,
       "endColumn": 6,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "840364baa3870311f5a28edc8e7ed92a2c336c80a0d6536866a8e2e7bfe7110a"
+      "id": "3bcce3852fc375f558aa11d87dacd4c80927b4093d7f46a0b028e405ee6a2840"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 451,
+      "line": 453,
       "column": 10,
-      "endLine": 451,
+      "endLine": 453,
       "endColumn": 36,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "47ee8ff2ea3002e38ee5ce1af890902a3ed33926813399049dabfa459b7b8e09"
+      "id": "ffc68b5af4b78f07ce9aad3ac06d35d3a65bfd5b83f02203ca3188e60795aa8d"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 451,
+      "line": 453,
       "column": 10,
-      "endLine": 451,
+      "endLine": 453,
       "endColumn": 36,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "62c1f618518f5be43f6a23fbdf0cd17f6e07c5521560c862d9448bc5c608c19d"
+      "id": "cb43b26a541569e44105ede31fed7337dc0ac4f59f52c0f8dc0bdbb49a4bf60b"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 451,
+      "line": 453,
       "column": 10,
-      "endLine": 451,
+      "endLine": 453,
       "endColumn": 36,
       "mutatorName": "EqualityOperator",
       "replacement": "values.round !== undefined",
       "status": "generated",
-      "id": "3161c042aff9807e2d8990f6935fedaf6a14d9001dcf3ebfadcafeee03b8dfb6"
+      "id": "639bd4643bb08ad60de353b6ee535d4fe3c862b8333694d5e7f54d47d91d1d4e"
     },
     {
       "file": "packages/cli/src/main.ts",
-      "line": 451,
+      "line": 453,
       "column": 44,
-      "endLine": 451,
+      "endLine": 453,
       "endColumn": 67,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "b013d795c5f174c02002a17c87c767152171c9186647fc1686039d7e0fc8e09d"
+      "id": "70e93307b66b6413021fbe975ca3bd9b0705a78cd7b39294274faf0930e1a7eb"
     },
     {
       "file": "packages/cli/src/store.ts",
@@ -2958,66 +2969,48 @@
       "id": "6fd6c947c9b86eb2516fc44ec7d9dd53046a389d30e727edb764d9b3a0a6e984"
     },
     {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 23,
+      "column": 32,
+      "endLine": 23,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "93e6579f474fdc109b25eda3c87cc24304a218bb49bc85864b20cecd2b12ab0c"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 147,
+      "column": 37,
+      "endLine": 147,
+      "endColumn": 103,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "85d6ab370d0f7ed6d9f0d374007317161a715e026b86b30a7d9d5812d6dca1fc"
+    },
+    {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 186,
+      "line": 185,
       "column": 107,
-      "endLine": 190,
+      "endLine": 189,
       "endColumn": 2,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "d4ea82795f2905e754e969377139ce7a5cc9671663a99e5e9f50277b4d8df7f2",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 187,
-      "column": 6,
-      "endLine": 187,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "2a80f65957ac4a20f6d6370e9ab544b3d26ae4770892dfd35189a8c8805a275b",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 187,
-      "column": 6,
-      "endLine": 187,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "b470d1ab713d2fa3a1bed7e507c1562a34a40c63f8422140c07f6bd7fa3f63b3",
+      "id": "59060f441f28839a2e0c09b92ad1e7fb9adeb6fd9df50fadaec658215ffb810b",
       "claim": "killed",
       "evidence": {
         "test": {
           "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "CompareHarness evidence",
-            "selects no round and gathers nothing for an unattributed comparison"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3025,21 +3018,65 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 187,
+      "line": 186,
       "column": 6,
-      "endLine": 187,
+      "endLine": 186,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "53f988908463be6a301e20da9d7802d34c02e442d0e6b0d503bb422b1e3560d4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
+          "path": [
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/compare.ts",
+      "line": 186,
+      "column": 6,
+      "endLine": 186,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d0c746ea5638c26a431ef498173bdac5cda92e60603488290f8914f1915110a2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
+          "path": [
+            "CompareHarness ownedRun",
+            "selects no round and owns no run of an unattributed comparison"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/compare.ts",
+      "line": 186,
+      "column": 6,
+      "endLine": 186,
       "endColumn": 39,
       "mutatorName": "EqualityOperator",
       "replacement": "revision.round !== \"unattributed\"",
       "status": "generated",
-      "id": "29d1081806ddb0e9c70581a7482e871ca9abdc8f7f209efcde2ab35c791727a3",
+      "id": "f917724ac80874ee30070b6abd097349e82362189675322806ee5507df77a3f3",
       "claim": "killed",
       "evidence": {
         "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+            "CompareHarness ownedRun",
+            "selects no round and owns no run of an unattributed comparison"
           ]
         }
       },
@@ -3047,100 +3084,34 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 187,
+      "line": 186,
       "column": 25,
-      "endLine": 187,
+      "endLine": 186,
       "endColumn": 39,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "5c97cad56e05a4ec0c852c8acea45d15d5654bda331b46ac090d55c4c096fe74"
+      "id": "1c0752a5491775635bb794dd0d5118c7abb86c3017edf878e882d8f2948a2756"
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 189,
+      "line": 188,
       "column": 21,
-      "endLine": 189,
+      "endLine": 188,
       "endColumn": 65,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "618d0188c478082139a02398bd3aa8a3f15bf622ed00b6177ca662cd27bd30be",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 201,
-      "column": 38,
-      "endLine": 213,
-      "endColumn": 2,
-      "mutatorName": "BlockStatement",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "132929d3d5f70063acb47cf5cfd1b830b6fac34b1ffef5644f7b9e19a761487d",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 202,
-      "column": 6,
-      "endLine": 202,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "04f208ac166915f900322d7f20ec74e3f68d3dd58c0496aa9d18993a51fe8b0b",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 202,
-      "column": 6,
-      "endLine": 202,
-      "endColumn": 39,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "4476c32bffee0ed854f33bd711f290f9e754b4d0ad330957183c5a0bbba1168b",
+      "id": "0f10abafd4c60f49d33c444a62adcb97756f9ddefc39f582b77d2ea77fa619cc",
       "claim": "killed",
       "evidence": {
         "test": {
           "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "CompareHarness evidence",
-            "selects no round and gathers nothing for an unattributed comparison"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3148,14 +3119,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 202,
-      "column": 6,
-      "endLine": 202,
-      "endColumn": 39,
-      "mutatorName": "EqualityOperator",
-      "replacement": "revision.round !== \"unattributed\"",
+      "line": 199,
+      "column": 105,
+      "endLine": 210,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
       "status": "generated",
-      "id": "493e8e3ae7d9f91907fb1fb93e554343a9c606939856cfa51c1514c4234e7ed4",
+      "id": "def5f6f1493791d12d349ca6d779ffc92419e614def2444fcc66cf07978190a6",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3170,27 +3141,93 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 202,
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "85c611be78895221ba4231f90fbfe9e78b5d41366cf7d36762272040cd0f993d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/compare-evidence.test.ts",
+          "path": [
+            "melian compare evidence",
+            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/compare.ts",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "bf7d39c8b41e3ff976cc1a5397868db5f04d42422af9bf51f2f500fa002dcf00",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
+          "path": [
+            "CompareHarness ownedRun",
+            "selects no round and owns no run of an unattributed comparison"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/compare.ts",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 39,
+      "mutatorName": "EqualityOperator",
+      "replacement": "revision.round !== \"unattributed\"",
+      "status": "generated",
+      "id": "4f8d9801214c3e592b8e14870c83176b0f01047fbc4791228c8e0058fc659757",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
+          "path": [
+            "CompareHarness ownedRun",
+            "selects no round and owns no run of an unattributed comparison"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/compare.ts",
+      "line": 200,
       "column": 25,
-      "endLine": 202,
+      "endLine": 200,
       "endColumn": 39,
       "mutatorName": "StringLiteral",
       "replacement": "\"\"",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "9ada595bbd63cc86a2a0fe9f230e94cb019dccf743e14c19895ef924223de431"
+      "id": "1770fb54c786a25eb3217a99a407dc3e24699efb35711e3995ef7b3f82216395"
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 204,
-      "column": 48,
-      "endLine": 211,
+      "line": 202,
+      "column": 35,
+      "endLine": 209,
       "endColumn": 3,
       "mutatorName": "BlockStatement",
       "replacement": "{}",
       "status": "generated",
-      "id": "c7a441dd53cacf42cb90abe6644bbbe0b764dc523bef28bdb84ff6ceae3aefcc",
+      "id": "cc5b61a055dbb63177330908f37107009aca6ebe1e1a25b7df270caa8e99b20c",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3205,21 +3242,21 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 207,
+      "line": 205,
       "column": 17,
-      "endLine": 207,
+      "endLine": 205,
       "endColumn": 102,
       "mutatorName": "OptionalChaining",
       "replacement": "(await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()]?.adjudication.task",
       "status": "generated",
-      "id": "d854369321b5909b2f65f370156d056d63a25b566ffebbbcf5583b23e1a5936e",
+      "id": "a0a65bef42808d074a3cefcad810a00ca4df4507911c296f5d135d0918a25758",
       "claim": "killed",
       "evidence": {
         "test": {
           "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "CompareHarness evidence",
-            "gathers nothing for a round when its revision's review has no adjudication yet"
+            "CompareHarness ownedRun",
+            "owns no run of a round when its revision's review has no adjudication yet"
           ]
         }
       },
@@ -3227,21 +3264,21 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 207,
+      "line": 205,
       "column": 17,
-      "endLine": 207,
+      "endLine": 205,
       "endColumn": 96,
       "mutatorName": "OptionalChaining",
       "replacement": "(await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()].adjudication",
       "status": "generated",
-      "id": "dcebd76a1d138768f016b3a6a244e1571672c31b50f8180c95683326a3ef6733",
+      "id": "0c054585c0fe44d3c6001a42d88caa68a5c9330e9cdb39351fa2cf71ebc7c1fb",
       "claim": "killed",
       "evidence": {
         "test": {
           "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "CompareHarness evidence",
-            "gathers nothing for a round when the review index holds no review of its revision"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3249,21 +3286,21 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 10,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 84,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "782817e49e2b5eee5bbe25e8c8fbbdaca3c938aacc12de4c1e830cdb23e5fadd",
+      "id": "dfe638baac8a8e37103bfc2431d13bb20e9c3e9a27cf01f597da96a7ab47baff",
       "claim": "killed",
       "evidence": {
         "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "melian compare evidence",
-            "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3271,14 +3308,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 10,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 84,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "c7bc52817fd30773961a6469586e19ee3f5da5a82e0e9cee61c1ef9ccd27e61d",
+      "id": "3b0b6834e3536ec6d70b7d1a6c2f15f0c6743cf33a0d92a17f3ef817f6bac749",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3293,21 +3330,21 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 10,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 84,
       "mutatorName": "LogicalOperator",
       "replacement": "verdict !== undefined || round.stored.tasks.some(task => task === owner)",
       "status": "generated",
-      "id": "dd97ae25e71aee16247bb800930cabf5d7089ffa85dadd0be8d9a2f51efbe3d1",
+      "id": "ee5303dd2544f2d01309ce4e20e75814462d990f09bda4e1e0e902b94808f4b5",
       "claim": "killed",
       "evidence": {
         "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
+          "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "melian compare evidence",
-            "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3315,14 +3352,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 10,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 31,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "da5682373a20ea525525e1f064ca432f365520d3816e3440f1ec79acc84105ae",
+      "id": "ac476aff1547b3e3de710e14a800b1bb81c0299bce42f259756d237f26f273b7",
       "claim": "equivalent",
       "evidence": {
         "reason": "selected() throws notReviewed unless the stored round has a verdict, so round.verdict() is never undefined here"
@@ -3331,14 +3368,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 10,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 31,
       "mutatorName": "EqualityOperator",
       "replacement": "verdict === undefined",
       "status": "generated",
-      "id": "e332ff3d9f18d208ff1208191b9bf37a311bd8c007be5978fa68b990e01b2b37",
+      "id": "45a6b01811d76d583bfdd7baf5572d301784e6b2f5d4d1cf908939a415518d3c",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3353,21 +3390,21 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 35,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 84,
       "mutatorName": "MethodExpression",
       "replacement": "round.stored.tasks.every(task => task === owner)",
       "status": "generated",
-      "id": "967c27e446645b2f742f053ea58c9d93c982debfd83355116d0d2252a8f18a30",
+      "id": "4e6fa4495fc0a244adfbd6c9d7b53e9bdc37b1f8449a0ed934585464eee238dc",
       "claim": "killed",
       "evidence": {
         "test": {
           "file": "packages/pipeline/test/compare-evidence.test.ts",
           "path": [
-            "CompareHarness evidence",
-            "gathers nothing for a round when the review index holds no review of its revision"
+            "CompareHarness ownedRun",
+            "owns no run of a round when the review index holds no review of its revision"
           ]
         }
       },
@@ -3375,14 +3412,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 59,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 83,
       "mutatorName": "ArrowFunction",
       "replacement": "() => undefined",
       "status": "generated",
-      "id": "48e19a1d018ca4660595c471bdec4b1aa2e24568d9407a70be59ab0860c18fe8",
+      "id": "145e020d4fa7d78b5b9ed2f4a61bba8ffd71644a3a0bf765b05e295a873b33a9",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3397,14 +3434,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 69,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 83,
       "mutatorName": "ConditionalExpression",
       "replacement": "true",
       "status": "generated",
-      "id": "42cb16279928882d51ada3194d1a55f106fc84a97510546e9674d36529e654ee",
+      "id": "947feda9febf2ed310599f32d401f489496800546fb65bab2ebee68be0494dd1",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3419,14 +3456,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 69,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 83,
       "mutatorName": "ConditionalExpression",
       "replacement": "false",
       "status": "generated",
-      "id": "ceaba2486fc1ac2aa8abf58fc1c818284ee7615f3f04a8ee05771189dc08e68b",
+      "id": "825c053d825ef28f02db603bceb70de4fa3b145c24387d2bbcb77e067f39b5eb",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3441,14 +3478,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 208,
+      "line": 206,
       "column": 69,
-      "endLine": 208,
+      "endLine": 206,
       "endColumn": 83,
       "mutatorName": "EqualityOperator",
       "replacement": "task !== owner",
       "status": "generated",
-      "id": "8ce1af2dd76a69f1e3026f830ac6bc9ecba27af9c389bbb9e8eba4132fa5657b",
+      "id": "3f1bd4fb01eb5f4b5378f429336dbb12fee620e252f2f0ffbdae38bf0f2fb05c",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -3463,102 +3500,14 @@
     },
     {
       "file": "packages/pipeline/src/compare.ts",
-      "line": 209,
+      "line": 207,
       "column": 6,
-      "endLine": 209,
-      "endColumn": 24,
+      "endLine": 207,
+      "endColumn": 47,
       "mutatorName": "ObjectLiteral",
       "replacement": "{}",
       "status": "generated",
-      "id": "9c584c310ba7e9298f451ca8989948a7ffb02e1cf1bc8d589dfa4bfeb456622e",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 212,
-      "column": 9,
-      "endLine": 212,
-      "endColumn": 28,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "true",
-      "status": "generated",
-      "id": "adb308449df7d12b98159e612fbd293e6e0d444344751b487e5a9347a845ccf4",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 212,
-      "column": 9,
-      "endLine": 212,
-      "endColumn": 28,
-      "mutatorName": "ConditionalExpression",
-      "replacement": "false",
-      "status": "generated",
-      "id": "fa604ce53b3233ef48cd1bec81496f4e64674492a4cdd9d4946d111b162f34ec",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps no evidence for a round whose run this clone no longer holds, and says a rerun is a new conversation"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 212,
-      "column": 9,
-      "endLine": 212,
-      "endColumn": 28,
-      "mutatorName": "EqualityOperator",
-      "replacement": "owned !== undefined",
-      "status": "generated",
-      "id": "6b6b6c6d1cbfcd00e0e46bf33a5c7cce9cc5acb90581c68b5e6490c176cc018d",
-      "claim": "killed",
-      "evidence": {
-        "test": {
-          "file": "packages/cli/test/compare-evidence.test.ts",
-          "path": [
-            "melian compare evidence",
-            "keeps each covering lens run once for two misses, and prints them visibly from a later process"
-          ]
-        }
-      },
-      "survivorClasses": []
-    },
-    {
-      "file": "packages/pipeline/src/compare.ts",
-      "line": 212,
-      "column": 77,
-      "endLine": 212,
-      "endColumn": 98,
-      "mutatorName": "ObjectLiteral",
-      "replacement": "{}",
-      "status": "generated",
-      "id": "aaf13ba7fdfeae5dc3576a0d072c767d6f85212e3275743fe8fa6e2a8e1c5950",
+      "id": "69a2be1ee122987de2603239bb68a48aeca0651bc26cfdf13d70199266661166",
       "claim": "killed",
       "evidence": {
         "test": {
@@ -4262,9 +4211,7 @@
       "evidence": {
         "reason": "MissEvidence.from replaces the pointer's stages with the IDs of the stages it is given"
       },
-      "survivorClasses": [
-        "seeded-default"
-      ]
+      "survivorClasses": []
     },
     {
       "file": "packages/pipeline/src/evidence.ts",
@@ -6816,13 +6763,13 @@
       "line": 224,
       "column": 4,
       "endLine": 224,
-      "endColumn": 233,
+      "endColumn": 428,
       "mutatorName": "StringLiteral",
       "replacement": "``",
       "status": "ignored",
       "ignoredBy": "config",
       "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
-      "id": "8b63cbb55ee750958810d290e04185712eaf0c63566c9325c3f69cd78a4e962c"
+      "id": "1f8e67f4b6d12c5e98cb5a40e208c0cec937e35c64f5c8f2041413be0fb3f189"
     },
     {
       "file": "packages/pipeline/src/evidence.ts",
@@ -8257,9 +8204,7 @@
       "evidence": {
         "reason": "at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
       },
-      "survivorClasses": [
-        "numeric-bound"
-      ]
+      "survivorClasses": []
     },
     {
       "file": "packages/pipeline/src/evidence.ts",
@@ -8275,9 +8220,7 @@
       "evidence": {
         "reason": "at kept 0 bytes is the stage header alone, far below 16 MiB, so the loop stops at 0 either way"
       },
-      "survivorClasses": [
-        "numeric-bound"
-      ]
+      "survivorClasses": []
     },
     {
       "file": "packages/pipeline/src/evidence.ts",
@@ -11044,7 +10987,7 @@
       "survivorClasses": []
     }
   ],
-  "total": 647,
+  "total": 646,
   "omitted": 0,
   "unmutated": []
 }

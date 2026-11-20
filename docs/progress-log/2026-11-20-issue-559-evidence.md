@@ -7,10 +7,13 @@
 - ba0d974bf adds doctor's `evidence` line and makes `melian store prune` keep `evidence/` and count its bytes.
 - d79f365a6 moves the choice of stages to `MissEvidence.stagesAt` and the ownership check into `CompareHarness.evidence`. A round counts as the run's owner only when the review index's adjudication task is one of the round's tasks.
 - aabaf0c01 adds the tests the mutation run asked for, and takes the base and head from the round.
+- 9812df9b7 records the code hashes the work changed.
+- 355d8985c keeps a miss's evidence out of the adjudication's code hash. `compare.ts` no longer imports `MissEvidence`: `CompareHarness.ownedRun` returns the owned round, its verdict and the storage, and the CLI's `CloneEvidence` calls `MissEvidence.gather`. A test in `scripts/code-hashes.test.mjs` asserts that the adjudication producer reaches neither `evidence.ts` nor `telemetry.ts`; it failed with `expected [ …(117) ] to not include 'packages/pipeline/src/evidence.ts'` and then passed. Against 9812df9b7 the adjudication producer's list lost `decisions.ts`, `evidence.ts` and `telemetry.ts`. Against the base no producer's list changed, and only the hashes of `config.ts`, for `evidence.budget`, and `compare.ts` moved.
+- 94f5da0b6 makes the budget's refusal name `<state>/evidence/<changeset>/`, say that prune keeps it, and say to raise `evidence.budget` until the prune lands in [issue #627](https://github.com/melian-agent/melian/issues/627). It no longer tells anyone to remove evidence by hand. Doctor's warning, the help text, the guidelines and the decision say the same. The two refusal tests and the doctor test failed on the old wording and then passed. No producer's list changed, since `evidence.ts` is in no producer's reach.
 
 ## Not built
 
-`melian store prune --apply` does not remove evidence 90 days after a merge. No code reads a pull request's merge time, and the retention decision requires its plan-to-removal races closed before prune removes anything durable. The decision records it as a question for the coordinator.
+`melian store prune --apply` does not remove evidence 90 days after a merge. No code reads a pull request's merge time, and the retention decision requires its plan-to-removal races closed before prune removes anything durable. The coordinator deferred it to [issue #627](https://github.com/melian-agent/melian/issues/627) on 2026-11-20, as an answer on approach.
 
 ## Tests first
 
@@ -25,10 +28,10 @@ The store, gather and CLI rules were written before their tests. The mutation ru
 
 ## Mutation inventory
 
-[The inventory](2026-11-20-issue-559-evidence-mutants.json) is version 2, from `melian mutants list c2e68c4e7...HEAD --claims-in packages/pipeline/src/evidence.ts --claims-in packages/pipeline/src/store-prune.ts --claims-in packages/pipeline/src/compare.ts --json --all` at aabaf0c01. It lists 647 mutants. The three claimed files hold 335 generated and 56 ignored. Of the 335, 325 are `killed` and 10 are `equivalent`, each with its reason.
+[The inventory](2026-11-20-issue-559-evidence-mutants.json) is version 2, from `melian mutants list c2e68c4e7...HEAD --claims-in packages/pipeline/src/evidence.ts --claims-in packages/pipeline/src/store-prune.ts --claims-in packages/pipeline/src/compare.ts --json --all` at 94f5da0b6. It lists 646 mutants. The three claimed files hold 331 generated. Of the 331, 321 are `killed` and 10 are `equivalent`, each with its reason. The first inventory, at aabaf0c01, held 335 claims, 325 killed; the move to `ownedRun` changed `compare.ts`'s mutants.
 
-Each kill ran by hand against its named test alone. The test was matched by its anchored title, collected exactly once, and passed unmutated first. 294 ran at aabaf0c01. The other 31 ran at d79f365a6, in `compare.ts` and `store-prune.ts`, and carry over because neither file nor any named test changed after. [The runs](2026-11-20-issue-559-evidence-mutant-runs.json) record each result. The worktree's source was clean after every run.
+Each kill ran by hand against its named test alone. The test was matched by its anchored title, collected exactly once, and passed unmutated first. After the move, `npx vitest list --filesOnly --changed 9812df9b7` listed both evidence test files and both compare-evidence test files, which name almost every claim, and `compare.ts` and `evidence.ts` changed, so every one of the 331 claims ran again at 94f5da0b6. The 10 survivors are the 10 equivalents the first run found, `compare.ts`'s `verdict !== undefined` now at line 206. [The runs](2026-11-20-issue-559-evidence-mutant-runs.json) record each result. The worktree's source was clean after every run.
 
 `packages/cli` files are outside the claims. The CLI tests in `packages/cli/test/compare-evidence.test.ts` cover them.
 
-Timing: mutants 3 × 150 min; other 1 × 30 min (unit and CLI test runs).
+Timing: mutants 4 × 130 min (the average of four runs); other 1 × 30 min (unit and CLI test runs); gate 3 × 15 min.
