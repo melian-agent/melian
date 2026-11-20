@@ -1,0 +1,3578 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "16c0d89cbfba8932a2f1def37331988571a11cc3",
+		"head": "e3e8d48feba11fe351fc4082170401e8454c8c08"
+	},
+	"claimsIn": [
+		"packages/core/src/adjudication.ts",
+		"packages/core/src/findings.ts",
+		"packages/core/src/guardrails.ts",
+		"packages/core/src/config.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 243,
+			"column": 72,
+			"endLine": 260,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cbe5ccd7ec91e8d79961004ce81899e13fc2e1dc86e61bff1f745a1d5810ff49",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 244,
+			"column": 16,
+			"endLine": 244,
+			"endColumn": 85,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "355714488f761db2ce5f6bbf0ea6b279fd3cb9e64659412ac809f5a7f8c6f759",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 244,
+			"column": 58,
+			"endLine": 244,
+			"endColumn": 83,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "d364b05bc7110dbc09d46a210f081af6c5731816e8d25f923b56f052ff260a41",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports through the notice a finding two lenses co-reported under the injection rule"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 249,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "da9a4c323b04cf7f821698ae3923c7323a624d033cf07f893e37d944c85bc721",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 249,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "80b76295d3990d02e6b80c4e684f82142e01e01219d773114d99249bc0429a84",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 249,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(this.speaker.properties.status === \"dismissed\" || !this.lensOnly() || rules.some(rule => rule !== injectionAttemptRuleId)) && this.reports.some(report => report.locations.length !== 1)",
+			"status": "generated",
+			"id": "dc6dc6ef9b69f98e7f1a1dccc5da7658a109675aff7b1984331680311832c8cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 248,
+			"endColumn": 56,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "58ac658f2f4e0b17e728b2ca39860c92ec04e697d1a0ec01cc30955febffae8b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 248,
+			"endColumn": 56,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(this.speaker.properties.status === \"dismissed\" || !this.lensOnly()) && rules.some(rule => rule !== injectionAttemptRuleId)",
+			"status": "generated",
+			"id": "fede16b533a1252f9a4a72c90749e316cf10d879f8556d07b196fd5a5f108b65",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 247,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f5ef81d7740b50688f361dc1f7586086c8e9bfd406d65b78d7181d2d1e3e7188",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 247,
+			"endColumn": 19,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.speaker.properties.status === \"dismissed\" && !this.lensOnly()",
+			"status": "generated",
+			"id": "99336784a7b1a121c182ce7ada83a2ff0f4831ae686b73fcede3d1c708cca5d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 246,
+			"endColumn": 49,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "da84486565a057b2008f420fc5b8829ff5b1af966e942b3c9fbfdace0658750e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"keeps the finding silent beside a dismissed notice, and a dismissed finding dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 3,
+			"endLine": 246,
+			"endColumn": 49,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.speaker.properties.status !== \"dismissed\"",
+			"status": "generated",
+			"id": "f1e5272c2fc10e40e733886021d832461809d948e1cb853ba4effad06d23f45d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 246,
+			"column": 38,
+			"endLine": 246,
+			"endColumn": 49,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d2152fc73a9ad86038dfb6cef6e590ddc0bc4f34b9a5d007ff9664657775d02b"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 247,
+			"column": 3,
+			"endLine": 247,
+			"endColumn": 19,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "this.lensOnly()",
+			"status": "generated",
+			"id": "e01e6128b078b28ff7846407b6ebdf6cd62bf15c16b6534f2a84140a74251375",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 248,
+			"column": 3,
+			"endLine": 248,
+			"endColumn": 56,
+			"mutatorName": "MethodExpression",
+			"replacement": "rules.every(rule => rule !== injectionAttemptRuleId)",
+			"status": "generated",
+			"id": "b72e3ab6bb4cfaadf31252df85fb00a7ff45e942554b7a3e823fcbb0760ea7a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 248,
+			"column": 14,
+			"endLine": 248,
+			"endColumn": 55,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4754643ef025b9f5067e39086f8e1a3a7ef2cbb4999fbce5b6b0d96d0c6773ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 248,
+			"column": 24,
+			"endLine": 248,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6a9d2b4cc9a8a82dbbb607800fd7d99d0795e4c1dca7f620f229b3bec21fbcb6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 248,
+			"column": 24,
+			"endLine": 248,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c8423c8971913b1139970efd365cbc8759ea90da4598a50f8d69c487fc78b8e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a defect whole when another rule or a check that is not a lens reported it too"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 248,
+			"column": 24,
+			"endLine": 248,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "rule === injectionAttemptRuleId",
+			"status": "generated",
+			"id": "99fd0c529ad80198b30ef4cc486bfadaf6b01d851f23e0028586d67fa6754135",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 249,
+			"column": 3,
+			"endLine": 249,
+			"endColumn": 63,
+			"mutatorName": "MethodExpression",
+			"replacement": "this.reports.every(report => report.locations.length !== 1)",
+			"status": "generated",
+			"id": "9f472c56ae02b4cec77899a4fce4b7f6a17fdd44d610cbd46009c22691e4dee8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a co-reported finding whole when one of its reports holds a second location"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 249,
+			"column": 21,
+			"endLine": 249,
+			"endColumn": 62,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "5cebcbdc9590e8e65ef9bbb31d9eee8ae702025a64274b119f40eac08a4e8ba4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when it holds a second location"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 249,
+			"column": 33,
+			"endLine": 249,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d64a8d1f0dcb968281200d4fc70ab2c3c7a32a3eb857b4cca62d922617e75787",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 249,
+			"column": 33,
+			"endLine": 249,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "27c28f618d6a6fde661d31b8a77fc2a69fa634e1bbc99a3dc5bbdb92dcec69e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when it holds a second location"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 249,
+			"column": 33,
+			"endLine": 249,
+			"endColumn": 62,
+			"mutatorName": "EqualityOperator",
+			"replacement": "report.locations.length === 1",
+			"status": "generated",
+			"id": "740cb5c6a66f891e59d6fda4e7861804b13e7f721d96123ada6ef118071e414a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 250,
+			"column": 4,
+			"endLine": 252,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fb6e5c22d80f7c670407cd85ad3c391b880437121fdeb728a51b7f0455bb8787",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 254,
+			"column": 21,
+			"endLine": 254,
+			"endColumn": 52,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "d2c3e5733f425e9c6830bec9493bc707ba4b17df8060b814492e95ffb12058bb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 254,
+			"column": 61,
+			"endLine": 254,
+			"endColumn": 87,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e8b6620049f2366812e25fdef2c8b334bda7b6b5adaa974fe456ed40ed3ecec4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 254,
+			"column": 90,
+			"endLine": 258,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c909ea67832915c743ab04de0336a4e7fd949e6d6e63ba3242a97ea7a72944d6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 256,
+			"column": 7,
+			"endLine": 256,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "08fa397043e4e2aa684577d00567b3f1dc0993db80e5d409f405b64b96143997",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 256,
+			"column": 7,
+			"endLine": 256,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "30b96974aaaf3229527fbc1c67fc3687825843666bd408111cb08a3192620940",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its evidence names a file the policy does not list"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 256,
+			"column": 7,
+			"endLine": 256,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "id !== undefined",
+			"status": "generated",
+			"id": "472fbe12268a59f38a5797ec2ca6af12184c6aee593d825c55cffa391cff33a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 257,
+			"column": 3,
+			"endLine": 257,
+			"endColumn": 15,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "0bb69a99f16219aeae98cf15c2827f6ac9c8421fafebffa08c8b8a239efe6b0f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 259,
+			"column": 9,
+			"endLine": 259,
+			"endColumn": 24,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...ids]",
+			"status": "generated",
+			"id": "834af62f447057fcb3b73bf0e83c5b6322c3021e4ea322aa3ca0661698b572c7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"names every notice that reports a finding, in order of ID"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 259,
+			"column": 9,
+			"endLine": 259,
+			"endColumn": 17,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c57f61c007ccadd353428669c31d37437533f2dcf956f66ffb15a3413e60fd60",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1108,
+			"column": 3,
+			"endLine": 1109,
+			"endColumn": 54,
+			"mutatorName": "MethodExpression",
+			"replacement": "this.findings",
+			"status": "generated",
+			"id": "846a91d6756ab2e16e44c248a1ff28dda17e3b0a4389c1a6d8b89068e4f308b2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1109,
+			"column": 12,
+			"endLine": 1109,
+			"endColumn": 53,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "2378f7d78d7b1dfdaea6f9b474e481612584fc0111d9866390a1e093adaef2d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1110,
+			"column": 9,
+			"endLine": 1110,
+			"endColumn": 68,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0daa6bc7066cae43b0e6bba2f5795a1d7cfa16b7f4c8f357f0d97d770c3a068d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1114,
+			"column": 32,
+			"endLine": 1119,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c71ac9e9478cae574c47c7045667108d21bd1dcd2f4ae737e4f91d64704cc90e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1116,
+			"column": 7,
+			"endLine": 1116,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "580908e33d608b66cb6a9d819182bbbbd349c1789a208fee0d38b44eead8dda6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1116,
+			"column": 7,
+			"endLine": 1116,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "907939408e6181b508b8e98dbe4376c03478d603f36acddb256048c437e28860",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1116,
+			"column": 7,
+			"endLine": 1116,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "by !== undefined",
+			"status": "generated",
+			"id": "48188234a48fe99b6f5e92040e220958b55c2512ca62093e821e50bc8913e82d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1117,
+			"column": 3,
+			"endLine": 1117,
+			"endColumn": 40,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "6411698155893655b2900348f46a668e0a10103dd682932214e207a77c5ee2d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1118,
+			"column": 39,
+			"endLine": 1118,
+			"endColumn": 82,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "520c2a9bb7f6902037a98d8d96f410bbff267a322a5de378f36fec293df5264d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1118,
+			"column": 44,
+			"endLine": 1118,
+			"endColumn": 64,
+			"mutatorName": "LogicalOperator",
+			"replacement": "quoted.get(id) && []",
+			"status": "generated",
+			"id": "53af120e581b914a3d4bd6626600607ac60647fca7be424f0849283612445335",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1118,
+			"column": 62,
+			"endLine": 1118,
+			"endColumn": 64,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "e88b9702b128ab5435a3f23983f6cdc2ef409257d2d958950658bb7f52a55f36",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1125,
+			"column": 8,
+			"endLine": 1125,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "996441ab208a670bc27a486ec71768da0cee543249b858c9a40349c8527aa278",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1125,
+			"column": 8,
+			"endLine": 1125,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3a495d55ed9ace8a82997487abaf6a9ab583861758c1eb9873edb32edec377f0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1125,
+			"column": 8,
+			"endLine": 1125,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "replacedBy === undefined",
+			"status": "generated",
+			"id": "b3f0cb53e381bd6a3910c82fb554a163154e474f1d84bb55d50891ee467fb88a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1125,
+			"column": 34,
+			"endLine": 1129,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c79447928f255fd57e86afed249fcfe296e508820c1ff0d1bcdaa4413daf2f43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1128,
+			"column": 35,
+			"endLine": 1128,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "70abbffc0b4038bbf20cabcff81dcd92037bd5535597724bb10e781b96d827b1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1128,
+			"column": 49,
+			"endLine": 1128,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "552aeb1424fb9a966f31fba6172fd3ea3a71bec3f6d2bb63fd6e1c07916d8ad8"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1128,
+			"column": 70,
+			"endLine": 1128,
+			"endColumn": 98,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "889ddc4aaccde2dc7fb9dc73f0dcc25a5d493582a72e1feac4fe6205a0d943e5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1135,
+			"column": 5,
+			"endLine": 1135,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "df5706b0020ae8127b4d567227fa7a69221c6cbfb99df60b9185bcee17378ca3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1135,
+			"column": 5,
+			"endLine": 1135,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c77f4c5e38b04f5de97a28a5f5081a3e9637eb68313687e3687ee6ba66cbbbd4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1135,
+			"column": 5,
+			"endLine": 1135,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "quotes !== undefined",
+			"status": "generated",
+			"id": "30d8dc99e7fad3108ac4b78bb49e98354655b07b2fe935794267d3277cedfbab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Defect.decision",
+						"drops an ordinary refuted block beside a protected refuted advisory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1137,
+			"column": 31,
+			"endLine": 1137,
+			"endColumn": 78,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...quotes]",
+			"status": "generated",
+			"id": "8111561553b2263136cde89718eeeb015fce93a5deecd701afd8078903b5d6e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1137,
+			"column": 31,
+			"endLine": 1137,
+			"endColumn": 42,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "1091c12fd2adbdab3fc9ed8cae035447fac6409f23854beb466b3c8e73060c88",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1137,
+			"column": 48,
+			"endLine": 1137,
+			"endColumn": 77,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ee4a215d683833bf9cc2580d365903b29508310855270f0e835e94bb80132ee6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 11,
+			"endLine": 1159,
+			"endColumn": 101,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0ddb2a19f56213f0e990531a1e92ae99999b1a745cbae215a50078b7dac93c33",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"pre-existing-cap"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 24,
+			"endLine": 1159,
+			"endColumn": 101,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3b2b055311aedf9750e82f43533c98cc5f89b4912f843d25d14353d21ff17bfb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 24,
+			"endLine": 1159,
+			"endColumn": 101,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "05039d8633148836c1dbc5241668cdf7887727d4a7b205c908cbbc808a6b0fb7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"pre-existing-cap"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 24,
+			"endLine": 1159,
+			"endColumn": 101,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!replacing.has(finding.id) || finding.important() || lifted.has(finding.id)",
+			"status": "generated",
+			"id": "a39fed27d5bd799162b2593bcf032fae7b5778b227fb4955050e08e964d65762",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 24,
+			"endLine": 1159,
+			"endColumn": 50,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "replacing.has(finding.id)",
+			"status": "generated",
+			"id": "59b1958688b2698babebf8f437d74d2ec7fd461e899641e485893fcfd98c7f97",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"keeps a replaced pre-existing finding out of the important list, and a refuted one out of refuted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 55,
+			"endLine": 1159,
+			"endColumn": 100,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5c596d3270d3d6b21c2bf82da226b3143e29bc84c1e9fd1457fea3c65f559e0a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 1159,
+			"column": 55,
+			"endLine": 1159,
+			"endColumn": 100,
+			"mutatorName": "LogicalOperator",
+			"replacement": "finding.important() && lifted.has(finding.id)",
+			"status": "generated",
+			"id": "3a80ec3b4159aa036b1295a4ce5a5de2c3a520acc3545f8523bb68e4d9a80078",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"pre-existing-cap"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 26,
+			"endLine": 553,
+			"endColumn": 112,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ab5fb1b5294228604c0dffbb1ba085ba5aa5d5b317e70daaf31ff62612a2cef3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"lists no instruction files by default, and takes the root policy's list anchored at the root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 37,
+			"endLine": 553,
+			"endColumn": 41,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e5b023166e336c28e082f2c0924e3bef9a682b641b54e28e33255df895174ef3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"refuses a policy notice when its base blob lookup fails, using Git\u2019s stderr"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 53,
+			"endLine": 553,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6a1111e50ecbbeb15cb68bca6e93ff2874fe283e3b80d0d2e22a3de68bcc2156"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 77,
+			"endLine": 553,
+			"endColumn": 81,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3f54fa2d84fe98f8a55ec7eb46fcc8789d78f0e73d6a4ad1f71e9b16b90854be"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 90,
+			"endLine": 553,
+			"endColumn": 92,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "d27b069cc37a54a5081954859486bc68dd40904878689d7126bb3c59e3ef5839",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"lists no instruction files by default, and takes the root policy's list anchored at the root"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 553,
+			"column": 108,
+			"endLine": 553,
+			"endColumn": 110,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "b725182d1ebe174201ea23f1386853b1de5d4dfe09f51d6e771f546bc9301361",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"lists no instruction files by default, and takes the root policy's list anchored at the root"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 815,
+			"column": 1,
+			"endLine": 815,
+			"endColumn": 32,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d69d5711170d40bb1a1647b56b63db0983eacf585923103f936bc6bb1c1831db",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"refuses instruction files in a nested policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 843,
+			"column": 64,
+			"endLine": 847,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "99acf4f29397cf53e12b7ba2b2043400256304aa741bb8b4f85496a6d4d81a79",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"refuses instruction files in a nested policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 5,
+			"endLine": 844,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "34b0166b6e44542aa588bc9d59020a6676804e1d5837c9dc6cabe929a46744fa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"refuses instruction files in a nested policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 5,
+			"endLine": 844,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6e60dc9ca59abe9c04871b6c7bff82c353c809d3ea8f47c08bfdfe8a50011bb6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"overrides thinking locally without replacing the committed route or its derivation rules"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 5,
+			"endLine": 844,
+			"endColumn": 75,
+			"mutatorName": "EqualityOperator",
+			"replacement": "layer.guardrails?.[\"policy-change-review\"]?.instructions !== undefined",
+			"status": "generated",
+			"id": "e7b6ff5e7b5e080623df42ff799ca547fbd948b943faa850038d8663047f1495",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"overrides thinking locally without replacing the committed route or its derivation rules"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 5,
+			"endLine": 844,
+			"endColumn": 61,
+			"mutatorName": "OptionalChaining",
+			"replacement": "layer.guardrails?.[\"policy-change-review\"].instructions",
+			"status": "generated",
+			"id": "25555a8157d9a82a8636434f05ef93339b9a49c05109af66610b433ea707ac81",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"refuses a brace or class in a glob, which would match nothing: guardrails:   forbidden-paths:"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 5,
+			"endLine": 844,
+			"endColumn": 47,
+			"mutatorName": "OptionalChaining",
+			"replacement": "layer.guardrails[\"policy-change-review\"]",
+			"status": "generated",
+			"id": "41341fa6ec96942abc6266ba3f9f049698ee7234f8c60edebdd14b0812b62bed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"overrides thinking locally without replacing the committed route or its derivation rules"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 844,
+			"column": 24,
+			"endLine": 844,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "de7fd5fdf2340681dc69e4e3e5e7e16ee4ecfe02188fec055b99d13dad26fc8a"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 845,
+			"column": 13,
+			"endLine": 845,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "336da1c5d9d209c9c3daf74677fb5789b029faa0da6bc7eb864d4aa8635967db"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 846,
+			"column": 19,
+			"endLine": 846,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3341927a4209790e5a9aff23d92a4fbdc115b98dfc4bad1d5be3859ecc1198a9"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 846,
+			"column": 41,
+			"endLine": 846,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7b40d8aac810eb7037da1bb5ea83673a295b48bc07eb98341b1f4a07acb7cb4f"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 846,
+			"column": 109,
+			"endLine": 846,
+			"endColumn": 116,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d4386ad08421264a767a0e55912b92f93c96a8dac9bd3b9001040131b128e6ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"loadConfig from the worktree",
+						"refuses instruction files in a nested policy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 858,
+			"column": 1,
+			"endLine": 858,
+			"endColumn": 32,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d9785b653f85a3a0c65a5da288073bdb784bab6c3a19e09241ba99de0bef799a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"melian.local.yaml",
+						"refuses instruction files in clone preferences"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 987,
+			"column": 1,
+			"endLine": 987,
+			"endColumn": 55,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4e4742ea7005d99437018ebd721d50527cec9a0a195f3a74a3b9863c4603f7da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/config.test.ts",
+					"path": [
+						"overrides thinking locally without replacing the committed route or its derivation rules"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 987,
+			"column": 2,
+			"endLine": 987,
+			"endColumn": 14,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bbeb97fe65701741dfd4de4b0259b7d9b4be3452be5d566b00dec88227dea2f6"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 987,
+			"column": 16,
+			"endLine": 987,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fa4bd3d47194de87d5fd8e006b222b1634dca000c3f9ca9f7f31f2116aec9d31"
+		},
+		{
+			"file": "packages/core/src/config.ts",
+			"line": 987,
+			"column": 40,
+			"endLine": 987,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "04dbfe5bc58b7cefc2d64d3a3a39248c53e1e13f0878c27418067f4c6737836e"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 153,
+			"column": 44,
+			"endLine": 153,
+			"endColumn": 48,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9de89ed7ec21677528bb174cdbc7588d743ba98f51a5955b2b70c3979e6465df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 210,
+			"column": 49,
+			"endLine": 210,
+			"endColumn": 64,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "19496b7ecc94f82e52ba3c2ec7c3232331a3967b13385abefe9098d018d41f21",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"refuses a stored finding whose replacedBy names no notice"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1912,
+			"column": 31,
+			"endLine": 1921,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f088d5b940c7fdbfac6a7ab42371e7f93d508bb67cbeddf2425fac92f4120d48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "262c83b275a1b743f7efc61e8bd24fc8c1129649f9ec86f14751fdbc2fe39d5a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"injection-under-cleanup-ceiling"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "88a70fee1728f1fb809d2b003349e51cc3146dcee5534649f0f9fd3ca38a4b2d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ruleId === \"guardrail/policy-change-review\" && source.check === \"guardrails\" && guardrail !== undefined && \"notice\" in guardrail || guardrail.instructions === true",
+			"status": "generated",
+			"id": "c541796f556379d8a9d5624c7588d6297743b32fc2d068ae8be9b463dbeef364",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Finding.resolve",
+						"never resolves a policy-change-review finding on a melian.yaml below acknowledge"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1918,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b54904fa2c3e15337671f99d2ccae90f2d569786d4fa2935cb84c850a00a4364",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"ceiling-caps-and-never-raises"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1918,
+			"endColumn": 24,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ruleId === \"guardrail/policy-change-review\" && source.check === \"guardrails\" && guardrail !== undefined || \"notice\" in guardrail",
+			"status": "generated",
+			"id": "f097281748c7ac382c32307e2b706648c8e3606635be767e66af2d0b035bf9e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Finding.resolve",
+						"never resolves a policy-change-review finding on a melian.yaml below acknowledge"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1917,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6b8a1c8a50d26fb79e4e63c57e945daa96fdf98f715331faa6a390434078e6b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Finding.resolve",
+						"never resolves a policy-change-review finding on a melian.yaml below acknowledge"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1917,
+			"endColumn": 26,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ruleId === \"guardrail/policy-change-review\" && source.check === \"guardrails\" || guardrail !== undefined",
+			"status": "generated",
+			"id": "8faab7364b1eb78a46d5647695dc5b8d2348dfb7383aae934f29de39216f7e8a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"leaves the finding alone beside a notice the guardrail did not mark, or one for another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1916,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8d3196f24d893b0968711707d3051398cb82dc5df76130e2e9b656172e21e236",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"leaves a notice with the mark from a check that is not the guardrails alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1916,
+			"endColumn": 32,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ruleId === \"guardrail/policy-change-review\" || source.check === \"guardrails\"",
+			"status": "generated",
+			"id": "d4dace36ba46e9df37d7860c7c8f53dee8d73d563d83f22248602274af2519cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"Finding.resolve",
+						"never resolves a policy-change-review finding on a melian.yaml below acknowledge"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1915,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b0bee3c0eef6ca3468f52565f63c223d11cae9fa78998ecf6e484ad6e74ad553",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"leaves a finding alone beside a marked guardrails finding under another rule"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 3,
+			"endLine": 1915,
+			"endColumn": 51,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.ruleId !== \"guardrail/policy-change-review\"",
+			"status": "generated",
+			"id": "e5f8df40fc7eb299ff0557df1f4feaaed4ac51f29ef7a744b8e8a3a59db80969",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1915,
+			"column": 19,
+			"endLine": 1915,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e2453c5b3958482482a4650e315cec8d2849b8b36abd73fb1d6ea81a3adbcc3e"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1916,
+			"column": 3,
+			"endLine": 1916,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "24c861ac35a2192cc0ea780947eed7b5ac113834f675d637a57c6000dd8be86a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"leaves a notice with the mark from a check that is not the guardrails alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1916,
+			"column": 3,
+			"endLine": 1916,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check !== \"guardrails\"",
+			"status": "generated",
+			"id": "c6e5b93c8867c5ab87ca28d7383a258289a919de76955bd5f6ae1084e42779ea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1916,
+			"column": 20,
+			"endLine": 1916,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0d2cb910a70c122f92357f48364a70c6d99ba13cbf3c0bd208f4d215aba580c7"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1917,
+			"column": 3,
+			"endLine": 1917,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "efa7a9286e36da445ffca184622614afa73d518d2c2a0f5c39c0b4539a264523",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"the floors",
+						"holds a policy-change notice on a melian.yaml at acknowledge, and marks the floor"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1917,
+			"column": 3,
+			"endLine": 1917,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "guardrail === undefined",
+			"status": "generated",
+			"id": "db575e381eb585416f75fe63326c04def67fa391c602d5b339def94cc4941641",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1918,
+			"column": 3,
+			"endLine": 1918,
+			"endColumn": 11,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "928314674d91667d6cc5d740c17df1be82872d2f8a393afe9fa6832f21cbf947"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1919,
+			"column": 3,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6a3057347389520a1871b8b3af9a8c67177b914ca28d3c65507a250923d95fd1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"leaves the finding alone beside a notice the guardrail did not mark, or one for another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1919,
+			"column": 3,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "guardrail.instructions !== true",
+			"status": "generated",
+			"id": "b8bd7df64f6353d38e33fc186cf219d6f5ac104a6011dc8217fc4f580197dd04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1919,
+			"column": 30,
+			"endLine": 1919,
+			"endColumn": 34,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b9c632224bdf84deab91c6327662d5a62648e839c13c57ae1d05dfcfc54c1d48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1924,
+			"column": 19,
+			"endLine": 1933,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "462ce5496ace53c32f07a0dde448b2b2bd99be6c0bce590911c3844d3040c1bb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1925,
+			"column": 39,
+			"endLine": 1925,
+			"endColumn": 41,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "99a219f5b51b4585522b787ba42f72c2f6f6b2ca6ae8246dce26332f043322df",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The seed is a string, which has no evidence field, so claim.evidence ?? [] adds no file whether the seed is [] or not."
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1926,
+			"column": 9,
+			"endLine": 1932,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "22a1af4b05c99196e43bd4b5140214c714f92953cc785a84cc4432027745c94e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 7,
+			"endLine": 1928,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a6906510b8f2381ff9055170e140e4182d32ef6f60e67c9d8d01900f1f180792",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its trigger or a proof hunk lies in another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 7,
+			"endLine": 1928,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "19b5412711d0ddb8c614e3e0f309bb05d40fb3dda4039a05c9de197d3bf87896",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"injection-under-cleanup-ceiling"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 7,
+			"endLine": 1928,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "trigger !== undefined",
+			"status": "generated",
+			"id": "6911d0af67617f97ca06ed773074e46c02c4c018c0e5dcee7222ed7b174db4f9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 31,
+			"endLine": 1928,
+			"endColumn": 33,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "df22074434f9d577334c28efc798b6d8924b16de8848a0dc120220563ced1f27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/evals/test/resolution.test.ts",
+					"path": [
+						"the resolution goldens",
+						"instructions-prompt-in-listed-source"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 36,
+			"endLine": 1928,
+			"endColumn": 101,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "45a35570ad45ba279fc81d7300725d62d2734858e7fb223cd568ca71ad7d454b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its trigger or a proof hunk lies in another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 55,
+			"endLine": 1928,
+			"endColumn": 74,
+			"mutatorName": "LogicalOperator",
+			"replacement": "trigger.proof && []",
+			"status": "generated",
+			"id": "3de2620cbeac83bad8645af245f033dfea8ffc991a7ea1bb8ae9bda6409f4c1e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its trigger or a proof hunk lies in another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 72,
+			"endLine": 1928,
+			"endColumn": 74,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "891c5e443f2ab3e461460e0988f45650363aebc61b39f4dd659eeabe458f51db",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports through the notice a finding whose trigger in the listed file carries no proof"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1928,
+			"column": 80,
+			"endLine": 1928,
+			"endColumn": 99,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "9ba025f311baec79e0fa88ae246a49e56ac8a59c38c086843f866285718f42f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its trigger or a proof hunk lies in another file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1929,
+			"column": 6,
+			"endLine": 1929,
+			"endColumn": 40,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9f88e3daa58162058cc19a2f326b36aa7ccda1f87b231d366abbe9d3b07f7be2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports the finding whole when its evidence names a file the policy does not list"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1929,
+			"column": 49,
+			"endLine": 1930,
+			"endColumn": 59,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "fbbb578db0535fc73d95a93750c59143afa54767cd312383c426d61ffc61cc83",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1930,
+			"column": 5,
+			"endLine": 1930,
+			"endColumn": 25,
+			"mutatorName": "LogicalOperator",
+			"replacement": "claim.evidence && []",
+			"status": "generated",
+			"id": "fbad37363030611e9da9b919a9ba567687e8f16d3b237358637aad23111ada3e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1930,
+			"column": 23,
+			"endLine": 1930,
+			"endColumn": 25,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "f36647f736b0d5116aa102930d2f668e9460753f7bd3ad8415b1135dda6a0678",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1930,
+			"column": 31,
+			"endLine": 1930,
+			"endColumn": 58,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "b8fdba0a7c78df8dfc9c7da4449adcd799c7e7dda2f978e161aa25b8be58d10a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1939,
+			"column": 48,
+			"endLine": 1956,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "219f5a159ceb0fb3185397476c9934753f2a9ed9487133af130ddd123ebdcb35",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1940,
+			"column": 43,
+			"endLine": 1944,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "06a1d5d2ac91ce642128d3d2592ab4c8cdf23d9525311fbcf12aa24bbcef680b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1942,
+			"column": 17,
+			"endLine": 1942,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ac6663ea70226774184b2130663e4c54c1110154300c81179e687d9aef220942",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1942,
+			"column": 17,
+			"endLine": 1942,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7dfb69be7117fc92dbc6df36ad2847139bdd3ebe90b74d267c548be6effa49a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"quotes a one-line finding by its line, and every finding a notice replaces"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1942,
+			"column": 17,
+			"endLine": 1942,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "start !== end",
+			"status": "generated",
+			"id": "4cc7ee26c410356a5243ff543b4392a1f32289c211395afab667cbfac30463e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1942,
+			"column": 33,
+			"endLine": 1942,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3dd462bb785998932baa60866365dfc73eecf5074c06bbf3731500394812360f"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1942,
+			"column": 51,
+			"endLine": 1942,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cb86a740bfbc0f0252617a0f0507623e8525839b38a6362c23297d68e8e21a7d"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1943,
+			"column": 10,
+			"endLine": 1943,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "16cfe89f707192a630b375d3af05e9950390f414fb3f9e57948a636918c4553a"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1946,
+			"column": 22,
+			"endLine": 1955,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3e08e6552f34737cb2daf6ba0f0b9b728e01ab12d7239e8ce153c775da2e7573",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1948,
+			"column": 15,
+			"endLine": 1954,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "23c65bdd6f85719d296ddb3cdcc627b2b6cab1f602b34a0f1e704ea6126ca81d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1950,
+			"column": 17,
+			"endLine": 1953,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b65f284b6591dc10e38bd1b9992a6f7f9e7ab43ef0cd667d136c7c25aa3488f7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/adjudication.test.ts",
+					"path": [
+						"instruction files",
+						"reports a lens's injection finding in a listed file through the file's notice"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1952,
+			"column": 11,
+			"endLine": 1952,
+			"endColumn": 158,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "66a0a3f63ee8e0539245fa9a33b085d1fba634cdfffa5ed1dbb67034ce978fe5"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1952,
+			"column": 150,
+			"endLine": 1952,
+			"endColumn": 154,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5824504c631db018f30e35e258ba4d50b24d689d42c4dd17ecf318e67a9ef491"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e4eab8cb4f364d9c7dfb58be344a4b03bd30f5af62859c0a940d5c1177fc4711",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"reports each touched path a rule forbids, deleted or renamed ones included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "43ee85a7594ac2e01344c57321048be1ecda222a242018806e007fe1c16cefa0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 111,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(posix.basename(path).toLowerCase() === melianPaths.config || isLensFile(path)) && instructions",
+			"status": "generated",
+			"id": "2f6c70e01159444aef0fd227fbbc2a04969d1ae0fdf2509d6dafa36f57e7871b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 95,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d28b8d2a22324436a2144d581cf1dd0d41ae3c1816522529d80f44604ce38bc4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 95,
+			"mutatorName": "LogicalOperator",
+			"replacement": "posix.basename(path).toLowerCase() === melianPaths.config && isLensFile(path)",
+			"status": "generated",
+			"id": "3072a6b5cbc1c21f4ecab57d8bef396b379fd1327bc511e521ad3f002994fced",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "263d2470853e29c280e071707c63145295bea7db8d042e7fe957a14f997c7d0e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 75,
+			"mutatorName": "EqualityOperator",
+			"replacement": "posix.basename(path).toLowerCase() !== melianPaths.config",
+			"status": "generated",
+			"id": "520340db7bfed97b60fe0f6da1a3afd497456568c496094baa7c1523f341e101",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"reports each touched path a rule forbids, deleted or renamed ones included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 273,
+			"column": 18,
+			"endLine": 273,
+			"endColumn": 52,
+			"mutatorName": "MethodExpression",
+			"replacement": "posix.basename(path).toUpperCase()",
+			"status": "generated",
+			"id": "17524e09da96e8853c2d8923f7bbaf449f4c6dd1274a0ef01ec97c26233c92cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"forbidden-paths",
+						"judges a path by its directory's files even when the head turns a directory into a file"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 304,
+			"column": 18,
+			"endLine": 307,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d50fdeed2cc705983e97d64c45ba53f0e7b9775c600d42c8b97a40c483ddaa96",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"policy-change-review",
+						"reports a change to the root melian.yaml at P1 though the root lists it as an analyser's file and lowers that"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 305,
+			"column": 62,
+			"endLine": 305,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "34d93338584d8391b06bda3667bbbeb0ba7c1ce13a91fe4f69c1c223ea0bca0c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"policy-change-review",
+						"reports a change to the root melian.yaml at P1 though the root lists it as an analyser's file and lowers that"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 306,
+			"column": 23,
+			"endLine": 306,
+			"endColumn": 54,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "99e96d397b3591ca6c02638c3d59634f2c9761b28c14753c7fa06ba9f3b012a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/guardrails.test.ts",
+					"path": [
+						"instruction files",
+						"draws a marked policy notice for each listed file the revision changes, though the review is switched off"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 310,
+			"column": 6,
+			"endLine": 310,
+			"endColumn": 141,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "298bbb78d5e48a1b3d2778d34fa63e1c1ca15720e3ffb21998c8113d597c77fa"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 349,
+			"column": 11,
+			"endLine": 349,
+			"endColumn": 204,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f230c24774b4cad77e428d729590a8d2aea8729fcedb98f8f39e4d9debab3d91"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 349,
+			"column": 66,
+			"endLine": 349,
+			"endColumn": 144,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f398bf6f4e1bc2da01b46332b63ea7dc64aa44959e40be92b4d991c3541b62d9"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 349,
+			"column": 147,
+			"endLine": 349,
+			"endColumn": 190,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "edaef15d0799d239c08ba2072eda4bd71ae52746cc213c7bc0ae07ea386e53f1"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 124,
+			"column": 6,
+			"endLine": 124,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "550c1dbaedf50ee7a2ec002efcf6d0ed9886154a5b1ed6650415d581d3865cf9"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 124,
+			"column": 6,
+			"endLine": 124,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1810b9725746dd016243685b0a214b6fba6b917bb3a835785695cbffaf1408ca"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 124,
+			"column": 6,
+			"endLine": 124,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "by.replacedBy !== undefined",
+			"status": "generated",
+			"id": "717869cfe8ea2eb6d2ad20f27197ef61c2dca3174305e8df98965dbdc2732d2e"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 125,
+			"column": 5,
+			"endLine": 125,
+			"endColumn": 7,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "103adfa17306f9b3e7c52e1136d154820d25dde08b252f4cb9ebf975ab8bb294"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 126,
+			"column": 5,
+			"endLine": 130,
+			"endColumn": 5,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "7c0192bdceaf80c35ef83400c2d81715cedea44b867879b26502a87b4cd36df1"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c31e04b2124b4a90cab5a2a65306e1c126f83a46272d16bcb30c0251ba20c314"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4d1a32cc644ae10a29ed3b7ef475628b88f9584226d5dff82836b1bd9e68587d"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 127,
+			"column": 5,
+			"endLine": 127,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "by.replacedBy.length !== 1",
+			"status": "generated",
+			"id": "b57bbbbf060a1ba5d087564465efda3b0ccaedd1a597d3cbf135ab5219be8c15"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 128,
+			"column": 8,
+			"endLine": 128,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ecb95484345c94b5034bae3673009402c2cd15c57788b54be483ff59c9c56128"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 129,
+			"column": 8,
+			"endLine": 129,
+			"endColumn": 111,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "468a379e5f14fa16eeda2ca7e554d3ede7ce05b6c60dc567b72935f6857e8147"
+		},
+		{
+			"file": "packages/core/src/render.ts",
+			"line": 129,
+			"column": 56,
+			"endLine": 129,
+			"endColumn": 60,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "061556088aa43020258d752d86a18574b5f9d7df8e2826f21b7ad28424cf6566"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 53,
+			"column": 43,
+			"endLine": 53,
+			"endColumn": 58,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3d6c33492a37643ec3613d12586ba809a8160961db4c89ee8864dedf0d6015ca"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 159,
+			"column": 6,
+			"endLine": 159,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "032932c19eaccf21da419ce3dbd11265312dea9dda49b70cabe9b5fb99e5bbce"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 159,
+			"column": 6,
+			"endLine": 159,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "43dfb94ccb4022b31f1266e3a7dbb689be6804a6ac587740dca379431b724875"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 159,
+			"column": 6,
+			"endLine": 159,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "cites !== undefined",
+			"status": "generated",
+			"id": "027491ecd654f817b4c1543ddd29b765cf33952aa5c18cffd69d2d8bd57c3f8b"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 161,
+			"column": 5,
+			"endLine": 169,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c5e3feee89caf42a966e4b1aabbfd32ed0a2fd09358427959a1d50edf9a9f7c5"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 162,
+			"column": 25,
+			"endLine": 168,
+			"endColumn": 7,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "d2d703097d6c6b1a3d6d6e9ea56a07fae20075b1e59170a16f35c96d9eadf7b4"
+		},
+		{
+			"file": "packages/evals/src/resolution.ts",
+			"line": 162,
+			"column": 37,
+			"endLine": 168,
+			"endColumn": 6,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "171b1934494cc031c54b2a37233fe37bb40238d709dde51f52db122fd3adb3bb"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 5,
+			"column": 38,
+			"endLine": 5,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "004f10bd86e46e77323294053cfac56c1952be09cc9a053016a11fa5fdb660ba"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 23,
+			"column": 32,
+			"endLine": 23,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "93e6579f474fdc109b25eda3c87cc24304a218bb49bc85864b20cecd2b12ab0c"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 45,
+			"column": 34,
+			"endLine": 45,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 53,
+			"column": 36,
+			"endLine": 53,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b2f9533f3e4d399b57cc6a9f13afb67f49b99ac39553987886c1b3d84fbf149"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 93,
+			"column": 32,
+			"endLine": 93,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d8efbd0a94eb90633424b8ec758e2ede54cd126a76625bb81d177689bb0f4259"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 133,
+			"column": 42,
+			"endLine": 133,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "68de51dc807658536b1f4fba59b1cd8d2520f3abaed60f8b3cc336b4052d07e6"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 161,
+			"column": 38,
+			"endLine": 161,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3484180063fa5106a677db4a53e9730d73e79e61c66ca5735df04fba5f2dac74"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 199,
+			"column": 37,
+			"endLine": 199,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2da76db096e3e3db6eeba1a184e7a56e058727ee1d67085aaccea6b0c75b3912"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 209,
+			"column": 36,
+			"endLine": 209,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c2a3caea35bd73919518d46bb89b539ede13591d1f454457a8b1e518c4f3043a"
+		}
+	],
+	"total": 183,
+	"omitted": 0,
+	"unmutated": []
+}
