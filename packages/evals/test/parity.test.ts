@@ -1934,7 +1934,17 @@ describe("checkoutCommit", () => {
 			symlinkSync(repo, join(scratch, "link"));
 			writeFileSync(join(repo, "kept.json"), "{}\n");
 			execFileSync("git", ["-C", repo, "add", "kept.json"]);
-			execFileSync("git", ["-C", repo, "commit", "-q", "-m", "keep results"]);
+			execFileSync("git", [
+				"-C",
+				repo,
+				"-c",
+				"user.name=t",
+				"-c",
+				"user.email=t@example.com",
+				"commit",
+				"-qm",
+				"keep results",
+			]);
 			symlinkSync(join(repo, "kept.json"), join(scratch, "kept.json"));
 			for (const [named, inside] of [
 				[join(repo, "src", "parity.json"), join(repo, "src", "parity.json")],
