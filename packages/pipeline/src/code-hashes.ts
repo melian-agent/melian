@@ -80,7 +80,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/process-tree.ts": "2707b8c6a10a0bc7266f3f276eedd8f59aec82d7a3bf5ed63e2d035f5702ce2b",
 
-	"packages/core/src/publication.ts": "624c417046c10ab2d8aa788a7b7c5bdf3bffebaa5b43aa143b4dc4015317557f",
+	"packages/core/src/publication.ts": "fb5476361a779c2bf5e9e2996fde1b60336e0a95fd2e7ce248e1ec134fb64cf8",
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
