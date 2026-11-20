@@ -1011,6 +1011,21 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		]);
 	});
 
+	it("finishes a run whose lock was removed while it ran", async () => {
+		const lock = `${env.MELIAN_EVAL_PARITY_OUT}.lock`;
+		const using = runners(undefined, {
+			range: vi.fn(async () => {
+				rmSync(lock, { force: true });
+				return ran(committedStages);
+			}),
+		});
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "two" }, using)).status).toBe(1);
+		expect(results().attempts.map(({ miss, arm, error }) => [miss, arm, error])).toEqual([
+			["two", "committed", undefined],
+			["two", "parity", undefined],
+		]);
+	});
+
 	it("stops and resumes with its results and misses files beside the checkout, and refuses either inside it before any model", async () => {
 		const { repo: checkout } = buildGoldenRepository(failOpen);
 		try {
