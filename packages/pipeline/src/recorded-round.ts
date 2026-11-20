@@ -171,21 +171,27 @@ export class RecordedRound {
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
+		const reviewed = await this.reviewed(context);
+		return "refused" in reviewed ? notReviewed(this.id, reviewed.refused, context) : reviewed;
+	}
+
+	/**
+	 * The verdict {@link verdict} gives when the round's records can stand for a review under `context`, or why they
+	 * cannot, where {@link verdict} gives a verdict of not reviewed that says it.
+	 */
+	async reviewed(context: RecordedRoundContext): Promise<Verdict | { readonly refused: string }> {
 		const decided = await this.#decided(context);
-		if ("refused" in decided) return notReviewed(this.id, decided.refused, context);
+		if ("refused" in decided) return decided;
 		const { pieces, policies } = decided;
 		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
 		const decidedUnder = pieces.account.resolutionPolicy;
 		if (decidedUnder === null)
-			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
-		if (policies === undefined)
-			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
+			return { refused: "was decided under no resolution policy, so no reader can decide it" };
+		if (policies === undefined) return { refused: "is read with no resolution policy to decide under" };
 		if (decidedUnder !== policies.fingerprint)
-			return notReviewed(
-				this.id,
-				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
-				context,
-			);
+			return {
+				refused: `was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
+			};
 		return adjudicated(decided, policies, context);
 	}
 
