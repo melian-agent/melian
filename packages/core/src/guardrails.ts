@@ -16,6 +16,7 @@ import { CheckError } from "./errors.ts";
 import {
 	Finding,
 	type FindingExplanation,
+	type FindingSource,
 	type FindingTrigger,
 	type GuardrailMatch,
 	normaliseSnippet,
@@ -78,7 +79,7 @@ interface Hit {
 	readonly match: GuardrailMatch;
 }
 
-function finding(hit: Hit): Finding {
+function finding(hit: Hit, source: FindingSource = { check }): Finding {
 	return Finding.create({
 		rule: `guardrail/${hit.guardrail}`,
 		message: hit.message,
@@ -92,7 +93,7 @@ function finding(hit: Hit): Finding {
 		trigger: hit.trigger,
 		severity: hit.severity,
 		explanation: hit.explanation,
-		source: { check },
+		source,
 		guardrail: hit.match,
 	});
 }
@@ -259,7 +260,12 @@ async function resolutionChanged(repoRoot: string, revision: Revision, path: str
 // analyser's configuration blocks by default: the head's copy drives the run that judges the head, so a switched-off
 // check would otherwise read as a clean one. Every changed melian.yaml or lens identity draws the notice despite the
 // parent's switch, since either file steers later reviews.
-async function policyChanges(input: GuardrailInput, paths: readonly string[], configFor: ConfigLookup): Promise<Hit[]> {
+async function policyChanges(
+	input: GuardrailInput,
+	paths: readonly string[],
+	configFor: ConfigLookup,
+	packwerk: ReadonlySet<string> = new Set(),
+): Promise<Hit[]> {
 	const { revision, repoRoot } = input;
 	const changed = revision.files.map((file) => file.path);
 	const workspaces = revision.policyFiles.some((path) => path.split("/").at(-1)!.toLowerCase() === "package.json")
@@ -271,7 +277,8 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 			const forced = posix.basename(path).toLowerCase() === melianPaths.config || isLensFile(path);
 			if (!guardrail.enabled && !forced) return undefined;
 			const added = matchesGlobs(guardrail.files, path);
-			const listed = revision.policyFiles.includes(path) && loadsManifest(path, workspaces);
+			const read = packwerk.has(path);
+			const listed = read || (revision.policyFiles.includes(path) && loadsManifest(path, workspaces));
 			if (!listed && !added && !forced) return undefined;
 			// Git's display name cannot round-trip a non-UTF-8 path through a string argument.
 			if (revision.files.some((file) => file.percentEncoded && [file.path, file.oldPath].includes(path))) {
@@ -303,7 +310,9 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 			const override = guardrail.enabled
 				? ""
 				: " The directory above turns policy notices off; changes to a melian.yaml or lens file are reported regardless.";
-			const analyser = analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined);
+			const analyser = read
+				? "Enola's Packwerk check"
+				: (analyserOf(path) ?? (added ? "an analyser this repository configures" : undefined));
 			if (analyser !== undefined) {
 				const [base, head] = await Promise.all([
 					blobText(repoRoot, revision.base, path),
@@ -319,7 +328,8 @@ async function policyChanges(input: GuardrailInput, paths: readonly string[], co
 					line: 1,
 					discriminator: "analyser",
 					trigger,
-					severity: guardrail.analyserSeverity,
+					// The maintainer's ruling of 2026-11-18: the Packwerk finding it can hide is advisory, so its notice asks for acknowledgement.
+					severity: read ? guardrail.severity : guardrail.analyserSeverity,
 					match: { notice: "analyser", ...marked },
 					message: `Review the change to ${path}, which configures ${analyser}.`,
 					explanation: {
@@ -551,6 +561,22 @@ async function forbiddenPatterns(
  * names each in `properties.guardrail`, outside its ID; a policy-change notice names its class there. Throws
  * `ConfigError` when a `melian.yaml` cannot be loaded, and {@link CheckError} `unreadable` when a file at head cannot be read.
  */
+/**
+ * The policy notice for each Packwerk file Enola read that the revision changes: `packwerk` names them, from the
+ * Packwerk modules in Enola's base and head facts. Each is the `analyser` notice policy-change-review raises, at the
+ * guardrail's `severity`, under its configuration for the file and reported as `source`. The head's copies still run.
+ */
+export async function packwerkNotices(
+	input: GuardrailInput,
+	packwerk: readonly string[],
+	source: FindingSource,
+): Promise<Finding[]> {
+	const touched = new Set(touchedPaths(input.revision.files));
+	const paths = [...new Set(packwerk)].filter((path) => touched.has(path)).sort();
+	const hits = await policyChanges(input, paths, configLookup(input.repoRoot, input.source), new Set(paths));
+	return hits.map((hit) => finding(hit, source));
+}
+
 export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckReport> {
 	const configFor: ConfigLookup = configLookup(input.repoRoot, input.source);
 	const paths = touchedPaths(input.revision.files);
@@ -561,5 +587,5 @@ export async function evaluateGuardrails(input: GuardrailInput): Promise<CheckRe
 		...(await forbiddenPatterns(input, configFor, notes)),
 		...(await policyChanges(input, paths, configFor)),
 	];
-	return { findings: hits.map(finding), notes };
+	return { findings: hits.map((hit) => finding(hit)), notes };
 }

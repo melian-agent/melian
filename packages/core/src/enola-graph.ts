@@ -18,7 +18,10 @@ const factSchema = Type.Object({
 	relations: Type.Optional(
 		Type.Array(Type.Object({ kind: Type.String(), target: Type.String(), target_id: Type.Optional(Type.String()) })),
 	),
+	props: Type.Optional(Type.Unknown()),
 });
+// The one Packwerk path Enola's facts never name. Enola 0.4.40 ignores a nested copy and `packwerk.yaml`; raise with the pin.
+const packwerkConfig = "packwerk.yml";
 /** An Enola contract fact. */
 export type EnolaFact = Static<typeof factSchema>;
 const impactSchema = Type.Object({
@@ -68,6 +71,20 @@ export class EnolaFacts {
 				return fact as EnolaFact;
 			});
 		return new EnolaFacts(facts);
+	}
+	/**
+	 * The `package.yml` of each package Enola's Packwerk check read, from its `module` facts marked `packwerk`, with
+	 * `packwerk.yml` when there is one: Enola reads Packwerk's configuration from the root `packwerk.yml` alone.
+	 */
+	packwerkFiles(): string[] {
+		const packages = this.#facts.flatMap((fact) =>
+			fact.kind === "module" &&
+			fact.file !== undefined &&
+			(fact.props as { packwerk?: unknown } | undefined)?.packwerk === true
+				? [fact.file]
+				: [],
+		);
+		return packages.length === 0 ? [] : [...new Set([...packages, packwerkConfig])].sort();
 	}
 	/** Returns symbol facts with exact declaration identity; anonymous functions have no guessed name. */
 	symbols(site: SymbolSite): EnolaFact[] {

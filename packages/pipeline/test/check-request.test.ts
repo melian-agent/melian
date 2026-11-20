@@ -93,7 +93,7 @@ describe("checkRequest", () => {
 
 	it("keys Enola past the build that dropped a base policy file with a newline in its name", () => {
 		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
-		expect(checks["static.enola"]).toBe(5);
+		expect(checks["static.enola"]).toBe(6);
 	});
 
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {

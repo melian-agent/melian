@@ -1879,19 +1879,20 @@ export class Finding {
 	// The reports the finding holds, as the walk reads them.
 	#claims(): ResolutionClaim[] {
 		const { severity, source, reportedBy = [source], guardrail } = this.properties;
-		if (source.check !== "guardrails") {
+		// A guardrail notice another check raised resolves as the guardrails check's own, as Enola's Packwerk notice does.
+		if (source.check !== "guardrails" && guardrail === undefined) {
 			return reportedBy.map(
 				({ check, version }) =>
 					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
 			);
 		}
-		const whole = { check: source.check, group: this.ruleId, severity };
+		const whole = { check: "guardrails", group: this.ruleId, severity };
 		if (guardrail === undefined) return [whole];
 		if ("rules" in guardrail) return guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }));
 		const classed = { ...whole, rule: `${this.ruleId}/${guardrail.notice}` };
 		// A notice of a changed resolution also resolves through the tables alone, and the stricter result stands: no
 		// entry under `guardrails` lowers it, and one the base wrote to ask more of a policy notice still applies.
-		return this.#resolutionNotice() ? [{ check: source.check, severity, tableOnly: true }, classed] : [classed];
+		return this.#resolutionNotice() ? [{ check: "guardrails", severity, tableOnly: true }, classed] : [classed];
 	}
 
 	// Whether the finding is a notice of a changed `resolution` key, or of a lens's changed declared resolution.

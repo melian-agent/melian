@@ -107,7 +107,7 @@ describe("the requests the checks document keeps", { timeout: 60_000 }, () => {
 			guardrails: 1,
 			"static.biome": 3,
 			"static.tsc": 4,
-			"static.enola": 5,
+			"static.enola": 6,
 			"static.mutation": 3,
 		});
 		const old = KeyedRequest.of("check", {

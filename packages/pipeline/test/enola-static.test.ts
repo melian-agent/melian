@@ -87,6 +87,7 @@ case "$1" in
   if grep BROKEN src/a.ts > /dev/null; then marker=head; fi
   printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1,"generation":"'"$marker"'"}' > .enola/facts.jsonl
   i=1; while [ "$i" -le ${documentSymbols} ]; do printf '\\n{"id":"d%s","kind":"symbol","name":"Doc%s","file":"docs/a.md","line":%s}' "$i" "$i" "$i" >> .enola/facts.jsonl; i=$((i+1)); done
+  for p in packs/*/package.yml; do [ -f "$p" ] && printf '\\n{"id":"m-%s","kind":"module","name":"%s","file":"%s","props":{"packwerk":true}}' "$p" "$p" "$p" >> .enola/facts.jsonl; done
   printf '%s' '[]' > .enola/insights.json
   printf '%s' '{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}' > .enola/receipt.json
   grep -F 'providers: []' "$config" > /dev/null || exit 9
@@ -716,6 +717,35 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(repeated.snapshots).toEqual(result.snapshots);
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+	it("names the Packwerk files Enola's facts list at base or head, and none where it found no package", async () => {
+		const base = commit(repo, {
+			"src/a.ts": "export const a = 1;\n",
+			"packwerk.yml": 'package_paths: ["packs/*"]\n',
+			"packs/a/package.yml": "enforce_dependencies: true\n",
+		});
+		const head = commit(
+			repo,
+			{ "src/a.ts": "export const a = 2;\n", "packs/b/package.yml": "enforce_dependencies: false\n" },
+			["packs/a/package.yml"],
+		);
+		const tools = await fake(0);
+		const input = (from: string, to: string) => ({
+			env: createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			base: from,
+			commit: to,
+			tool: "enola" as const,
+			settings: defaultConfig.static.enola,
+			tools,
+		});
+		const result = await runStaticTool(input(base, head), context);
+		if (result.status !== "ran") throw new Error("Enola did not run");
+		expect(result.packwerk).toEqual(["packs/a/package.yml", "packs/b/package.yml", "packwerk.yml"]);
+		const plain = commit(repo, { "src/a.ts": "export const a = 3;\n" }, ["packs/b/package.yml", "packwerk.yml"]);
+		const after = await runStaticTool(input(plain, commit(repo, { "src/a.ts": "export const a = 4;\n" })), context);
+		if (after.status !== "ran") throw new Error("Enola did not run");
+		expect(after.packwerk).toEqual([]);
 	});
 	it("records exit one with empty SARIF as clean with an explicit note", async () => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

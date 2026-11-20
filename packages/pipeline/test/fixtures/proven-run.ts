@@ -3,7 +3,7 @@ import { type CheckRun, type CheckRunRecord, backgroundContext as context, type 
 import { CheckSources, ChecksDocument, identityKey } from "../../src/checks.ts";
 import { replaceCheckFindings } from "../../src/findings.ts";
 
-const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 5, "static.mutation": 3 };
+const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 6, "static.mutation": 3 };
 // A run's request always keys the checkout's install; an identified one lets no second run share the key.
 const install = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
 

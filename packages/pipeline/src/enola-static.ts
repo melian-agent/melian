@@ -198,6 +198,17 @@ export class EnolaRun {
 		};
 	}
 
+	// The Packwerk files Enola's facts for one revision name.
+	async #packwerk(output: string): Promise<string[]> {
+		const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
+		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola generated no facts.jsonl");
+		try {
+			return EnolaFacts.parse(text).packwerkFiles();
+		} catch (cause) {
+			throw this.#run.fail("invalidOutput", "Enola facts are unreadable", cause);
+		}
+	}
+
 	async #sarif(root: string, output: string, baseline: string): Promise<ToolLog> {
 		const report = posix.join(output, "check.sarif");
 		const error = posix.join(output, "check.err");
@@ -375,7 +386,15 @@ export class EnolaRun {
 					? "Enola configuration differs at head; the base's copies judged both revisions."
 					: "Enola configuration differs at head; the trusted policy commit's copies judged both revisions.",
 			);
-		return { status: "ran", log, baseLog, notes, snapshots: [before, after] };
+		const packwerk = [...(await this.#packwerk(baseOutput)), ...(await this.#packwerk(headOutput))];
+		return {
+			status: "ran",
+			log,
+			baseLog,
+			notes,
+			snapshots: [before, after],
+			packwerk: [...new Set(packwerk)].sort(),
+		};
 	}
 }
 

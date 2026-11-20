@@ -83,6 +83,8 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
+			/** The Packwerk files Enola read at the base or the head, whose change draws a policy notice. */
+			readonly packwerk?: readonly string[];
 	  }
 	| {
 			readonly status: "skipped";

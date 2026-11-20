@@ -12,7 +12,7 @@ import { CheckSources, ChecksDocument } from "../src/checks.ts";
 import { FindingsDocument, replaceCheckFindings } from "../src/findings.ts";
 import { StaticProof } from "../src/static-proof.ts";
 
-const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 5, "static.mutation": 3 };
+const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 6, "static.mutation": 3 };
 const asked = KeyedRequest.of("check", { checks: current });
 
 let harness: Harness | undefined;
