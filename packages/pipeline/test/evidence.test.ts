@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { Finding, type StoredFinding } from "@melian-agent/core";
 import {
 	type EntryRecord,
 	type EvidenceConversation,
@@ -184,10 +185,14 @@ describe("EvidenceStore", () => {
 	});
 
 	it.each([
-		["changeset", { changeset: "range-xyz" }],
+		["changeset", { changeset: "range-xyz", round: "range-xyz.r1" }],
 		["round", { round: `${changeset}.r0` }],
+		["round with a prefix", { round: `${changeset}.xr1` }],
+		["round with a suffix", { round: `${changeset}.r1x` }],
 		["round of another changeset", { round: `range-${"b".repeat(16)}.r1` }],
 		["external ID", { external: "../../escape" }],
+		["external ID with a prefix", { external: `x${first}` }],
+		["external ID with a suffix", { external: `${first}x` }],
 	])("refuses an unsafe %s before it reaches a path", async (_, change) => {
 		const state = scratch();
 		const pointer = { ...evidence(first).pointer, ...change };
@@ -197,19 +202,162 @@ describe("EvidenceStore", () => {
 		expect(existsSync(join(state, "evidence"))).toBe(false);
 	});
 
-	it("refuses a stage ID that is not a conversation's", async () => {
+	it.each(["conversation:../1", "xconversation:1", "conversation:1x"])(
+		"refuses the stage ID %s, which is not a conversation's",
+		async (id) => {
+			const state = scratch();
+			const bad = { ...conversation(1, "prompt"), stage: { ...stage(1), id } };
+			await expect(EvidenceStore.open(state).write(evidence(first, bad))).rejects.toMatchObject({
+				code: "unsafeName",
+			});
+			expect(existsSync(join(state, "evidence"))).toBe(false);
+		},
+	);
+
+	it.each(["r12", `k${"0123456789abcdef"}`])("keeps the evidence of round %s in its own directory", async (local) => {
 		const state = scratch();
-		const bad = { ...conversation(1, "prompt"), stage: { ...stage(1), id: "conversation:../1" } };
-		await expect(EvidenceStore.open(state).write(evidence(first, bad))).rejects.toMatchObject({
-			code: "unsafeName",
+		const named = MissEvidence.from({ ...evidence(first).pointer, round: `${changeset}.${local}` }, [
+			conversation(1, "prompt"),
+		]);
+		await EvidenceStore.open(state).write(named);
+		expect(files(join(state, "evidence", changeset))).toEqual([
+			`${local}/misses/${first}.json`,
+			`${local}/stages/conversation-1.json.gz`,
+		]);
+		expect((await EvidenceStore.open(state).read(changeset, `${changeset}.${local}`, first))?.pointer).toEqual(
+			named.pointer,
+		);
+	});
+
+	it("removes the directories it made when a write fails, and keeps the ones it found", async () => {
+		const state = scratch();
+		mkdirSync(join(state, "evidence"));
+		// A conversation number this long makes the temporary file's name longer than a file system allows.
+		const long = { ...conversation(2, "prompt"), stage: { ...stage(2), id: `conversation:${"9".repeat(240)}` } };
+
+		await expect(EvidenceStore.open(state).write(evidence(first, conversation(1, "prompt"), long))).rejects.toThrow();
+
+		expect(readdirSync(join(state, "evidence"))).toEqual([]);
+	});
+
+	// A lens file's toJSON runs once every stage path is checked and before any is made: another writer's moment.
+	function racing(act: (state: string) => void): { state: string; evidence: MissEvidence } {
+		const state = scratch();
+		const lensFile = { lens: "correctness@1", file: "LENS.md", blob: "d".repeat(40) };
+		const file = {
+			...lensFile,
+			toJSON: () => {
+				act(state);
+				return lensFile;
+			},
+		};
+		return {
+			state,
+			evidence: MissEvidence.from({ ...evidence(first).pointer, lensFiles: [file] }, [conversation(1, "p")]),
+		};
+	}
+
+	it("refuses a stages directory another writer made a link after the check", async () => {
+		const elsewhere = scratch();
+		const { state, evidence: raced } = racing((at) => {
+			mkdirSync(join(at, "evidence", changeset, "r1"), { recursive: true });
+			symlinkSync(elsewhere, join(at, "evidence", changeset, "r1", "stages"));
 		});
-		expect(existsSync(join(state, "evidence"))).toBe(false);
+		await expect(EvidenceStore.open(state).write(raced)).rejects.toMatchObject({ code: "link" });
+		expect(readdirSync(elsewhere)).toEqual([]);
+	});
+
+	it("refuses a stages directory another writer made a file after the check", async () => {
+		const { state, evidence: raced } = racing((at) => {
+			mkdirSync(join(at, "evidence", changeset, "r1"), { recursive: true });
+			writeFileSync(join(at, "evidence", changeset, "r1", "stages"), "");
+		});
+		await expect(EvidenceStore.open(state).write(raced)).rejects.toMatchObject({ code: "unreadable" });
+	});
+
+	it("refuses a stage file another writer made a link after the check", async () => {
+		const elsewhere = scratch();
+		const { state, evidence: raced } = racing((at) => {
+			mkdirSync(join(at, "evidence", changeset, "r1", "stages"), { recursive: true });
+			symlinkSync(
+				join(elsewhere, "file"),
+				join(at, "evidence", changeset, "r1", "stages", "conversation-1.json.gz"),
+			);
+		});
+		await expect(EvidenceStore.open(state).write(raced)).rejects.toMatchObject({ code: "link" });
+		expect(readdirSync(elsewhere)).toEqual([]);
+	});
+
+	describe("reading back", () => {
+		const pointerAt = (state: string, local: string, id: string) =>
+			join(state, "evidence", changeset, local, "misses", `${id}.json`);
+
+		async function written(): Promise<string> {
+			const state = scratch();
+			await EvidenceStore.open(state).write(evidence(first, conversation(1, "prompt")));
+			return state;
+		}
+
+		it("refuses a pointer that names another miss", async () => {
+			const state = await written();
+			writeFileSync(pointerAt(state, "r1", second), readFileSync(pointerAt(state, "r1", first)));
+			await expect(EvidenceStore.open(state).read(changeset, round, second)).rejects.toMatchObject({
+				code: "unreadable",
+			});
+		});
+
+		it("refuses a pointer that names another round", async () => {
+			const state = await written();
+			mkdirSync(join(state, "evidence", changeset, "r2", "misses"), { recursive: true });
+			writeFileSync(pointerAt(state, "r2", first), readFileSync(pointerAt(state, "r1", first)));
+			await expect(EvidenceStore.open(state).read(changeset, `${changeset}.r2`, first)).rejects.toMatchObject({
+				code: "unreadable",
+			});
+		});
+
+		it("refuses a pointer of another version", async () => {
+			const state = await written();
+			const pointer = JSON.parse(readFileSync(pointerAt(state, "r1", first), "utf8")) as EvidencePointer;
+			writeFileSync(pointerAt(state, "r1", first), JSON.stringify({ ...pointer, version: 2 }));
+			await expect(EvidenceStore.open(state).read(changeset, round, first)).rejects.toMatchObject({
+				code: "unreadable",
+			});
+		});
+
+		it("refuses a pointer whose stage file is missing", async () => {
+			const state = await written();
+			rmSync(join(state, "evidence", changeset, "r1", "stages", "conversation-1.json.gz"));
+			await expect(EvidenceStore.open(state).read(changeset, round, first)).rejects.toMatchObject({
+				code: "unreadable",
+			});
+		});
+
+		it("passes on an error other than a missing path, in a read and in its size", async () => {
+			const parent = scratch();
+			const state = join(parent, "state");
+			writeFileSync(state, "");
+			const store = EvidenceStore.open(state);
+			await expect(store.read(changeset, round, first)).rejects.toMatchObject({ code: "ENOTDIR" });
+			await expect(store.size()).rejects.toMatchObject({ code: "ENOTDIR" });
+		});
+
+		it("sizes every file at every depth, and no link", async () => {
+			const state = await written();
+			writeFileSync(join(state, "evidence", "stray"), "12345");
+			writeFileSync(join(state, "evidence", changeset, "r1", "note"), "123");
+			symlinkSync(join(state, "evidence", "stray"), join(state, "evidence", "linked"));
+			const total = files(join(state, "evidence"))
+				.filter((path) => path !== "linked")
+				.reduce((sum, path) => sum + statSync(join(state, "evidence", path)).size, 0);
+			expect(await EvidenceStore.open(state).size()).toBe(total);
+		});
 	});
 
 	describe("the 16 MiB stage bound", () => {
 		// A conversation whose stage file is `limit + extra` bytes before compression, with a filler entry in its middle.
 		function sized(extra: number): EvidenceConversation {
-			const at = (filler: string) => conversation(1, "the prompt", filler, "the last reply");
+			// Five entries, so a byte count of dropped entries with the wrong sign is a digit longer.
+			const at = (filler: string) => conversation(1, "the prompt", filler, "a", "b", "the last reply");
 			const empty = Buffer.byteLength(JSON.stringify({ version: 1, ...at(""), dropped: 0 }));
 			return at("x".repeat(evidenceLimits.stage - empty + extra));
 		}
@@ -231,7 +379,7 @@ describe("EvidenceStore", () => {
 			expect(value).toEqual({
 				version: 1,
 				stage: whole.stage,
-				entries: [whole.entries[0], whole.entries[2]],
+				entries: [whole.entries[0], ...whole.entries.slice(2)],
 				dropped: 1,
 			});
 		});
@@ -298,5 +446,97 @@ describe("EvidenceStore", () => {
 			expect(store.budget).toBe(1024 ** 3);
 			expect(await store.size()).toBe(0);
 		});
+	});
+});
+
+describe("MissEvidence.stagesAt", () => {
+	const site = { file: "src/user.ts", start: 10, end: 12 };
+	const coverage = { scope: "", paths: ["src/**"], nearer: [] };
+
+	function reported(
+		options: { file?: string; start?: number; end?: number; check?: string; snippet?: string },
+		extra: Partial<StoredFinding["properties"]> = {},
+	): Finding {
+		const made = Finding.create({
+			rule: "null-deref",
+			file: options.file ?? site.file,
+			startLine: options.start ?? 10,
+			endLine: options.end ?? options.start ?? 10,
+			snippet: options.snippet ?? "user.name",
+			occurrence: 0,
+			severity: "P1",
+			cause: "introduced",
+			message: "A null user",
+			source: { check: options.check ?? "lens.correctness", version: "1" },
+			explanation: { what: "Null", whyHere: "New read", whatToDo: "Check it" },
+		}).toJSON();
+		return Finding.from({ ...made, properties: { ...made.properties, ...extra } });
+	}
+
+	const lens = (conversation: number, overrides: Partial<Stage> = {}): Stage => ({
+		...stage(conversation),
+		coverage,
+		...overrides,
+	});
+	const verifier = (conversation: number, subject: string): Stage => ({
+		...stage(conversation),
+		name: "melian.verification.candidate",
+		subject,
+	});
+	const ids = (stages: readonly Stage[]) => stages.map((each) => each.id);
+
+	it("keeps each lens run whose coverage holds the file, and no other run", () => {
+		const stages = [
+			lens(1),
+			lens(2, { coverage: { ...coverage, paths: ["docs/**"] } }),
+			lens(3, { coverage: undefined }),
+			lens(4, { conversation: undefined }),
+			lens(5, { name: "melian.check" }),
+		];
+		expect(ids(MissEvidence.stagesAt(stages, [], site))).toEqual(["conversation:1"]);
+	});
+
+	it("keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them", () => {
+		const at = (start: number, end: number) => reported({ start, end, snippet: `line ${start}` });
+		const meetsEnd = at(12, 14);
+		const meetsStart = at(8, 10);
+		const before = at(5, 9);
+		const after = at(13, 15);
+		const stages = [meetsEnd, meetsStart, before, after].map((finding, index) =>
+			verifier(index + 1, finding.properties.id),
+		);
+		expect(ids(MissEvidence.stagesAt(stages, [meetsEnd, meetsStart, before, after], site))).toEqual([
+			"conversation:1",
+			"conversation:2",
+		]);
+	});
+
+	it("keeps no verifier of a finding at another file, or of a check's finding", () => {
+		const elsewhere = reported({ file: "src/other.ts" });
+		const checked = reported({ check: "static.biome", snippet: "other" });
+		const stages = [verifier(1, elsewhere.properties.id), verifier(2, checked.properties.id)];
+		expect(MissEvidence.stagesAt(stages, [elsewhere, checked], site)).toEqual([]);
+	});
+
+	it("keeps a verifier of any claim the site's finding carries, from a lens", () => {
+		const finding = reported(
+			{},
+			{
+				alsoReportedAs: [
+					{ id: "a".repeat(16), ruleId: "x", check: "lens.tests" },
+					{ id: "b".repeat(16), ruleId: "x", check: "static.tsc" },
+				],
+				otherClaims: [{ id: "c".repeat(16), ruleId: "x", source: { check: "lens.tests", version: "1" } }],
+			},
+		);
+		const stages = [
+			verifier(1, `${"9".repeat(16)},${"a".repeat(16)}`),
+			verifier(2, "b".repeat(16)),
+			verifier(3, "c".repeat(16)),
+			verifier(4, "d".repeat(16)),
+			{ ...verifier(5, finding.properties.id), name: "melian.verification" },
+			{ ...verifier(6, finding.properties.id), conversation: undefined },
+		];
+		expect(ids(MissEvidence.stagesAt(stages, [finding], site))).toEqual(["conversation:1", "conversation:3"]);
 	});
 });

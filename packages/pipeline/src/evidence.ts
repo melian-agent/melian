@@ -2,16 +2,16 @@ import { randomUUID } from "node:crypto";
 import { type FileHandle, lstat, mkdir, open, readdir, readFile, rename, rmdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
-import { type Comparison, isChangesetId, lensCovers, Revision } from "@melian-agent/core";
 import {
-	backgroundContext,
-	type Context,
-	type ConversationId,
-	type EntryRecord,
-	ROOT_CONVERSATION_ID,
-	type Storage,
-} from "./harness.ts";
-import { ReviewIndex } from "./review-index.ts";
+	type ExternalFinding,
+	type ExternalSite,
+	type Finding,
+	isChangesetId,
+	lensCovers,
+	Revision,
+	type Verdict,
+} from "@melian-agent/core";
+import { backgroundContext, type Context, type ConversationId, type EntryRecord, type Storage } from "./harness.ts";
 import type { Round } from "./rounds.ts";
 import { type Stage, TelemetryReader } from "./telemetry.ts";
 
@@ -77,37 +77,48 @@ export class MissEvidence {
 	}
 
 	/**
-	 * Gathers the evidence for `external` in `comparison` of `round`, or nothing when the storage holds no telemetry of
-	 * that round: its review index has moved on to another run, or it never ran here.
+	 * Gathers the evidence for `finding`, a miss of `round`, whose run this storage holds: the conversations of the stages
+	 * {@link MissEvidence.stagesAt} chooses from the round's telemetry, in its order.
 	 */
 	static async gather(
 		storage: Storage,
-		options: { readonly round: Round; readonly comparison: Comparison; readonly external: string },
+		options: { readonly round: Round; readonly verdict: Verdict; readonly finding: ExternalFinding },
 		context: Context = backgroundContext,
-	): Promise<MissEvidence | undefined> {
-		const { round, comparison, external } = options;
-		const site = comparison.externalFinding(external)?.site();
+	): Promise<MissEvidence> {
+		const { round, verdict, finding } = options;
+		const site = finding.site();
 		const revision = round.revisionKey();
-		const record = await storage.findDocument(
-			{ kind: ReviewIndex.definition.kind, scope: { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } },
-			"current",
-			context,
-		);
-		const stored = record === undefined ? undefined : await storage.document(record.id, "current", context);
-		const index =
-			stored === undefined
-				? undefined
-				: stored.version === ReviewIndex.definition.version
-					? (stored.value as ReturnType<typeof ReviewIndex.definition.initial>)
-					: ReviewIndex.definition.migrate!(stored.value, stored.version);
-		const owner = index?.reviews[revision]?.adjudication?.task;
-		if (owner === undefined || !round.stored.tasks.includes(owner)) return undefined;
 		const telemetry = await TelemetryReader.open(storage).read(revision, undefined, context);
+		const stages: EvidenceConversation[] = [];
+		if (site !== undefined)
+			for (const stage of MissEvidence.stagesAt(telemetry.stages, verdict.all(), site))
+				stages.push(await MissEvidence.conversation(storage, stage, context));
+		const { base, head } = Revision.parseKey(revision) ?? { base: round.stored.base, head: round.stored.head };
+		return MissEvidence.from(
+			{
+				version: 1,
+				changeset: round.id.slice(0, round.id.indexOf(".")),
+				round: round.id,
+				external: finding.id,
+				base,
+				head,
+				policy: round.stored.provenance?.policy ?? "config",
+				lensFiles: [],
+				stages: [],
+			},
+			stages,
+		);
+	}
+
+	/**
+	 * The stages behind a miss at `site`: each lens run whose coverage held its file, and each candidate verifier that
+	 * judged a lens finding of `findings` at that file on lines overlapping the site, or a claim reported with one.
+	 */
+	static stagesAt(telemetry: readonly Stage[], findings: readonly Finding[], site: ExternalSite): Stage[] {
 		const sighted = new Set<string>();
-		for (const finding of round.verdict()?.all() ?? []) {
+		for (const finding of findings) {
 			const [start, end] = finding.lines();
 			if (
-				site === undefined ||
 				finding.properties.path !== site.file ||
 				!finding.properties.source.check.startsWith("lens.") ||
 				start > site.end ||
@@ -119,30 +130,12 @@ export class MissEvidence {
 				if (other.check.startsWith("lens.")) sighted.add(other.id);
 			for (const claim of finding.properties.otherClaims ?? []) sighted.add(claim.id);
 		}
-		const chosen = telemetry.stages.filter(
+		return telemetry.filter(
 			(stage) =>
 				stage.conversation !== undefined &&
-				site !== undefined &&
 				((stage.name === "melian.lens" && stage.coverage !== undefined && lensCovers(stage.coverage, site.file)) ||
 					(stage.name === "melian.verification.candidate" &&
 						stage.subject.split(",").some((id) => sighted.has(id)))),
-		);
-		const stages: EvidenceConversation[] = [];
-		for (const stage of chosen) stages.push(await MissEvidence.conversation(storage, stage, context));
-		const { base, head } = Revision.parseKey(revision) ?? { base: round.stored.base, head: round.stored.head };
-		return new MissEvidence(
-			{
-				version: 1,
-				changeset: round.id.slice(0, round.id.indexOf(".")),
-				round: round.id,
-				external,
-				base,
-				head,
-				policy: round.stored.provenance?.policy ?? "config",
-				lensFiles: [],
-				stages: stages.map(({ stage }) => stage.id),
-			},
-			stages,
 		);
 	}
 
@@ -219,7 +212,6 @@ export class EvidenceStore {
 			if ((await this.existing(path)) !== undefined) continue;
 			planned.push({ components: path, bytes: gzipSync(JSON.stringify(EvidenceStore.bounded(stage))) });
 		}
-		for (const id of pointer.stages) EvidenceStore.stageFile(id);
 		const pointerBytes = Buffer.from(`${JSON.stringify(pointer)}\n`);
 		const replaced = (await this.existing([...misses, pointerName]))?.size ?? 0;
 		const adding = planned.reduce((sum, each) => sum + each.bytes.length, pointerBytes.length) - replaced;

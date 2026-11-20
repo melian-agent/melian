@@ -1,6 +1,7 @@
 import {
 	Comparison,
 	type ComparisonEntry,
+	type ExternalFinding,
 	type ExternalImport,
 	type PullRequestRoundHeads,
 	Revision,
@@ -189,19 +190,26 @@ export class CompareHarness {
 	}
 
 	/**
-	 * The evidence behind external finding `id` of `comparison` in the round `revision` selects, or undefined when this
-	 * storage holds none of that round's run, as for an unattributed comparison or a round that ran elsewhere.
+	 * The evidence behind `finding`, a miss in the round `revision` selects, or undefined when this storage holds none of
+	 * that round's run: an unattributed comparison, a round that ran elsewhere, or one a later review of its revision
+	 * has replaced in the review index.
 	 */
 	async evidence(
 		revision: ComparedRevision,
-		comparison: Comparison,
-		id: string,
+		finding: ExternalFinding,
 		context: Context = backgroundContext,
 	): Promise<MissEvidence | undefined> {
-		const round = await this.round(revision, context);
-		return round === undefined
-			? undefined
-			: MissEvidence.gather(this.storage, { round, comparison, external: id }, context);
+		if (revision.round === "unattributed") return undefined;
+		const root = await this.harness.root(context);
+		const owned = await root.commit(async (tx) => {
+			const round = await this.selected(tx, root.id, revision);
+			const verdict = round.verdict();
+			const owner = (await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()]?.adjudication?.task;
+			return verdict !== undefined && round.stored.tasks.some((task) => task === owner)
+				? { round, verdict }
+				: undefined;
+		}, context);
+		return owned === undefined ? undefined : MissEvidence.gather(this.storage, { ...owned, finding }, context);
 	}
 
 	/** The comparison recorded for the selected round or unattributed revision, or undefined when absent. */

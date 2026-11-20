@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { type Comparison, Lens, LensError, loadConfig, userFiles, visibleText } from "@melian-agent/core";
+import { type ExternalFinding, Lens, LensError, loadConfig, userFiles, visibleText } from "@melian-agent/core";
 import {
 	type CompareHarness,
 	type EntryRecord,
@@ -38,11 +38,12 @@ export class CloneEvidence {
 	}
 
 	/**
-	 * Copies the evidence behind miss `id` of `comparison`, or says why there is none. Returns 1 when the copy was
+	 * Copies the evidence behind `finding`, a valid miss, or says why there is none. Returns 1 when the copy was
 	 * refused, after the adjudication it follows was recorded.
 	 */
-	async keep(harness: CompareHarness, revision: Revision, comparison: Comparison, id: string): Promise<number> {
-		const gathered = await harness.evidence(revision, comparison, id);
+	async keep(harness: CompareHarness, revision: Revision, finding: ExternalFinding): Promise<number> {
+		const { id } = finding;
+		const gathered = await harness.evidence(revision, finding);
 		if (gathered === undefined) {
 			this.io.stdout(
 				`Kept no evidence for ${id}: this clone holds no record of its round's run. An Actions round's records went with its job, and rerunning ${short(revision.head)} on a host gives a new conversation, not the original.\n`,
@@ -50,7 +51,7 @@ export class CloneEvidence {
 			return 0;
 		}
 		try {
-			const kept = await this.store.write(gathered.withLensFiles(await this.lensFiles(gathered, comparison, id)));
+			const kept = await this.store.write(gathered.withLensFiles(await this.lensFiles(gathered, finding)));
 			this.io.stdout(
 				`Kept evidence for ${id}: ${gathered.stages.length} conversations, ${kept.written.length} newly written, at ${visibleText(kept.pointer)}.\n`,
 			);
@@ -88,9 +89,9 @@ export class CloneEvidence {
 		return 0;
 	}
 
-	private async lensFiles(evidence: MissEvidence, comparison: Comparison, id: string): Promise<EvidenceLensFile[]> {
+	private async lensFiles(evidence: MissEvidence, finding: ExternalFinding): Promise<EvidenceLensFile[]> {
 		const commit = /^revision:([0-9a-f]{40})$/.exec(evidence.pointer.policy)?.[1];
-		const file = comparison.externalFinding(id)?.site()?.file;
+		const file = finding.site()?.file;
 		if (commit === undefined || file === undefined) return [];
 		let lenses: Lens[];
 		try {

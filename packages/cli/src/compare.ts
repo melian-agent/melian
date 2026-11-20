@@ -249,16 +249,16 @@ export async function adjudicateComparison(
 			if (comparison.melianFindings().includes(id))
 				io.stdout("This does not dismiss the Melian finding; melian dismiss records a dismissal.\n");
 		}
+		const missed = comparison.externalFinding(id);
 		if (
 			fields.verdict === "valid" &&
-			comparison.externalFinding(id) !== undefined &&
+			missed !== undefined &&
 			!comparison.effectiveMatches().some((match) => match.external === id)
 		)
 			return await (await CloneEvidence.open(io, stored.changeset.repoRoot)).keep(
 				harness,
 				stored.changeset.revision,
-				comparison,
-				id,
+				missed,
 			);
 		return 0;
 	} finally {
