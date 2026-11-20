@@ -1,0 +1,595 @@
+{
+ "total": 34,
+ "omitted": 0,
+ "unmutated": [],
+ "mutants": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 178,
+   "column": 12,
+   "endLine": 178,
+   "endColumn": 45,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > the arms through a real review > runs every lens of the parity arm at high thinking, its share, the tool ceiling and probes, and never at quick",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 7,
+   "endLine": 328,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 7,
+   "endLine": 328,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 7,
+   "endLine": 328,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.name !== \"melian.lens\"",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 38,
+   "endLine": 328,
+   "endColumn": 104,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 47,
+   "endLine": 328,
+   "endColumn": 102,
+   "mutatorName": "MethodExpression",
+   "replacement": "stage.subject",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 67,
+   "endLine": 328,
+   "endColumn": 101,
+   "mutatorName": "ArithmeticOperator",
+   "replacement": "stage.subject.lastIndexOf(\"@\") - 1",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 342,
+   "column": 7,
+   "endLine": 342,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 342,
+   "column": 7,
+   "endLine": 342,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 342,
+   "column": 7,
+   "endLine": 342,
+   "endColumn": 40,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.limits?.tools !== undefined",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 342,
+   "column": 7,
+   "endLine": 342,
+   "endColumn": 26,
+   "mutatorName": "OptionalChaining",
+   "replacement": "stage.limits.tools",
+   "claim": "killed",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 342,
+   "column": 48,
+   "endLine": 342,
+   "endColumn": 81,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > records the level triage picked for each lens and the token and tool limits that ran, and none for another stage",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 364,
+   "column": 15,
+   "endLine": 369,
+   "endColumn": 15,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 5,
+   "endLine": 370,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 5,
+   "endLine": 370,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 5,
+   "endLine": 370,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "error !== undefined || cause(error) !== undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a provider's usage limit, or a lens that answered on a second model, and records no score for that review",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 5,
+   "endLine": 370,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "dropping the undefined guard leaves cause(undefined), which tests the string \"undefined\" against both patterns and returns undefined",
+   "result": "survived, equivalent"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 5,
+   "endLine": 370,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "error === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 28,
+   "endLine": 370,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a provider's usage limit, or a lens that answered on a second model, and records no score for that review",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 28,
+   "endLine": 370,
+   "endColumn": 54,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cause(error) === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 6,
+   "endLine": 372,
+   "endColumn": 67,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 6,
+   "endLine": 372,
+   "endColumn": 67,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 6,
+   "endLine": 372,
+   "endColumn": 67,
+   "mutatorName": "LogicalOperator",
+   "replacement": "stage.error !== undefined || cause(stage.error) !== undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 6,
+   "endLine": 372,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "dropping the undefined guard leaves cause(undefined), which tests the string \"undefined\" against both patterns and returns undefined",
+   "result": "survived, equivalent"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 6,
+   "endLine": 372,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "stage.error === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 35,
+   "endLine": 372,
+   "endColumn": 67,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 372,
+   "column": 35,
+   "endLine": 372,
+   "endColumn": 67,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cause(stage.error) === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 6,
+   "endLine": 378,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > runs the committed arm and then the parity arm on each miss, the parity arm sharing what the committed lenses spent",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 6,
+   "endLine": 378,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "survivorClasses": [],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 6,
+   "endLine": 378,
+   "endColumn": 57,
+   "mutatorName": "LogicalOperator",
+   "replacement": "reason !== undefined || cause(reason) !== undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 6,
+   "endLine": 378,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "dropping the undefined guard leaves cause(undefined), which tests the string \"undefined\" against both patterns and returns undefined",
+   "result": "survived, equivalent"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 6,
+   "endLine": 378,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "reason === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 30,
+   "endLine": 378,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 30,
+   "endLine": 378,
+   "endColumn": 57,
+   "mutatorName": "EqualityOperator",
+   "replacement": "cause(reason) === undefined",
+   "claim": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ],
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  }
+ ],
+ "ignored": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 156,
+   "column": 44,
+   "endLine": 156,
+   "endColumn": 50,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 22,
+   "endLine": 328,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 328,
+   "column": 93,
+   "endLine": 328,
+   "endColumn": 96,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 366,
+   "column": 5,
+   "endLine": 366,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 368,
+   "column": 6,
+   "endLine": 368,
+   "endColumn": 33,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 370,
+   "column": 63,
+   "endLine": 370,
+   "endColumn": 90,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 373,
+   "column": 10,
+   "endLine": 373,
+   "endColumn": 69,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 378,
+   "column": 66,
+   "endLine": 378,
+   "endColumn": 106,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "note": "ignored by configuration"
+  }
+ ],
+ "manual": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "change": "unrouted regex replaced by /^$/",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "change": "unrouted.test(text) replaced by false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > stops on a review a model without credentials left unrun, whether a lens, a prober or the verifier lacked it",
+   "result": "killed"
+  }
+ ]
+}

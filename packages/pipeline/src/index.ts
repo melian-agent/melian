@@ -141,6 +141,7 @@ export {
 	RuntimeSandbox,
 	type SandboxRuntime,
 } from "./probe.ts";
+export { type ProbingHost, probingHost } from "./probing.ts";
 export {
 	MembershipReader,
 	PullRequestRoundHistory,

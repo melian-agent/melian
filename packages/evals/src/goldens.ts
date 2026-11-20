@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	type ChangedFile,
 	Changeset,
 	type CheckRecord,
 	causeSchema,
@@ -29,14 +30,19 @@ import {
 } from "@melian-agent/core";
 import {
 	backgroundContext,
+	CallerContext,
 	configsFor,
 	createMemoryStorage,
+	createNodeExecutionEnv,
 	openReviewHarness,
+	openSqliteStorage,
 	type ProberRecord,
 	type ReviewModels,
 	readFindings,
 	reviewChangeset,
+	runStaticTool,
 	type StageTelemetry,
+	type Storage,
 	TelemetryReader,
 	type WriterTrust,
 } from "@melian-agent/pipeline";
@@ -322,14 +328,24 @@ export type GoldenMode =
 			readonly thinking?: EvalThinking;
 			/** One combination of a probing measurement, applied after `thinking`. */
 			readonly probing?: ProbingRoute;
+			/** A new SQLite file to keep the review's store in, so its conversations can be read after it. */
+			readonly store?: string;
 	  };
 
 /** A live golden mode, the only kind that can review a range outside the corpus. */
 export type LiveGoldenMode = Extract<GoldenMode, { kind: "live" }>;
 
-/** Re-routes a run's policy and lenses for one combination a probing measurement runs. */
+/**
+ * Re-routes a run's policy and lenses for one arm a measurement runs, given the change's files. With `graph`, the review
+ * opens Enola's graph of the head for its lenses as the CLI does, and fails when the graph cannot be read.
+ */
 export interface ProbingRoute {
-	routed(config: MelianConfig, lenses: readonly Lens[]): { config: MelianConfig; lenses: readonly Lens[] };
+	readonly graph?: true;
+	routed(
+		config: MelianConfig,
+		lenses: readonly Lens[],
+		files: readonly ChangedFile[],
+	): { config: MelianConfig; lenses: readonly Lens[] };
 }
 
 /** A range of a clone to review as a golden is reviewed: its base commit, the range, and whose code its head is. */
@@ -338,6 +354,8 @@ export interface ReviewTarget {
 	readonly base: string;
 	readonly range: string;
 	readonly writer: WriterTrust;
+	/** The commit whose policy, standards and lenses review the range, when not its base. */
+	readonly policy?: string;
 	/** Narrows the base's policy and lenses before the mode routes them. */
 	readonly scope?: (
 		config: MelianConfig,
@@ -412,7 +430,7 @@ async function guardrailFindings(
 
 // One read per level, since a read across a check's levels merges sightings of one ID into the most severe one's lines.
 async function detached(
-	storage: ReturnType<typeof createMemoryStorage>,
+	storage: Storage,
 	revision: string,
 ): Promise<{ telemetry: StageTelemetry; probers: Record<string, ProberRecord> }> {
 	const reader = TelemetryReader.open(storage);
@@ -457,6 +475,89 @@ export async function runGolden(golden: Golden, mode: GoldenMode): Promise<Golde
 	}
 }
 
+// What the CLI's static.enola check and its caller context both take: the range's merge base and head, judged under
+// the trusted policy commit's Enola policy, with the host's environment to fetch the pinned executable.
+async function enolaInput(target: ReviewTarget, changeset: Changeset) {
+	const policyCommit = target.policy ?? target.base;
+	const { config } = await loadConfig(target.repo, { kind: "revision", commit: policyCommit }, ".");
+	return {
+		env: createNodeExecutionEnv(target.repo),
+		repoRoot: target.repo,
+		environment: process.env,
+		base: changeset.revision.base,
+		policyCommit,
+		commit: changeset.revision.head,
+		tool: "enola" as const,
+		settings: { ...config.static.enola, enabled: true },
+	};
+}
+
+/**
+ * Builds and caches Enola's graph of the range's head with the call the CLI's `static.enola` check makes, so a review
+ * of the range opens its callers as the CLI's does, and returns the head's snapshot ID. Enola reads the head's own
+ * configuration, so it builds only for a head the target's writer trust vouches for, and throws otherwise, or when
+ * Enola could not build the graph.
+ */
+export async function buildGraph(target: ReviewTarget, run: typeof runStaticTool = runStaticTool): Promise<string> {
+	if (!target.writer.trusted)
+		throw new Error(
+			"Enola reads the head's own configuration, so it builds a graph only of a head MELIAN_EVAL_PROBE_TRUST vouches for",
+		);
+	const changeset = await Changeset.resolve(target.repo, target.range);
+	const built = await run(await enolaInput(target, changeset), backgroundContext);
+	if (built.status === "skipped") throw new Error(`Enola skipped the head: ${built.reason}`);
+	const snapshot = built.snapshots?.find((each) => each.commit === changeset.revision.head);
+	if (snapshot === undefined) throw new Error("Enola ran but recorded no snapshot of the head");
+	return snapshot.snapshotId;
+}
+
+/** Whether Enola's graph of the range's head is already cached, so a review could open its callers without a build. */
+export async function graphCached(target: ReviewTarget): Promise<boolean> {
+	const changeset = await Changeset.resolve(target.repo, target.range);
+	const callers = await CallerContext.open(
+		await enolaInput(target, changeset),
+		changeset.revision.files,
+		backgroundContext,
+	);
+	return callers.coverageSource() !== undefined;
+}
+
+// Opens Enola's graph of the head over the files the tier's lenses select, as the CLI does, whatever the base's policy
+// says of Enola. A graph that cannot be read fails the review: scoring it would measure the arm without its graph.
+async function graphOf(
+	target: ReviewTarget,
+	changeset: Changeset,
+	config: MelianConfig,
+	lenses: readonly Lens[],
+	tier: string,
+): Promise<CallerContext> {
+	const run = new Set(
+		checksOfTier(config, tier)
+			.filter((name) => name.startsWith("lens."))
+			.map((name) => name.slice(5)),
+	);
+	const selected = new Set(
+		Lens.select(
+			lenses.filter((lens) => run.has(lens.name)),
+			config,
+			changeset.revision.paths(),
+		).flatMap((selection) => selection.files),
+	);
+	const callers = await CallerContext.open(
+		await enolaInput(target, changeset),
+		changeset.revision.files.filter(
+			(file) => selected.has(file.path) || (file.oldPath !== undefined && selected.has(file.oldPath)),
+		),
+		backgroundContext,
+		changeset.revision.files.map((file) => file.path),
+	);
+	if (callers.coverageSource() === undefined)
+		throw new Error(
+			`The arm needs Enola's graph of the head, which could not be read: ${callers.caveat() ?? "no graph"}`,
+		);
+	return callers;
+}
+
 /**
  * Reviews `target` live as {@link runGolden} reviews a golden: policy, standards, and lenses from its base, the checks a
  * host runs without a model skipped, and no score for a review that is not reviewed or whose probes did not run.
@@ -466,8 +567,8 @@ export function runRange(target: ReviewTarget, mode: LiveGoldenMode): Promise<Ra
 }
 
 async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Golden | undefined): Promise<RangeRun> {
-	const { repo, base } = target;
-	const source: RepositorySource = { kind: "revision", commit: base };
+	const { repo } = target;
+	const source: RepositorySource = { kind: "revision", commit: target.policy ?? target.base };
 	const changeset = await Changeset.resolve(repo, target.range);
 	const paths = changeset.revision.paths();
 	const standards = await Standards.load(repo, source, paths);
@@ -498,7 +599,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 		models = mode.models;
 		if (mode.thinking !== undefined) config = mode.thinking.apply(config);
 		if (mode.probing !== undefined) {
-			const routed = mode.probing.routed(config, lenses);
+			const routed = mode.probing.routed(config, lenses, changeset.revision.files);
 			config = routed.config;
 			lenses = [...routed.lenses];
 		}
@@ -513,7 +614,12 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 	const checks = hostChecks.map(
 		(name): CheckRecord => ({ name, status: "skipped", reason: "a golden runs its lenses alone" }),
 	);
-	const storage = createMemoryStorage();
+	const callers =
+		mode.kind === "live" && mode.probing?.graph ? await graphOf(target, changeset, config, lenses, tier) : undefined;
+	if (mode.kind === "live" && mode.store !== undefined && existsSync(mode.store))
+		throw new Error(`${mode.store} already holds a store, which this review would resume rather than measure afresh`);
+	const storage =
+		mode.kind === "live" && mode.store !== undefined ? await openSqliteStorage(mode.store) : createMemoryStorage();
 	const reviewHarness = await openReviewHarness(storage, models, {
 		retry: mode.kind !== "scripted",
 		...(mode.kind === "scripted" && mode.probes === "unconfined" ? { probeSandbox: unconfinedSandbox() } : {}),
@@ -530,6 +636,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 			writer: target.writer,
 			tier,
 			checks,
+			...(callers === undefined ? {} : { callers }),
 		};
 		const reviewed = await reviewChangeset(review);
 		const status = reviewed.verdict.reviewStatus();
@@ -596,11 +703,12 @@ export function scriptedMismatches(
 ): string[] {
 	return golden.expected.comments.flatMap((comment) => {
 		const name = `${comment.file} ${comment.rule}${comment.source === undefined ? "" : ` from ${comment.source}`}`;
-		const found = findings.find((each) => answers(comment, each, sightings));
+		const found = findings
+			.map((finding) => ({ finding, claim: answers(comment, finding, sightings) }))
+			.find(({ claim }) => claim !== undefined);
 		if (found === undefined) return [`${name}: not reported`];
-		const claim = found.properties.otherClaims?.find((claim) => matchesClaim(comment, claim));
-		const { cause } = found.properties;
-		const { failureScenario, evidence = [] } = claim ?? found.properties;
+		const { cause } = found.finding.properties;
+		const { failureScenario, evidence = [] } = found.claim!;
 		// A guardrail finding has neither a failure scenario nor evidence, so only its cause is held to the golden.
 		if (comment.rule.startsWith("guardrail/"))
 			return cause === comment.cause ? [] : [`${name}: cause ${cause}, expected ${comment.cause}`];
@@ -670,23 +778,20 @@ function within(comment: ExpectedClaim, file: string, start: number, end: number
 // A claim's place is where its own check reported it: a merged finding keeps only its speaker's lines and some of the
 // members' evidence, and each place it still holds can belong to another member. A claim of a check that keeps no
 // sightings, such as a guardrail, is the finding itself.
-function sightedWithin(comment: ExpectedClaim, finding: Finding, sightings: readonly Finding[] | undefined): boolean {
+function sightedWithin(
+	comment: ExpectedClaim,
+	finding: Finding,
+	sightings: readonly Finding[] | undefined,
+): MemberClaim | undefined {
 	if (sightings === undefined)
 		throw new Error(`an expected ${comment.rule} at lines ${comment.lines!.join("-")} needs the review's sightings`);
-	const { reportedBy, source, otherClaims = [], verification } = finding.properties;
+	const { reportedBy, source, otherClaims = [] } = finding.properties;
 	const key = (id: string, each: FindingSource) => JSON.stringify([id, each.check, each.version]);
 	const claims = new Map(otherClaims.map((claim) => [key(claim.id, claim.source), claim]));
 	for (const each of reportedBy ?? [source])
-		if (!claims.has(key(finding.id, each)))
-			claims.set(key(finding.id, each), {
-				id: finding.id,
-				ruleId: finding.ruleId,
-				source: each,
-				severity: finding.original(),
-				...(verification === undefined ? {} : { verification }),
-			});
+		if (!claims.has(key(finding.id, each))) claims.set(key(finding.id, each), finding.claimAs(each));
 	const sighted = new Map(sightings.map((sighting) => [key(sighting.id, sighting.properties.source), sighting]));
-	return [...claims.values()].some((claim) => {
+	return [...claims.values()].find((claim) => {
 		if (!matchesClaim(comment, claim)) return false;
 		const sighting = claim.source.check.startsWith("lens.") ? sighted.get(key(claim.id, claim.source)) : finding;
 		if (sighting === undefined)
@@ -698,26 +803,29 @@ function sightedWithin(comment: ExpectedClaim, finding: Finding, sightings: read
 	});
 }
 
-// Match a merged defect through the claim that supplied the expected rule and source. An expectation with lines is
+// The claim of a merged defect that supplied the expected rule and source, or none. An expectation with lines is
 // answered only at a claim's own sighting, which `sightings` holds.
-export function answers(comment: ExpectedClaim, finding: Finding, sightings?: readonly Finding[]): boolean {
+export function answers(
+	comment: ExpectedClaim,
+	finding: Finding,
+	sightings?: readonly Finding[],
+): MemberClaim | undefined {
 	if (comment.lines !== undefined) return sightedWithin(comment, finding, sightings);
 	const path = finding.properties.path ?? finding.locations[0]!.physicalLocation.artifactLocation.uri;
-	if (!within(comment, path, 0, 0)) return false;
+	if (!within(comment, path, 0, 0)) return undefined;
 	const { reportedBy, source, otherClaims = [] } = finding.properties;
-	if (otherClaims.some((claim) => matchesClaim(comment, claim))) return true;
-	if (!namesRule(comment, finding.ruleId)) return false;
-	const original = otherClaims.find(
-		(claim) =>
-			claim.id === finding.id && claim.source.check === source?.check && claim.source.version === source?.version,
-	);
-	if ((original ?? finding.properties).verification?.verdict === "refuted") return false;
-	if (comment.source === undefined) return true;
-	return (reportedBy ?? (source === undefined ? [] : [source])).some(
+	const member = otherClaims.find((claim) => matchesClaim(comment, claim));
+	if (member !== undefined) return member;
+	if (!namesRule(comment, finding.ruleId)) return undefined;
+	const own = finding.claimAs();
+	if (own.verification?.verdict === "refuted") return undefined;
+	if (comment.source === undefined) return own;
+	const speaking = (reportedBy ?? [source]).find(
 		(each) =>
 			each.check === comment.source &&
 			!otherClaims.some((claim) => claim.source.check === each.check && claim.source.version === each.version),
 	);
+	return speaking === undefined ? undefined : finding.claimAs(speaking);
 }
 
 /**
@@ -743,13 +851,15 @@ export function scoreGolden(golden: Golden, findings: readonly Finding[], sighti
 			]),
 		).values(),
 	];
-	const found = expected.filter((comment) => findings.some((finding) => answers(comment, finding, sightings))).length;
+	const found = expected.filter((comment) =>
+		findings.some((finding) => answers(comment, finding, sightings) !== undefined),
+	).length;
 	// Pairs findings with expectations so that as many as possible count, each expectation once: with sources, a finding
 	// several lenses reported may answer more than one expectation, and the first one it fits may be another's only fit.
 	const holder: (number | undefined)[] = expected.map(() => undefined);
 	const claim = (index: number, tried: Set<number>): boolean =>
 		expected.some((comment, slot) => {
-			if (tried.has(slot) || !answers(comment, findings[index]!, sightings)) return false;
+			if (tried.has(slot) || answers(comment, findings[index]!, sightings) === undefined) return false;
 			tried.add(slot);
 			const held = holder[slot];
 			if (held !== undefined && !claim(held, tried)) return false;

@@ -1,0 +1,419 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "25d6128a8fa527025bc340c7b9b1043866471120",
+		"head": "612b3f4b41a90ffd83db4217712c0d8fe8f20481"
+	},
+	"claimsIn": [
+		"scripts/compare-platform-reports.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 77,
+			"column": 17,
+			"endLine": 78,
+			"endColumn": 48,
+			"mutatorName": "MethodExpression",
+			"replacement": "report.testResults",
+			"status": "generated",
+			"id": "66d21ea2e434c3ecc98446e0c5e8564e6875830771ef6603981bbc711e025766",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 78,
+			"column": 11,
+			"endLine": 78,
+			"endColumn": 47,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "07104e4c604222c80aef666ac37c936753b0b68ceb309c2368d5ca0b84a278e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"fails a macOS report that did not succeed, though every test in it passed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 78,
+			"column": 22,
+			"endLine": 78,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "67d6ac0c1addf0fa9092635aae89c58ddc28482dc5123378346670cf65a492c2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 78,
+			"column": 22,
+			"endLine": 78,
+			"endColumn": 47,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c61fdfb02c47653ba3f72670ed426ca1605069cf0e2f71fda54fe54a4dbeb317",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"fails a macOS report that did not succeed, though every test in it passed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 78,
+			"column": 22,
+			"endLine": 78,
+			"endColumn": 47,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.status !== \"failed\"",
+			"status": "generated",
+			"id": "efe79302e7d785670324bf31e02dad79fbf9439b0e4f37709bb5891d7acb761e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 78,
+			"column": 39,
+			"endLine": 78,
+			"endColumn": 47,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b7cf9f7f70bd86d6c7673f4640bc5891b0780eed3f061fad4da5885e28727ec1"
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 79,
+			"column": 8,
+			"endLine": 79,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "56915e978ff04e05b532dbf897e310e5300c0423830d27acf9bc8fc05830b22d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"fails a macOS report that did not succeed, though every test in it passed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 79,
+			"column": 19,
+			"endLine": 79,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ecd02f12f1d0071f2b4c04888ad7a247a2bcc25e5338accf9f160cf6098cb104"
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 79,
+			"column": 65,
+			"endLine": 79,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3ffd2fc03478729543fe9a9026c1d467288e74fc97b36d621be0bab9cdc76e6a"
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 80,
+			"column": 6,
+			"endLine": 80,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e3131274fd7b43a873f928771fc7a07c63d0ed85f9b577f71c569532a04a628d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 80,
+			"column": 6,
+			"endLine": 80,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1f94a4bde72ae049adf90cea1339a8fc0b32b457f9cea0f981442562c0b1d2f5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"fails a macOS report that did not succeed, though every test in it passed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 80,
+			"column": 6,
+			"endLine": 80,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "report.success === true",
+			"status": "generated",
+			"id": "ce57036fafa609027175377e11bfb01f1f5c891f4810a312db511d135dcca260",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 80,
+			"column": 25,
+			"endLine": 80,
+			"endColumn": 29,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c135399c5c36a1598f3c069f17e06ae814510e43e928233bd857c4d3d8ad13b1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 82,
+			"column": 11,
+			"endLine": 82,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "360330d617d58ad1c373b9a32bb435dfe7010799c0d2264324bbcf9d9108b76d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 82,
+			"column": 11,
+			"endLine": 82,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "53f098087228a9f2214900d907d9103799324cb262824d94319c3c4981d07295",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"refuses a macOS report that says it succeeded while a file in it failed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 82,
+			"column": 11,
+			"endLine": 82,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "failed.length >= 0",
+			"status": "generated",
+			"id": "d7dcc20ad33b3ffcc716daacd66e1c76ee30a94b6775847559504eb6c17a81b8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 82,
+			"column": 11,
+			"endLine": 82,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "failed.length <= 0",
+			"status": "generated",
+			"id": "9a3f9161a5ed0a7ecda0f85bf791eb03e8755a3349dea88801a1e7d7401fee14",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"passes when every test Linux skipped passed on macOS, and says what it counted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 83,
+			"column": 3,
+			"endLine": 83,
+			"endColumn": 98,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4e50c1294866692c991b9b7e4fb97690e837634c8ef1127fa9b1095b069032b5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/compare-platform-reports.test.mjs",
+					"path": [
+						"compare",
+						"refuses a macOS report that says it succeeded while a file in it failed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 83,
+			"column": 15,
+			"endLine": 83,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6edc7bc943aa6483e657d94eefeab41777c418ad0c4c78081699bf2692b41c59"
+		},
+		{
+			"file": "scripts/compare-platform-reports.mjs",
+			"line": 83,
+			"column": 89,
+			"endLine": 83,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "69a8d8a7c2e5bfe133ff3aa0738bc2c350b8104f9e9b92fd929feea866e18813"
+		}
+	],
+	"total": 20,
+	"omitted": 0,
+	"unmutated": []
+}
