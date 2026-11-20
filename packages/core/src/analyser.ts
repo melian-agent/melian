@@ -98,8 +98,8 @@ function compileExclusions(globs: readonly string[], configuration: string): Lin
 
 /**
  * What a head's change to an analyser's configuration switches off, a sentence each: the file deleted, tsc's `noCheck`
- * or `skipLibCheck` turned on, Biome's linter disabled, or changed files Biome newly ignores. Best effort: it reads the
- * file itself, not what it extends.
+ * or `skipLibCheck` turned on, Biome's linter disabled, changed files Biome newly ignores, or an npm script the base had
+ * changed or removed. Best effort: it reads the file itself, not what it extends.
  */
 export function switchOffs(
 	path: string,
@@ -133,5 +133,27 @@ export function switchOffs(
 		);
 		if (ignored.length > 0) found.push(`It makes Biome ignore ${ignored.join(", ")}, which this change touches.`);
 	}
+	if (posix.basename(path.toLowerCase()) === "package.json") found.push(...scriptChanges(before, after));
 	return found;
+}
+
+// Every script counts: npm runs `pre` and `post` scripts and lifecycle scripts no caller names, so no reading of the
+// workflows says which ones a gate runs. Names come from the base alone, so no head text reaches the notice.
+function scriptChanges(before: unknown, after: unknown): string[] {
+	const was = field(before, "scripts");
+	if (typeof after !== "object" || after === null || Array.isArray(after)) return [];
+	if (typeof was !== "object" || was === null || Array.isArray(was)) return [];
+	const is = field(after, "scripts");
+	const now = typeof is === "object" && is !== null ? (is as Json) : {};
+	const names = Object.keys(was);
+	const removed = names.filter((name) => !Object.hasOwn(now, name));
+	const changed = names.filter(
+		(name) => Object.hasOwn(now, name) && JSON.stringify(now[name]) !== JSON.stringify((was as Json)[name]),
+	);
+	const sentence = (verb: string, list: string[]) =>
+		`It ${verb} the npm script${list.length > 1 ? "s" : ""} ${list.map((name) => JSON.stringify(name)).join(", ")}.`;
+	return [
+		...(changed.length > 0 ? [sentence("changes", changed)] : []),
+		...(removed.length > 0 ? [sentence("removes", removed)] : []),
+	];
 }

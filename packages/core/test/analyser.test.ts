@@ -144,3 +144,50 @@ describe("Biome exclusions", () => {
 		).toEqual(["It makes Biome ignore src/a.ts, which this change touches."]);
 	});
 });
+
+describe("npm scripts", () => {
+	const manifest = (scripts: unknown) => JSON.stringify({ scripts });
+	const base = manifest({ check: "vitest --run", lint: "biome lint" });
+
+	it.each([
+		["a rewritten script", manifest({ check: "true", lint: "biome lint" }), ['It changes the npm script "check".']],
+		["a removed script", manifest({ check: "vitest --run" }), ['It removes the npm script "lint".']],
+		[
+			"two changed and none removed",
+			manifest({ check: "true", lint: "true" }),
+			['It changes the npm scripts "check", "lint".'],
+		],
+		["a scripts field that is not an object", manifest(["vitest"]), ['It removes the npm scripts "check", "lint".']],
+		["a null scripts field", manifest(null), ['It removes the npm scripts "check", "lint".']],
+		["no scripts field", JSON.stringify({ name: "a" }), ['It removes the npm scripts "check", "lint".']],
+		[
+			"a script that becomes a number",
+			manifest({ check: 1, lint: "biome lint" }),
+			['It changes the npm script "check".'],
+		],
+		["only an added script", manifest({ check: "vitest --run", lint: "biome lint", precheck: "true" }), []],
+		["a head that does not parse", "{", []],
+		["a head that is an array", "[]", []],
+	])("reports %s", (_, head, expected) => {
+		expect(switchOffs("package.json", base, head, [])).toEqual(expected);
+	});
+
+	it("reads a nested package.json in any case, and no other manifest", () => {
+		const head = manifest({ lint: "biome lint" });
+		expect(switchOffs("web/Package.Json", base, head, [])).toEqual(['It removes the npm script "check".']);
+		expect(switchOffs("package-lock.json", base, head, [])).toEqual([]);
+	});
+
+	it("reports nothing when the base had no scripts, or scripts that are not an object", () => {
+		expect(switchOffs("package.json", JSON.stringify({}), manifest({ check: "true" }), [])).toEqual([]);
+		expect(switchOffs("package.json", manifest(["check"]), manifest({ check: "true" }), [])).toEqual([]);
+		expect(switchOffs("package.json", manifest(null), manifest({}), [])).toEqual([]);
+	});
+
+	it("quotes a base script's name as JSON, so no newline or quote in it reads as prose", () => {
+		const odd = 'a"\nb';
+		expect(switchOffs("package.json", manifest({ [odd]: "x" }), manifest({}), [])).toEqual([
+			'It removes the npm script "a\\"\\nb".',
+		]);
+	});
+});

@@ -1,0 +1,7 @@
+# A changed npm script is named in its notice
+
+[Issue #589](https://github.com/melian-agent/melian/issues/589): a head that rewrote `check` in `package.json` drew Melian's ordinary notice, with no word that the gate's own command changed. `switchOffs` now adds "It changes the npm script "check"." and "It removes the npm script "lint"." for each script the base had, in the root `package.json` and in nested ones. [The decision](../decisions/2026-11-20-every-npm-script-is-a-switch-off.md) says why every script counts, and why only base names are quoted.
+
+`packages/core/test/guardrails.test.ts` gained a test of the stored explanation for a root and a workspace `package.json`, whose head scripts carry text that must not appear. It failed before the change, with both notices missing the script lines, and passes after. A second test holds that an added script and a changed `version` add nothing. `packages/core/test/analyser.test.ts` covers each guard: a head that does not parse, a head that is an array, a `scripts` field that is absent, `null` or an array, a base with no scripts, a mixed-case nested name, `package-lock.json`, and JSON quoting of an odd name.
+
+The change alters a notice's words, not what blocks, so it guards no trust or durability code and owes no inventory. Nine mutants of the new guards were still run by hand against the `npm scripts` tests. Eight failed. The ninth, dropping the array check on the head's `scripts`, was equivalent unless a base script is named `"0"`, so the check was removed.
