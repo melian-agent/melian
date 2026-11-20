@@ -89,7 +89,7 @@ it("reopens the previous documents unchanged, then persists a newly decided trus
 });
 
 it("takes the next findings version after main's restatement version", () => {
-	expect(FindingsDocument.definition.version).toBe(12);
+	expect(FindingsDocument.definition.version).toBe(13);
 });
 
 it.each([

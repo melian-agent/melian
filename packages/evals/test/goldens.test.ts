@@ -21,6 +21,7 @@ import {
 	Finding,
 	Lens,
 	loadConfig,
+	type MemberClaim,
 	Merge,
 	type Severity,
 	Verdict,
@@ -783,8 +784,8 @@ describe.each(goldens.map((golden): [string, Golden] => [golden.name, golden]))(
 			const run = await runGolden(golden, { kind: "scripted", probes: "unconfined" });
 
 			expect(run.toolMismatches).toEqual([]);
-			expect(scoreGolden(golden, run.findings)).toMatchObject({ precision: 1, recall: 1 });
-			expect(scriptedMismatches(golden, run.findings)).toEqual([]);
+			expect(scoreGolden(golden, run.findings, run.sightings)).toMatchObject({ precision: 1, recall: 1 });
+			expect(scriptedMismatches(golden, run.findings, run.sightings)).toEqual([]);
 			await expect(run.rendered).toMatchFileSnapshot(join(golden.directory, "scripted.txt"));
 		});
 	},
@@ -1041,6 +1042,8 @@ describe("scriptedMismatches", () => {
 
 describe("scoreGolden", () => {
 	const nullDeref = goldens.find((each) => each.name === "correctness-null-deref");
+	// An unmerged finding is its own check's sighting.
+	const own = (golden: Golden, finding: Finding) => scoreGolden(golden, [finding], [finding]);
 	const finding = (path: string, rule: string) =>
 		({
 			ruleId: rule,
@@ -1298,13 +1301,13 @@ describe("scoreGolden", () => {
 				explanation: { what: "The label stays.", whyHere: "The run reads its own event.", whatToDo: "Skip it." },
 			});
 		expect(comment!.source).toBeUndefined();
-		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering")])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden, [report("lens.correctness", "fail-open")])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden, [report("lens.trust-boundary", "fail-open")])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden, [report("lens.correctness", "wrong-result")])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 78)])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 76)])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden, [report("lens.correctness", "state-ordering", 79)])).toMatchObject({ recall: 0 });
+		expect(own(golden, report("lens.correctness", "state-ordering"))).toMatchObject({ recall: 1 });
+		expect(own(golden, report("lens.correctness", "fail-open"))).toMatchObject({ recall: 1 });
+		expect(own(golden, report("lens.trust-boundary", "fail-open"))).toMatchObject({ recall: 1 });
+		expect(own(golden, report("lens.correctness", "wrong-result"))).toMatchObject({ recall: 0 });
+		expect(own(golden, report("lens.correctness", "state-ordering", 78))).toMatchObject({ recall: 1 });
+		expect(own(golden, report("lens.correctness", "state-ordering", 76))).toMatchObject({ recall: 0 });
+		expect(own(golden, report("lens.correctness", "state-ordering", 79))).toMatchObject({ recall: 0 });
 		expect(comment!.lines).toEqual([77, 78]);
 	});
 
@@ -1335,207 +1338,158 @@ describe("scoreGolden", () => {
 				source: { check: "lens.correctness", version: "v" },
 				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
 			});
-			expect(scoreGolden(golden, [placed]).recall, `${startLine}-${endLine}`).toBe(answers ? 1 : 0);
+			expect(own(golden, placed).recall, `${startLine}-${endLine}`).toBe(answers ? 1 : 0);
 			expect(scoreGolden(nullDeref!, [placed]).recall).toBe(1);
 		}
 	});
 
-	it("answers an expectation with lines through a merged claim only where that claim's own cause sits", () => {
+	describe("an expectation with lines, answered at each claim's own sighting", () => {
 		const [comment] = nullDeref!.expected.comments;
-		const golden = (lines?: [number, number]) => ({
+		const lined = (...files: string[]) => ({
 			...nullDeref!,
 			expected: {
 				...nullDeref!.expected,
-				comments: [{ ...comment!, source: "lens.tests", ...(lines === undefined ? {} : { lines }) }],
+				comments: (files.length === 0 ? [comment!.file] : files).map((file) => ({
+					...comment!,
+					file,
+					source: "lens.tests",
+					lines: [10, 12] as [number, number],
+				})),
 			},
 		});
-		const merged = (
-			speakerLine: number,
-			claimLine: number | undefined,
-			role: "cause" | "context" = "cause",
-			revision: "head" | "base" = "head",
-		) => {
-			const speaker = Finding.create({
-				rule: "wrong-result",
-				file: comment!.file,
-				startLine: speakerLine,
+		const report = (check: string, rule: string, startLine: number, file = comment!.file, version = "v") =>
+			Finding.create({
+				rule,
+				file,
+				startLine,
 				discriminator: "user",
 				message: "The user can be null.",
 				severity: "P1",
 				cause: comment!.cause,
-				source: { check: "lens.correctness", version: "v" },
+				source: { check, version },
 				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
 			});
-			const evidence = (file: string) =>
-				claimLine === undefined
-					? {}
-					: {
-							evidence: [
-								{
-									file,
-									startLine: claimLine,
-									role,
-									revision,
-									snippet: "user.name",
-								},
-							],
-						};
-			return (file = comment!.file) =>
-				Finding.from({
-					...speaker.toJSON(),
-					properties: {
-						...speaker.properties,
-						otherClaims: [
-							{
-								id: "tests-claim",
-								ruleId: comment!.rule,
-								source: { check: "lens.tests", version: "v" },
-								...evidence(file),
-							},
-						],
-					},
-				});
-		};
-		expect(scoreGolden(golden([10, 12]), [merged(11, 20)()])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden([10, 12]), [merged(20, 11)()])).toMatchObject({ recall: 1, precision: 1 });
-		expect(scoreGolden(golden([10, 12]), [merged(11, 12)()])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden([10, 12]), [merged(20, 13)()])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden([10, 12]), [merged(11, 11)("src/other.ts")])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden([10, 12]), [merged(11, undefined)()])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden([10, 12]), [merged(11, 11, "context")()])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden([10, 12]), [merged(11, 11, "cause", "base")()])).toMatchObject({ recall: 0 });
-		expect(scoreGolden(golden(), [merged(11, undefined)()])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden(), [merged(20, 40)()])).toMatchObject({ recall: 1 });
-	});
-
-	it("places a merged speaker's own claim by the speaker's place, and a member's by its cause, through its end line", () => {
-		const [comment] = nullDeref!.expected.comments;
-		const golden = {
-			...nullDeref!,
-			expected: {
-				...nullDeref!.expected,
-				comments: [{ ...comment!, source: "lens.tests", lines: [10, 12] as [number, number] }],
-			},
-		};
-		const cause = (startLine: number, endLine?: number) => ({
-			file: comment!.file,
-			startLine,
-			...(endLine === undefined ? {} : { endLine }),
-			role: "cause" as const,
-			revision: "head" as const,
-			snippet: "user.name",
+		const claimOf = (sighting: Finding, extra: Partial<MemberClaim> = {}): MemberClaim => ({
+			id: sighting.id,
+			ruleId: sighting.ruleId,
+			source: sighting.properties.source,
+			...extra,
 		});
-		const placed = (location: number, own: number) => {
-			const speaker = Finding.create({
-				rule: comment!.rule,
-				file: comment!.file,
-				startLine: location,
-				discriminator: "user",
-				message: "The user can be null.",
-				severity: "P1",
-				cause: comment!.cause,
-				source: { check: "lens.tests", version: "v" },
-				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
-			});
-			return Finding.from({
+		// The verdict's finding as adjudication leaves it: the speaker's place, or a member's, and the claims merged in.
+		const merged = (speaker: Finding, startLine: number, otherClaims: MemberClaim[]) =>
+			Finding.from({
 				...speaker.toJSON(),
-				properties: {
-					...speaker.properties,
-					otherClaims: [
-						{
-							id: speaker.id,
-							ruleId: comment!.rule,
-							source: { check: "lens.tests", version: "v" },
-							evidence: [cause(own)],
-						},
-						{
-							id: "other",
-							ruleId: "wrong-result",
-							source: { check: "lens.correctness", version: "v" },
-							evidence: [cause(own)],
-						},
-					],
-				},
+				locations: report("lens.correctness", "wrong-result", startLine).locations,
+				properties: { ...speaker.properties, otherClaims },
 			});
-		};
-		expect(scoreGolden(golden, [placed(11, 30)])).toMatchObject({ found: 1, recall: 1 });
-		expect(scoreGolden(golden, [placed(30, 11)])).toMatchObject({ found: 0, recall: 0 });
-		const member = (start: number, end: number) => {
-			const speaker = Finding.create({
-				rule: "wrong-result",
-				file: comment!.file,
-				startLine: 30,
-				discriminator: "user",
-				message: "The user can be null.",
-				severity: "P1",
-				cause: comment!.cause,
-				source: { check: "lens.correctness", version: "v" },
-				explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
-			});
-			return Finding.from({
-				...speaker.toJSON(),
-				properties: {
-					...speaker.properties,
-					otherClaims: [
-						{
-							id: "tests",
-							ruleId: comment!.rule,
-							source: { check: "lens.tests", version: "v" },
-							evidence: [cause(start, end)],
-						},
-					],
-				},
-			});
-		};
-		expect(scoreGolden(golden, [member(5, 10)])).toMatchObject({ recall: 1 });
-		expect(scoreGolden(golden, [member(5, 9)])).toMatchObject({ recall: 0 });
-	});
-
-	it("answers no expectation in another file through a merged claim's cause there, so one claim counts once", () => {
-		const [comment] = nullDeref!.expected.comments;
-		const golden = {
-			...nullDeref!,
-			expected: {
-				...nullDeref!.expected,
-				comments: [
-					{ ...comment!, source: "lens.tests", lines: [10, 12] as [number, number] },
-					{ ...comment!, file: "src/other.ts", source: "lens.tests", lines: [4, 6] as [number, number] },
-				],
-			},
-		};
-		const speaker = Finding.create({
-			rule: "wrong-result",
-			file: comment!.file,
-			startLine: 11,
-			discriminator: "user",
-			message: "The user can be null.",
-			severity: "P1",
-			cause: comment!.cause,
-			source: { check: "lens.correctness", version: "v" },
-			explanation: { what: "A crash.", whyHere: "No guard.", whatToDo: "Guard it." },
-		});
-		const cause = (file: string, startLine: number) => ({
+		const cause = (startLine: number, file = comment!.file) => ({
 			file,
 			startLine,
 			role: "cause" as const,
 			revision: "head" as const,
 			snippet: "user.name",
 		});
-		const merged = Finding.from({
-			...speaker.toJSON(),
-			properties: {
-				...speaker.properties,
-				otherClaims: [
-					{
-						id: "tests-claim",
-						ruleId: comment!.rule,
-						source: { check: "lens.tests", version: "v" },
-						evidence: [cause(comment!.file, 11), cause("src/other.ts", 5)],
-					},
-				],
-			},
+
+		it("answers through a member's claim where the member sighted it, whatever the speaker's place or the claim's cause", () => {
+			const speaker = report("lens.correctness", "wrong-result", 30);
+			const at = (line: number) => report("lens.tests", comment!.rule, line);
+			const found = (sighting: Finding, place: number, evidence = [cause(30)]) =>
+				scoreGolden(lined(), [merged(speaker, place, [claimOf(sighting, { evidence })])], [speaker, sighting])
+					.found;
+			expect(found(at(11), 30)).toBe(1);
+			expect(found(at(9), 30)).toBe(0);
+			// Codex review 4 of #518: the speaker's place answered for a merged claim reported elsewhere.
+			expect(found(at(30), 11)).toBe(0);
+			// The first fixes' authority, the claim's own cause, placed it where the member never reported it.
+			expect(found(at(30), 30, [cause(11)])).toBe(0);
+			expect(found(report("lens.tests", comment!.rule, 11, "src/other.ts"), 30)).toBe(0);
+			// Without lines, file, rule and source decide as before, wherever the claim was sighted.
+			expect(
+				scoreGolden({ ...lined(), expected: nullDeref!.expected }, [merged(speaker, 30, [claimOf(at(40))])]).found,
+			).toBe(1);
 		});
-		expect(scoreGolden(golden, [merged])).toMatchObject({ expected: 2, found: 1, truePositives: 1, recall: 0.5 });
+
+		it("places the speaker's own claim at the speaker's sighting, though a merge copied it among the claims", () => {
+			const sighting = (line: number) => report("lens.tests", comment!.rule, line);
+			// The second review of record on #518: the copy was placed by its cause evidence, not where the speaker is.
+			const found = (line: number) => {
+				const speaker = sighting(line);
+				return scoreGolden(
+					lined(),
+					[merged(speaker, line, [claimOf(speaker, { evidence: [cause(40 - line)] })])],
+					[speaker],
+				).found;
+			};
+			expect(found(11)).toBe(1);
+			expect(found(29)).toBe(0);
+			const speaker = sighting(30);
+			// Codex review 8 of #518: adjudication kept another member's place on the merged finding.
+			const other = report("lens.correctness", "wrong-result", 11);
+			expect(scoreGolden(lined(), [merged(speaker, 11, [claimOf(other)])], [speaker, other]).found).toBe(0);
+		});
+
+		it("answers through each version the speaker was reported by, at that version's sighting", () => {
+			const quick = report("lens.tests", comment!.rule, 30, comment!.file, "quick");
+			const careful = report("lens.tests", comment!.rule, 11, comment!.file, "careful");
+			expect(careful.id).toBe(quick.id);
+			const both = Finding.from({
+				...quick.toJSON(),
+				properties: { ...quick.properties, reportedBy: [quick.properties.source, careful.properties.source] },
+			});
+			expect(scoreGolden(lined(), [both], [quick, careful]).found).toBe(1);
+			expect(
+				scoreGolden(lined(), [both], [quick, report("lens.tests", comment!.rule, 30, comment!.file, "careful")])
+					.found,
+			).toBe(0);
+		});
+
+		it("answers one expectation per file a claim was sighted in, though its causes name two files", () => {
+			const speaker = report("lens.correctness", "wrong-result", 11);
+			const tests = report("lens.tests", comment!.rule, 11);
+			// Codex review 5 of #518: a claim with causes in two files answered expectations in both.
+			const finding = merged(speaker, 11, [claimOf(tests, { evidence: [cause(11), cause(11, "src/other.ts")] })]);
+			expect(scoreGolden(lined(comment!.file, "src/other.ts"), [finding], [speaker, tests])).toMatchObject({
+				expected: 2,
+				found: 1,
+				truePositives: 1,
+			});
+		});
+
+		it("answers from no refuted claim, and from a guardrail's finding at its own place", () => {
+			const speaker = report("lens.correctness", "wrong-result", 30);
+			const tests = report("lens.tests", comment!.rule, 11);
+			const refuted = {
+				verification: {
+					verdict: "refuted" as const,
+					reason: "a guard",
+					executor: "llm" as const,
+					model: "fake/judge",
+					version: "v",
+				},
+			};
+			expect(scoreGolden(lined(), [merged(speaker, 30, [claimOf(tests, refuted)])], [speaker, tests]).found).toBe(0);
+			const guardrail = {
+				...lined(),
+				expected: { ...lined().expected, comments: [{ ...lined().expected.comments[0]!, source: "guardrail" }] },
+			};
+			const flagged = report("guardrail", comment!.rule, 11);
+			expect(scoreGolden(guardrail, [flagged], []).found).toBe(1);
+			expect(scoreGolden(guardrail, [report("guardrail", comment!.rule, 30)], []).found).toBe(0);
+		});
+
+		it("refuses to score without the review's sightings, or with a lens claim its lens never sighted", () => {
+			const speaker = report("lens.correctness", "wrong-result", 30);
+			const tests = report("lens.tests", comment!.rule, 11);
+			const finding = merged(speaker, 30, [claimOf(tests)]);
+			expect(() => scoreGolden(lined(), [finding])).toThrow(
+				`an expected ${comment!.rule} at lines 10-12 needs the review's sightings`,
+			);
+			expect(() => scoreGolden(lined(), [finding], [speaker])).toThrow(
+				`the verdict holds a lens.tests claim ${tests.id} from v that the lens never sighted`,
+			);
+			// A claim under another rule decides nothing, so its missing sighting is never asked for.
+			expect(scoreGolden(lined(), [finding], [tests]).found).toBe(1);
+		});
 	});
 
 	it("keeps two expectations apart that differ only in their lines or their alternative rules", () => {

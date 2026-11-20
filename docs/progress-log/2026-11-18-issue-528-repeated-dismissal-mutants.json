@@ -1,0 +1,223 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "d6ef085b2abd25154cb15daf73673452b307f397",
+		"head": "a6948cc66bda3e7ac1e05db8c2731630f58fb7af"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 606,
+			"column": 2,
+			"endLine": 606,
+			"endColumn": 88,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3c1f691e0f5fba023cee205329c1f8d0deb9eb797d18df89483a079dda084792",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismissal-trigger.test.ts",
+					"path": [
+						"accepts the dismissed revision rather than the last sighting, including the same reason (affected: false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 606,
+			"column": 2,
+			"endLine": 606,
+			"endColumn": 88,
+			"mutatorName": "EqualityOperator",
+			"replacement": "JSON.stringify(record.lifecycle.dismissedTrigger) !== JSON.stringify(dismissedTrigger)",
+			"status": "generated",
+			"id": "f2af4e40ea6c6875c2eb446179c593f7fff1f2bcb6cdb8208cfe780bdbe3aad2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"waits for its own adjudication when the same dismissal is recorded again, adding no history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 3,
+			"endLine": 607,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0097d9ce73e138785b63d60c2d3ff28f4bdeb9228c0dceec027e6148876d8798",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is taken into a repeated dismissal once a run stands, though nothing else changed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 3,
+			"endLine": 607,
+			"endColumn": 76,
+			"mutatorName": "LogicalOperator",
+			"replacement": "severity === undefined && record.lifecycle.dismissedSighting?.run === run",
+			"status": "generated",
+			"id": "ab880b1551daa773ce473600d93f0d7501e5be7468a9c5ceeafd095c7ffe5fdd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"waits for its own adjudication when the same dismissal is recorded again, adding no history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 3,
+			"endLine": 607,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8b56e88be65369a8167117d74614f04cc5b2bb99c3fa35cf7f54e158664b6163",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is kept by a repeated dismissal that names no severity, after a later run"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 3,
+			"endLine": 607,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "severity !== undefined",
+			"status": "generated",
+			"id": "d528ebecd52d0fa42669b6d6d87f12ce3c3b8c6f207fd058cb9326aa98f624bd",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings-check-stamp.test.ts",
+					"path": [
+						"a check's stamp on its sightings at a revision",
+						"is taken into a repeated dismissal once a run stands, though nothing else changed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 29,
+			"endLine": 607,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b259e45380dadae2c86a30c6fefb5e6d191a1e08209f1180254621ddc1c4b17b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"waits for its own adjudication when the same dismissal is recorded again, adding no history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 29,
+			"endLine": 607,
+			"endColumn": 76,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record.lifecycle.dismissedSighting?.run !== run",
+			"status": "generated",
+			"id": "7fa0b0ad7f0302364d9a64d68bee7d1f9d3d0b065d377f4a287e3e390e656908",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/dismiss.test.ts",
+					"path": [
+						"recording a dismissal",
+						"waits for its own adjudication when the same dismissal is recorded again, adding no history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 607,
+			"column": 29,
+			"endLine": 607,
+			"endColumn": 68,
+			"mutatorName": "OptionalChaining",
+			"replacement": "record.lifecycle.dismissedSighting.run",
+			"status": "generated",
+			"id": "ff7f68d7ce56c6f4c158a47765d246659865af2d08654173029ffb970c082230",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement-storage.test.ts",
+					"path": [
+						"restatement links",
+						"changes nothing when the same dismisser repeats the same dismissal, whatever severity it now shows"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 9,
+	"omitted": 0,
+	"unmutated": []
+}
