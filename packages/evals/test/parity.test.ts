@@ -195,7 +195,10 @@ describe("ParityArm", () => {
 	});
 
 	it("gives a lens holding only some graph tools the rest of them and their guidance", async () => {
-		const partial = Lens.from({ ...(await named("a", ["src/**"])).toJSON(), tools: ["read_file", "graph_definitions"] });
+		const partial = Lens.from({
+			...(await named("a", ["src/**"])).toJSON(),
+			tools: ["read_file", "graph_definitions"],
+		});
 		const [routed] = new ParityArm(1000).routed(config, [partial], [file("src/x.ts", 0, 3)]).lenses;
 		expect(routed!.tools).toEqual(["read_file", ...lensGraphToolNames]);
 		expect(routed!.instructions).toBe(`${partial.instructions}\n\n${graphGuidance}`);
@@ -385,7 +388,10 @@ describe("the arms through a real review", { timeout: 120_000 }, () => {
 				probing: {
 					routed: (config, lenses, files) =>
 						arm.routed(
-							{ ...config, models: { ...config.models, light: { accept }, medium: { accept }, heavy: { accept } } },
+							{
+								...config,
+								models: { ...config.models, light: { accept }, medium: { accept }, heavy: { accept } },
+							},
 							lenses,
 							files,
 						),
