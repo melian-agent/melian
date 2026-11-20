@@ -72,6 +72,15 @@ describe("the collaborator endpoint is the authority when it answers", () => {
 			[collaborator("redbeard")],
 		));
 
+	it.each(["admin", "maintain", "write", "triage", "read", "none"] as const)("keeps its answer of %s", (permission) =>
+		run(
+			"redbeard",
+			{ [collaborator("redbeard")]: { status: 200, body: { permission } }, [user]: me("redbeard") },
+			permission,
+			[collaborator("redbeard")],
+		),
+	);
+
 	it.each([
 		["an unknown role", { permission: "owner" }],
 		["no role", {}],
