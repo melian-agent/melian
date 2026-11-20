@@ -387,7 +387,7 @@ async function evidenceCheck(io: Io): Promise<Check | undefined> {
 		: {
 				name: "evidence",
 				state: "warn",
-				detail: `${detail}; a valid miss keeps no more evidence until evidence.budget is raised`,
+				detail: `${detail}; a valid miss keeps no more evidence until evidence.budget is raised in your configuration, since melian store prune keeps evidence until issue #627 lands`,
 			};
 }
 

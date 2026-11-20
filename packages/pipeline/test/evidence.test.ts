@@ -429,8 +429,13 @@ describe("EvidenceStore", () => {
 			await store.write(one());
 			const refusal = store.write(two());
 			await expect(refusal).rejects.toMatchObject({ code: "budget" });
-			await expect(refusal).rejects.toThrow(join(state, "evidence"));
-			await expect(refusal).rejects.toThrow("melian store prune");
+			await expect(refusal).rejects.toThrow(`${join(state, "evidence", changeset)}/ `);
+			await expect(refusal).rejects.toThrow("melian store prune keeps evidence");
+			await expect(refusal).rejects.toThrow(
+				"Raise evidence.budget in your configuration until the prune lands in issue #627 (https://github.com/melian-agent/melian/issues/627)",
+			);
+			await expect(refusal).rejects.toThrow("This refusal wrote no file and lost no evidence already kept");
+			await expect(refusal).rejects.not.toThrow("by hand");
 			expect(await store.size()).toBe(afterOne);
 			expect(files(join(state, "evidence"))).toEqual([
 				`${changeset}/r1/misses/${first}.json`,

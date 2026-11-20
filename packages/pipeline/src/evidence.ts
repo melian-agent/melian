@@ -221,7 +221,7 @@ export class EvidenceStore {
 		if (held + adding > this.budget)
 			throw new EvidenceError(
 				"budget",
-				`${this.directory} holds ${held} bytes, and this evidence needs ${adding} more, past its budget of ${this.budget}. melian store prune keeps evidence, so raise evidence.budget, or remove by hand evidence no comparison still needs`,
+				`${join(this.directory, pointer.changeset)}/ would take the evidence directory past its budget: it holds ${held} bytes, this evidence needs ${adding} more, and evidence.budget is ${this.budget}. melian store prune keeps evidence. Raise evidence.budget in your configuration until the prune lands in issue #627 (https://github.com/melian-agent/melian/issues/627). This refusal wrote no file and lost no evidence already kept`,
 			);
 		planned.push({ components: [...misses, pointerName], bytes: pointerBytes });
 		const created: string[] = [];
