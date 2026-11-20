@@ -333,9 +333,10 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 }
 
 // The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, short of `round`
-// itself: every round of the changeset in the set that is neither in `frontier` nor an ancestor of one there, in ID
-// order and whatever its revision or place, so a round another host wrote without the frontier, which `round` never
-// names, reopens what it would have reopened on time. `before` serves only to find the frontier's ancestors.
+// itself: every round of the changeset in the set that is neither in `frontier` nor an ancestor of one there, in the
+// set's ID order and whatever its revision or place, so a round another host wrote without the frontier, which
+// `round` never names, reopens what it would have reopened on time. `before` serves only to find the frontier's
+// ancestors.
 // `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round the set does
 // not hold that the writer did not, since what that round cited is unknown.
 function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
@@ -357,7 +358,7 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
 	);
 	if (!known) return undefined;
-	return tested.filter((each) => each.id !== round.id).sort((a, b) => (a.id < b.id ? -1 : 1));
+	return tested.filter((each) => each.id !== round.id);
 }
 
 // The proving hunks of a revision that changes `files`, as a lens cites them.
