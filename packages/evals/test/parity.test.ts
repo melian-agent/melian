@@ -189,6 +189,13 @@ describe("ParityArm", () => {
 		expect(routed.config.models.heavy).toEqual({ model: "h/heavy", accept, thinking: "high" });
 	});
 
+	it("gives a lens holding only some graph tools the rest of them and their guidance", async () => {
+		const partial = Lens.from({ ...(await named("a", ["src/**"])).toJSON(), tools: ["read_file", "graph_definitions"] });
+		const [routed] = new ParityArm(1000).routed(config, [partial], [file("src/x.ts", 0, 3)]).lenses;
+		expect(routed!.tools).toEqual(["read_file", ...lensGraphToolNames]);
+		expect(routed!.instructions).toBe(`${partial.instructions}\n\n${graphGuidance}`);
+	});
+
 	it("gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds", async () => {
 		const builtins = await Lens.builtins();
 		const graphed = Lens.from({
