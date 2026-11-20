@@ -12,7 +12,7 @@ Example: on 2026-11-20 Codex refused the probing lens's planner four times in a 
 
 ## Decision
 
-A content filter's refusal moves a lens, its planner, its prober and the verifier to the next model of their route, as a usage limit does. The maintainer ruled on 2026-11-18 that a fallback a repository names is an equivalent review. A conversation that holds work gets the hand-over that tells the next model to continue, by [the fallback hand-over rules](https://github.com/melian-agent/melian/pull/574); the planner on #532 had made up to 13 tool calls before its refusal.
+A content filter's refusal moves a lens, its planner, its prober and the verifier to the next model of their route, as a usage limit does. The maintainer ruled on 2026-11-18 that a fallback a repository names is an equivalent review. A conversation that holds work gets the hand-over that tells the next model to continue, by [the fallback hand-over rules](https://github.com/melian-agent/melian/pull/574); the planner on [pull request #532](https://github.com/melian-agent/melian/pull/532) had made up to 13 tool calls before its refusal.
 
 `isContentRefusal` recognises the refusal by the whole message each of pi-ai's adapters builds for one, read from `node_modules/@earendil-works/pi-ai/dist/api/`:
 
