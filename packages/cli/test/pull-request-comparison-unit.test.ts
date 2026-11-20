@@ -375,6 +375,22 @@ it.each([true, false])(
 	},
 );
 
+it("returns misses with the additional-records notice only when an export would print it", async () => {
+	stores.histories.set(id, PullRequestRoundHistory.from([{ ...previous, members: [{ ...old, number: 1 }] }]));
+	stores.candidates.splice(0, stores.candidates.length, {
+		...added,
+		publication: { repository: answer.repository, pullRequest: 7 },
+	});
+	expect((await PullRequestComparison.open(io, 7)).misses("/repo", ["needs-execution"])).toEqual({
+		misses: { cases: [], skipped: [] },
+		notice: `Additional stored records are included beyond snapshot 1; membership/history remain as last refreshed; run melian compare "#7" to refresh.`,
+	});
+	stores.candidates.splice(0, stores.candidates.length);
+	expect((await PullRequestComparison.open(io, 7)).misses("/repo", ["needs-execution"])).toEqual({
+		misses: { cases: [], skipped: [] },
+	});
+});
+
 const arrangeSaved = (
 	candidates: RoundMembership[],
 	classifications: RoundMembership[],
@@ -486,4 +502,23 @@ it("passes an explicit export context while retaining own history reads", async 
 		true,
 		true,
 	);
+});
+
+it("orders added owned rounds by when they were minted, so round r10 follows round r9", async () => {
+	const owned = { publication: { repository: answer.repository, pullRequest: 7 } };
+	const r9 = { ...old, id: "range-aaaaaaaaaaaaaaaa.r9", mintedAt: "2026-10-26T09:00:00Z", ...owned };
+	const r10 = { ...old, id: "range-aaaaaaaaaaaaaaaa.r10", mintedAt: "2026-10-26T10:00:00Z", ...owned };
+	stores.candidates.splice(0, stores.candidates.length, old, r10, r9);
+	stores.entries.splice(
+		0,
+		stores.entries.length,
+		...[r10, old, r9].map((round) => ({
+			changeset: round.id.split(".")[0]!,
+			round: round.id,
+			comparison: Comparison.of({ base: round.base, head: round.head }),
+		})),
+	);
+	stores.histories.set(id, PullRequestRoundHistory.from([saved]));
+	await (await PullRequestComparison.open(io, 7)).export({ json: true });
+	expect(Object.keys(JSON.parse(output()).comparisons)).toEqual([old.id, r9.id, r10.id]);
 });

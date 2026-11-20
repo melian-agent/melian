@@ -7,6 +7,7 @@ import {
 	Adjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
@@ -559,6 +560,11 @@ export interface ComparisonGroup {
 	readonly melian: readonly string[];
 }
 
+/** A valid miss of a comparison: its file and lines at the compared head, or why it names none there. */
+export type ComparisonMiss =
+	| { readonly id: string; readonly file: string; readonly lines: readonly [number, number] }
+	| { readonly id: string; readonly skipped: string };
+
 function pairKey(pair: { readonly external: string; readonly melian: string }): string {
 	return JSON.stringify([pair.external, pair.melian]);
 }
@@ -1006,6 +1012,31 @@ export class Comparison {
 	/** The groups of external findings that match no Melian finding, each a defect Melian did not report. */
 	externalOnly(): ComparisonGroup[] {
 		return this.groups().filter((group) => group.melian.length === 0);
+	}
+
+	/**
+	 * One miss for each defect no Melian finding matches whose reason is one of `reasons`: the first report of its group
+	 * in site order judged valid with a reason other than `out-of-scope`, as `stats()` files the defect, with the lines it
+	 * names at the compared head, or why it names none there.
+	 */
+	misses(reasons: readonly ExportedMissReason[]): ComparisonMiss[] {
+		return this.externalOnly()
+			.flatMap((group) => {
+				const first = group.external.find((finding) => {
+					const current = this.judgement(finding.id);
+					return current?.verdict === "valid" && current.reason !== undefined && current.reason !== "out-of-scope";
+				});
+				const reason = first === undefined ? undefined : this.judgement(first.id)?.reason;
+				return first !== undefined && (reasons as readonly string[]).includes(reason ?? "") ? [first] : [];
+			})
+			.map(({ id, file, line, endLine, revision, outdated, commit }): ComparisonMiss => {
+				if (file === undefined || line === undefined) return { id, skipped: "names no file and line" };
+				if (revision === "base") return { id, skipped: "sits on the base side of the diff" };
+				if (outdated === true) return { id, skipped: "is outdated" };
+				if (commit !== undefined && commit !== this.head)
+					return { id, skipped: `was read at ${commit}, not the compared head` };
+				return { id, file, lines: [line, endLine ?? line] };
+			});
 	}
 
 	/** The IDs of the Melian findings no external finding matches. */

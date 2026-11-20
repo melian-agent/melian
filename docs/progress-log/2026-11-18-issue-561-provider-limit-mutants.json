@@ -1,0 +1,79 @@
+{
+ "total": 6,
+ "omitted": 0,
+ "unmutated": [],
+ "mutants": [
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 114,
+   "column": 58,
+   "endLine": 116,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 124,
+   "column": 8,
+   "endLine": 124,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > does not move on from a failure another model would not fix",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 124,
+   "column": 8,
+   "endLine": 124,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 124,
+   "column": 8,
+   "endLine": 124,
+   "endColumn": 108,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(authenticationFailure.test(message) || isProviderLimit(message)) && isRetryableAssistantError(failed)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 124,
+   "column": 8,
+   "endLine": 124,
+   "endColumn": 71,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/harness.ts",
+   "line": 124,
+   "column": 8,
+   "endLine": 124,
+   "endColumn": 71,
+   "mutatorName": "LogicalOperator",
+   "replacement": "authenticationFailure.test(message) && isProviderLimit(message)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/harness-failover.test.ts > isFailoverError > moves on from the provider limit \"GoUsageLimitError\"",
+   "survivorClasses": []
+  }
+ ]
+}

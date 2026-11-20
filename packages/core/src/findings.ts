@@ -1438,14 +1438,22 @@ export class Finding {
 
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
-		const { id, source, failureScenario, evidence, verification } = this.properties;
+		const claim = this.claimAs();
+		const kept = this.properties.otherClaims?.includes(claim) ?? false;
+		return kept || claim.failureScenario !== undefined || claim.evidence !== undefined ? [claim] : [];
+	}
+
+	/**
+	 * The claim this finding makes as `source`, a check that reported it: the copy a merge kept among its other claims, or
+	 * the finding's own fields.
+	 */
+	claimAs(source: FindingSource = this.properties.source): MemberClaim {
+		const { id, failureScenario, evidence, verification } = this.properties;
 		const original = this.properties.otherClaims?.find(
 			(claim) => claim.id === id && claim.source.check === source.check && claim.source.version === source.version,
 		);
-		if (original !== undefined) return [original];
-		if (failureScenario === undefined && evidence === undefined) return [];
-		return [
-			{
+		return (
+			original ?? {
 				id,
 				ruleId: this.ruleId,
 				source,
@@ -1453,8 +1461,8 @@ export class Finding {
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
 				...(verification === undefined ? {} : { verification }),
-			},
-		];
+			}
+		);
 	}
 
 	/**
