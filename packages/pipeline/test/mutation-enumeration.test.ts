@@ -1,5 +1,6 @@
 import * as childProcess from "node:child_process";
 import { ChildProcess, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmodSync } from "node:fs";
 import * as nodeFs from "node:fs/promises";
 import { access, chmod, mkdir, mkdtemp, readdir, readFile, rm, symlink } from "node:fs/promises";
@@ -11,6 +12,7 @@ import { PassThrough } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as core from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { installedPackagesDigest } from "../src/installed-packages.ts";
 import {
 	ancestorInstalls,
 	inside,
@@ -1706,6 +1708,26 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		const installed = await TypeScriptMutationAdapter.open(repo);
 		expect(installed.source).toBe("checkout");
 		expect(installed.identity).toEqual({ ...fallback.identity, source: "checkout" });
+		expect(installed.installedPackages()).toBe(
+			createHash("sha256").update("@stryker-mutator/instrumenter@10.0.0\n").digest("hex"),
+		);
+		expect(fallback.installedPackages()).toBe(
+			installedPackagesDigest([
+				{ name: "@stryker-mutator/instrumenter", from: new URL("../src/x.ts", import.meta.url).href, by: "Melian" },
+			]),
+		);
+		writeFiles(repo, {
+			"node_modules/@stryker-mutator/instrumenter/package.json": JSON.stringify({
+				name: "@stryker-mutator/instrumenter",
+				version: "10.0.0",
+				type: "module",
+				main: "index.js",
+				dependencies: { "@babel/core": "8" },
+			}),
+		});
+		expect(() => installed.installedPackages()).toThrow(
+			"Melian cannot find the installed package @babel/core, which @stryker-mutator/instrumenter@10.0.0 needs.",
+		);
 		gitIn(repo, "add", "-f", "node_modules/.keep");
 		gitIn(repo, "commit", "-qm", "tracked install");
 		expect((await TypeScriptMutationAdapter.open(repo)).source).toBe("melian");

@@ -1,8 +1,9 @@
 import { defaultConfig, KeyedRequest, type RecordJson } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type CheckRequestInput, checkRequest, checkReusable, writesFixedText } from "../src/check-request.ts";
-import { codeVersion } from "../src/code-version.ts";
+import { codeVersion, packagesVersion } from "../src/code-version.ts";
+import { withMovedPackage } from "./fixtures/moved-package.ts";
 
 const sample: CheckRequestInput = {
 	config: defaultConfig,
@@ -79,6 +80,31 @@ describe("checkRequest", () => {
 		const request = checkRequest(sample).request as Record<string, unknown>;
 		expect(request.code).toBe(codeVersion("checks"));
 		expect(request).not.toHaveProperty("checks");
+	});
+
+	it("asks again when yaml, which the checks' code imports, moves, and not when a package it never imports moves", async () => {
+		const before = checkRequest(sample).key;
+		const rebuilt = async () => (await import("../src/check-request.ts")).checkRequest(sample).key;
+		expect(await withMovedPackage("yaml", "0.0.1", rebuilt)).not.toBe(before);
+		expect(await withMovedPackage("vitest", "0.0.1", rebuilt)).toBe(before);
+	});
+
+	it("keys the installed packages the checks' code imports, so a move beneath one asks again", async () => {
+		expect(checkRequest(sample).request).toMatchObject({ packages: packagesVersion("checks") });
+		const before = checkRequest(sample).key;
+		vi.resetModules();
+		vi.doMock("../src/installed-packages.ts", async (original) => ({
+			...(await original<object>()),
+			installedPackagesDigest: () => "moved",
+		}));
+		try {
+			const reloaded = await import("../src/check-request.ts");
+			expect(reloaded.checkRequest(sample).request).toMatchObject({ packages: "moved" });
+			expect(reloaded.checkRequest(sample).key).not.toBe(before);
+		} finally {
+			vi.doUnmock("../src/installed-packages.ts");
+			vi.resetModules();
+		}
 	});
 
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {

@@ -2590,7 +2590,11 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let lister: Promise<MutantLister> | undefined;
 	const mutantLister = () =>
 		(lister ??= TypeScriptMutationAdapter.open(repoRoot).then(
-			(adapter): MutantLister => ({ version: adapter.identity.toolVersion, source: adapter.source }),
+			(adapter): MutantLister => ({
+				version: adapter.identity.toolVersion,
+				source: adapter.source,
+				packages: adapter.installedPackages(),
+			}),
 			(error: unknown): MutantLister => {
 				if (error instanceof MutationEnumerationError && error.code === "instrumenter") return "unavailable";
 				throw error;

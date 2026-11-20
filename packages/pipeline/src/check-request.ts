@@ -9,7 +9,7 @@ import {
 	requestJson,
 } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
-import { codeVersion } from "./code-version.ts";
+import { codeVersion, packagesVersion } from "./code-version.ts";
 import type { InstallDigests } from "./mutation-static.ts";
 import type { StaticToolSource } from "./static.ts";
 
@@ -104,8 +104,8 @@ export function checkReusable(input: Pick<CheckRequestInput, "policy" | "install
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts,
- * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for the checks,
- * the host it runs on, and a working tree's `melian.yaml` text. It leaves out the paths that name the host, `LANG` when
+ * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for the checks
+ * and of the installed packages it imports, the host it runs on, and a working tree's `melian.yaml` text. It leaves out the paths that name the host, `LANG` when
  * mutation is off, and `PATH`, `HOME` and `TMPDIR`, which no bounded fact stands for.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
@@ -120,6 +120,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			// Biome and tsc store no tool text, so `LANG` changes no finding of theirs; the head's tests can read it.
 			...(input.mutation === undefined ? {} : { mutation: { ...strykerFrom(input.mutation), lang: input.lang } }),
 			code: codeVersion("checks"),
+			packages: packagesVersion("checks"),
 			host: input.host,
 			policy: input.policy,
 		}),

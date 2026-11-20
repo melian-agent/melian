@@ -33,7 +33,7 @@ import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
-import { installedVersion } from "./installed-version.ts";
+import { installedPackagesDigest } from "./installed-packages.ts";
 
 export type { Context } from "@earendil-works/chord";
 export { copyJson } from "@earendil-works/chord";
@@ -146,15 +146,24 @@ export async function holdsWork(
 	}
 }
 
+let modelPackages: string | undefined;
+
 /**
- * The installed releases of the Pi packages whose code shapes what a model is shown. Pi Durable renders the system
- * prompt's sections and writes the turns the harness adds, such as a cut tool result's note; pi-ai turns the
- * conversation into each provider's request. Chord carries no text a model reads.
+ * The digest of every installed package beneath Pi Durable and pi-ai, whose code shapes what a model is shown. Pi
+ * Durable renders the system prompt's sections and writes the turns the harness adds, such as a cut tool result's note;
+ * pi-ai, with the provider clients beneath it, turns the conversation into each provider's request. Chord carries no
+ * text a model reads. Read once, on first use, since the install does not change under a running review.
  */
-export const piVersions: { readonly durable: string; readonly ai: string } = {
-	durable: installedVersion("@earendil-works/pi-durable", import.meta.url),
-	ai: installedVersion("@earendil-works/pi-ai", import.meta.url),
-};
+export function modelRequestPackages(): string {
+	modelPackages ??= installedPackagesDigest(
+		["@earendil-works/pi-ai", "@earendil-works/pi-durable"].map((name) => ({
+			name,
+			from: import.meta.url,
+			by: "@melian-agent/pipeline",
+		})),
+	);
+	return modelPackages;
+}
 
 /** A context that is never cancelled, for work with no caller to cancel it. */
 export const backgroundContext: Context = BACKGROUND_CONTEXT;

@@ -58,8 +58,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The deciding code's version, which a test moves to stand for a build whose adjudication code differs.
-const code = vi.hoisted(() => ({ version: "recorded" }));
-vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version }));
+const code = vi.hoisted(() => ({ version: "recorded", packages: "installed" }));
+vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version, packagesVersion: () => code.packages }));
 
 import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
@@ -3757,7 +3757,10 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 
-	it("decides nothing on an adjudication task another build's code created, and says why", async () => {
+	it.each<[string, "version" | "packages"]>([
+		["another build's code", "version"],
+		["another install's packages", "packages"],
+	])("decides nothing on an adjudication task %s created, and says why", async (_, field) => {
 		await reviewed({ config: noLenses() });
 		const input = (await entry())!.adjudication!.input;
 		const decided = (await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task;
@@ -3770,17 +3773,18 @@ describe("on a repeat review after a task ended without deciding", () => {
 			(await tx.doc(ReviewIndex, root.id)).reviews[revision()]!.adjudication = { task: created, input };
 			return created;
 		}, context);
-		code.version = "other";
+		const kept = code[field];
+		code[field] = "other";
 		try {
 			expect((await harness.waitForTask(copy, context)).state.outcome).toEqual({
 				status: "failed",
 				error: {
 					message:
-						"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+						"another build's adjudication code, or another install's packages, created this task, so this build decides nothing; run melian review again to decide it here",
 				},
 			});
 		} finally {
-			code.version = "recorded";
+			code[field] = kept;
 		}
 		expect((await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task).toBe(
 			decided,

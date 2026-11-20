@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { type LensProbingWording, type LensToolName, lensProbingWording, type Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it, vi } from "vitest";
-import { piVersions } from "../src/harness.ts";
+import { modelRequestPackages } from "../src/harness.ts";
+import { installedPackagesDigest } from "../src/installed-packages.ts";
 import { handoverWording, lensRequest, type MutantLister } from "../src/lens-request.ts";
 import {
 	injectionPolicySection,
@@ -14,6 +15,7 @@ import {
 } from "../src/lens-tools.ts";
 import { probingWording, probingWordingOf } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
+import { withMovedPackage } from "./fixtures/moved-package.ts";
 
 const sample = {
 	run: {
@@ -141,32 +143,54 @@ describe("lensRequest", () => {
 		});
 	});
 
-	it("keys the installed Pi Durable and pi-ai releases, which render the conversation and send it", () => {
-		const pins = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).dependencies;
-		expect(build(sample).request.pi).toEqual({
-			durable: pins["@earendil-works/pi-durable"],
-			ai: pins["@earendil-works/pi-ai"],
-		});
+	it("keys the installed packages beneath Pi Durable and pi-ai, which render the conversation and send it", () => {
+		const from = new URL("../src/harness.ts", import.meta.url).href;
+		const roots = ["@earendil-works/pi-ai", "@earendil-works/pi-durable"].map((name) => ({
+			name,
+			from,
+			by: "@melian-agent/pipeline",
+		}));
+		expect(build(sample).request.packages).toBe(installedPackagesDigest(roots));
+		expect(modelRequestPackages()).toBe(installedPackagesDigest(roots));
 	});
 
-	it("asks again when Pi Durable, pi-ai or the policy's section name changes", () => {
+	it("asks again when a package pi-ai installs moves, and not when one Pi does not install moves", async () => {
 		const before = build(sample).key;
-		const versions = piVersions as { durable: string; ai: string };
+		const rebuilt = async () => build(sample, (await import("../src/lens-request.ts")).lensRequest).key;
+		expect(await withMovedPackage("long", "0.0.1", rebuilt)).not.toBe(before);
+		expect(await withMovedPackage("yaml", "0.0.1", rebuilt)).toBe(before);
+	});
+
+	it("asks again when a package beneath Pi moves, reading the install once a process", async () => {
+		const digest = { value: "beneath" };
+		const before = build(sample).key;
+		vi.resetModules();
+		vi.doMock("../src/installed-packages.ts", () => ({
+			installedPackagesDigest: () => digest.value,
+		}));
+		try {
+			const reloaded = await import("../src/lens-request.ts");
+			const moved = build(sample, reloaded.lensRequest).key;
+			expect(moved).not.toBe(before);
+			digest.value = "moved";
+			const again = await import("../src/harness.ts");
+			expect(again.modelRequestPackages()).toBe("beneath");
+		} finally {
+			vi.doUnmock("../src/installed-packages.ts");
+			vi.resetModules();
+		}
+		expect(build(sample).key).toBe(before);
+	});
+
+	it("asks again when the policy's section name changes", () => {
+		const before = build(sample).key;
 		const policy = injectionPolicySection as { key: string };
-		const changes: [object, string, string][] = [
-			[versions, "durable", "9.9.9"],
-			[versions, "ai", "9.9.9"],
-			[policy, "key", "policy"],
-		];
-		for (const [target, field, value] of changes) {
-			const record = target as Record<string, string>;
-			const original = record[field]!;
-			try {
-				record[field] = value;
-				expect(build(sample).key, field).not.toBe(before);
-			} finally {
-				record[field] = original;
-			}
+		const original = policy.key;
+		try {
+			policy.key = "policy";
+			expect(build(sample).key).not.toBe(before);
+		} finally {
+			policy.key = original;
 		}
 		expect(build(sample).key).toBe(before);
 	});
@@ -216,7 +240,7 @@ describe("lensRequest", () => {
 	});
 
 	describe("the instrumenter that answers list_mutants", () => {
-		const lister = { version: "10.0.0", source: "checkout" as const };
+		const lister = { version: "10.0.0", source: "checkout" as const, packages: "e".repeat(64) };
 		const asking = {
 			...sample,
 			run: { ...sample.run, tools: ["read_file", "list_mutants"] as LensToolName[] },
@@ -224,7 +248,7 @@ describe("lensRequest", () => {
 		};
 		const tools = ["read_file", "search", "list_files", "list_mutants"];
 
-		it("keys its version and source, and every other input, for a run offered list_mutants", () => {
+		it("keys its version, source and packages, and every other input, for a run offered list_mutants", () => {
 			const vary = (name: string, value: unknown) =>
 				name.startsWith("run.tools.")
 					? tools.find((tool) => tool !== value && !asking.run.tools.includes(tool as LensToolName))

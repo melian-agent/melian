@@ -9,7 +9,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
-import { codeVersion } from "./code-version.ts";
+import { codeVersion, packagesVersion } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -183,6 +183,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			repoRoot: checkout,
 			findingsVersion,
 			code: codeVersion("adjudication"),
+			packages: packagesVersion("adjudication"),
 		};
 		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.

@@ -14,6 +14,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationResult, VerdictDocument } from "../src/adjudication.ts";
+import { packagesVersion } from "../src/code-version.ts";
 import type { TaskId } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { createRepository, gitIn, isolatedGitEnv, removeRepository } from "./fixtures/repo.ts";
@@ -79,7 +80,7 @@ async function review() {
 	});
 }
 
-it("decides main's stored verdict again once, under a key that adds the code version to the same input", async () => {
+it("decides main's stored verdict again once, under a key that adds the code and package versions to the same input", async () => {
 	await open("decided.sqlite");
 	expect(await stored()).toEqual(recorded.adjudication);
 
@@ -90,6 +91,7 @@ it("decides main's stored verdict again once, under a key that adds the code ver
 	expect(JSON.parse(decided.input)).toEqual({
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
+		packages: packagesVersion("adjudication"),
 	});
 	expect(first.verdict.status).toBe("passed");
 
@@ -108,7 +110,7 @@ it("fails a version 7 task main left pending, which names no code version, and d
 		status: "failed",
 		error: {
 			message:
-				"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+				"another build's adjudication code, or another install's packages, created this task, so this build decides nothing; run melian review again to decide it here",
 		},
 	});
 	const root = await harness.root(context);
@@ -123,6 +125,7 @@ it("fails a version 7 task main left pending, which names no code version, and d
 	expect(JSON.parse(decided.input)).toEqual({
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
+		packages: packagesVersion("adjudication"),
 	});
 	expect(verdict.status).toBe("passed");
 	expect((await harness.snapshot(VerdictDocument, root.id, context))!.decisions![recorded.key]!.task).toBe(
