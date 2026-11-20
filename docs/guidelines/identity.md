@@ -4,6 +4,25 @@ A key is any value Melian computes so that a later run can say "this is the same
 
 Problem: each key was designed where it was needed, by listing the inputs its author thought of. Example: the lens task's attach key drew a finding in six fix passes on [pull request #296](https://github.com/melian-agent/melian/pull/296). It lacked the route, then the probing environment, then held the earlier findings it should not have, then sampled one branch of a prompt and missed the others. Solution: the rules below, a table of every key, and a question each brief asks.
 
+## The model every key serves
+
+[The build model decision](../decisions/2026-11-18-a-review-builds-like-a-cached-build.md) sets five rules for a stored result:
+
+1. Every step has a key: a hash of everything its result depends on.
+2. A result lives under the key of the request that produced it. It is never overwritten, and a second result under one key is kept beside the first.
+3. Reuse is a lookup by key, never a rule that inspects stored state.
+4. A review is a walk: it looks each step up, reuses a hit and runs a miss.
+5. A verdict is computed from the results it read and the base's policy, and lists what it read.
+
+Every input of every step is in one of four classes. An input in no class is a defect.
+
+- **In the key.**
+- **Sealed out:** the step runs so that the input cannot affect its result.
+- **A named limit:** a result that depends on it is not reused by another review and not shared with another host.
+- **Left out by a ruling that names the risk:** the result is reused regardless, and the ruling is listed beside its key.
+
+Each key's row in [the table](#the-keys-melian-has) names the class of every input it leaves out. A rule about what is considered equivalent is written beside the key it shapes, with a test in which that rule alone decides whether two inputs share a key. Rows written before the decision give each exclusion's reason, not always its class; a pull request that changes a row names the class of each input the row leaves out.
+
 ## How a key goes wrong
 
 - **An input is missing.** The key matches when the answer would differ, and Melian reuses stale work. This is the unsafe direction. A verification keyed without the dismissed findings its verifier was shown is never asked about a later dismissal.
