@@ -349,7 +349,12 @@ type LensOutcome =
 			// The task that asked this run, when this task copied it rather than ask it again.
 			readonly reused?: number;
 	  }
-	| { readonly status: "unanswered"; readonly reason: string }
+	| {
+			readonly status: "unanswered";
+			readonly reason: string;
+			// The models whose content filter refused the conversation before it failed.
+			readonly refused?: readonly string[];
+	  }
 	| {
 			readonly status: "exhausted";
 			readonly tried: string[];
@@ -670,7 +675,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
-					if (!failover) return { status: "unanswered", reason };
+					if (!failover) return { status: "unanswered", reason, ...(await refusedBefore(attempt)) };
 					const next = route[attempt + 1];
 					if (next === undefined) {
 						const tried = route.slice(0, attempt + 1).map(modelName);
@@ -2227,14 +2232,17 @@ function lensRecord(
 		const why =
 			refused.length === outcome.tried.length
 				? `every model of its tier refused the content: ${refused.join(", ")}`
-				: [
-						"every model of its tier failed",
-						...(refused.length === 0 ? [] : [`${refused.join(", ")} refused the content`]),
-					].join("; ");
+				: ["every model of its tier failed", ...refusedNote(refused)].join("; ");
 		return { name, status: "failed", level, reason: failed(why), error };
 	}
 	const error = outcome?.reason ?? "no outcome";
-	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
+	const why = ["the lens did not finish", ...refusedNote(outcome?.refused ?? [])].join("; ");
+	return { name, status: "failed", level, reason: failed(why), error };
+}
+
+// What a failed lens's record says of the models whose content filter refused it.
+function refusedNote(refused: readonly string[]): string[] {
+	return refused.length === 0 ? [] : [`${refused.join(", ")} refused the content`];
 }
 
 // What a lens record says of the models whose content filter refused a conversation, `whose` naming the conversation.

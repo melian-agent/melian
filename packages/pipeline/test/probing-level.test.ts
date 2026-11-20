@@ -2777,6 +2777,22 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.reason).not.toContain(`; ${provider}/first refused`);
 	});
 
+	it("names an earlier refusal when the next model fails in a way that does not move on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, malformed], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; ${provider}/first refused the content`,
+			error: "prompt is malformed",
+		});
+	});
+
 	it("fails a lens whose prober's every model failed, naming them", async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
 		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
