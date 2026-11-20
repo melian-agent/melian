@@ -2190,7 +2190,6 @@ function lensRecord(
 	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
 }
 
-// A verification outcome as its record holds it, with the budget's end's fields alone.
 // The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
 // before, and every held round of another revision that no such round names, so a round keeps the store's chain,
 // another host's rounds since this host's own included.
@@ -2205,6 +2204,7 @@ function predecessors(held: readonly RecordEnvelope[], reviewed: string, previou
 		.sort();
 }
 
+// A verification outcome as its record holds it, with the budget's end's fields alone.
 function verificationOutcome(outcome: VerificationResult[string]): VerificationOutcome {
 	if (outcome.status === "done") return { status: "done", model: outcome.model };
 	if (outcome.status === "ended") {
