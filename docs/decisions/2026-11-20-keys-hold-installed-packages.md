@@ -83,6 +83,7 @@ A layout other than npm's leaves the install unidentified the same way, with eac
 - a `.pnp.cjs` or `.pnp.loader.mjs` in the module's directory or any directory above it, the install root's parents included;
 - a module whose path runs through a component ending `.zip`;
 - a walked directory whose name ends `.zip`;
+- a directory the walk reaches as two kinds of place, such as a linked scope over a directory it keys as a package, which Melian's round found at `559cfd32f`: the scope's packages entered no entry, so pi-ai's version moved and the digest held;
 - the general guard: a module beneath a `node_modules` that no package the walk keyed holds, such as one in `node_modules/.store/pi`.
 
 A module in an installed package, a pnpm store's package, or a workspace package npm links is recognised, each a named test. A further layout a reviewer finds becomes a named test under this rule, not a new mechanism.

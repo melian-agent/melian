@@ -77,10 +77,10 @@ class Walk {
 	readonly #limit: number;
 	readonly #entries = new Map<string, InstallEntry>();
 	readonly #outside: string[] = [];
-	readonly #entered = new Set<string>();
+	readonly #entered = new Map<string, Mode>();
 	readonly #followed = new Set<string>();
 	readonly #packages = new Set<string>();
-	readonly #archives: string[] = [];
+	readonly #odd: string[] = [];
 	readonly #queue: [string, Mode][] = [];
 
 	constructor(root: string, limit: number) {
@@ -102,9 +102,10 @@ class Walk {
 	}
 
 	// Melian does not read Yarn's Plug'n'Play map, and a directory named as an archive is one Yarn's patched fs opened. A
-	// module beneath a node_modules that no keyed package holds was placed by a layout the walk does not know.
+	// directory reached as two kinds of place, or a module beneath a node_modules that no keyed package holds, was placed by
+	// a layout the walk does not know.
 	unrecognised(start: string): string[] {
-		const found = [...this.#archives];
+		const found = [...this.#odd];
 		for (const directory of ancestors(start))
 			for (const map of [".pnp.cjs", ".pnp.loader.mjs"])
 				if (existsSync(join(directory, map))) found.push(this.#shown(join(directory, map)));
@@ -183,13 +184,16 @@ class Walk {
 	}
 
 	#scan(directory: string, mode: Mode) {
-		if (this.#entered.has(directory)) return;
+		const seen = this.#entered.get(directory);
+		// A directory npm lays out is one kind of place, so one reached as two, as a linked scope over a package is, is not.
+		if (seen !== undefined && seen !== mode) this.#odd.push(this.#place(directory));
+		if (seen !== undefined) return;
 		if (this.#entered.size >= this.#limit)
 			throw new InstalledPackagesError(
 				`Melian cannot key its install: it holds more than ${this.#limit} directories.`,
 			);
-		this.#entered.add(directory);
-		if (directory.endsWith(".zip")) this.#archives.push(this.#place(directory));
+		this.#entered.set(directory, mode);
+		if (directory.endsWith(".zip")) this.#odd.push(this.#place(directory));
 		let entries: Dirent[];
 		try {
 			entries = readdirSync(directory, { withFileTypes: true });

@@ -601,6 +601,12 @@ describe("Install.read", () => {
 			expect(Install.read(module(place))).toMatchObject({ unrecognised: [], identified: true });
 		});
 
+		it("leaves the install unidentified for a linked scope over a directory the walk keys as a package", () => {
+			install("store/pi-ai", { name: "@earendil-works/pi-ai", version: "1.1.0" });
+			symlinkSync("store", join(scratch, "node_modules", "@earendil-works"));
+			expect(read()).toMatchObject({ unrecognised: ["node_modules/store"], identified: false });
+		});
+
 		it("names each unrecognised place once, sorted", () => {
 			mkdirSync(join(scratch, "node_modules", "pi", "vendor.zip"));
 			writeFileSync(join(scratch, ".pnp.cjs"), "");
