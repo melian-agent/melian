@@ -255,27 +255,27 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "2ee54076f47f",
-			conventions: "e5f0c8075927",
-			correctness: "204387b961a8",
-			design: "197552452341",
-			durability: "1c1eef0fc010",
-			"removed-behaviour": "0fa2e8b06295",
-			tests: "416c8bc7bfe3",
-			"trust-boundary": "06f92e708c0c",
-			"trust-boundary-probes": "8409bcea5590",
+			contracts: "0ba843ad89da",
+			conventions: "d883d0302825",
+			correctness: "2530f98e16e0",
+			design: "e7337b0f9b01",
+			durability: "2705acc6eb65",
+			"removed-behaviour": "926ff063f319",
+			tests: "b6dc040638d0",
+			"trust-boundary": "cb0b85ab082f",
+			"trust-boundary-probes": "b04ba59d5ac7",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "7fbcf8f72bcf",
-			conventions: "a97206229c6c",
-			correctness: "fca785f44f3a",
-			design: "231fc61f3cc5",
-			"removed-behaviour": "3491e47f1ec6",
-			tests: "746dfb75f9fe",
-			"trust-boundary": "17324fb22a6c",
-			"trust-boundary-probes": "d8c42a17668d",
+			contracts: "a701b07a0542",
+			conventions: "1ac990cc3573",
+			correctness: "7bfa3550535a",
+			design: "ca23817939ca",
+			"removed-behaviour": "7e908ad8676c",
+			tests: "773e8660f3e5",
+			"trust-boundary": "0fb9558f73ae",
+			"trust-boundary-probes": "d64aa469a47a",
 		});
 	});
 
@@ -420,7 +420,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 16, tokens: 5_000_000, tools: 400 },
+				budget: { findings: 16, tokens: 10_000_000, tools: 400 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);

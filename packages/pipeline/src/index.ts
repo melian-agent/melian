@@ -11,6 +11,7 @@ export {
 	runChecks,
 	type WriterTrust,
 } from "./checks.ts";
+export { codeVersion } from "./code-version.ts";
 export {
 	CompareError,
 	type CompareErrorCode,

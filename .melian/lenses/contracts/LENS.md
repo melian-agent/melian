@@ -2,7 +2,8 @@
 name: contracts
 extends: contracts
 levels:
-  deep: { budget: { tokens: 600000, tools: 90 } }
-budget: { findings: 8, tokens: 600000, tools: 90 }
+  quick: { budget: { tokens: 1m } }
+  deep: { budget: { tokens: 3m, tools: 90 } }
+budget: { findings: 8, tokens: 3m, tools: 90 }
 standards: false
 ---

@@ -49,7 +49,6 @@ import {
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
-	type VerificationPayload,
 	VerificationState,
 	verificationBudget,
 	visibleText,
@@ -60,6 +59,7 @@ import {
 	AdjudicationTask,
 	type AdjudicationTaskInput,
 	adjudicationInput,
+	adjudicationKey,
 	type ReviewOrigin,
 	readVerdict,
 	VerdictDocument,
@@ -181,7 +181,7 @@ import {
 	stillOwns,
 	undecided,
 } from "./review-index.ts";
-import { inManifestOrder, ReviewRecords } from "./review-records.ts";
+import { inManifestOrder, ReviewRecords, type VerificationOutcome } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { StaticProof } from "./static-proof.ts";
@@ -2034,7 +2034,8 @@ async function startAdjudication(
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
-		const key = JSON.stringify({ ...deciding, details: undefined });
+		// The details ride with the verdict but are not part of what it was decided from.
+		const key = adjudicationKey({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
 		// not fetched yet, may have passed.
 		const retry = [...undecided, "failed"];
@@ -2183,7 +2184,7 @@ function lensRecord(
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
-function verificationOutcome(outcome: VerificationResult[string]): VerificationPayload["outcomes"][number]["outcome"] {
+function verificationOutcome(outcome: VerificationResult[string]): VerificationOutcome {
 	if (outcome.status === "done") return { status: "done", model: outcome.model };
 	if (outcome.status === "ended") {
 		const { budget, limit, tokens, tools } = outcome.budgetEnded;
