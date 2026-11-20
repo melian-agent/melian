@@ -1939,7 +1939,6 @@ export class Finding {
 		}) as ResolvedFinding;
 	}
 
-	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
 	/**
 	 * This finding with its detail left out for `note`: What becomes its headline, unless its What is the shorter in
 	 * UTF-8 bytes, `note` stands as Why here, and What to do is kept. Nothing its ID, severity, resolution or place comes
@@ -1957,6 +1956,7 @@ export class Finding {
 		});
 	}
 
+	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
 	toJSON(): StoredFinding {
 		const { ruleId, level, message, partialFingerprints, locations, properties } = this;
 		return { ruleId, level, message, partialFingerprints, locations, properties };
