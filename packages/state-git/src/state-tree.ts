@@ -166,6 +166,16 @@ export class StateTree {
 		await StateTree.#measure(repository, branch, commit, deadline, true);
 	}
 
+	// Whether `commit`'s tree is `parent`'s with only whole `changesets/<name>` folders removed, and at least one.
+	static async removesOnly(
+		repository: RecordRepository,
+		parent: string,
+		commit: string,
+		deadline: Deadline,
+	): Promise<boolean> {
+		throw new Error(`not built: ${repository.path} ${parent} ${commit} ${deadline.left()}`);
+	}
+
 	// The entries of `commit` and the sizes of its readable blobs, once both are within the limits. A write's commit, which
 	// `before` says is not yet pushed, is refused in words that say so.
 	static async #measure(

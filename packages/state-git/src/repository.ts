@@ -485,6 +485,11 @@ export class RecordRepository {
 		}
 	}
 
+	// Builds one commit on `parent` whose tree is the parent's with the folders `changesets/<name>` of `names` removed.
+	async withoutFolders(parent: string, names: readonly string[], deadline: Deadline): Promise<string> {
+		throw new Error(`not built: ${parent} ${names.length} ${deadline.left()}`);
+	}
+
 	// Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push
 	// a newer tip refused is `stale`; one Melian stopped before git ended is `stopped`, and may have landed.
 	async push(

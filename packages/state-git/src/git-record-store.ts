@@ -44,6 +44,17 @@ const lastBackoffMs = 8_000;
 type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
 
 /**
+ * What {@link GitRecordStore.retire} did with each changeset it was given: removed its folder, kept it because the
+ * folder's tree changed since it was seen, kept it because the folder holds a stray, or found no folder there.
+ */
+export type Retirement = {
+	readonly removed: readonly string[];
+	readonly changed: readonly string[];
+	readonly strays: readonly string[];
+	readonly absent: readonly string[];
+};
+
+/**
  * The record store of rule 12 of [the shared record
  * decision](../../../docs/decisions/2026-11-13-shared-record-behind-a-store-port.md), on a branch of a git remote. A
  * record is a plain JSON file at its `record.path` and a changeset's cell is `changesets/<changeset>/cell.json`. Every
@@ -208,6 +219,24 @@ export class GitRecordStore implements RecordStore {
 				: [cellChange(changeset, { value: disposalMark, version: randomUUID() })];
 			return { changes: [...mark, ...removals], value: undefined };
 		});
+	}
+
+	/**
+	 * Each changeset folder at the branch's tip, by its name, with its tree's object ID. It reads only the top level of
+	 * `changesets/`, so it answers on a tip past the store's limits. Reads and never pushes.
+	 */
+	async folders(): Promise<Map<string, string>> {
+		throw new Error("not built");
+	}
+
+	/**
+	 * Removes in one commit each changeset in `seen` whose folder at the fresh tip still has the tree ID `seen` gives it
+	 * and holds no stray, cell included and with no mark, so a later `add` or `writeCell` starts the changeset afresh. It
+	 * pushes only a commit that removes whole changeset folders and changes nothing else, and pushes that whatever the
+	 * tip's totals, so it can bring a tip past the store's limits back under. Every lost race re-decides on the new tip.
+	 */
+	async retire(seen: ReadonlyMap<string, string>): Promise<Retirement> {
+		throw new Error(`not built: ${seen.size}`);
 	}
 
 	async close(): Promise<void> {
