@@ -1,4 +1,4 @@
-# Issue #481: a dismissal record is written once
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a dismissal record is written once
 
 Codex's review of [pull request #551](https://github.com/melian-agent/melian/pull/551) found that a host which kept an old dismissal could set it standing again. Each export rebuilt the dismissal's record, and filled its `supersedes` from that host's listing, so a host holding K and another host's replacement R built K's record again as superseding R. The coordinator answered on 2026-11-18 with option (c): the record is written once, when the dismissal is made with a store, and every export looks it up. That is a coordinator's answer, not a ruling. [The decision](../decisions/2026-11-18-a-dismissal-record-is-written-once.md) records the rule and its limit.
 

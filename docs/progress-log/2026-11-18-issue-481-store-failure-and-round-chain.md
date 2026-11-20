@@ -1,4 +1,4 @@
-# Issue #481: dismiss with a store is all or nothing, and the round chain survives a fresh host
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): dismiss with a store is all or nothing, and the round chain survives a fresh host
 
 Two fixes on [pull request #575](https://github.com/melian-agent/melian/pull/575), each from a Codex review, and each by a maintainer's ruling of 2026-11-18 given in the coordinator's session.
 

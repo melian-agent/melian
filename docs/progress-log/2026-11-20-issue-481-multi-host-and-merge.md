@@ -1,4 +1,4 @@
-# Issue #481: hosts that each hold some rounds, and the static rule the merge carried
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): hosts that each hold some rounds, and the static rule the merge carried
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575).
 

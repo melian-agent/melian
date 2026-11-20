@@ -1,4 +1,4 @@
-# Issue #481: a dismissal record names the rounds its writer held
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a dismissal record names the rounds its writer held
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575).
 

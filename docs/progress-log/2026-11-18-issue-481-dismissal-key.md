@@ -1,4 +1,4 @@
-# Issue #481: a dismissal record's key must name its sighting's finding
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a dismissal record's key must name its sighting's finding
 
 [Issue #481](https://github.com/melian-agent/melian/issues/481) shares a dismissal through the record store. Codex's review of [pull request #551](https://github.com/melian-agent/melian/pull/551) found that a dismissal record's key is never checked against the finding in its own frozen sighting. A record keyed `ffffffffffffffff` whose sighting holds finding `d49cff2f28e9c470` parses. Slots and supersession go by the key, while reopening and audit read the sighting, so a hand-built record could dismiss one finding with another's evidence. The coordinator asked on 2026-11-18 for the check in this issue's reader, not in core's payload checks, which two other pull requests touch; that is a coordinator's answer, not a ruling.
 

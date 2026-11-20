@@ -32,6 +32,10 @@ A reader of shared records computes no inheritance. A finding the host holds dis
 
 The cost: a restated finding needs a shared dismissal of its own, though the host already passes it. `restatement.test.ts` pins both sides: the host reads B as inherited, and the reader reads it live. [Issue #506](https://github.com/melian-agent/melian/issues/506) holds the gap open.
 
+## Two dismissals at once
+
+When two hosts dismiss one finding at once, neither record supersedes the other, so both dismissals stand and decide: the finding reads as dismissed while either holds. Only the latest reason, and its author, is shown. Showing both changes the stored finding's shape, so [issue #621](https://github.com/melian-agent/melian/issues/621) holds it.
+
 ## When the store fails
 
 The written-once decision's one gap stands under this reader, narrowed to one revision. A record can reach the store while the host that wrote it records nothing. A reader of a round at the dismissed revision then reads the finding dismissed, while the writing host blocks until `melian dismiss` is run again. A round at any other revision ends the dismissal for the reader too, so the window holds only at the revision it was made at.
@@ -41,9 +45,10 @@ The written-once decision's one gap stands under this reader, narrowed to one re
 These clauses of the superseded frontier decision stand:
 
 - `melian dismiss --records` names, in the record's `frontier`, every round of the changeset that the store's one listing holds as the dismissal is made, in ID order. The record is written once, at dismiss.
-- A record without `frontier`, which an earlier build wrote, counts as no dismissal, and its finding stays live.
-- A dismissal made with no store gets no record. A review names it as unshared, under the code `madeWithoutStore`, and `melian dismiss` says so; to share it, dismiss it again with `--records`. The verification request's key still names such a dismissal, by the ID its record would have with no frontier and no `supersedes`.
-- A record found in the store for a dismissal made again is the one the store holds, whatever its frontier.
+- The field is optional in the schema. A record without `frontier`, which an earlier build wrote, counts as no dismissal, and its finding stays live. That is the strict direction, and no shared store held such a record when the field arrived.
+- Only the writer, as it dismisses, knows what its store held. So a dismissal made with no store gets no record. A review names it as unshared, under the code `madeWithoutStore`, and `melian dismiss` says so; to share it, dismiss it again with `--records`. The verification request's key still names such a dismissal, by the ID its record would have with no frontier and no `supersedes`, so a replaced dismissal still asks the verifier again.
+- A record found in the store for a dismissal made again is the one the store holds, whatever its frontier, as a record is already found whatever its `supersedes`.
+- The reader may block where the host that wrote the round read passes, since that host holds only the rounds it ran and the ones it listed. The reader's answer is the set's, by rule 7 of the shared record decision, and the set's is the one that counts. The writer dismisses again once it has seen the round that ended the dismissal, if the dismissal still holds.
 
 ## A round's `before`
 
