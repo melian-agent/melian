@@ -2477,8 +2477,7 @@
 					"file": "packages/pipeline/test/installed-packages.test.ts",
 					"path": [
 						"Install.read",
-						"a link out of the install, as npm link makes",
-						"keys the link, naming no place outside, walks nothing beneath it, and names its place"
+						"keys a link that names no directory"
 					]
 				}
 			},
