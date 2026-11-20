@@ -1014,17 +1014,20 @@ export class Comparison {
 	}
 
 	/**
-	 * Each valid external finding no Melian finding matches, with the lines it names at the compared head, or why it names
-	 * none there. A miss a person ruled out of scope is left out, since no lens owed it, and so is one still awaiting a
-	 * reason.
+	 * One miss for each defect no Melian finding matches: the first valid report of its group in site order, with the
+	 * lines it names at the compared head, or why it names none there. A report a person ruled out of scope is passed
+	 * over, since no lens owed it, and so is one still awaiting a reason.
 	 */
 	misses(): ComparisonMiss[] {
 		return this.externalOnly()
-			.flatMap((group) => group.external)
-			.filter((finding) => {
-				const current = this.judgement(finding.id);
-				return current?.verdict === "valid" && current.reason !== "out-of-scope";
-			})
+			.flatMap((group) =>
+				group.external
+					.filter((finding) => {
+						const current = this.judgement(finding.id);
+						return current?.verdict === "valid" && current.reason !== "out-of-scope";
+					})
+					.slice(0, 1),
+			)
 			.map(({ id, file, line, endLine, revision, outdated, commit }): ComparisonMiss => {
 				if (file === undefined || line === undefined) return { id, skipped: "names no file and line" };
 				if (revision === "base") return { id, skipped: "sits on the base side of the diff" };

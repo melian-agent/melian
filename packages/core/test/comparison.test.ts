@@ -1826,6 +1826,25 @@ describe("Comparison misses", () => {
 		]);
 	});
 
+	it("lists one miss for each defect, from the first valid report in site order", () => {
+		const later = external({ reviewer: { name: "human" }, line: 13 });
+		const first = external({ line: 12, endLine: 14 });
+		const noise = external({ line: 90 });
+		const valid = external({ reviewer: { name: "human" }, line: 91 });
+		const comparison = compared({ externals: [later, first, valid, noise], findings: [] });
+		for (const report of [later, first, valid])
+			comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		expect(comparison.externalOnly().map((group) => group.external.map(({ id }) => id))).toEqual([
+			[first.id, later.id],
+			[noise.id, valid.id],
+		]);
+		expect(comparison.misses()).toEqual([
+			{ id: first.id, file: "src/run.ts", lines: [12, 14] },
+			{ id: valid.id, file: "src/run.ts", lines: [91, 91] },
+		]);
+	});
+
 	it("leaves out a valid finding that became a miss after its match was undone, until a reason is recorded", () => {
 		const finding = melian();
 		const report = external();
