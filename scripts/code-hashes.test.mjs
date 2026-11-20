@@ -15,14 +15,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { moduleHashes, producerModules, producerPackages } from "../packages/pipeline/src/code-hashes.ts";
-import { computeRecord, differences, importedPackages, reachedModules, render } from "./code-hashes.mjs";
+import { moduleHashes, producerModules } from "../packages/pipeline/src/code-hashes.ts";
+import { computeRecord, differences, reachedModules, render } from "./code-hashes.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 
 describe("the recorded code hashes", () => {
 	it("match what each producer reaches now", { timeout: 60_000 }, () => {
-		const found = differences({ moduleHashes, producerModules, producerPackages }, computeRecord());
+		const found = differences({ moduleHashes, producerModules }, computeRecord());
 		expect(found, `run \`npm run code-hashes\` to record:\n${found.join("\n")}`).toEqual([]);
 	});
 });
@@ -133,63 +133,6 @@ describe("the check over a scratch repository", () => {
 		}
 	});
 
-	it("lists the packages the modules import as they load, under the package that imports each", {
-		timeout: 60_000,
-	}, () => {
-		write("package.json", JSON.stringify({ name: "app", version: "1.0.0", type: "module" }));
-		write(
-			"src/entry.ts",
-			'import type { SemVer } from "semver";\nimport { parse } from "yaml";\nimport { a } from "./a.ts";\nexport const entry: SemVer | number = parse("1") + a;\n',
-		);
-		write("src/a.ts", 'import { stringify } from "yaml";\nexport const a = stringify(1).length;\n');
-		expect(importedPackages("src/entry.ts", repo)).toEqual({ app: ["yaml"] });
-		expect(computeRecord(repo, producers).producerPackages).toEqual({ lens: { app: ["yaml"] } });
-	});
-
-	it("names the nearest manifest that names a package as its owner", { timeout: 60_000 }, () => {
-		write("package.json", JSON.stringify({ name: "app", version: "1.0.0", type: "module" }));
-		write("src/package.json", JSON.stringify({ type: "module" }));
-		write("src/entry.ts", 'import { parse } from "yaml";\nexport const entry = parse("1");\n');
-		expect(importedPackages("src/entry.ts", repo)).toEqual({ app: ["yaml"] });
-	});
-
-	it("orders the importing packages, and each one's imports, by name", { timeout: 60_000 }, () => {
-		write("package.json", JSON.stringify({ name: "app", version: "1.0.0", type: "module" }));
-		write("src/sub/package.json", JSON.stringify({ name: "aaa", version: "1.0.0", type: "module" }));
-		write(
-			"src/entry.ts",
-			'import { parse } from "yaml";\nimport { valid } from "semver";\nimport { b } from "./sub/b.ts";\nexport const entry = [parse("1"), valid("1.0.0"), b];\n',
-		);
-		write("src/sub/b.ts", 'import { stringify } from "yaml";\nexport const b = stringify(1);\n');
-		expect(JSON.stringify(importedPackages("src/entry.ts", repo))).toBe('{"aaa":["yaml"],"app":["semver","yaml"]}');
-	});
-
-	it("refuses a module that no manifest names as its package's", { timeout: 60_000 }, () => {
-		write("src/entry.ts", 'import { parse } from "yaml";\nexport const entry = parse("1");\n');
-		expect(failure(() => importedPackages("src/entry.ts", repo))).toMatch(
-			/no package\.json names the package that holds file:\/\/.*\/src\/entry\.ts/,
-		);
-	});
-
-	it("refuses an entry Node cannot load", { timeout: 60_000 }, () => {
-		write("src/entry.ts", 'import { gone } from "./gone.ts";\nexport const entry = gone;\n');
-		expect(failure(() => importedPackages("src/entry.ts", repo))).toMatch(
-			/^Node could not load src\/entry\.ts: exit 1\n/,
-		);
-	});
-
-	it("names a package a producer now imports, and one it no longer does", { timeout: 60_000 }, () => {
-		write("package.json", JSON.stringify({ name: "app", version: "1.0.0", type: "module" }));
-		write("src/entry.ts", 'import { parse } from "yaml";\nexport const entry = parse("1");\n');
-		const recorded = computeRecord(repo, producers);
-		write("src/entry.ts", 'import { valid } from "semver";\nexport const entry = valid("1.0.0");\n');
-		expect(differences(recorded, computeRecord(repo, producers))).toEqual([
-			"lens: src/entry.ts changed since its hash was recorded",
-			"lens: now imports semver from app, which its list lacks",
-			"lens: no longer imports yaml from app, which its list names",
-		]);
-	});
-
 	it("names the producer and the module whose text changed without its line", { timeout: 60_000 }, () => {
 		const recorded = computeRecord(repo, producers);
 		write("src/a.ts", "export const a = 3;\n");
@@ -256,18 +199,6 @@ describe("the command", () => {
 				cwd: repo,
 				encoding: "utf8",
 			},
-		);
-		expect(imported).toMatchObject({ status: 0, stdout: "" });
-	});
-
-	it("checks nothing when another module imports it with --imports among its own arguments", {
-		timeout: 60_000,
-	}, () => {
-		const script = pathToFileURL(join(repo, "scripts/code-hashes.mjs")).href;
-		const imported = spawnSync(
-			process.execPath,
-			["--input-type=module", "-e", `await import(${JSON.stringify(script)});`, "other", "--imports"],
-			{ cwd: repo, encoding: "utf8" },
 		);
 		expect(imported).toMatchObject({ status: 0, stdout: "" });
 	});
@@ -355,17 +286,6 @@ describe("differences", () => {
 	});
 });
 
-describe("render", () => {
-	it("writes each producer's packages under the package that imports them", () => {
-		const text = render({
-			moduleHashes: {},
-			producerModules: {},
-			producerPackages: { lens: { app: ["semver", "yaml"] } },
-		});
-		expect(text).toMatch(/= \{\n\tlens: \{\n\t\t"app": \[\n\t\t\t"semver",\n\n\t\t\t"yaml",\n\t\t\],\n\t\},\n\};\n$/);
-	});
-});
-
 describe("the recorded layout", () => {
 	let scratch;
 	beforeEach(() => {
@@ -385,11 +305,7 @@ describe("the recorded layout", () => {
 		);
 		return { conflicts: run.status, text: run.stdout };
 	};
-	const record = (hashes) => ({
-		moduleHashes: hashes,
-		producerModules: { lens: Object.keys(hashes) },
-		producerPackages: { lens: { app: ["yaml"] } },
-	});
+	const record = (hashes) => ({ moduleHashes: hashes, producerModules: { lens: Object.keys(hashes) } });
 
 	it("lets two pull requests that change neighbouring modules merge without a conflict", () => {
 		const base = record({ "a.ts": "1", "b.ts": "2", "c.ts": "3" });

@@ -40,6 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import * as codeVersionModule from "../src/code-version.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { configsFor } from "../src/configurations.ts";
 import { FindingsDocument } from "../src/findings.ts";
@@ -959,6 +960,27 @@ describe("recording a dismissal", () => {
 		expect(again.finding.properties.pastDismissals).toBeUndefined();
 		expect(again.verdict).toEqual(first.verdict);
 		expect(await adjudicationTask(harness)).toBe(task);
+	});
+
+	it("adjudicates the same dismissal again on an install Melian cannot identify, though its key is the same", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		await dismiss(harness, id);
+		const task = await adjudicationTask(harness);
+		const { digest } = codeVersionModule.melianInstall();
+		const unidentified = vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest,
+			identified: false,
+			outside: ["node_modules/yaml"],
+			lines: [],
+		} as never);
+		try {
+			await dismiss(harness, id);
+			expect(await adjudicationTask(harness)).not.toBe(task);
+		} finally {
+			unidentified.mockRestore();
+		}
 	});
 
 	it("refuses comparison writes after a cut-short dismissal until its adjudication records", async () => {

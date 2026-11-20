@@ -14,7 +14,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationResult, VerdictDocument } from "../src/adjudication.ts";
-import { packagesVersion } from "../src/code-version.ts";
+import { melianInstall } from "../src/code-version.ts";
 import type { TaskId } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
 import { createRepository, gitIn, isolatedGitEnv, removeRepository } from "./fixtures/repo.ts";
@@ -97,7 +97,7 @@ it("decides main's stored verdict again once, under a key that adds the code and
 	expect(JSON.parse(decided.input)).toEqual({
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
-		packages: packagesVersion("adjudication"),
+		packages: melianInstall().digest,
 	});
 	expect(first.verdict.status).toBe("passed");
 
@@ -131,7 +131,7 @@ it("fails a version 7 task main left pending, which names no code version, and d
 	expect(JSON.parse(decided.input)).toEqual({
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
-		packages: packagesVersion("adjudication"),
+		packages: melianInstall().digest,
 	});
 	expect(verdict.status).toBe("passed");
 	expect((await harness.snapshot(VerdictDocument, root.id, context))!.decisions![recorded.key]!.task).toBe(
@@ -161,7 +161,7 @@ it("fails a version 8 task main left pending, which names main's code and no pac
 	expect(JSON.parse(decided.input)).toEqual({
 		...JSON.parse(recorded.adjudication.input),
 		code: codeVersion("adjudication"),
-		packages: packagesVersion("adjudication"),
+		packages: melianInstall().digest,
 	});
 	expect(verdict.status).toBe("passed");
 	const root = await harness.root(context);

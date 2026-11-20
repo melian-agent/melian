@@ -11,7 +11,7 @@ export {
 	runChecks,
 	type WriterTrust,
 } from "./checks.ts";
-export { codeVersion, unidentifiedPackages } from "./code-version.ts";
+export { codeVersion, melianInstall } from "./code-version.ts";
 export {
 	CompareError,
 	type CompareErrorCode,
@@ -57,7 +57,7 @@ export {
 	upsertFinding,
 } from "./findings.ts";
 export * from "./harness.ts";
-export { InstalledPackagesError } from "./installed-packages.ts";
+export { type Install, InstalledPackagesError } from "./installed-packages.ts";
 export {
 	contextOverflowed,
 	type PlanSources,

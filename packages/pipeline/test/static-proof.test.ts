@@ -54,13 +54,28 @@ describe("the proof the checks document's requests give", () => {
 	it("keys a run fully only for a request whose install is identified and whose policy was read", async () => {
 		const made = await root();
 		const identified = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
+		const packages = { digest: "e".repeat(64), identified: true };
 		const requests = {
-			keyed: { checks: current, install: identified, policy: [] },
-			revision: { checks: current, install: identified },
-			unidentified: { checks: current, install: { ...identified, identified: false }, policy: [] },
-			unread: { checks: current, install: identified, policy: "unread" },
-			"no install": { checks: current, policy: [] },
-			"a truthy install flag": { checks: current, install: { ...identified, identified: "yes" } },
+			keyed: { checks: current, install: identified, packages, policy: [] },
+			revision: { checks: current, install: identified, packages },
+			unidentified: { checks: current, install: { ...identified, identified: false }, packages, policy: [] },
+			unread: { checks: current, install: identified, packages, policy: "unread" },
+			"no install": { checks: current, packages, policy: [] },
+			"a truthy install flag": { checks: current, install: { ...identified, identified: "yes" }, packages },
+			"Melian's install unidentified": {
+				checks: current,
+				install: identified,
+				packages: { ...packages, identified: false },
+				policy: [],
+			},
+			"packages as a digest alone": { checks: current, install: identified, packages: "e".repeat(64), policy: [] },
+			"no packages": { checks: current, install: identified, policy: [] },
+			"a truthy packages flag": {
+				checks: current,
+				install: identified,
+				packages: { ...packages, identified: "yes" },
+				policy: [],
+			},
 			"not an object": "keyed",
 		};
 		await made.commit(async (tx) => {
@@ -73,6 +88,10 @@ describe("the proof the checks document's requests give", () => {
 			revision: true,
 			unidentified: false,
 			unread: false,
+			"Melian's install unidentified": false,
+			"packages as a digest alone": false,
+			"no packages": false,
+			"a truthy packages flag": false,
 			"no install": false,
 			"a truthy install flag": false,
 			"not an object": false,

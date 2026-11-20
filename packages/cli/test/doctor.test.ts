@@ -591,18 +591,23 @@ describe("doctor clone check", () => {
 });
 
 describe("doctor packages", () => {
+	const installWith = (outside: string[]) =>
+		({ outside, identified: outside.length === 0, digest: "e".repeat(64), lines: [] }) as unknown as ReturnType<
+			typeof pipeline.melianInstall
+		>;
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}packages\s+/.test(each));
 
-	it("says every package is inside the install when no link leaves it", async () => {
+	it("says nothing links outside the install when no link leaves it", async () => {
+		vi.spyOn(pipeline, "melianInstall").mockReturnValue(installWith([]));
 		const { stdout } = await run(github());
-		expect(line(stdout)).toMatch(/^ok {4}packages\s+every package Melian runs is inside its install$/);
+		expect(line(stdout)).toMatch(/^ok {4}packages\s+nothing in Melian's install links outside it$/);
 	});
 
 	it.each([
-		[["yaml@2.9.1"], "yaml@2.9.1 links"],
-		[["typescript@6.0.3", "yaml@2.9.1"], "typescript@6.0.3, yaml@2.9.1 link"],
-	])("warns, without failing, which releases %j leave the install unidentified", async (outside, named) => {
-		vi.spyOn(pipeline, "unidentifiedPackages").mockReturnValue(outside);
+		[["node_modules/yaml"], "node_modules/yaml links"],
+		[["node_modules/typescript", "node_modules/yaml"], "node_modules/typescript, node_modules/yaml link"],
+	])("warns, without failing, which places %j leave the install unidentified", async (outside, named) => {
+		vi.spyOn(pipeline, "melianInstall").mockReturnValue(installWith(outside));
 		const { status, stdout } = await run(github());
 		expect(line(stdout)?.replace(/^warn {2}packages {2,}/, "")).toBe(
 			`${named} outside Melian's install, so no review reuses a run`,
@@ -611,7 +616,7 @@ describe("doctor packages", () => {
 	});
 
 	it("fails with the reason when a package cannot be read", async () => {
-		vi.spyOn(pipeline, "unidentifiedPackages").mockImplementation(() => {
+		vi.spyOn(pipeline, "melianInstall").mockImplementation(() => {
 			throw new pipeline.InstalledPackagesError("Melian cannot read the installed package \u001b[2Jyaml.");
 		});
 		const { status, stdout } = await run(github());

@@ -1,5 +1,5 @@
 import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
-import { modelRequestPackages } from "./harness.ts";
+import { melianInstall } from "./code-version.ts";
 import {
 	injectionPolicySection,
 	lensListedTools,
@@ -37,7 +37,12 @@ export type LensRequestRun = {
 // is the checkout's install or Melian's, and the digest of the installed packages beneath it, Babel among them;
 // `unavailable` when neither resolves.
 export type MutantLister =
-	| { readonly version: string; readonly source: "checkout" | "melian"; readonly packages: string }
+	| {
+			readonly version: string;
+			readonly source: "checkout" | "melian";
+			readonly packages: string;
+			readonly identified: boolean;
+	  }
 	| "unavailable";
 
 /** What a lens run is asked, before it is keyed. */
@@ -120,7 +125,7 @@ export function lensRequest<Run extends LensRequestRun>(
 		"lens",
 		{
 			run: requestJson(keyed),
-			packages: modelRequestPackages(),
+			packages: melianInstall().digest,
 			policy: { section: injectionPolicySection.key, text: injectionPolicy(identityNonce) },
 			tools: [...read, reportFinding, ...(probes ? [recordPlan] : [])].map(specOf),
 			limits: lensToolLimits,

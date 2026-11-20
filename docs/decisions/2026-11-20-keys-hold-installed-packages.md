@@ -1,14 +1,14 @@
-# Request keys hold the installed packages their producer runs
+# Request keys hold Melian's whole install
 
 Amends: [A producer's code version comes from recorded module hashes](2026-11-18-code-versions-from-recorded-hashes.md), "How it is built" and "What it gives up", whose sentences that installed packages are left out, since the lockfile pins them, this replaces
 
-Amends: [The checks' code version comes from recorded module hashes](2026-11-20-check-code-from-recorded-hashes.md), "The change", which now holds the checks' packages beside their code
+Amends: [The checks' code version comes from recorded module hashes](2026-11-20-check-code-from-recorded-hashes.md), "The change", which now holds Melian's install beside the checks' code
 
-Amends: [A lens run offered `list_mutants` keys the instrumenter that answers it](2026-11-16-lens-request-keys-the-mutant-instrumenter.md), whose key held the instrumenter's version but not its dependencies
+Amends: [A lens run offered `list_mutants` keys the instrumenter that answers it](2026-11-16-lens-request-keys-the-mutant-instrumenter.md), whose key held the instrumenter's version but not the install it runs from
 
 Amends: [A lens run is reused by its request key, one lens at a time](2026-11-15-lens-runs-reused-per-request.md), whose key held the versions of Pi Durable and pi-ai alone
 
-Status: the coordinator chose this approach on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470): one identity per producer, the two exclusions, and the checks' and adjudication's own packages in this issue. Those are the coordinator's choices, not a maintainer's ruling.
+Status: the coordinator chose this design on 2026-11-20, in its session, on [issue #470](https://github.com/melian-agent/melian/issues/470), after reviews found a new collision in each earlier form: one digest over the whole install, a fixed line and a flag for an install Melian cannot identify, and the bound. Those are the coordinator's choices, not a maintainer's ruling.
 
 ## Problem
 
@@ -16,58 +16,72 @@ A request key held the versions of Pi Durable and pi-ai, and of the instrumenter
 
 Example: pi-ai turns a conversation into a provider's request through the OpenAI client beneath it. A reinstall that moves that client from 7.19.0 to 7.20.0 leaves pi-ai at 1.1.0, so a repeat review reuses a lens run another request built. A newer `yaml` can read a `melian.yaml` differently under the same `codeVersion("checks")`, and a repeat review reuses a guardrails run the old parser decided.
 
+The first forms keyed only what each producer's imports reach, walking manifests from each root. Every review found a layout the walk missed: a link swap, a `node_modules` made by hand inside a package, a platform build's own dependencies, an entry module in a nested package, an npm alias. Each fix taught the walk another rule of npm's or Node's. A digest of what an import reaches has to re-derive Node's resolution, and it was wrong again each round.
+
 ## The change
 
-Each producer keys `packages`, a digest of every installed package beneath the packages its code imports.
+**The guarantee:** two installs with one digest hold the same release and the same link at every place in every `node_modules` tree Node searches beneath the install root, so every import from Melian's code reaches the same release.
 
-| Producer | Roots | Where the digest sits |
-|---|---|---|
-| lens run | pi-ai and Pi Durable, resolved from the pipeline package | `packages` in the lens request, in place of the two versions |
-| lens run offered `list_mutants` | `@stryker-mutator/instrumenter`, from whichever install `TypeScriptMutationAdapter.open` chose | `mutants.packages` beside its version and source |
-| checks | what the modules `checks.ts` reaches import as they load | `packages` in the check request, beside `code` |
-| adjudication | what the modules `adjudication.ts` reaches import as they load | `packages` in the task's input, beside `code` |
+`Install.read`, in `pipeline/src/installed-packages.ts`, lists every copy and every link beneath the install root, whether any import reaches it or not. Every producer keys that one digest: the lens request's `packages`, the mutant lister's `packages` beside its version and source, the check request's `packages`, and the adjudication task's `packages`. `melianInstall()`, in `code-version.ts`, reads Melian's own install once a process. `TypeScriptMutationAdapter.install()` reads the install beneath the instrumenter it resolved, from the resolved module itself, in Melian's install or the checkout's.
 
-Node's resolver is the authority twice over.
+**The authority is the directory layout Node resolves from.** Node's resolver finds a bare import by looking in the `node_modules` of the importing file's directory, then of each ancestor. It follows a link to its real path before resolving that file's own imports. So what a module can reach is fixed by the `node_modules` trees on its ancestor chain, the trees beneath each package in them, and where each link points. The walk reads exactly those, with `readdirSync` and `lstatSync`, and follows no link:
 
-- **Which packages a producer imports.** `scripts/code-hashes.mjs` loads each producer's entry in a child process with a resolve hook, and records every installed package a module outside any install imports, under the package that imports it. TypeScript's listing can't answer this: it names `@types/semver` for `semver`, and a type-only import that never runs. The record sits in `code-hashes.ts` beside the module hashes, and the gate fails, naming the producer and the import, when it differs from what Node resolves.
-- **Which copy is installed.** At run time, `installedPackages` starts from each recorded import and resolves it with `findPackageJSON` from the manifest of the package that imports it. It then reads each manifest's `dependencies`, `optionalDependencies` and `peerDependencies`, and resolves each from that manifest's real path, as Node does without `--preserve-symlinks`. The walk of pi-ai and Pi Durable here matched `npm query` exactly and takes about 20 ms; each set is read once a process.
+- The install root is the outermost ancestor of the module that holds a `node_modules`, since Node searches every ancestor's.
+- In a `node_modules` directory, each child is a package slot, and an `@scope` child holds slots. A name starting with a dot, such as `.bin` or `.cache`, is walked as a plain tree.
+- A package records `place name@version`, read from its `package.json`, or `place without a manifest`, since Node can load one. Its subdirectories are walked for a nested `node_modules`.
+- A link records `place links target`, and is never walked through. A target beneath the root is walked where it really is, with each `node_modules` on its ancestor chain up to the root, since Node resolves the target's imports from there. A linked package records its target's release but not its files, since a workspace package's source is no release; the code version covers it.
+- A link that resolves nowhere records `place links nowhere`.
 
-The digest is a SHA-256 over sorted lines, each ended by a newline. Each installed copy the walk reaches reads as `place name@version`. `place` is the copy's real directory relative to the install root, with `/` between its parts on every platform. Each link Node resolves through reads as `place links place`: where Node found the package, then the real directory it reached. The install root is the deepest real directory that holds the outermost `node_modules` of every copy the walk reaches: the checkout for a clone, the global prefix's `lib` for a global install. Every copy decides it, not the first root: npm can nest a root beneath a workspace package, at `packages/pipeline/node_modules`, and hoist the next root, or what the nested one needs, to the checkout's `node_modules`. A root taken from the first alone put those outside the install, which Codex's fourth review found. Node finds a package only in a `node_modules` above the file that imports it, so the root holds every importer's lookups. A declared peer that does not resolve reads as `name absent, a peer of parent@version`, so an optional peer that appears, such as `undici` beneath `openai`, moves the digest.
+The lockfile is not asked. It records what npm meant to install, not what Node finds, and a hand edit, `npm link` or a second package manager changes the second without the first.
 
-Node resolves an import by walking up from the importing file's real directory to the nearest `node_modules` that holds the name. Where nothing is a link, the place of every copy fixes which copy each import reaches. A link breaks that: Melian's own round at c4d4b9b4d linked `a/node_modules/sdk` to one release and `b/node_modules/sdk` to another, then swapped the two links. Node's answers swapped and the real places held, so the digest held too. Keying every link Node passes through, on every visit, closes it: with every place Node finds a package and every real place it reaches keyed, Node's walk from each importer is fixed, and the digest needs no line for who resolves what. Three earlier forms collided, and each collision is a named test in `installed-packages.test.ts`; the link swap is "moves when two links swap which release each resolves, though the real places hold". A set of releases alone collided: `a` resolving `parser@1.1` and `b` resolving `parser@1.2`, or the reverse, which Codex's second adversarial review found. Lines of `parent > name@version` collided when two copies of one release of `a` sat at two places and swapped which `parser` each resolved, which Codex's third review found. The coordinator chose the layout on 2026-11-20, over a fourth form that named each copy by its chain of parents.
+`place` is the path relative to the install root, with `/` between its parts on every platform. The digest is a SHA-256 over the sorted lines, each ended by a newline. One layout at two absolute paths gives one digest, so a host and an Actions runner that run `npm ci` on one lockfile share it. In this repository the walk reads 2,263 directories and writes 402 lines, 31 of them links, in about 90 ms, once a process.
 
-**The guarantee:** two installs with one digest, each inside its install root, resolve every reached import, through the same links, to the same release. A test falsifies it by building two layouts that give one digest and resolve some import differently.
+**A bound.** The walk reads at most `maxInstallDirectories`, 50,000 directories, and past it fails the key: "Melian cannot key its install: it holds more than 50000 directories." That is 22 times this repository's install. A global install whose root is `/usr/lib` reads every global package, and one that big fails closed rather than walk without end.
 
-**What it gives up:** two installs that resolve every import alike but place a copy differently key apart, and that miss reruns. A dedupe that moves `sdk` from `tool/node_modules` up to `node_modules`, with no release changed, asks every lens again once.
+Seven layouts collided under the earlier forms. Each is a named test in `installed-packages.test.ts` that the digest now tells apart:
 
-**Across hosts.** A record shared between a host and an Actions runner is reused only if both give one digest. `npm ci` installs the layout `package-lock.json` records: a version 2 or 3 lockfile names every copy by its install path, so the algorithm npm hoists with does not decide it. One lockfile installed with `npm ci` by npm 11.19.0 in one directory and by npm 10.9.2 in another, three directories deep elsewhere, gave one digest over 42 copies beneath `@babel/core`, `debug` and `ms`. So did `npm install` with no lockfile, by npm 10.9.2. Two cases still key apart: a version 1 lockfile, which records no paths, so npm hoists it afresh; and a platform build a parent names by a range, which a host whose platform npm refuses does not install. A workspace package reached through `node_modules/<name>`, a link to the checkout's `packages/<name>`, reads as `node_modules/<name> links packages/<name>` and at its real place, `packages/<name>`, and its own dependencies resolve from there.
+1. two parents swap which release of a shared dependency each resolves;
+2. two copies of one release swap which dependency each resolves;
+3. a workspace package nests one copy and the root hoists another;
+4. a nested dependency moves up to the root;
+5. two links swap which release each resolves, with the real places held;
+6. a `node_modules` made by hand inside a package's own directory, such as `pi/cjs/node_modules`, changes;
+7. a platform build's own dependency moves, and a package's entry in a nested directory with its own `node_modules` changes.
 
-**Separators.** `place` joins its parts with `/`, so a Windows install and a POSIX one of the same layout give one digest. No Windows host or CI job runs here, so the test of the join runs only on POSIX, where it is a no-op.
+An npm alias, `node_modules/sdk` holding `real-sdk@2.0.0`, is an eighth test. It reads as `node_modules/sdk real-sdk@2.0.0`, and moving it moves the digest. Against main's walk at 56f7fb059, the hand-made nested, platform, nested entry and dev dependency cases each kept the digest, and the alias failed the key, so every review would have failed.
 
-**A link out of the install**, such as `npm link yaml` to `/work/yaml`, leaves the install unidentified. Its place would name the host, so the line reads `node_modules/yaml links outside the install`, and the walk goes no further beneath it. The digest then also holds a value drawn once a process, so the review runs and no run is reused, in this process's later reviews alone. That is what [the request-key decision](2026-11-14-request-keys-as-built.md) already does with an install Melian cannot identify, so this amends nothing there. `melian doctor` names each release that made the install unidentified on its `packages` line. A root Node finds beneath no `node_modules`, such as a package importing its own name, still fails the key, naming it.
+## What it gives up
 
-A producer is keyed by its own set, so a move beneath the instrumenter asks only the tests lens again, and a move in `yaml` reruns only the checks and adjudication, which spend no tokens.
+Any change to the install reruns every producer: a dev dependency's move, a dedupe that moves a copy with no release changed, a new `.bin` link, a package nothing of Melian's imports. A lens run costs tokens, about $5 a full round here; a check run costs minutes and no tokens; an adjudication costs no model call. In this repository, `package-lock.json` changed in 20 of the 299 first-parent commits on `main` since 2026-10-03, so runs miss about once in fifteen commits. A host and a runner share runs only if their layouts match, as `npm ci` on one lockfile gives.
+
+What the walk does not see, and why each is left:
+
+- **A file's contents within a release.** A hand edit inside `node_modules` keeps the line. [The request-key decision](2026-11-14-request-keys-as-built.md) already leaves out "A hand edit or `npm link` inside an install a manager recorded, and nothing else."
+- **A `node_modules` beneath the root that no walked tree holds**, such as one made by hand in `scripts/` or in a workspace package's `src/`. No module of Melian's resolves from there, except a workspace module beside it, which only a hand edit makes.
+- **CommonJS's global folders**, `NODE_PATH` and `~/.node_modules`. Melian is ESM, whose resolver never reads them.
+
+## An install Melian cannot identify
+
+A link out of the install, such as `npm link yaml` to `/work/yaml`, names a place the walk cannot read without walking the host. It records the fixed line `node_modules/yaml links outside the install`, adds the place to `outside`, and walks no further. The digest stays deterministic, and `identified` reads false. No value drawn at random enters any key, so rule 6 of [the identity guideline](../guidelines/identity.md#rules) stands as written, and this decision amends nothing there.
+
+The flag gates reuse where a key is looked up, as `checkReusable` already does for an unread policy and an unidentified checkout install, by [the request-key decision](2026-11-14-request-keys-as-built.md). Three places carry it. Each has a test that two reviews on the same unidentified install share a key and reuse nothing:
+
+1. **Checks.** The check request stores `packages` as `{ digest, identified }`, and `checkReusable` requires both install flags to be exactly `true`. A request stored with `packages` as a bare digest, or none, is not keyed fully. Tests in `check-request.test.ts` and `static-proof.test.ts`.
+2. **Lenses.** `runLenses` takes `reusable`, false when Melian's install or the instrumenter's is unidentified. It then neither attaches to the stored task nor copies a lens run from another. Tests in `lens-reuse-review.test.ts`: the second review asks every lens again, and copies none.
+3. **Adjudication.** A review and a repeated dismissal attach to the stored adjudication only on an identified install. Tests in `review.test.ts` and `dismiss.test.ts`.
+
+`melian doctor` names each place that links out on its `packages` line, as a warning.
 
 ## Failing closed
 
-A root, or a required dependency, that does not resolve fails the key with the package's name and who needs it: "Melian cannot find the installed package sdk, which pi@1.1.0 needs." So does a manifest that is not JSON, names another package, or gives no version. The key never holds an empty or partial list. An adjudication task whose `packages` differs from the running install's fails, as one with another build's `code` does, and decides nothing.
+A module whose path cannot be read, a module beneath no `node_modules`, a directory the walk cannot read, a manifest that is not JSON, and an install past the bound each fail the key with a reason. The key never holds an empty or partial list.
 
-`packages` takes no task version. The task has no input schema, so a build reads an unknown field without complaint. Any build that does not know the field also has other adjudication code, so its `code` check fails the task before the field matters, and the next review decides again. Run against main's own code at 56f7fb059, a pending task this build wrote failed with "another build's adjudication code created this task", and made no model call. The other direction is a test: `adjudication-key-reopen.test.ts` reopens a version 8 task that main's own code left pending, from `fixtures/adjudication-key-main/pending-8.sqlite`. It fails, and the next review decides again with no model call.
-
-## What it leaves out, and what that gives up
-
-- **`@types/*`.** It never runs.
-- **Platform builds.** A package whose manifest declares `os` or `cpu`, and whose parent names the exact version installed, is left out with what it needs. So is an optional dependency that does not resolve, which npm skips for a platform it refuses. Keyed, a record shared across hosts would never reuse a run made on another platform. The parent's exact pin stands for its builds: `esbuild@0.28.2` names `@esbuild/linux-x64` as `0.28.2`, and `typescript@7.0.2` names `@typescript/typescript-linux-x64` as `7.0.2`, the only two such packages these sets reach. A platform build named by a range, or imported by a producer itself, is keyed like any other package, since nothing else fixes its version; Codex's adversarial review found that case. Each resolution decides for itself, so the exact pin's resolution is left out and a ranged one keys the copy, whichever the walk meets first; Melian's own round found the first rule depended on that order. This gives up a platform build whose contents differ under the same version, and an optional dependency whose install failed, which reads like one the platform refused.
-- **A `node_modules` inside a package's own directory.** Node resolves an import from the importing file's directory first, so a `cjs/node_modules/sdk` beside a package's `cjs/index.cjs` answers that file's imports, and the walk, which resolves from each package's manifest, never sees it. Melian's own round at c4d4b9b4d made one by hand beneath `@stryker-mutator/instrumenter`, swapped what it linked, and the digest held. npm installs only at `<package>/node_modules/<name>`, and `npm pack` leaves every `node_modules` out of a tarball but bundled dependencies at the root, so only a hand edit makes one. [The request-key decision](2026-11-14-request-keys-as-built.md) already leaves that out: "A hand edit or `npm link` inside an install a manager recorded, and nothing else."
-- **An undeclared import.** A package that imports one its manifest does not declare, relying on hoisting, is missed. The walk can't see that edge without loading the module.
-- **The instrumenter beneath the checks.** The checks reach the mutation code, which resolves the instrumenter at run time, not by import, so the checks' set does not hold it. `static.mutation` keys Stryker's own installation.
+An adjudication task whose `packages` differs from the running install's fails, as one with another build's `code` does, and decides nothing. `packages` takes no task version. The task has no input schema, so a build reads an unknown field without complaint. Any build that does not know the field also has other adjudication code, so its `code` check fails the task before the field matters, and the next review decides again. `adjudication-key-reopen.test.ts` reopens a version 8 task main's own code left pending, from `fixtures/adjudication-key-main/pending-8.sqlite`; it fails, and the next review decides again with no model call.
 
 ## Melian's own packages
 
-The digest holds no Melian package. A producer's code version hashes the source of every module it reaches, `packages/core/src` included, so in a checkout the code version covers them. A published install is another matter. Each workspace package named the others as `"*"`, so a fresh install could pair `@melian-agent/pipeline` 1.0, whose recorded code version is a constant from its build, with `@melian-agent/core` 1.1. The checks and adjudication keys would then match runs made under the old core. Melian's own round at c6acaadb5 found it.
-
-Each workspace package now names the others at their exact version, as AGENTS.md already asks of every direct dependency. A release of the pipeline then fixes which core and decisions it runs, and its recorded code version covers them. `scripts/check-pinned-deps.mjs` used to let `"*"` through for a workspace name, on purpose, since npm links it locally either way; it now fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
+The walk lists Melian's own packages like any other. A published install reads `node_modules/@melian-agent/core @melian-agent/core@1.1.0`, and a checkout reads the workspace link and the release at `packages/core`. So the digest covers a published pipeline paired with another core. Each workspace package also names the others at their exact version, as AGENTS.md asks of every direct dependency, and `scripts/check-pinned-deps.mjs` fails any workspace dependency that is not that package's own version. **A release must bump every workspace package in lockstep**, and update each package's dependencies on the others in the same commit, or the gate fails.
 
 ## What it costs
 
-Every stored lens run, check run and adjudication misses once. A lens run costs tokens, about $5 a full round here; a check run costs minutes and no tokens; an adjudication costs no model call. After that, a set moves only when an install moves a package in it. In this repository, `package-lock.json` changed in 21 of the 303 first-parent commits on `main` since 2026-10-03; four moved the model request set, two of them with Pi itself, and two moved the instrumenter's.
+Every stored lens run, check run and adjudication misses once on upgrade. After that, every install change misses once, as above.

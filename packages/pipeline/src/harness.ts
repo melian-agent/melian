@@ -33,7 +33,6 @@ import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
-import { installedPackagesDigest } from "./installed-packages.ts";
 
 export type { Context } from "@earendil-works/chord";
 export { copyJson } from "@earendil-works/chord";
@@ -144,25 +143,6 @@ export async function holdsWork(
 		seen.add(head.id);
 		at = head.head;
 	}
-}
-
-let modelPackages: string | undefined;
-
-/**
- * The digest of every installed package beneath Pi Durable and pi-ai, whose code shapes what a model is shown. Pi
- * Durable renders the system prompt's sections and writes the turns the harness adds, such as a cut tool result's note;
- * pi-ai, with the provider clients beneath it, turns the conversation into each provider's request. Chord carries no
- * text a model reads. Read once, on first use, since the install does not change under a running review.
- */
-export function modelRequestPackages(): string {
-	modelPackages ??= installedPackagesDigest(
-		["@earendil-works/pi-ai", "@earendil-works/pi-durable"].map((name) => ({
-			name,
-			from: import.meta.url,
-			by: "@melian-agent/pipeline",
-		})),
-	);
-	return modelPackages;
 }
 
 /** A context that is never cancelled, for work with no caller to cancel it. */

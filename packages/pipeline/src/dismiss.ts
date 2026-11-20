@@ -9,7 +9,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { withLegacyCaveats } from "./caveats.ts";
-import { codeVersion, packagesVersion } from "./code-version.ts";
+import { codeVersion, melianInstall } from "./code-version.ts";
 import { DismissError } from "./errors.ts";
 import { type Dismissal, dismissFinding, FindingsDocument, siteAt } from "./findings.ts";
 import {
@@ -183,7 +183,7 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			repoRoot: checkout,
 			findingsVersion,
 			code: codeVersion("adjudication"),
-			packages: packagesVersion("adjudication"),
+			packages: melianInstall().digest,
 		};
 		const key = adjudicationKey(input);
 		// Copies: the stored verdict is the commit's own view, unusable once the commit settles.
@@ -195,7 +195,11 @@ export async function recordDismissal(options: DismissalOptions): Promise<Record
 			.map((other) => ({ ...other }));
 		// The same dismissal again, as after a dismiss a crash cut short, waits for the adjudication it started, unless
 		// that ended without deciding, failed included, as a review would rerun it.
-		if (known.input === key && (await attachable(tx, known.task, [...undecided, "failed"]))) {
+		if (
+			melianInstall().identified &&
+			known.input === key &&
+			(await attachable(tx, known.task, [...undecided, "failed"]))
+		) {
 			return { replaced, also, live, task: known.task as TaskId<AdjudicationResult> };
 		}
 		const task = await tx.createTask(AdjudicationTask, input, { ownership: { kind: "conversation" } });

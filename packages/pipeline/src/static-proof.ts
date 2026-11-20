@@ -85,7 +85,9 @@ export class StaticProof {
 	keyedFully(request: string): boolean {
 		try {
 			return (
-				checkReusable(this.#requests[request] as unknown as Pick<CheckRequestInput, "policy" | "install">) === true
+				checkReusable(
+					this.#requests[request] as unknown as Pick<CheckRequestInput, "policy" | "install" | "packages">,
+				) === true
 			);
 		} catch {
 			// A stored request with no install facts to read was not keyed by a run of this build; it keys nothing fully.

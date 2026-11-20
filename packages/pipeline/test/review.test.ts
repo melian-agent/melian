@@ -58,8 +58,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The deciding code's version, which a test moves to stand for a build whose adjudication code differs.
-const code = vi.hoisted(() => ({ version: "recorded", packages: "installed" }));
-vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version, packagesVersion: () => code.packages }));
+const code = vi.hoisted(() => ({ version: "recorded", packages: "installed", identified: true }));
+vi.mock("../src/code-version.ts", () => ({
+	codeVersion: () => code.version,
+	melianInstall: () => ({ digest: code.packages, identified: code.identified, outside: [], lines: [] }),
+}));
 
 import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
@@ -346,6 +349,19 @@ describe("reviewChangeset", () => {
 		afterEach(() => {
 			code.version = "recorded";
 			code.packages = "installed";
+			code.identified = true;
+		});
+
+		it("decides again on an install Melian cannot identify, though the key is the same", async () => {
+			code.identified = false;
+			script();
+			await reviewed();
+			const decided = await adjudication();
+			script();
+
+			await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
 		});
 
 		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {

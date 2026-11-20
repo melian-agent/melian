@@ -17,7 +17,7 @@ import {
 	SourceError,
 	visibleText,
 } from "@melian-agent/core";
-import { installedPackagesDigest } from "./installed-packages.ts";
+import { Install } from "./installed-packages.ts";
 import { MutationTargets, productionWithExtensions } from "./mutation-paths.ts";
 import { mutationInstallation } from "./mutation-static.ts";
 
@@ -109,10 +109,8 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 	readonly enumerationRequiresBuild = false;
 	readonly source: "checkout" | "melian";
 	readonly #module: string;
-	readonly #from: string;
-	private constructor(module: string, toolVersion: string, source: "checkout" | "melian", from: string) {
+	private constructor(module: string, toolVersion: string, source: "checkout" | "melian") {
 		this.#module = module;
-		this.#from = from;
 		this.identity = { name: "typescript", version: "1", toolVersion, source };
 		this.source = source;
 	}
@@ -149,7 +147,7 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 				const { version } = JSON.parse(
 					await readFile(require.resolve("@stryker-mutator/instrumenter/package.json"), "utf8"),
 				) as { version: string };
-				return new TypeScriptMutationAdapter(module, version, source, from);
+				return new TypeScriptMutationAdapter(module, version, source);
 			} catch (error) {
 				if ((error as NodeJS.ErrnoException).code !== "MODULE_NOT_FOUND") throw error;
 			}
@@ -160,15 +158,9 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 		);
 	}
 
-	/** The digest of every installed package beneath the instrumenter, resolved from where `open` found it. */
-	installedPackages(): string {
-		return installedPackagesDigest([
-			{
-				name: "@stryker-mutator/instrumenter",
-				from: this.#from,
-				by: this.source === "checkout" ? "the checkout" : "Melian",
-			},
-		]);
+	/** The install the instrumenter resolves its own imports from, read from the instrumenter itself. */
+	install(): Install {
+		return Install.read(this.#module);
 	}
 
 	async enumerate(

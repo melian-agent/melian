@@ -40,7 +40,7 @@ import {
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationTaskInput, adjudicationKey, VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
-import { codeVersion, packagesVersion } from "../src/code-version.ts";
+import { codeVersion, melianInstall } from "../src/code-version.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import * as configurations from "../src/configurations.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -415,7 +415,7 @@ async function withCurrentKey(harness: Harness) {
 		adjudication.input = adjudicationKey({
 			...input,
 			code: codeVersion("adjudication"),
-			packages: packagesVersion("adjudication"),
+			packages: melianInstall().digest,
 		});
 	}, context);
 }

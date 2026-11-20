@@ -19,7 +19,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { fakeGitHub } from "../../github/test/fixtures/fake-github.ts";
 import { pullRequestState } from "../../github/test/fixtures/scenario.ts";
 import { ChecksDocument } from "../src/checks.ts";
-import { codeVersion, packagesVersion } from "../src/code-version.ts";
+import { codeVersion, melianInstall } from "../src/code-version.ts";
 import { DecisionDocument, decisionExtension } from "../src/decisions.ts";
 import { PublisherDocument } from "../src/publish.ts";
 import * as staticRunner from "../src/static.ts";
@@ -74,7 +74,7 @@ it.each([
 		delete input.resolutionPolicy;
 		// This build's code and packages, so the task reaches its superseded check rather than fail for naming neither.
 		input.code = codeVersion("adjudication");
-		input.packages = packagesVersion("adjudication");
+		input.packages = melianInstall().digest;
 	}
 	const fake = createFakeModels();
 	const storage = createMemoryStorage();

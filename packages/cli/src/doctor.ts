@@ -20,11 +20,11 @@ import { DecisionFiles, decisionIndexWarning } from "@melian-agent/decisions";
 import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import {
 	createReviewModels,
+	melianInstall,
 	Probe,
 	piAuthPath,
 	providersWithCredentials,
 	staticToolSource,
-	unidentifiedPackages,
 } from "@melian-agent/pipeline";
 import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
@@ -221,12 +221,12 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 function packagesCheck(): Check {
 	let outside: string[];
 	try {
-		outside = unidentifiedPackages();
+		outside = [...melianInstall().outside];
 	} catch (error) {
 		return { name: "packages", state: "fail", detail: visibleText((error as Error).message) };
 	}
 	return outside.length === 0
-		? { name: "packages", state: "ok", detail: "every package Melian runs is inside its install" }
+		? { name: "packages", state: "ok", detail: "nothing in Melian's install links outside it" }
 		: {
 				name: "packages",
 				state: "warn",

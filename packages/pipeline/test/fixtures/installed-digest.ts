@@ -1,3 +1,3 @@
-import { installedPackagesDigest } from "../../src/installed-packages.ts";
+import { Install } from "../../src/installed-packages.ts";
 
-process.stdout.write(installedPackagesDigest(JSON.parse(process.argv[2]!)));
+process.stdout.write(Install.read(process.argv[2]!).digest);
