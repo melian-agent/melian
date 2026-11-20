@@ -49,7 +49,6 @@ import {
 	triageChoices,
 	triageQuestionSet,
 	type Verdict,
-	type VerificationPayload,
 	VerificationState,
 	verificationBudget,
 	visibleText,
@@ -183,7 +182,7 @@ import {
 	stillOwns,
 	undecided,
 } from "./review-index.ts";
-import { inManifestOrder, ReviewRecords } from "./review-records.ts";
+import { inManifestOrder, ReviewRecords, type VerificationOutcome } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { StaticProof } from "./static-proof.ts";
@@ -2227,7 +2226,7 @@ function lensRecord(
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
-function verificationOutcome(outcome: VerificationResult[string]): VerificationPayload["outcomes"][number]["outcome"] {
+function verificationOutcome(outcome: VerificationResult[string]): VerificationOutcome {
 	if (outcome.status === "done") return { status: "done", model: outcome.model };
 	if (outcome.status === "ended") {
 		const { budget, limit, tokens, tools } = outcome.budgetEnded;

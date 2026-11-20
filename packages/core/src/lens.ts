@@ -355,11 +355,14 @@ function required<T>(file: string, field: string, value: T | undefined): T {
 	);
 }
 
+/** How many hex digits of its hash a lens's version keeps. A shared record's schema takes the same count. */
+export const lensVersionDigits = 12;
+
 // Hashes everything that shapes a lens's behaviour, in the order the fields are declared, never its file or nearer
 // scopes: a lens's version names the findings it produced, so this hash must not change for an unchanged lens.
 function versioned(lens: Omit<LensFields, "version">): LensFields {
 	const { file: _, nearer: __, resolution: ___, emoji: ____, shadowsBuiltin: _____, ...behaviour } = lens;
-	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, 12);
+	const version = createHash("sha256").update(JSON.stringify(behaviour)).digest("hex").slice(0, lensVersionDigits);
 	return { ...lens, version };
 }
 
