@@ -1,0 +1,3686 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "e6ed960bda8ee511eeaca5db531974b536b7aa07",
+    "head": "5e2f4abffd4d6ec6b0b206884cbaa16c7e585482"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 363,
+      "column": 17,
+      "endLine": 363,
+      "endColumn": 113,
+      "mutatorName": "MethodExpression",
+      "replacement": "createHash(\"sha256\").update(JSON.stringify(behaviour)).digest(\"hex\")",
+      "status": "generated",
+      "id": "8df6d9e8668f90e69ac5956b826b50cd59fcaa0353182e1d3894ea59d20c8e20",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts every built-in lens's version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 363,
+      "column": 28,
+      "endLine": 363,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "33520bfcb2d2216ab6eaa091fd960045ab6975ca667c6964d22ee9228a14fbda"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 363,
+      "column": 79,
+      "endLine": 363,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9054f6f7ce136584dcd04519eeb948b23e1191c6666972708c676de1b3f89dd0"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 13,
+      "column": 24,
+      "endLine": 13,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "789ac969fdb230d0dc5b779b6f6f10bd605665449d3de96a5d92bd0d44564f6f"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 17,
+      "column": 1,
+      "endLine": 17,
+      "endColumn": 93,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "73d794700c5d2390e780d3afed90e6c5234117cf6103c3349a394894b20acbeb"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 21,
+      "column": 1,
+      "endLine": 21,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7a7d52487c0976aeedb750026cac79a1dfb78dfe98c9221dd3f4fa416d0d804c"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 55,
+      "column": 27,
+      "endLine": 55,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6060d508eac086fa46a1e1265d6c89a86953c7f821fe31b8d773efbc8eb1dd72"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 58,
+      "column": 33,
+      "endLine": 58,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3875c24e565909b85de9d81163f012c2acc6604d2a46262b9ae2620d8d491e30"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 61,
+      "column": 31,
+      "endLine": 61,
+      "endColumn": 64,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "60d25a186012fbc9eb61298e7ee5bc44b1072ca2d4f5ae00f1060485fb0961db"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 65,
+      "column": 1,
+      "endLine": 65,
+      "endColumn": 109,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c177aa62de15ac0deb34d6070e97145cd62c908123a1551786359de0e6bfe748"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 72,
+      "column": 56,
+      "endLine": 74,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f928a6d60fd3b3d37303d275955720ebd24d574392599b9d7bb0782e8d01f9b8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 8,
+      "endLine": 73,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "73df722329d5058a4af08294a51f477e2807021622392d8c303da726ddb3888a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 8,
+      "endLine": 73,
+      "endColumn": 89,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "38c87c17e605da1c54497cf02bfe76690d302baeb081b9cbf4c5ec23ade655eb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 8,
+      "endLine": 73,
+      "endColumn": 89,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version === \"unavailable\" && version.length <= 64 && valid(version) === version",
+      "status": "generated",
+      "id": "7b3bc0de072a7d429bc01c92fb01a2e24da1558143de6f473561fd54dc7db0da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 8,
+      "endLine": 73,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "cb3a0ecdf0056a365c844263411903004a97f1928e1234bfac984090d2054a72",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the provisional sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 8,
+      "endLine": 73,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version !== \"unavailable\"",
+      "status": "generated",
+      "id": "22ee62c410fb2d4f68ef123c19a018e728971c096059515c161431cf2603c9d1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the provisional sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 20,
+      "endLine": 73,
+      "endColumn": 33,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "71ddf1d7709b9689dc937b6723b98337fadf20b580cae45450dc219a13bcacd7"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 38,
+      "endLine": 73,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d9b9cc2bc92cce7a6f3f12d7c9a2334c972526df620cdb95b73fff241f8ff26f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 38,
+      "endLine": 73,
+      "endColumn": 88,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version.length <= 64 || valid(version) === version",
+      "status": "generated",
+      "id": "291fae9459c8f796dcac094a6c3d2103af3e4a60b2b264b8cb1fb461989f4dee",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 38,
+      "endLine": 73,
+      "endColumn": 58,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "819114b26c65d5c9580db73d8235d78e9f69ea3724a516ad2172ad7ca5a68413",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 38,
+      "endLine": 73,
+      "endColumn": 58,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version.length < 64",
+      "status": "generated",
+      "id": "216b17dec70379ee537e237fcb44ba65c30d7fad1f4b0b7a0eb84482beb6a784",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample's result/version at \"1.0.0-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 38,
+      "endLine": 73,
+      "endColumn": 58,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version.length > 64",
+      "status": "generated",
+      "id": "a37ae4468fed6dcb9170ac4131172e0f73723f238b21b98c3898e01cd2cd7581",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 62,
+      "endLine": 73,
+      "endColumn": 88,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "15be6ea011896d411fb39ac14a87dbe6f0e2a84968ed8d99a5adedddc0fe6c26",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 73,
+      "column": 62,
+      "endLine": 73,
+      "endColumn": 88,
+      "mutatorName": "EqualityOperator",
+      "replacement": "valid(version) !== version",
+      "status": "generated",
+      "id": "053c2a54454c34822b02d909bbecd3bbdc9a15c45e6f3497536ea0d1efede4b3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 79,
+      "column": 31,
+      "endLine": 79,
+      "endColumn": 65,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0663419a373647fca247f834e638f483e3bde0aac0ef09a5690a276c51ce63e3"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 80,
+      "column": 35,
+      "endLine": 80,
+      "endColumn": 73,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "5c79be3d26aaae6377f0bbcbc2a5dd2a3892ee5881c9b2f3377d7475b8626423"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 84,
+      "column": 62,
+      "endLine": 88,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d95f0f363a19abb422b83953e6b978b4f7a414f322925d9ca41b9572e2b3ccdb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 85,
+      "column": 5,
+      "endLine": 85,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "bfefd21f0afbcae4d73c28865be449d81d639148055a7ab806c3b4b03a97bd32",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 85,
+      "column": 5,
+      "endLine": 85,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "6bd9cd25bb248115f4c2264a4d4976fd223b27214899aac20cd13a23bb2ed023",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "accepts a whole account payload, sample 12"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 85,
+      "column": 5,
+      "endLine": 85,
+      "endColumn": 29,
+      "mutatorName": "MethodExpression",
+      "replacement": "name.endsWith(\"lens.\")",
+      "status": "generated",
+      "id": "e8a7b40d1e6431284476d83046213f321594cab0fa03bd2674f1d7895eb8a24e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "accepts a whole account payload, sample 12"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 85,
+      "column": 21,
+      "endLine": 85,
+      "endColumn": 28,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ccd717b623c3199a6e3818dd784b70c870fa5bd17a715b9d4a80c59cdcb31d9c"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 86,
+      "column": 5,
+      "endLine": 86,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c69debdc06de4ec7bac9342212781d6b3ba38c835d3f46218d2563672e6e4736",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 86,
+      "column": 5,
+      "endLine": 86,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1d2e3057cc47270c76e4d18cdba6af1dea639ef0b7f98cc3bce2313275f506c5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 86,
+      "column": 5,
+      "endLine": 86,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "name !== \"verifier\"",
+      "status": "generated",
+      "id": "a27accec7e842da276bc79935a9c9e7490b5572bf83102215585b4d7a64afd73",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 86,
+      "column": 14,
+      "endLine": 86,
+      "endColumn": 24,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c596b16e010cddcfdd29b345715e8b55a151f9f58693970391a78af7447309a8"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c324c482790db5369e9a8e4ff93c734717eb017546459f286afdaf1ed2abbcc4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 54,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "5767db0702f2ef2e1bba26a7d0fa8730a9e3cb82c17bfa2899574bc2340498fe",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 54,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version === withheld && isToolVersion(version)",
+      "status": "generated",
+      "id": "53e307a7f270c621d3446caaeda51d27fa39d4be88fe13e51bf86ee9afc2e963",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "9715b577d2ff4c2a88eb8253a1ecd3d986a5114c560223e0859920c25aa8719c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 87,
+      "column": 8,
+      "endLine": 87,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version !== withheld",
+      "status": "generated",
+      "id": "8ba8b79a852c43548d2fd2055e913ba09e8f1d192e4f1fd05843b02b554fafe8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 91,
+      "column": 64,
+      "endLine": 95,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4cbb899c722d9ad03cea94a86a6a5145cd230cea903bee883061430ec0c39b64",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 92,
+      "column": 5,
+      "endLine": 92,
+      "endColumn": 31,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "check.startsWith(\"lens.\")",
+      "status": "generated",
+      "id": "23f4b6134354596d60573430a42ec40b6b9e92e362abb25603b646415333a4ac",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 92,
+      "column": 5,
+      "endLine": 92,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e18473273ffa9bffc5acff77f05ed14c2dc03bdebdab26bcb5a46df91fa0b0c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 92,
+      "column": 5,
+      "endLine": 92,
+      "endColumn": 31,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "649b9dfc8603dba19904ad7276005cf518805a92cb609b937c400199dd303bf4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 92,
+      "column": 6,
+      "endLine": 92,
+      "endColumn": 31,
+      "mutatorName": "MethodExpression",
+      "replacement": "check.endsWith(\"lens.\")",
+      "status": "generated",
+      "id": "c8fad357ec478d404881c3b5bf4cef50155ba52a72d2ede0fdd549a0e7838a65",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 92,
+      "column": 23,
+      "endLine": 92,
+      "endColumn": 30,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "91b4395e14dc2d3006fed6b089a5672bb7b0cdc6fb76e80b1071bb0f4a701017"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 93,
+      "column": 46,
+      "endLine": 93,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dd6dd2836484c419e3a0994d54850a430a57bd889c987367dccdeb475bb8664c"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5ef0d45177c354b485ff3914b19c6a24e10d7855d0fee4b165fe5a29384520d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the account sample's producers/0/version at \"0123456789ab@careful@quick\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2fdfbe777385259d487316bb51148fa0b49937d7e8684401ef77d78e85379877",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 100,
+      "mutatorName": "LogicalOperator",
+      "replacement": "rest.length === 0 && lensVersion.test(hash ?? \"\") || scrutinyLevels.includes(level as never)",
+      "status": "generated",
+      "id": "d59f3cfd9295c3fb8c87f7cf943fdf2fb3fb2c6bfc7031f1286f7d1fde25c7af",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the account sample's producers/0/version at \"0123456789ab@careful@quick\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 57,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e817b08eb90a97a2d2d39dedc69686885ffca068a48440f3e2d94cd6e58fb51d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the account sample's producers/0/version at \"0123456789ab@careful@quick\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 57,
+      "mutatorName": "LogicalOperator",
+      "replacement": "rest.length === 0 || lensVersion.test(hash ?? \"\")",
+      "status": "generated",
+      "id": "8c82d30b4f02757749f39e45325c1ffe0ecec69446517b096fefe0ca273b87ba",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the account sample's producers/0/version at \"0123456789ab@careful@quick\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 25,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ded382f6af1f16672a80d490b844524ffeecdd6ce50b77154673aa514fbde216",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the account sample's producers/0/version at \"0123456789ab@careful@quick\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 8,
+      "endLine": 94,
+      "endColumn": 25,
+      "mutatorName": "EqualityOperator",
+      "replacement": "rest.length !== 0",
+      "status": "generated",
+      "id": "617d98e8c525c326a20fb484b274439bcfa2263c54b9395d7e7a6c261161e43c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 46,
+      "endLine": 94,
+      "endColumn": 56,
+      "mutatorName": "LogicalOperator",
+      "replacement": "hash && \"\"",
+      "status": "generated",
+      "id": "827074036f67e916af1a9ab41dad102f8c349c7fc5c28622cf75803c034e58c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 94,
+      "column": 54,
+      "endLine": 94,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b0d7ebb495d9f1703fc964a80d090218ae59a67271b95c356deaacb7f9b33f5e"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 101,
+      "column": 25,
+      "endLine": 101,
+      "endColumn": 49,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "92c304741959eaee1a5df1deb4512564547274634996c0d8eb01cb35009d47a2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/snapshots/0/cacheKey"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 114,
+      "column": 22,
+      "endLine": 114,
+      "endColumn": 48,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "3805b10dd256c3719e3b8734f4de6325af5fb09a13b9c23e2b2d63328912168c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the provisional sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 115,
+      "column": 24,
+      "endLine": 115,
+      "endColumn": 61,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "dff3c104ce3fa5ee7a851530de90122e88e711e8f882f3b9239203013a00113d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the lens sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 116,
+      "column": 38,
+      "endLine": 116,
+      "endColumn": 109,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2ea6fe0f0037c2e95da8eec55f6bed36b2ff3266673db0cd2a83a2845cc028da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 117,
+      "column": 28,
+      "endLine": 117,
+      "endColumn": 72,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "f2aee4bb0972f4a181a363e3b1fadfa70875f5e968eca250499493c3bf94f154",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the lens sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 117,
+      "column": 63,
+      "endLine": 117,
+      "endColumn": 70,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "344d31845f2b4129e9b99d82862d84ab91999bbfaa507b632a59e66503174604"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 121,
+      "column": 22,
+      "endLine": 121,
+      "endColumn": 50,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "eb5cc26593df16aa7eacd45e6f96cb5c160e9ca1ac38541eb9819dc3489e6580",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/snapshots/0/commit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 122,
+      "column": 26,
+      "endLine": 122,
+      "endColumn": 56,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bcd0edac7839adb6e297cd586c0440be0d1440877b0855cb4e9df5e845916f43",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/snapshots/0/snapshotId"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 123,
+      "column": 22,
+      "endLine": 123,
+      "endColumn": 88,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "66703ea72ead9b101394a139c88f23d5384ea23a73d27405b6bb27eecf4cd783",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 123,
+      "column": 59,
+      "endLine": 123,
+      "endColumn": 86,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7bb35e92b0f0cbbfa64d30b84761b553595fc54a8eb6992c35e220b105ef8957",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/snapshots/0/receipt"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 130,
+      "column": 40,
+      "endLine": 130,
+      "endColumn": 55,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8fb476589f963e512ce761ecf600984e540827730fa2b5260c41a146ce9435c3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/notes/0"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 143,
+      "column": 13,
+      "endLine": 143,
+      "endColumn": 105,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2bc1853e77dcd11ae59fac531ae14543d0c3e87ccd018c458321ceb949b5d434",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the provisional sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 143,
+      "column": 42,
+      "endLine": 143,
+      "endColumn": 55,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1694b27c3ec39ba27c49ab602fe1c0574c4c400a52e1c3e69b8aab13a92edff4"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 154,
+      "column": 2,
+      "endLine": 154,
+      "endColumn": 104,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "bf081cd76093e16a6c9cbd1e60fbd0df5dc4ee563143bb1bc5680bb74bcb5bcc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the failed sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 154,
+      "column": 31,
+      "endLine": 154,
+      "endColumn": 39,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e315ca9c9142c393c1ee2e425193c7537af96459af54fda5236b39144e541419"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 180,
+      "column": 35,
+      "endLine": 180,
+      "endColumn": 82,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d8ff3e3260acdc939bb400e055cca8ac27ea77943ad9bdd06c437033a948cde2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the lens sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 225,
+      "column": 13,
+      "endLine": 225,
+      "endColumn": 65,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "7a00c70cebdd28fbdc710a8fe94b10a98ba8daec957564459bdfadc28af7b559",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the lens sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 225,
+      "column": 36,
+      "endLine": 225,
+      "endColumn": 48,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "76ead426641c77a6bc4c7334b6c1b5488564ddc2222937c11c1bb0a396b4c378"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 226,
+      "column": 13,
+      "endLine": 226,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ac8ac987da53f5dbe341953c1886040e68c95e8673c688debd61a58e9c71d4b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the exhausted sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 226,
+      "column": 36,
+      "endLine": 226,
+      "endColumn": 47,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cc5c41b0e784301dac7d2d249183f47126ea57200979b94995300245aabd464c"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 239,
+      "column": 23,
+      "endLine": 239,
+      "endColumn": 54,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "566dab26cd5468371f3439262303b8e62ee22b1dd7692ad19d6bcdc006f0e897",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the bare sample's version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 269,
+      "column": 7,
+      "endLine": 269,
+      "endColumn": 100,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "83df8142d5008794d9e3414848d8d201a0d4f9170de974b17ce39046ae9f316c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 269,
+      "column": 28,
+      "endLine": 269,
+      "endColumn": 83,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "d1b10f7d6ccf9561cd604a0427b9ad67947bb63c42f91eadc4fb34d42efdff29",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 269,
+      "column": 42,
+      "endLine": 269,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3ba1cfabf2546f321d5a6d3c46f5ce91f689930606b0159abaa65484c1b1bcf4"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 269,
+      "column": 70,
+      "endLine": 269,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "824829e25c622220a570565a71823cfa47d3fd311d5ea85619d94010ff1636df"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 368,
+      "column": 23,
+      "endLine": 368,
+      "endColumn": 93,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "163fb25ef9d67af02433790a7e643660041c936a0276169100d7f2a5041c4c77",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 368,
+      "column": 61,
+      "endLine": 368,
+      "endColumn": 81,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6bb87b0b79366982079ae05813f47362170f8e2018336272e70755948eb8e539",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 422,
+      "column": 10,
+      "endLine": 422,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4f3dcf36c6e84b9366644acd3e5efcd48472170ace500fcc8bb1d1487b428d48"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 422,
+      "column": 89,
+      "endLine": 422,
+      "endColumn": 102,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version && \"\"",
+      "status": "generated",
+      "id": "053f1d1c8ce0ea05a683158c063c1d12f3180cd4da202eb78df1781cb71faeff",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "refuses a check record whose sighting another check reported"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 422,
+      "column": 100,
+      "endLine": 422,
+      "endColumn": 102,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "4326831940eee2a16330dd9d616fad9e473495ffa0c1101179c30334a5d06aab"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 435,
+      "column": 23,
+      "endLine": 438,
+      "endColumn": 81,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "20bc201f8b6045cd0c9cfc9a51cbb58949863a04c031fd3f34391533d193673b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 84,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3aa8e449f4b76b1df36c1da802e9b89b2813d40d5856d731661d0a505a51c290",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 84,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "b4deb21a8dc3813bc45d8cbe69fdf6a9d47f1dc7f97915f7607a8c85a0e3c671",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 84,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(check === null || check.version === null) && checkVersion(check.name, check.version)",
+      "status": "generated",
+      "id": "01cf558ada9b3c2b6698743073dc1dbcb9752f58dbbf968534093a8a18115633",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the ran sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "0bc6e65a123fa22eef47db17875279e8691550deff67c9cbe7049f0a3dc8d2da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the skipped sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 41,
+      "mutatorName": "LogicalOperator",
+      "replacement": "check === null && check.version === null",
+      "status": "generated",
+      "id": "ddfe35b5b3cacf0fbc922a08116ebc8fb7f8ed182510a6ff53919cab6c1b7142",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the skipped sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 15,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f568ba27081d1bb85ec13dacf619bcfbc795c9fba04ce32d59a928b33fbb2731",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the skipped sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 1,
+      "endLine": 436,
+      "endColumn": 15,
+      "mutatorName": "EqualityOperator",
+      "replacement": "check !== null",
+      "status": "generated",
+      "id": "0843ed431be4c76ecd997a9bce435db4031122d692a2246b73aeca3432943ba1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the skipped sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 19,
+      "endLine": 436,
+      "endColumn": 41,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "f0d2b3a25a4e1195d322f9da47ec89ebbfad315b899e55095cb634449aee06c1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample's check/version at null"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 436,
+      "column": 19,
+      "endLine": 436,
+      "endColumn": 41,
+      "mutatorName": "EqualityOperator",
+      "replacement": "check.version !== null",
+      "status": "generated",
+      "id": "e89d790984a2e207e71db76a87a143c62ecffe470be5cb1b62f88d6459241134",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 438,
+      "column": 4,
+      "endLine": 438,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "91c776ede3687f40fea3be7e1e8197f043271e907fde4eddaade66efb77058f0"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 439,
+      "column": 20,
+      "endLine": 442,
+      "endColumn": 83,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "53302b57eb53711ea46cd9d1dbbf183422ff31840083eb9a4c00adcef1faffc7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 440,
+      "column": 1,
+      "endLine": 440,
+      "endColumn": 71,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e2165b2515e1c42983c991edd749d2873ac36da942b2aafc69119724fb782025",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 440,
+      "column": 1,
+      "endLine": 440,
+      "endColumn": 71,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d530f77f7a7d40bb98c1fbdf3ad6d781b36063db31cbdbaa852ac0fe54805a35",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 440,
+      "column": 1,
+      "endLine": 440,
+      "endColumn": 71,
+      "mutatorName": "LogicalOperator",
+      "replacement": "source.version === null && sourceVersion(source.check, source.version)",
+      "status": "generated",
+      "id": "d5210c163e6ab8435b8191c2cd132f8dfa8c02f77732baa6f0f3f46c321eb012",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the verification sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 440,
+      "column": 1,
+      "endLine": 440,
+      "endColumn": 24,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7f250b39bec36939965102339952d5ac3bdc176e1418e89dd9d312348acccc14",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "accepts a whole account payload, sample 12"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 440,
+      "column": 1,
+      "endLine": 440,
+      "endColumn": 24,
+      "mutatorName": "EqualityOperator",
+      "replacement": "source.version !== null",
+      "status": "generated",
+      "id": "c0098e467a90be3b17b405500902e0d29e01364026fca0d52fda050dde825e21",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 442,
+      "column": 4,
+      "endLine": 442,
+      "endColumn": 83,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "15541b253c957f0af040cf932f9424992bc452dbf245bcb31b41ebbcf66c9c5f"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 453,
+      "column": 35,
+      "endLine": 453,
+      "endColumn": 44,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "49e739aabe32f60bb02a06de0db11b8adda738b363a34b888aa6da62899ad646"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 453,
+      "column": 72,
+      "endLine": 453,
+      "endColumn": 89,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a0d77f1846c100e65b3ef03ca06a3342b3e1d5a27a7d578ff36dc85a964a7350"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 454,
+      "column": 6,
+      "endLine": 454,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "91c0a07d665234ea3ed90003c7e92520aa07f30b48d387bbca22f7955b0bbe94",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "refuses a check record whose sighting another check reported"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 454,
+      "column": 6,
+      "endLine": 454,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "300b339f7cf489f2a883537b54d2d99fe6883d04556bcdcb2b5de7e110615b3a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 454,
+      "column": 6,
+      "endLine": 454,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unwritten === undefined",
+      "status": "generated",
+      "id": "def439afdec9fb1528f4880056458b524912ebb7d6c7ea5915b4cf28f5b43d9a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the ran sample's result/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 464,
+      "column": 10,
+      "endLine": 464,
+      "endColumn": 102,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "58e724ec3bd9e7baaa8261ab27cd4efddccbd45ed8c11588bfe8d8185aa158cd"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 473,
+      "column": 3,
+      "endLine": 474,
+      "endColumn": 107,
+      "mutatorName": "LogicalOperator",
+      "replacement": "decidedVersion(check, \"/check/version\") && claims.map((claim, index) => namedSource(claim.source, `/claims/${index}/source/version`)).find(Boolean)",
+      "status": "generated",
+      "id": "f7809a885a145cb12f7c782e6e3d9474d88f3fef808ddd454420c40a025272b3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 473,
+      "column": 25,
+      "endLine": 473,
+      "endColumn": 41,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "af4b25505a8e26c95c058f21a10e84521bc481b492d316b15ea695191b3215a1"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 474,
+      "column": 14,
+      "endLine": 474,
+      "endColumn": 92,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "52863f0350c19bcd28af4c158d0f149f481b67c53dfd7adeb5fb39994355adb6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 474,
+      "column": 58,
+      "endLine": 474,
+      "endColumn": 91,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2f573cef7800aba5cc740c11b573d26d05db79bf00d5cb3a4e72a3edcb83d2b0"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 475,
+      "column": 6,
+      "endLine": 475,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c49c278946e40ce430c7020d288395532c528884657962001a9e3c66f585e811",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "refuses a verification that matches a claim against a dismissal it does not name"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 475,
+      "column": 6,
+      "endLine": 475,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "8d09165aededa17111ba5d47f1d563c545b0698d7faea5238120934b73d7679f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 475,
+      "column": 6,
+      "endLine": 475,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unwritten === undefined",
+      "status": "generated",
+      "id": "fb8a9791cda8993e083ccc2735995daec2e215a07bfb57a6f6322f2834195bbb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the verification sample's claims/0/source/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 490,
+      "column": 20,
+      "endLine": 493,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "37bb21e710e3040f58ac5cfc09ae4acd13831e7538b7e98a1c130a49631b8bca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the account sample's filled/0/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 491,
+      "column": 17,
+      "endLine": 491,
+      "endColumn": 82,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a46ed9101fd9cc304c09abc8299cfd9f7681e8309133ca6516df62eb6ceb0d96",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the account sample's filled/0/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 491,
+      "column": 55,
+      "endLine": 491,
+      "endColumn": 81,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "276652f8382a180ea9f9b5e5579176504eca31ec5d1c2dcc3912a377b72a586a"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 492,
+      "column": 20,
+      "endLine": 492,
+      "endColumn": 85,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "8f13de0b12128b144a10a2d64640e752cc8f54a329ecad56365ee9b70c047126",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the account sample's producers/1/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 492,
+      "column": 55,
+      "endLine": 492,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cc23d72972125f0cdd5eaf6b56c53100e6d3d26c83276ed063837a2aeabbbcdb"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 494,
+      "column": 6,
+      "endLine": 494,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "803cf83166e7202c3d15d2efab978a74c4fe22b97ae89fc3d72fff9965b34661",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "refuses an account that names one check twice, case 0"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 494,
+      "column": 6,
+      "endLine": 494,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7335f38f1d151969fa36c7f4898db29c5b48d87dfa59c187e8b45c40d4f191bc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the account sample's filled/0/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 494,
+      "column": 6,
+      "endLine": 494,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "unwritten === undefined",
+      "status": "generated",
+      "id": "0cae86aad55092813ef63409ef9378bec413344ef143d985fc35f9916c294aa1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the account sample's filled/0/version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 512,
+      "column": 6,
+      "endLine": 512,
+      "endColumn": 69,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ad37a0597519e87894271550b313f32908fef0fe838b5b3ca816b32c1797d56f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 512,
+      "column": 6,
+      "endLine": 512,
+      "endColumn": 69,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c00af05238cdd8efd0a1d93a61a67e1e5e37f062bf738019413a498d8916fb7d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the dismissal sample's at"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 512,
+      "column": 6,
+      "endLine": 512,
+      "endColumn": 69,
+      "mutatorName": "LogicalOperator",
+      "replacement": "Number.isNaN(stamped.getTime()) && stamped.toISOString() !== at",
+      "status": "generated",
+      "id": "cf9ac4fed89e4aab95a0fb22711edb137f38213cfe6a8851c4665e4dfbf322dc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses free text in the dismissal sample's at"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 512,
+      "column": 41,
+      "endLine": 512,
+      "endColumn": 69,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "4667c48688365012a3c885c3b498565585c8ecbca469a24ed57ac89dc2c1226f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the dismissal sample's at at \"2026-11-15T00:00:00Z\""
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 512,
+      "column": 41,
+      "endLine": 512,
+      "endColumn": 69,
+      "mutatorName": "EqualityOperator",
+      "replacement": "stamped.toISOString() === at",
+      "status": "generated",
+      "id": "bf2897db55c6018e7695aeebba50a0ec7af4c2b8e0f824f2e5052aea1b2dc7d4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 513,
+      "column": 10,
+      "endLine": 513,
+      "endColumn": 65,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b279f7e5edad063be5375d399fbf9935795dc267a0baf3713568d9770eafaa97"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 516,
+      "column": 6,
+      "endLine": 516,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0bcdb69e189fd1a1900ee79ca4cabcf8da2458177433e47987a9cb588a76635a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 516,
+      "column": 6,
+      "endLine": 516,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "45f540f437a9c23f348e8a59ce331213b1c2ebfeceea85058deadde59730108d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/review-payloads.test.ts",
+          "path": [
+            "review payload checks",
+            "refuses a dismissal whose sighting is not a finding"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 516,
+      "column": 6,
+      "endLine": 516,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "typeof parsed !== \"string\"",
+      "status": "generated",
+      "id": "eed177b24c0b2f96bd60f2cfbc0546ff29a7ae6f13350dd7ef926770bedd5980",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 516,
+      "column": 24,
+      "endLine": 516,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "efe3ce342c6d4512189f2dbc4dedd3b3259dd8041c4dc5a03feab3ab076bd9d8"
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 518,
+      "column": 21,
+      "endLine": 518,
+      "endColumn": 56,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5731a6e5c674f8f649417afedbf6aabca03305cef501588bb5521e65f86acf0a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "accepts the dismissal sample, as Melian writes it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 518,
+      "column": 39,
+      "endLine": 518,
+      "endColumn": 54,
+      "mutatorName": "LogicalOperator",
+      "replacement": "version && null",
+      "status": "generated",
+      "id": "73abcc9d12f1db5cb26b0009f63b191d320a40555cf884e0e198b2f12892bb3b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-payload-classes.test.ts",
+          "path": [
+            "a shared record's classed fields",
+            "refuses the dismissal sample's sighting/finding/properties/source/version at \"0123456789ab@reckless\""
+          ]
+        }
+      },
+      "survivorClasses": [
+        "nullish-logical"
+      ]
+    },
+    {
+      "file": "packages/core/src/record-payloads.ts",
+      "line": 518,
+      "column": 58,
+      "endLine": 518,
+      "endColumn": 103,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "833f27bf1138b2854e9864c188499d8d679684d5a5d71b64e7eff8fc24f6658a"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 106,
+      "column": 15,
+      "endLine": 106,
+      "endColumn": 94,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "66c95b9e500d5a1aa858aa8cd159b63e9d50a6b8ee742cca5d7db5b4c5157290",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "gives the same bytes and ID when a record is built twice"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 110,
+      "column": 1,
+      "endLine": 110,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1b362136f44214d85777489b14ffb0342fbc2f2aa8970ec15e8c41c1e4c38272",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a decided check's version that is not a tool's, and keeps one that is"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 110,
+      "column": 1,
+      "endLine": 110,
+      "endColumn": 22,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "76ee214748eca5d6a9db10ce854605cff01c5cf43908bed0cd6eb8a00f8038dd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "writes an account in one form, keyed by the revision and the records it counts"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 110,
+      "column": 1,
+      "endLine": 110,
+      "endColumn": 22,
+      "mutatorName": "EqualityOperator",
+      "replacement": "version !== undefined",
+      "status": "generated",
+      "id": "2db31d525ed271cf7ce3f06f1f603d7dc5a9e9ef915a0549fa9555e57b85d0f7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a decided check's version that is not a tool's, and keeps one that is"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 1,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c688f0e9476f20db12c1cffe233143053a7f5cb966701c31d83012e4b5cc8fde",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a decided check's version that is not a tool's, and keeps one that is"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 1,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e592a2cac6cf44cbad2af132ea0d68cad2eb904bcd3a5efb93350d539e5b7723",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "keeps the verifier's own version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 1,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "LogicalOperator",
+      "replacement": "check.startsWith(\"lens.\") && check === \"verifier\"",
+      "status": "generated",
+      "id": "f06f09d60f92a76cab657003c0a3629738ffa8e5a65633194f550339718aa395",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "keeps the verifier's own version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 1,
+      "endLine": 112,
+      "endColumn": 26,
+      "mutatorName": "MethodExpression",
+      "replacement": "check.endsWith(\"lens.\")",
+      "status": "generated",
+      "id": "8d1178275806c0e6bf4056c52238fef1bcfdd897a406f0cfd0ff4260ca0ac560",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "writes a lens run's record that its kind's check accepts, with its findings in ID order"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 18,
+      "endLine": 112,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "960b448de2935f43ba52c2176eed0a8cf3c20839815425f5cf9f0c95245eb541"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 30,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c8bf54c9e8ed21815e887ae3c345351fd35594d06828077e1a4b0f05486a1f32",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "keeps the verifier's own version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 30,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "EqualityOperator",
+      "replacement": "check !== \"verifier\"",
+      "status": "generated",
+      "id": "47c92d50c69c90ac5049ffd166707e4a262ebd8d276d57d56ab615ef76bd6069",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "keeps the verifier's own version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 112,
+      "column": 40,
+      "endLine": 112,
+      "endColumn": 50,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "d7b6e451e244e11ddfa3c447a484c96d685088a9efde68933186db9e367ca151"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 19,
+      "endLine": 114,
+      "endColumn": 111,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "221bda5d9f464a01af29419915e92511ee4a8aba9cb821ac13e1074c4c1f04b1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 63,
+      "endLine": 114,
+      "endColumn": 98,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e69151c01f3d357ac478857786e44ab4dc1a705442579f8b35add0b87e92b33b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 63,
+      "endLine": 114,
+      "endColumn": 98,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c488037abf538a906a3047e2cf79f69996c5349145f487404641b53c68fb432e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 63,
+      "endLine": 114,
+      "endColumn": 98,
+      "mutatorName": "LogicalOperator",
+      "replacement": "id !== undefined || hashed.test(id)",
+      "status": "generated",
+      "id": "854037df17520044ad27b47623a57e0f34903f47dc58212f5a2663d8f20363dd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 63,
+      "endLine": 114,
+      "endColumn": 79,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5790bff0d66b0d71003d06b1afd7bd6b5aaf186ea67bc07ba70d2ed64a2d9125",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "RegExp.test(undefined) tests the string \"undefined\", which no 64-digit hash matches, so the ID is null either way"
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 114,
+      "column": 63,
+      "endLine": 114,
+      "endColumn": 79,
+      "mutatorName": "EqualityOperator",
+      "replacement": "id === undefined",
+      "status": "generated",
+      "id": "4a36ba65e4885b8a855ec0c1032aea6ee4fa3c8db2a867dcdff4bb7ae38cf5fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 115,
+      "column": 15,
+      "endLine": 116,
+      "endColumn": 93,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "c700e1d81d788d01dd50a618d02f7710c62f71e4a6331a1256ab2385ea1b1492",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-withheld.test.ts",
+          "path": [
+            "an exported record holds no text a tool, a provider or the head wrote",
+            "as a lens that did not answer, gave up, or failed with a provider's message and caveats"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 116,
+      "column": 1,
+      "endLine": 116,
+      "endColumn": 30,
+      "mutatorName": "MethodExpression",
+      "replacement": "text.endsWith(blindCallers)",
+      "status": "generated",
+      "id": "ee28af3687911890ed908838999380d3a1172e6fdb9fb2e824463f4717f89515",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-withheld.test.ts",
+          "path": [
+            "an exported record keeps what Melian defines",
+            "keeps Melian's own caveats and withholds the rest of a lens's text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 116,
+      "column": 48,
+      "endLine": 116,
+      "endColumn": 68,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0047233e202c5206962cfb354e781b6bce1a2bddca634c95181981536e367507",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-withheld.test.ts",
+          "path": [
+            "an exported record keeps what Melian defines",
+            "keeps Melian's own caveats and withholds the rest of a lens's text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 116,
+      "column": 48,
+      "endLine": 116,
+      "endColumn": 68,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "7cd3e92240a2d98825e358ae21aa44188c860e4c2c590b1efb2d76996bfbd411",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-withheld.test.ts",
+          "path": [
+            "an exported record keeps what Melian defines",
+            "keeps Melian's own caveats and withholds the rest of a lens's text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 116,
+      "column": 48,
+      "endLine": 116,
+      "endColumn": 68,
+      "mutatorName": "EqualityOperator",
+      "replacement": "text !== lightTriage",
+      "status": "generated",
+      "id": "29de5d92fac1c4ad566b61ece71c5f51bbd4754128885011269dd8b7cd67209f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-withheld.test.ts",
+          "path": [
+            "an exported record keeps what Melian defines",
+            "keeps Melian's own caveats and withholds the rest of a lens's text"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 6,
+      "endLine": 149,
+      "endColumn": 80,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "35254352edc80ca76464bb979ea2e05b079da443c66a4385452acb6a19a9e785",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 6,
+      "endLine": 149,
+      "endColumn": 80,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a73ef1a483a2d52ef83d6668f462fa8f091cdea2f9aa36a69007594f4058ec78",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 6,
+      "endLine": 149,
+      "endColumn": 80,
+      "mutatorName": "LogicalOperator",
+      "replacement": "result.status === \"ran\" || result.snapshots?.some(each => !minted(each))",
+      "status": "generated",
+      "id": "9e6712d5943b7b9d858fe08e411c715ea69a3499fa9f896b3322c460bf37a2e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 6,
+      "endLine": 149,
+      "endColumn": 29,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e3a3a74a83fb63915da53e1f7d0c70372d586034acd590b049d5cffa2de3cb29",
+      "claim": "equivalent",
+      "evidence": {
+        "reason": "only a ran CheckRunRecord carries snapshots, so any other status reads undefined and takes the same branch"
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 6,
+      "endLine": 149,
+      "endColumn": 29,
+      "mutatorName": "EqualityOperator",
+      "replacement": "result.status !== \"ran\"",
+      "status": "generated",
+      "id": "d892989cefbd4ddbf84d8ed5e049fad1015727dc6832e19538bfccb6bc1a37da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 24,
+      "endLine": 149,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "93dc6bd5e31e49182c3380ee3c47a368dfbc18395f32a4b240139eac9f24209b"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 33,
+      "endLine": 149,
+      "endColumn": 80,
+      "mutatorName": "MethodExpression",
+      "replacement": "result.snapshots?.every(each => !minted(each))",
+      "status": "generated",
+      "id": "bd520ffb7cfc71a3d3913166db74a737d61288a43dd295d82c3ced6ee6d319bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "Enola's snapshot identities, which Melian computes as hashes",
+            "withholds the check when a snapshot holds text in its snapshot ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 33,
+      "endLine": 149,
+      "endColumn": 55,
+      "mutatorName": "OptionalChaining",
+      "replacement": "result.snapshots.some",
+      "status": "generated",
+      "id": "e0e02c6445fee18043fd47b55372f072cd0d0dc6cc86a1eb0a2b80bbbab924a9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "keys a check record by the run, the revision and the check's name"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 56,
+      "endLine": 149,
+      "endColumn": 79,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a904bef7cbc0a055e4989236da7fcceb0927b21df6da8e4321f0218c8c7fc3f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 149,
+      "column": 66,
+      "endLine": 149,
+      "endColumn": 79,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "minted(each)",
+      "status": "generated",
+      "id": "f40545363daf777be6477fbcc848b4d792966561f723ce07d0a0b7698c644d0f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 431,
+      "column": 29,
+      "endLine": 431,
+      "endColumn": 75,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b0cd4c13fdf3d2c8435d9a639a7f0f8736a0e2542115bd97a9d6a147edd28c4e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 440,
+      "column": 2,
+      "endLine": 442,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7beaaf75fe6515a4fe8eea57a39479c43dd5ab3272666ac7febcb20d4638e5d7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 440,
+      "column": 2,
+      "endLine": 442,
+      "endColumn": 36,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fc2614b7e76ab6d82ab00669b9ae9785e165feffb1fa442c4e96129589311cfc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 440,
+      "column": 2,
+      "endLine": 442,
+      "endColumn": 36,
+      "mutatorName": "LogicalOperator",
+      "replacement": "new RegExp(objectIdPattern).test(commit) && new RegExp(snapshotIdPattern).test(snapshotId) || ids.every(id => hashed.test(id))",
+      "status": "generated",
+      "id": "f6890446e2bd82f481ae7db2d2cd20afa863c62c6c2231bf7bb3e90ff5a80037",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 440,
+      "column": 2,
+      "endLine": 441,
+      "endColumn": 48,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0f7fe8d42c829b7b26acbb6ddd1b5586aa50e01e9acecd2e9480231049001bd9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 440,
+      "column": 2,
+      "endLine": 441,
+      "endColumn": 48,
+      "mutatorName": "LogicalOperator",
+      "replacement": "new RegExp(objectIdPattern).test(commit) || new RegExp(snapshotIdPattern).test(snapshotId)",
+      "status": "generated",
+      "id": "80a34b3b2866a013eafbfb7146d3346fb7dacf0c7a0905b46c9fe7eff8536074",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 442,
+      "column": 2,
+      "endLine": 442,
+      "endColumn": 36,
+      "mutatorName": "MethodExpression",
+      "replacement": "ids.some(id => hashed.test(id))",
+      "status": "generated",
+      "id": "50b38e8328d4f7d65163cfe396693b0936a878966797a3c49e26f68191966fca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-static-text.test.ts",
+          "path": [
+            "an exported record keeps what a static finding shares",
+            "keeps the three fields of Enola's receipt Melian checks, and withholds a receipt it cannot read"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 442,
+      "column": 12,
+      "endLine": 442,
+      "endColumn": 35,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "f4218af8f0d246701b6ab9b0471bc68abb943dabf50a4d9588a541f3c95938e8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "withholds a check whose snapshot names a commit that is not a git object ID"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 500,
+      "column": 89,
+      "endLine": 500,
+      "endColumn": 101,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3d603cd0883c7160e22852023d865a458df62e0b9824ade83747de38487fb549"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 513,
+      "column": 25,
+      "endLine": 513,
+      "endColumn": 72,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2f67402dbc251d2299a917a65c602b7e5ec06b0a975710799467ec72b2076d7f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "keeps the verifier's own version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 528,
+      "column": 6,
+      "endLine": 532,
+      "endColumn": 6,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "928f7aa1483c2999cdb1bee54b80aee8f18ed1641d79afce2737f146aa25d6aa",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records-classes.test.ts",
+          "path": [
+            "a record's classed fields as the producer writes them",
+            "drops a decided check's coverage ID that is not a hash, one ID at a time"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 182,
+  "omitted": 0,
+  "unmutated": []
+}
