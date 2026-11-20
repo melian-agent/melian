@@ -253,7 +253,9 @@
 			"status": "generated",
 			"id": "b34d794b920a84d6cc2b1cd8603c4e5a24a7922ebecb7e51d481699dd2693cfb",
 			"claim": "equivalent",
-			"evidence": "The default applies only when no copy pushed a folder, and then no copy exists to place, so its contents never reach a line.",
+			"evidence": {
+				"reason": "The default applies only when no copy pushed a folder, and then no copy exists to place, so its contents never reach a line."
+			},
 			"survivorClasses": []
 		},
 		{
@@ -333,7 +335,9 @@
 			"status": "generated",
 			"id": "d256eb0a97053202fed5856810dae33693d056fb0f91765acda6899c6ac75136",
 			"claim": "equivalent",
-			"evidence": "One step past the end compares undefined, so it adds a step only when every folder equals first, and first.slice(0, length + 1) is first.",
+			"evidence": {
+				"reason": "One step past the end compares undefined, so it adds a step only when every folder equals first, and first.slice(0, length + 1) is first."
+			},
 			"survivorClasses": []
 		},
 		{
