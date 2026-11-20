@@ -5,12 +5,14 @@ import {
 	constants,
 	existsSync,
 	fstatSync,
+	lstatSync,
 	mkdirSync,
 	openSync,
 	readFileSync,
 	realpathSync,
 	renameSync,
 	rmSync,
+	type Stats,
 	writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -444,30 +446,37 @@ export async function measureParity(
 
 class LostLock extends Error {}
 
+// Only the last name is checked: the directory may lie behind links, as every macOS temporary directory does.
+function regularOrAbsent(path: string): string {
+	let found: Stats | undefined;
+	try {
+		found = lstatSync(path);
+	} catch (thrown) {
+		if ((thrown as NodeJS.ErrnoException).code !== "ENOENT") throw thrown;
+	}
+	if (found !== undefined && !found.isFile())
+		throw new Error(
+			`${path} is not a regular file; a parity run reads, writes and locks only regular files and never follows a link, so remove it or name another results file`,
+		);
+	return path;
+}
+
 // Two runs on one results file would each save over the other's attempts, so a run holds the file from before it reads
 // it until it ends. A lock a run that died left stays, and the next run refuses until a person removes it. The lock
 // carries a claim of this run's own, so a run whose lock another took saves nothing and leaves that lock in place.
+// A hard link to a held results file is a second name the lock does not see, so two runs can start and pay twice.
+// A lock replaced by something that is not a regular file while its run is going can block that run's next save.
 class ResultsLock {
 	readonly path: string;
-	readonly file: string;
 	private readonly claim: string;
 
-	private constructor(file: string, claim: string) {
-		this.file = file;
-		this.path = `${file}.lock`;
+	private constructor(path: string, claim: string) {
+		this.path = path;
 		this.claim = claim;
 	}
 
-	// Keyed by the file, not the name it was given, so a run that names the held file through a link is refused too,
-	// and the run reads and saves that file, so its save never turns the link into a file another run could lock apart.
 	static take(out: string): ResultsLock {
-		let real: string;
-		try {
-			real = realpathSync(out);
-		} catch {
-			real = join(realpathSync(dirname(out)), basename(out));
-		}
-		const path = `${real}.lock`;
+		const path = regularOrAbsent(`${regularOrAbsent(out)}.lock`);
 		const claim = `${process.pid} ${randomUUID()}\n`;
 		try {
 			writeFileSync(path, claim, { flag: "wx" });
@@ -480,11 +489,11 @@ class ResultsLock {
 					: `${path} says run ${run} holds ${out}; if no run is using it, a run that died left it, and removing it lets this one start`,
 			);
 		}
-		return new ResultsLock(real, claim);
+		return new ResultsLock(path, claim);
 	}
 
-	// The refusal prints what the path holds, so it reads only a regular file, opened without following a link, and
-	// only one that reads whole as a claim; anything else could be a link to a file whose text is private.
+	// The refusal prints what the path holds, so it reads only a regular file, opened without following a link should
+	// one replace the file after take checked it, and only one that reads whole as a claim.
 	private static claimant(path: string): string | undefined {
 		let fd: number;
 		try {
@@ -660,9 +669,15 @@ async function measureHeld(
 			]),
 		);
 		held.lock = ResultsLock.take(out);
-		out = held.lock.file;
 		if (existsSync(out)) {
-			const earlier = JSON.parse(readFileSync(out, "utf8")) as ParityResults;
+			const fd = openSync(out, constants.O_RDONLY | constants.O_NOFOLLOW);
+			let text: string;
+			try {
+				text = readFileSync(fd, "utf8");
+			} finally {
+				closeSync(fd);
+			}
+			const earlier = JSON.parse(text) as ParityResults;
 			if (earlier.version !== 2 || earlier.arm !== parityArmName)
 				throw new Error(`${out} is not a results file of this measurement`);
 			if (earlier.commit !== commit)
@@ -712,7 +727,7 @@ async function measureHeld(
 	// file is created afresh, so a file or link planted at its path fails the save rather than receiving it.
 	const save = () => {
 		held.lock!.check(out);
-		const written = `${out}.${process.pid}.tmp`;
+		const written = regularOrAbsent(`${out}.${process.pid}.tmp`);
 		writeFileSync(written, `${JSON.stringify(results, null, 2)}\n`, { flag: "wx" });
 		renameSync(written, out);
 	};
@@ -1008,15 +1023,7 @@ export function checkoutCommit(directory: string, artefacts: readonly string[]):
 	const root = git("rev-parse", "--show-toplevel").trim();
 	for (const artefact of artefacts) {
 		const path = resolve(artefact);
-		// Resolved as the results lock resolves it, so a link out of the checkout to a file inside it is refused too.
-		let real = path;
-		try {
-			real = realpathSync(path);
-		} catch {
-			try {
-				real = join(realpathSync(dirname(path)), basename(path));
-			} catch {}
-		}
+		const real = join(realpathSync(dirname(path)), basename(path));
 		const from = relative(root, real);
 		if (from !== ".." && !from.startsWith(`..${sep}`) && !isAbsolute(from))
 			throw new Error(
