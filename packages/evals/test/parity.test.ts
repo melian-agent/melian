@@ -912,6 +912,36 @@ describe("measureParity", { timeout: 60_000 }, () => {
 		expect(lines).toContainEqual(expect.stringMatching(new RegExp(`^Parity per total budget two: ${over};`)));
 	});
 
+	it("keeps a parity review that stopped or failed as stopped or failed, though it also spent past its total", async () => {
+		const committed = ran([lensStage()]);
+		const limited = lensStage({ id: "l", outcome: "failed", error: "You have hit your usage limit." });
+		let call = 0;
+		const stopping = runners(undefined, {
+			range: vi.fn(async () => (call++ === 0 ? committed : ran([lensStage(), limited]))),
+		});
+		expect((await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, stopping)).status).toBe(3);
+		expect(results().attempts.find((attempt) => attempt.arm === "parity")).toMatchObject({
+			said: "not scored: the run stopped",
+			overrun: 60,
+		});
+		rmSync(env.MELIAN_EVAL_PARITY_OUT!);
+		call = 0;
+		const failing = runners(undefined, {
+			range: vi.fn(async () => {
+				if (call++ === 0) return committed;
+				throw new GoldenRunError(
+					new Error("the verifier failed"),
+					new StageTelemetry("base..head", [lensStage(), lensStage({ id: "l" })]),
+				);
+			}),
+		});
+		await measure({ ...env, MELIAN_EVAL_PARITY_MISSES: "one" }, failing);
+		expect(results().attempts.find((attempt) => attempt.arm === "parity")).toMatchObject({
+			said: "no score: the verifier failed",
+			overrun: 60,
+		});
+	});
+
 	it("refuses to save through a file or link planted at its temporary path, and leaves the link's target alone", async () => {
 		const sentinel = join(scratch, "sentinel");
 		const planted = `${env.MELIAN_EVAL_PARITY_OUT}.${process.pid}.tmp`;
