@@ -1,4 +1,4 @@
-# Issue #605: a guardrails record fits the store
+# [Issue #605](https://github.com/melian-agent/melian/issues/605): a guardrails record fits the store
 
 [Issue #605](https://github.com/melian-agent/melian/issues/605): a head that changes many workspace manifests wrote a guardrails check record larger than the git store takes, so the store refused the round's records.
 
