@@ -4,7 +4,7 @@
 export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
 
-	"packages/core/src/analyser.ts": "d71318f3791b4b9b7646fcdc7e2c7fa1c83d1fe080e0b74073d123b1a481c96b",
+	"packages/core/src/analyser.ts": "85e2ebb92db30611391235a1371438de0a101ecc3b5dd713a4ed4774c338e6ad",
 
 	"packages/core/src/cause.ts": "1e75ff44ddce3c8f244dd812c23972a993c8b7be49f51241316af2a08e858dd8",
 

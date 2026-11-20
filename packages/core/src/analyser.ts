@@ -108,7 +108,11 @@ export function switchOffs(
 	changed: readonly string[],
 ): string[] {
 	const analyser = analyserOf(path);
-	if (head === undefined) return base === undefined ? [] : [`The head deletes ${path}.`];
+	const manifest = posix.basename(path.toLowerCase()) === "package.json";
+	if (head === undefined) {
+		if (base === undefined) return [];
+		return [`The head deletes ${path}.`, ...(manifest ? scriptChanges(strictJson(base), {}) : [])];
+	}
 	const [before, after] = [base === undefined ? undefined : parseJsonc(base), parseJsonc(head)];
 	const found: string[] = [];
 	if (analyser === "tsc") {
@@ -133,8 +137,7 @@ export function switchOffs(
 		);
 		if (ignored.length > 0) found.push(`It makes Biome ignore ${ignored.join(", ")}, which this change touches.`);
 	}
-	if (posix.basename(path.toLowerCase()) === "package.json")
-		found.push(...scriptChanges(strictJson(base), strictJson(head)));
+	if (manifest) found.push(...scriptChanges(strictJson(base), strictJson(head)));
 	return found;
 }
 

@@ -173,6 +173,14 @@ describe("npm scripts", () => {
 		expect(switchOffs("package.json", base, head, [])).toEqual(expected);
 	});
 
+	it("names every base script when the head deletes package.json", () => {
+		expect(switchOffs("package.json", base, undefined, [])).toEqual([
+			"The head deletes package.json.",
+			'It removes the npm scripts "check", "lint".',
+		]);
+		expect(switchOffs("package-lock.json", base, undefined, [])).toEqual(["The head deletes package-lock.json."]);
+	});
+
 	it("reads a nested package.json in any case, and no other manifest", () => {
 		const head = manifest({ lint: "biome lint" });
 		expect(switchOffs("web/Package.Json", base, head, [])).toEqual(['It removes the npm script "check".']);
