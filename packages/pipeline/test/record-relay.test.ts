@@ -344,8 +344,8 @@ describe("RelayBatch", () => {
 				[],
 				{ name: "lens.correctness", status: "ran", version: "0123456789ab", level: "careful" },
 			);
-		const triaged = (inputCut: boolean) =>
-			records().triage(request, {
+		const triaged = (inputCut: boolean, key = request) =>
+			records().triage(key, {
 				decision: {
 					questionSet: { name: "lenses", version: "1" },
 					decider: "recorded",
@@ -366,6 +366,22 @@ describe("RelayBatch", () => {
 				run,
 			);
 			expect(batch.records).toHaveLength(5);
+		});
+
+		it.each([
+			["disagree, one cut and one not", [triaged(true), triaged(false)]],
+			["agree", [triaged(false), triaged(false, "f".repeat(64))]],
+		])("refuses two decided triage records that %s", async (_, decided) => {
+			const found = await refusal(
+				RelayBatch.read(await artefact(...accounted([check(), lens(), ...decided], claim)), run),
+			);
+			expect(found.code).toBe("triageCount");
+		});
+
+		it("refuses a second decided triage record the account does not count", async () => {
+			const written = accounted([check(), lens(), triaged(false)], claim);
+			const found = await refusal(RelayBatch.read(await artefact(...written, triaged(true)), run));
+			expect(found.code).toBe("triageCount");
 		});
 
 		it("refuses triage's skip when triage's input was cut", async () => {

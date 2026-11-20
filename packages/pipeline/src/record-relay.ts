@@ -49,6 +49,7 @@ export type RelayRefusalCode =
 	| "roundShape"
 	| "unnamedRecord"
 	| "tooManyExtras"
+	| "triageCount"
 	| "accountCount"
 	| "tierAccount"
 	| "otherCheck"
@@ -72,6 +73,7 @@ const says: Record<RelayRefusalCode, string> = {
 	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
 	unnamedRecord: "is a record the batch's round does not name, and no triage, telemetry or early lens copy of it",
 	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage, telemetry and early lens records`,
+	triageCount: "is a second triage decision, and a review decides triage once a round",
 	accountCount: "is a round that reads no account, or more than one",
 	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
 	otherCheck: "names a check the base's tier does not give",
@@ -222,6 +224,11 @@ export class RelayBatch {
 			}
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
 		}
+		// A review decides triage once a round, so a second decision could only choose which one the account's facts read.
+		const decided = records.filter(
+			(record) => record.kind === "triage" && (record.payload as TriagePayload).decision !== null,
+		);
+		if (decided.length > 1) throw new RelayRefusal("triageCount", decided[1]!.path);
 		const accounts = manifest.read.filter((named) => named.kind === "account");
 		const account = accounts.length === 1 ? held.get(accounts[0]!.id) : undefined;
 		if (account === undefined) throw new RelayRefusal("accountCount", round.path);
