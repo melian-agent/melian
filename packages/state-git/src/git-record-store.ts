@@ -127,15 +127,31 @@ export class GitRecordStore implements RecordStore {
 
 	// Reads the tip, lets `decide` say what to change, and pushes one commit, until it lands or the deadline passes.
 	async #write<T>(decide: (tree: StateTree) => Write<T>): Promise<T> {
+		return this.#land(async (tip, deadline) => {
+			const tree =
+				tip === undefined
+					? StateTree.empty()
+					: await StateTree.read(this.#repository, this.#branch, tip, this.#judged, deadline);
+			const { changes, value } = decide(tree);
+			if (changes.length === 0) return { value };
+			const commit = await this.#repository.commit(tip, changes, deadline);
+			await StateTree.measure(this.#repository, this.#branch, commit, deadline);
+			return { commit, value };
+		});
+	}
+
+	// Fetches the tip, lets `build` make a commit on it, and pushes it leased on that tip, until it lands or the deadline
+	// passes. A lost race fetches and builds again.
+	async #land<T>(
+		build: (tip: string | undefined, deadline: Deadline) => Promise<{ commit?: string; value: T }>,
+	): Promise<T> {
 		const deadline = this.#deadline();
 		for (let bound = firstBackoffMs; ; bound = Math.min(bound * 2, lastBackoffMs)) {
 			if (deadline.left() <= 0)
 				throw new RecordError("unreachable", `no write to ${this.#branch} landed within its deadline`);
-			const { tip, tree } = await this.#tree(deadline);
-			const { changes, value } = decide(tree);
-			if (changes.length === 0) return value;
-			const commit = await this.#repository.commit(tip, changes, deadline);
-			await StateTree.measure(this.#repository, this.#branch, commit, deadline);
+			const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+			const { commit, value } = await build(tip, deadline);
+			if (commit === undefined) return value;
 			// A push ends by three quarters of what is left, inside the call's deadline, so the landed check keeps the rest.
 			const push = deadline.within((deadline.left() * 3) / 4);
 			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, push);
@@ -226,7 +242,10 @@ export class GitRecordStore implements RecordStore {
 	 * `changesets/`, so it answers on a tip past the store's limits. Reads and never pushes.
 	 */
 	async folders(): Promise<Map<string, string>> {
-		throw new Error("not built");
+		if (this.#closed) throw new RecordError("closed", "the record store is closed");
+		const deadline = this.#deadline();
+		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+		return tip === undefined ? new Map() : StateTree.folders(this.#repository, tip, deadline);
 	}
 
 	/**
@@ -236,7 +255,34 @@ export class GitRecordStore implements RecordStore {
 	 * tip's totals, so it can bring a tip past the store's limits back under. Every lost race re-decides on the new tip.
 	 */
 	async retire(seen: ReadonlyMap<string, string>): Promise<Retirement> {
-		throw new Error(`not built: ${seen.size}`);
+		if (this.#closed) throw new RecordError("closed", "the record store is closed");
+		for (const changeset of seen.keys()) checkChangeset(changeset);
+		return this.#land(async (tip, deadline) => {
+			const folders =
+				tip === undefined ? new Map<string, string>() : await StateTree.folders(this.#repository, tip, deadline);
+			const value = {
+				removed: [] as string[],
+				changed: [] as string[],
+				strays: [] as string[],
+				absent: [] as string[],
+			};
+			for (const [changeset, oid] of seen) {
+				const now = folders.get(changeset);
+				if (now === undefined) value.absent.push(changeset);
+				else if (now !== oid) value.changed.push(changeset);
+				else if (await StateTree.holdsStray(this.#repository, changeset, now, this.#judged, deadline))
+					value.strays.push(changeset);
+				else value.removed.push(changeset);
+			}
+			if (tip === undefined || value.removed.length === 0) return { value };
+			const commit = await this.#repository.withoutFolders(tip, value.removed, deadline);
+			if (!(await StateTree.removesOnly(this.#repository, tip, commit, deadline)))
+				throw new RecordError(
+					"unreachable",
+					`the commit retiring ${value.removed.join(", ")} changes more of ${this.#branch} than it removes; nothing was pushed`,
+				);
+			return { commit, value };
+		});
 	}
 
 	async close(): Promise<void> {
