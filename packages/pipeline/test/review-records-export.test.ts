@@ -1142,8 +1142,12 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 				}
 				if (step.kind === "dismiss" && host.latest !== undefined) {
 					const at = new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString().replace(".000", "");
+					const before = (await store.list(host.latest.changeset.id)).length;
 					await dismissOn(host, host, store, at);
-					await dismissOn(oracle, host, undefined, at);
+					// A host that dismisses again what it holds dismissed records nothing, so the oracle, which would dismiss at its
+					// own later revision, has nothing to mirror.
+					if ((await store.list(host.latest.changeset.id)).length > before)
+						await dismissOn(oracle, host, undefined, at);
 				}
 			}
 			const last = oracle.latest!;
@@ -1176,6 +1180,10 @@ describe("a dismissal shared across hosts that each hold some of its rounds", ()
 	// restored and read in a later round there.
 	const kept: readonly { readonly seed: number; readonly why: string }[] = [
 		{ seed: 9, why: "a round on another host reopened the dismissal, and a later one restored the text" },
+		{
+			seed: 302,
+			why: "a host dismissed again a finding it held dismissed, which records nothing for others to read",
+		},
 	];
 
 	it.each(kept)("keeps seed $seed: $why", async ({ seed }) => {
