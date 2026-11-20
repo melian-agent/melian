@@ -89,9 +89,34 @@ describe("installedPackages", () => {
 		expect(installedPackages(roots)).toEqual(["pi@1.1.0", "sdk@2.0.0"]);
 	});
 
-	it.each(["os", "cpu"])("leaves out a package whose manifest declares %s, and what it needs", (field) => {
-		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2" }, optionalDependencies: { bin: "1" } });
-		install("bin", { name: "bin", version: "1.0.0", [field]: ["linux"], dependencies: { helper: "1" } });
+	it.each(["os", "cpu"])(
+		"leaves out a package whose manifest declares %s, pinned exactly, and what it needs",
+		(field) => {
+			install("pi", {
+				name: "pi",
+				version: "1.1.0",
+				dependencies: { sdk: "^2" },
+				optionalDependencies: { bin: "1.0.0" },
+			});
+			install("bin", { name: "bin", version: "1.0.0", [field]: ["linux"], dependencies: { helper: "1" } });
+			expect(installedPackages(roots)).toEqual(["pi@1.1.0", "sdk@2.0.0"]);
+		},
+	);
+
+	it("keys a platform build its parent names by a range, since the parent's version does not fix it", () => {
+		install("pi", {
+			name: "pi",
+			version: "1.1.0",
+			dependencies: { sdk: "^2" },
+			optionalDependencies: { bin: "^1.0.0" },
+		});
+		install("bin", { name: "bin", version: "1.0.0", os: ["linux"], dependencies: { helper: "1" } });
+		install("helper", { name: "helper", version: "1.0.0" });
+		expect(installedPackages(roots)).toEqual(["bin@1.0.0", "helper@1.0.0", "pi@1.1.0", "sdk@2.0.0"]);
+	});
+
+	it("keys a platform build a producer imports itself, which no parent pins", () => {
+		install("pi", { name: "pi", version: "1.1.0", os: ["linux"], dependencies: { sdk: "^2" } });
 		expect(installedPackages(roots)).toEqual(["pi@1.1.0", "sdk@2.0.0"]);
 	});
 
@@ -171,6 +196,19 @@ describe("installedPackagesDigest", () => {
 		expect(installedPackagesDigest(roots)).toBe(before);
 	});
 
+	it("moves when a platform build its parent names by a range moves", () => {
+		install("pi", {
+			name: "pi",
+			version: "1.1.0",
+			dependencies: { sdk: "^2" },
+			optionalDependencies: { bin: "^1.0.0" },
+		});
+		install("bin", { name: "bin", version: "1.0.0", os: ["linux"] });
+		const before = installedPackagesDigest(roots);
+		install("bin", { name: "bin", version: "1.0.1", os: ["linux"] });
+		expect(installedPackagesDigest(roots)).not.toBe(before);
+	});
+
 	it("moves when an optional peer appears", () => {
 		install("sdk", { name: "sdk", version: "2.0.0", peerDependencies: { undici: "^7" } });
 		const before = installedPackagesDigest(roots);
@@ -178,8 +216,8 @@ describe("installedPackagesDigest", () => {
 		expect(installedPackagesDigest(roots)).not.toBe(before);
 	});
 
-	it("holds from one platform to another, since the parent's version stands for its platform builds", () => {
-		const builds = { "bin-linux": "1", "bin-darwin": "1" };
+	it("holds from one platform to another, since the parent's exact pin stands for its platform builds", () => {
+		const builds = { "bin-linux": "1.0.0", "bin-darwin": "1.0.0" };
 		install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2" }, optionalDependencies: builds });
 		install("bin-linux", { name: "bin-linux", version: "1.0.0", os: ["linux"] });
 		const linux = installedPackagesDigest(roots);

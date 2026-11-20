@@ -28,14 +28,16 @@ export class InstalledPackagesError extends Error {
 /**
  * Every installed package beneath `roots`, as Node resolves each, one `name@version` line apiece, sorted. A declared
  * peer that does not resolve is a line too, so an optional peer that appears moves the list. Left out: `@types/*`,
- * which never runs; a package whose manifest declares `os` or `cpu`, a platform build its parent's version stands for;
+ * which never runs; a package whose manifest declares `os` or `cpu` and whose parent names its exact version, a
+ * platform build that parent's version stands for;
  * and an optional dependency that does not resolve, which npm skips for a platform it refuses. A root, or a dependency,
  * that does not resolve to a readable manifest of its own name fails, naming it.
  */
 export function installedPackages(roots: readonly PackageRoot[]): string[] {
 	const lines = new Set<string>();
 	const visited = new Set<string>();
-	const visit = (name: string, from: string, wanted: string, kind: "required" | "peer" | "optional") => {
+	type Kind = "required" | "peer" | "optional";
+	const visit = (name: string, from: string, wanted: string, kind: Kind, range?: string) => {
 		if (name.startsWith("@types/")) return;
 		let path: string | undefined;
 		try {
@@ -61,15 +63,18 @@ export function installedPackages(roots: readonly PackageRoot[]): string[] {
 		}
 		if (manifest.name !== name || typeof manifest.version !== "string")
 			throw new InstalledPackagesError(`Melian cannot read the installed package ${name}, which ${wanted} needs.`);
-		if (manifest.os !== undefined || manifest.cpu !== undefined) return;
+		if ((manifest.os !== undefined || manifest.cpu !== undefined) && range === manifest.version) return;
 		const self = `${name}@${manifest.version}`;
 		lines.add(self);
 		const here = pathToFileURL(path).href;
-		const kinds = new Map<string, "required" | "peer" | "optional">();
-		for (const dependency of Object.keys(manifest.optionalDependencies ?? {})) kinds.set(dependency, "optional");
-		for (const dependency of Object.keys(manifest.peerDependencies ?? {})) kinds.set(dependency, "peer");
-		for (const dependency of Object.keys(manifest.dependencies ?? {})) kinds.set(dependency, "required");
-		for (const [dependency, how] of kinds) visit(dependency, here, self, how);
+		const kinds = new Map<string, [Kind, string]>();
+		for (const [dependency, wants] of Object.entries(manifest.optionalDependencies ?? {}))
+			kinds.set(dependency, ["optional", wants]);
+		for (const [dependency, wants] of Object.entries(manifest.peerDependencies ?? {}))
+			kinds.set(dependency, ["peer", wants]);
+		for (const [dependency, wants] of Object.entries(manifest.dependencies ?? {}))
+			kinds.set(dependency, ["required", wants]);
+		for (const [dependency, [how, wants]] of kinds) visit(dependency, here, self, how, wants);
 	};
 	for (const root of roots) visit(root.name, root.from, root.by, "required");
 	return [...lines].sort();
