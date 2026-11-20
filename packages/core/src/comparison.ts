@@ -1015,20 +1015,20 @@ export class Comparison {
 	}
 
 	/**
-	 * One miss for each defect no Melian finding matches: the first report of its group in site order judged valid
-	 * with one of `reasons`, with the lines it names at the compared head, or why it names none there. A report with
-	 * another reason, or still awaiting one, is passed over.
+	 * One miss for each defect no Melian finding matches whose reason is one of `reasons`: the first report of its group
+	 * in site order judged valid with a reason other than `out-of-scope`, as `stats()` files the defect, with the lines it
+	 * names at the compared head, or why it names none there.
 	 */
 	misses(reasons: readonly ExportedMissReason[]): ComparisonMiss[] {
 		return this.externalOnly()
-			.flatMap((group) =>
-				group.external
-					.filter((finding) => {
-						const current = this.judgement(finding.id);
-						return current?.verdict === "valid" && (reasons as readonly string[]).includes(current.reason ?? "");
-					})
-					.slice(0, 1),
-			)
+			.flatMap((group) => {
+				const first = group.external.find((finding) => {
+					const current = this.judgement(finding.id);
+					return current?.verdict === "valid" && current.reason !== undefined && current.reason !== "out-of-scope";
+				});
+				const reason = first === undefined ? undefined : this.judgement(first.id)?.reason;
+				return first !== undefined && (reasons as readonly string[]).includes(reason ?? "") ? [first] : [];
+			})
 			.map(({ id, file, line, endLine, revision, outdated, commit }): ComparisonMiss => {
 				if (file === undefined || line === undefined) return { id, skipped: "names no file and line" };
 				if (revision === "base") return { id, skipped: "sits on the base side of the diff" };

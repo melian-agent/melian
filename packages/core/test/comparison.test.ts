@@ -1852,6 +1852,21 @@ describe("Comparison misses", () => {
 		]);
 	});
 
+	it("files each defect under its first report's reason, as the comparison's statistics count it", () => {
+		const first = external({ line: 12, endLine: 14 });
+		const second = external({ reviewer: { name: "human" }, line: 13 });
+		const outside = external({ line: 90, endLine: 94 });
+		const probing = external({ reviewer: { name: "human" }, line: 91 });
+		const comparison = compared({ externals: [first, second, outside, probing], findings: [] });
+		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		comparison.adjudicate(probing.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 1, "needs-execution": 1 });
+		expect(comparison.misses(["needs-execution"])).toEqual([{ id: probing.id, file: "src/run.ts", lines: [91, 91] }]);
+		expect(comparison.misses(["owned-missed"])).toEqual([{ id: first.id, file: "src/run.ts", lines: [12, 14] }]);
+	});
+
 	it("leaves out a valid finding that became a miss after its match was undone, until a reason is recorded", () => {
 		const finding = melian();
 		const report = external();
