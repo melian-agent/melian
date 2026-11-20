@@ -1884,19 +1884,26 @@ export class Finding {
 	// The reports the finding holds, as the walk reads them.
 	#claims(): ResolutionClaim[] {
 		const { severity, source, reportedBy = [source], guardrail } = this.properties;
-		if (source.check !== "guardrails") {
-			return reportedBy.map(
+		// Every other reporter keeps its claim whichever sighting speaks, so the answer does not depend on which won.
+		const own = reportedBy
+			.filter(({ check }) => check !== "guardrails")
+			.map(
 				({ check, version }) =>
 					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
 			);
-		}
-		const whole = { check: source.check, group: this.ruleId, severity };
-		if (guardrail === undefined) return [whole];
-		if ("rules" in guardrail) return guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }));
+		// A guardrail notice another check raised, as Enola's Packwerk notice is, resolves under both, the stricter standing.
+		if (guardrail === undefined)
+			return source.check === "guardrails" ? [...own, { check: "guardrails", group: this.ruleId, severity }] : own;
+		const whole = { check: "guardrails", group: this.ruleId, severity };
+		if ("rules" in guardrail)
+			return [...own, ...guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }))];
 		const classed = { ...whole, rule: `${this.ruleId}/${guardrail.notice}` };
 		// A notice of a changed resolution also resolves through the tables alone, and the stricter result stands: no
 		// entry under `guardrails` lowers it, and one the base wrote to ask more of a policy notice still applies.
-		return this.#resolutionNotice() ? [{ check: source.check, severity, tableOnly: true }, classed] : [classed];
+		return [
+			...own,
+			...(this.#resolutionNotice() ? [{ check: "guardrails", severity, tableOnly: true }, classed] : [classed]),
+		];
 	}
 
 	// Whether the finding is a notice of a changed `resolution` key, or of a lens's changed declared resolution.

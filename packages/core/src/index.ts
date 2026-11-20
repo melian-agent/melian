@@ -249,6 +249,7 @@ export {
 	type GuardrailInput,
 	type GuardrailName,
 	guardrailLimits,
+	packwerkNotices,
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
@@ -450,6 +451,7 @@ export {
 	type GitOptions,
 	type GitResult,
 	git,
+	gitEnvironment,
 	gitFailure,
 	gitOutput,
 	gitOutputBytes,

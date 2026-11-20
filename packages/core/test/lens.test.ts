@@ -255,27 +255,27 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "0ba843ad89da",
-			conventions: "d883d0302825",
-			correctness: "2530f98e16e0",
-			design: "e7337b0f9b01",
-			durability: "2705acc6eb65",
-			"removed-behaviour": "926ff063f319",
-			tests: "b6dc040638d0",
-			"trust-boundary": "cb0b85ab082f",
-			"trust-boundary-probes": "b04ba59d5ac7",
+			contracts: "c339dabecb88",
+			conventions: "17f43d8215aa",
+			correctness: "1e482f964a70",
+			design: "b43685fb807a",
+			durability: "fa681fe5fdbc",
+			"removed-behaviour": "07f88ed160c3",
+			tests: "8a0970a96104",
+			"trust-boundary": "c45a914bb296",
+			"trust-boundary-probes": "842745787f77",
 		});
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "a701b07a0542",
-			conventions: "1ac990cc3573",
-			correctness: "7bfa3550535a",
-			design: "ca23817939ca",
-			"removed-behaviour": "7e908ad8676c",
-			tests: "773e8660f3e5",
-			"trust-boundary": "0fb9558f73ae",
-			"trust-boundary-probes": "d64aa469a47a",
+			contracts: "dcefc7175792",
+			conventions: "6e869581ce38",
+			correctness: "45f032dccb0c",
+			design: "23783b306eb8",
+			"removed-behaviour": "d9a864a309f7",
+			tests: "57ffc8d539c8",
+			"trust-boundary": "e857ab303af5",
+			"trust-boundary-probes": "4f0926cc1f9a",
 		});
 	});
 
@@ -332,7 +332,7 @@ describe("built-in lenses", () => {
 		expect(unexcluded).toEqual([]);
 	});
 
-	// Seven of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
+	// Eight of Melian's lenses get no standards, so every tier that runs a lens needs one that does, or a standard goes unchecked.
 	it("runs a lens that reads the standards in every tier of Melian's root melian.yaml that runs a lens", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		const own = ["melian.yaml", ...melianLensFiles(melian)];
@@ -420,7 +420,7 @@ describe("built-in lenses", () => {
 				tier: "heavy",
 				reads: "functions",
 				verify: true,
-				budget: { findings: 16, tokens: 10_000_000, tools: 400 },
+				budget: { findings: 16, tokens: 10_000_000, tools: 600 },
 			},
 		});
 		expect(named(lenses, "design")[0]!.tools).toEqual([...lensToolNames, ...lensGraphToolNames]);

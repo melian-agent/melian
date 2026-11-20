@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve, sep } from "node:path";
+import { dirname, join, sep } from "node:path";
 import {
 	checksOfTier,
 	Lens,
@@ -29,7 +29,7 @@ import {
 import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
-import { git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { fromCheckout, git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -597,14 +597,6 @@ function sweepNotes(sweep: Sweep): string[] {
 			`the sweep stopped listing at its bound of ${sweepBound} leftovers, so the state directory may hold more, which a later open lists once fewer are left`,
 		);
 	return notes;
-}
-
-// Git reads a remote with no colon, or a slash before its first colon, as a path relative to the checkout, by
-// url_is_local_not_ssh in its connect.c, which no command answers; the store runs git in its own repository instead.
-function fromCheckout(root: string, url: string): string {
-	const colon = url.indexOf(":");
-	const slash = url.indexOf("/");
-	return colon === -1 || (slash !== -1 && slash < colon) ? resolve(root, url) : url;
 }
 
 // Runs an empty probe, so the line says whether one runs here, not only whether the parts are installed.

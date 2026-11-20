@@ -958,6 +958,48 @@ describe("policy-change-review", () => {
 		]);
 	});
 
+	it("names each npm script the head changes or removes, at the root and in a workspace, and no head text", async () => {
+		const scripts = (fields: Record<string, unknown>) => lines(JSON.stringify(fields, undefined, 2));
+		const { findings } = await guardrails(
+			{
+				"package.json": scripts({
+					version: "1.0.0",
+					workspaces: ["web"],
+					scripts: { check: "biome check && vitest --run", lint: "biome lint", test: "vitest --run" },
+				}),
+				"web/package.json": scripts({ scripts: { build: "tsc -b", check: "tsc --noEmit" } }),
+			},
+			{
+				"package.json": scripts({
+					version: "2.0.0",
+					workspaces: ["web"],
+					scripts: { check: "true # head-only-marker", test: "vitest --run", extra: "rm -rf test" },
+				}),
+				"web/package.json": scripts({ scripts: { build: "true", check: "true" } }),
+			},
+		);
+		expect(
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => finding.properties.explanation.what),
+		).toEqual([
+			'This revision changes package.json, which configures the packages Biome and tsc load. It changes the npm script "check". It removes the npm script "lint".',
+			'This revision changes web/package.json, which configures the packages Biome and tsc load. It changes the npm scripts "build", "check".',
+		]);
+	});
+
+	it("adds nothing for an npm script the head only adds, or a change to another field", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": lines('{ "version": "1.0.0", "scripts": { "check": "vitest --run" } }') },
+			{
+				"package.json": lines('{ "version": "2.0.0", "scripts": { "check": "vitest --run", "precheck": "true" } }'),
+			},
+		);
+		expect(findings.map((finding) => finding.properties.explanation.what)).toEqual([
+			"This revision changes package.json, which configures the packages Biome and tsc load.",
+		]);
+	});
+
 	it("follows the configured severity and can be turned off", async () => {
 		const { findings } = await guardrails(
 			{

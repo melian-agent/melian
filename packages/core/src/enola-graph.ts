@@ -1,4 +1,4 @@
-import { dirname } from "node:path";
+import { dirname, posix } from "node:path";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import type { SymbolSite } from "./graph-coverage.ts";
@@ -18,7 +18,12 @@ const factSchema = Type.Object({
 	relations: Type.Optional(
 		Type.Array(Type.Object({ kind: Type.String(), target: Type.String(), target_id: Type.Optional(Type.String()) })),
 	),
+	props: Type.Optional(Type.Unknown()),
 });
+// The one Packwerk path Enola's facts never name. Enola 0.4.40 ignores a nested copy and `packwerk.yaml`; raise with the pin.
+const packwerkConfig = "packwerk.yml";
+// Enola 0.4.40 reads a package's recorded violations from here; it opens deprecated_references.yml too, but its facts ignore it.
+const packwerkTodo = "package_todo.yml";
 /** An Enola contract fact. */
 export type EnolaFact = Static<typeof factSchema>;
 const impactSchema = Type.Object({
@@ -68,6 +73,21 @@ export class EnolaFacts {
 				return fact as EnolaFact;
 			});
 		return new EnolaFacts(facts);
+	}
+	/**
+	 * The `package.yml` of each package Enola's Packwerk check read, from its `module` facts marked `packwerk`, and
+	 * `packwerk.yml`, from which alone Enola reads Packwerk's configuration. It is named even when it selects no package,
+	 * so a head cannot hide a change to it by making it select none.
+	 */
+	packwerkFiles(): string[] {
+		const packages = this.#facts.flatMap((fact) =>
+			fact.kind === "module" &&
+			fact.file !== undefined &&
+			(fact.props as { packwerk?: unknown } | undefined)?.packwerk === true
+				? [fact.file, posix.join(posix.dirname(fact.file), packwerkTodo)]
+				: [],
+		);
+		return [...new Set([...packages, packwerkConfig])].sort();
 	}
 	/** Returns symbol facts with exact declaration identity; anonymous functions have no guessed name. */
 	symbols(site: SymbolSite): EnolaFact[] {
