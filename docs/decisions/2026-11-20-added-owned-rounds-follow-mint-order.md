@@ -1,6 +1,6 @@
 # Added owned rounds follow the order they were minted
 
-Status: proposed by a builder agent on 2026-11-20 for [pull request #613](https://github.com/melian-agent/melian/pull/613); the coordinator approved it in its session that day. It lands only on the maintainer's word.
+Status: the maintainer ruled on 2026-11-21, in the coordinator's session, that [pull request #613](https://github.com/melian-agent/melian/pull/613) may amend the offline export decision this way: "absolutely amend, stable order is it". [The pull request records it](https://github.com/melian-agent/melian/pull/613#issuecomment-7040616077).
 
 Amends: [offline export follows stored ownership](2026-10-27-offline-export-stored-ownership.md), the order of added owned rounds.
 
