@@ -597,11 +597,12 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["review", "trusting", "--records", `dir:${exported}`], first).status).toBe(0);
 		const [changeset] = readdirSync(join(exported, "changesets"));
 		const source = await DirectoryRecordStore.open(exported, reviewPayloads);
-		// A note the first clone never wrote, so a round that reads it read the store rather than running guardrails.
+		// A version the first clone never wrote, so a round that names this record read the store rather than running
+		// guardrails. A record holds no note, so the version marks it.
 		const records = (await source.list(changeset!)).map((each) => {
-			const payload = each.payload as { result: { name: string; notes: string[] } };
+			const payload = each.payload as { result: { name: string; version: string | null } };
 			return each.kind === "check" && payload.result.name === "guardrails"
-				? { ...each, payload: { ...payload, result: { ...payload.result, notes: ["from the store"] } } }
+				? { ...each, payload: { ...payload, result: { ...payload.result, version: "99.0.0" } } }
 				: each;
 		});
 		await source.close();
@@ -841,7 +842,14 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const planting = await DirectoryRecordStore.open(store, { lens: () => undefined });
 		const [round] = (await planting.list(changeset!)).filter(({ kind }) => kind === "round");
 		await planting.add([
-			{ v: 1, changeset: changeset!, revision: round!.revision!, kind: "lens", key: "planted", payload: { v: 1 } },
+			{
+				v: 1,
+				changeset: changeset!,
+				revision: round!.revision!,
+				kind: "lens",
+				key: "a".repeat(64),
+				payload: { v: 1 },
+			},
 		]);
 		await planting.close();
 

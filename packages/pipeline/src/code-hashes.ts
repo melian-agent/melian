@@ -140,7 +140,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
-	"packages/pipeline/src/checks.ts": "0a11de34bc28e080bb944ba6a12eb5c62cf78b5700d94c7f0d0f39bd49474f19",
+	"packages/pipeline/src/checks.ts": "fa33972a8527b902fd59ea25f921b79dd37b3bc1191f974e3373d9f509534b9e",
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
@@ -165,6 +165,8 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
 	"packages/pipeline/src/harness.ts": "05b06f02b9a251948bfa06f243a9f0a7f9f57c1379ee04a7faed3ad75c12691d",
+
+	"packages/pipeline/src/imported-records.ts": "8b98c0243b521d2cb312c874e8c69723d4d16277b7988670b35886490b5f1405",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 
@@ -206,13 +208,17 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/review-index.ts": "61b5a5a0fa2dc128a2e6199bec9cde0bc924793590ef98a5cc6f592263ecad9d",
 
+	"packages/pipeline/src/review-records.ts": "4a2702c5621c0ed45eabfc06f8248a0aa50cc6eaf0f870880d18b58de31471c2",
+
 	"packages/pipeline/src/rounds.ts": "a24ef036f397590349fa64ea6a43a3b1a4018916dd942f78362bda23f36f7819",
 
 	"packages/pipeline/src/spans.ts": "cea8de44b60c2dbb45768ffe2db937a250605b33014d8b003a70c614aeac6f95",
 
+	"packages/pipeline/src/static-proof.ts": "4debb295f5d3c73965141a945881af1e23c8ee6859fa14655c60764567232096",
+
 	"packages/pipeline/src/static.ts": "44f2e46ace5a4acfb28ba88187a68fce432281283a3f03006c40632303db71e3",
 
-	"packages/pipeline/src/summarize.ts": "a2efff4992c69a6f4dea9441aaa4393aac05a4171a98fc6001b944b6b6f70936",
+	"packages/pipeline/src/summarize.ts": "a9d55dffc572084f89e8da752d193f243a2129b55aaea937e8911d90210399bd",
 
 	"packages/pipeline/src/supersession.ts": "5bc57a9f8c1d31f62eac8bf85d80eac78f47c885062de6255c052a346e4db321",
 
@@ -398,6 +404,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/harness.ts",
 
+		"packages/pipeline/src/imported-records.ts",
+
 		"packages/pipeline/src/installed-version.ts",
 
 		"packages/pipeline/src/lens-tools.ts",
@@ -438,9 +446,13 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/review-index.ts",
 
+		"packages/pipeline/src/review-records.ts",
+
 		"packages/pipeline/src/rounds.ts",
 
 		"packages/pipeline/src/spans.ts",
+
+		"packages/pipeline/src/static-proof.ts",
 
 		"packages/pipeline/src/static.ts",
 
@@ -592,6 +604,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/decisions/src/recorded.ts",
 
+		"packages/pipeline/src/adjudication.ts",
+
 		"packages/pipeline/src/cache-scratch.ts",
 
 		"packages/pipeline/src/callers.ts",
@@ -604,11 +618,19 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/code-version.ts",
 
+		"packages/pipeline/src/compare.ts",
+
+		"packages/pipeline/src/configurations.ts",
+
 		"packages/pipeline/src/coverage-cache.ts",
 
 		"packages/pipeline/src/coverage-identity.ts",
 
+		"packages/pipeline/src/credentials.ts",
+
 		"packages/pipeline/src/enola-static.ts",
+
+		"packages/pipeline/src/errors.ts",
 
 		"packages/pipeline/src/findings.ts",
 
@@ -618,11 +640,15 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/harness.ts",
 
+		"packages/pipeline/src/imported-records.ts",
+
 		"packages/pipeline/src/installed-version.ts",
 
 		"packages/pipeline/src/lens-tools.ts",
 
 		"packages/pipeline/src/link-dependencies.ts",
+
+		"packages/pipeline/src/models.ts",
 
 		"packages/pipeline/src/mutant-listing.ts",
 
@@ -646,17 +672,33 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/pipeline/src/probing.ts",
 
+		"packages/pipeline/src/publish.ts",
+
+		"packages/pipeline/src/pull-request-rounds.ts",
+
+		"packages/pipeline/src/reasoning.ts",
+
 		"packages/pipeline/src/review-coverage.ts",
 
 		"packages/pipeline/src/review-index.ts",
 
+		"packages/pipeline/src/review-records.ts",
+
+		"packages/pipeline/src/rounds.ts",
+
 		"packages/pipeline/src/spans.ts",
 
+		"packages/pipeline/src/static-proof.ts",
+
 		"packages/pipeline/src/static.ts",
+
+		"packages/pipeline/src/summarize.ts",
 
 		"packages/pipeline/src/supersession.ts",
 
 		"packages/pipeline/src/task-timing.ts",
+
+		"packages/pipeline/src/token-usage.ts",
 
 		"packages/pipeline/src/tool-cache.ts",
 
