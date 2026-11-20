@@ -56,8 +56,13 @@ function stage(conversation: number): Stage {
 	};
 }
 
-function entry(conversation: number, id: number, text = `entry ${id}`): EntryRecord {
-	return { id, conversationId: conversation, kind: "message", data: { text } } as unknown as EntryRecord;
+function entry(conversation: number, id: number, text = `entry ${id}`, kind = "message"): EntryRecord {
+	return { id, conversationId: conversation, kind, data: { text } } as unknown as EntryRecord;
+}
+
+// A conversation of entries of these kinds and texts, as a lens's opens: the prompt, the instructions, then replies.
+function spoken(id: number, ...entries: (readonly [kind: string, text: string])[]): EvidenceConversation {
+	return { stage: stage(id), entries: entries.map(([kind, text], index) => entry(id, index + 1, text, kind)) };
 }
 
 function conversation(id: number, ...texts: string[]): EvidenceConversation {
@@ -360,10 +365,20 @@ describe("EvidenceStore", () => {
 	});
 
 	describe("the 16 MiB stage bound", () => {
-		// A conversation whose stage file is `limit + extra` bytes before compression, with a filler entry in its middle.
+		// A conversation whose stage file is `limit + extra` bytes before compression, with a filler reply after its
+		// prompt and instructions.
 		function sized(extra: number): EvidenceConversation {
-			// Five entries, so a byte count of dropped entries with the wrong sign is a digit longer.
-			const at = (filler: string) => conversation(1, "the prompt", filler, "a", "b", "the last reply");
+			// Six entries, so a byte count of dropped entries with the wrong sign is a digit longer.
+			const at = (filler: string) =>
+				spoken(
+					1,
+					["pi.user", "the prompt"],
+					["pi.system", "the brief"],
+					["pi.assistant", filler],
+					["pi.tool-result", "a"],
+					["pi.assistant", "b"],
+					["pi.assistant", "the last reply"],
+				);
 			const empty = Buffer.byteLength(JSON.stringify({ version: 1, ...at(""), dropped: 0 }));
 			return at("x".repeat(evidenceLimits.stage - empty + extra));
 		}
@@ -376,7 +391,7 @@ describe("EvidenceStore", () => {
 			expect(value).toEqual({ version: 1, ...sized(0), dropped: 0 });
 		});
 
-		it("keeps the first entry and the last that fit, one byte past the bound, and counts the rest", async () => {
+		it("keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest", async () => {
 			const state = scratch();
 			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, sized(1)));
 			const { text, value } = stored(state, 1);
@@ -385,16 +400,91 @@ describe("EvidenceStore", () => {
 			expect(value).toEqual({
 				version: 1,
 				stage: whole.stage,
-				entries: [whole.entries[0], ...whole.entries.slice(2)],
+				entries: [...whole.entries.slice(0, 2), ...whole.entries.slice(3)],
 				dropped: 1,
 			});
 		});
 
-		it("keeps no entry when the first alone passes the bound", async () => {
+		it("keeps a lens's instructions ahead of twenty large tool results", async () => {
 			const state = scratch();
-			const huge = conversation(1, "x".repeat(evidenceLimits.stage), "a reply");
+			const results = Array.from({ length: 20 }, () => ["pi.tool-result", "x".repeat(1024 ** 2)] as const);
+			const long = spoken(
+				1,
+				["pi.user", "the prompt"],
+				["pi.system", "the brief"],
+				["pi.assistant", "the calls"],
+				...results,
+			);
+			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, long));
+			expect(stored(state, 1).value).toEqual({
+				version: 1,
+				stage: long.stage,
+				entries: [...long.entries.slice(0, 2), ...long.entries.slice(8)],
+				dropped: 6,
+			});
+		});
+
+		it("keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound", async () => {
+			const state = scratch();
+			const huge = spoken(
+				1,
+				["pi.user", "the prompt"],
+				["pi.system", "x".repeat(evidenceLimits.stage)],
+				["pi.assistant", "a reply"],
+			);
+			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, huge));
+			expect(stored(state, 1).value).toEqual({
+				version: 1,
+				stage: huge.stage,
+				entries: [huge.entries[0], huge.entries[2]],
+				dropped: 1,
+			});
+		});
+
+		it("keeps no entry when a leading entry fills the bound and nothing follows the leading entries", async () => {
+			const state = scratch();
+			const huge = spoken(1, ["pi.user", "x".repeat(evidenceLimits.stage)], ["pi.system", "the brief"]);
 			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, huge));
 			expect(stored(state, 1).value).toEqual({ version: 1, stage: huge.stage, entries: [], dropped: 2 });
+		});
+
+		// A conversation with no reply, whose stage file is `limit + extra` bytes before compression.
+		function unanswered(extra: number): EvidenceConversation {
+			const at = (filler: string) => conversation(1, "the prompt", filler, "the brief");
+			const empty = Buffer.byteLength(JSON.stringify({ version: 1, ...at(""), dropped: 0 }));
+			return at("x".repeat(evidenceLimits.stage - empty + extra));
+		}
+
+		it("keeps every leading entry of a conversation with no reply at the bound", async () => {
+			const state = scratch();
+			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, unanswered(0)));
+			const { text, value } = stored(state, 1);
+			expect(Buffer.byteLength(text)).toBe(evidenceLimits.stage);
+			expect(value).toEqual({ version: 1, ...unanswered(0), dropped: 0 });
+		});
+
+		it("keeps the leading entries that fit from the first, one byte past the bound, with no reply", async () => {
+			const state = scratch();
+			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, unanswered(1)));
+			const whole = unanswered(1);
+			expect(stored(state, 1).value).toEqual({
+				version: 1,
+				stage: whole.stage,
+				entries: whole.entries.slice(0, 2),
+				dropped: 1,
+			});
+		});
+
+		it("counts every entry of a conversation with no reply as leading", async () => {
+			const state = scratch();
+			const huge = conversation(1, "the prompt", "x".repeat(evidenceLimits.stage), "the brief");
+			await EvidenceStore.open(state, { budget: 2 * evidenceLimits.stage }).write(evidence(first, huge));
+			expect(stored(state, 1).value).toEqual({
+				version: 1,
+				stage: huge.stage,
+				entries: [huge.entries[0]],
+				dropped: 2,
+			});
 		});
 	});
 

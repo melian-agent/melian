@@ -118,7 +118,7 @@ export class CloneEvidence {
 
 	private static stageLines({ stage, entries, dropped }: EvidenceStage): string[] {
 		return [
-			`${visibleText(stage.name)} ${visibleText(stage.subject)}, conversation ${stage.conversation}${dropped === 0 ? "" : `, ${dropped} entries left out after the first`}:`,
+			`${visibleText(stage.name)} ${visibleText(stage.subject)}, conversation ${stage.conversation}${dropped === 0 ? "" : `, ${dropped} entries left out`}:`,
 			...entries.flatMap((entry) => CloneEvidence.entryLines(entry)),
 		];
 	}

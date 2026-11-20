@@ -10,7 +10,14 @@ import {
 	lensCovers,
 	type Verdict,
 } from "@melian-agent/core";
-import { backgroundContext, type Context, type ConversationId, type EntryRecord, type Storage } from "./harness.ts";
+import {
+	AssistantEntry,
+	backgroundContext,
+	type Context,
+	type ConversationId,
+	type EntryRecord,
+	type Storage,
+} from "./harness.ts";
 import type { Round } from "./rounds.ts";
 import { type Stage, TelemetryReader } from "./telemetry.ts";
 
@@ -28,8 +35,8 @@ export type EvidenceLensFile = { lens: string; file: string; blob: string };
 export type EvidenceConversation = { stage: Stage; entries: EntryRecord[] };
 
 /**
- * A stage file: every entry of its conversation, or the first, the prompt, and as many of the last as fit
- * {@link evidenceLimits}, with the count left out.
+ * A stage file: every entry of its conversation, or its leading entries, the prompt and the instructions before the
+ * first reply, and as many of the last as fit {@link evidenceLimits}, with the count left out.
  */
 export type EvidenceStage = EvidenceConversation & { version: 1; dropped: number };
 
@@ -264,20 +271,32 @@ export class EvidenceStore {
 		return { pointer, stages };
 	}
 
-	// Keeps the first entry, the prompt, and as many of the last as fit the stage limit, counting what it leaves out.
+	// Keeps the leading entries, the prompt and the instructions before the first reply, then as many of the last as fit
+	// the stage limit, counting what it leaves out. Leading entries that alone pass the limit keep as many from the first
+	// as fit.
 	private static bounded({ stage, entries }: EvidenceConversation): EvidenceStage {
 		const sizes = entries.map((entry) => Buffer.byteLength(JSON.stringify(entry)));
-		// The file's bytes when it keeps `kept` entries, the first and the last `kept - 1`, each after the first behind a comma.
-		const bytes = (kept: number) =>
-			Buffer.byteLength(JSON.stringify({ version: 1, stage, entries: [], dropped: entries.length - kept })) +
-			(kept === 0 ? 0 : sizes[0]! + sizes.slice(entries.length - kept + 1).reduce((sum, size) => sum + size + 1, 0));
-		let kept = entries.length;
-		while (kept > 0 && bytes(kept) > evidenceLimits.stage) kept--;
+		const found = entries.findIndex((entry) => AssistantEntry.is(entry));
+		const leading = found === -1 ? entries.length : found;
+		// The file's bytes when it keeps the first `head` entries and the last `tail`, at least one, each after the first
+		// behind a comma. Each loop below asks only while its count is above 0.
+		const bytes = (head: number, tail: number) => {
+			const kept = [...sizes.slice(0, head), ...sizes.slice(entries.length - tail)];
+			return (
+				Buffer.byteLength(
+					JSON.stringify({ version: 1, stage, entries: [], dropped: entries.length - kept.length }),
+				) + kept.reduce((sum, size) => sum + size + 1, -1)
+			);
+		};
+		let head = leading;
+		while (head > 0 && bytes(head, 0) > evidenceLimits.stage) head--;
+		let tail = entries.length - leading;
+		while (tail > 0 && bytes(head, tail) > evidenceLimits.stage) tail--;
 		return {
 			version: 1,
 			stage,
-			entries: kept === 0 ? [] : [entries[0]!, ...entries.slice(entries.length - kept + 1)],
-			dropped: entries.length - kept,
+			entries: [...entries.slice(0, head), ...entries.slice(entries.length - tail)],
+			dropped: entries.length - head - tail,
 		};
 	}
 
