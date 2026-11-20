@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { findPackageJSON } from "node:module";
 import { describe, expect, it, vi } from "vitest";
+import type * as Installed from "../src/installed-packages.ts";
 
 const table = vi.hoisted(() => ({
 	moduleHashes: { "a.ts": "1", "b.ts": "2" } as Record<string, string>,
@@ -8,11 +9,23 @@ const table = vi.hoisted(() => ({
 	producerPackages: {
 		lens: { "@melian-agent/core": ["yaml"], "@melian-agent/pipeline": ["typescript"] },
 		read: { "@melian-agent/core": ["yaml"] },
+		owners: { "@melian-agent/core": ["yaml"], "@melian-agent/pipeline": ["typescript"] },
 		unowned: { "@melian-agent/absent": ["yaml"] },
 		uninstalled: { "@melian-agent/core": ["left-pad"] },
 	} as Record<string, Record<string, string[]>>,
 }));
 vi.mock("../src/code-hashes.ts", () => table);
+const digested = vi.hoisted(() => [] as unknown[]);
+vi.mock("../src/installed-packages.ts", async (original) => {
+	const real = await original<typeof Installed>();
+	return {
+		...real,
+		installedPackagesDigest: (roots: Parameters<typeof Installed.installedPackagesDigest>[0]) => {
+			digested.push(roots);
+			return real.installedPackagesDigest(roots);
+		},
+	};
+});
 
 import { codeVersion, packagesVersion } from "../src/code-version.ts";
 import { installedPackagesDigest } from "../src/installed-packages.ts";
@@ -55,6 +68,17 @@ describe("packagesVersion", () => {
 			]),
 		);
 		expect(packagesVersion("lens")).not.toBe(packagesVersion("read"));
+	});
+
+	it("resolves each import from the manifest of the package that imports it", () => {
+		digested.length = 0;
+		packagesVersion("owners");
+		expect(digested).toEqual([
+			[
+				{ name: "yaml", from: at("@melian-agent/core"), by: "@melian-agent/core" },
+				{ name: "typescript", from: at("@melian-agent/pipeline"), by: "@melian-agent/pipeline" },
+			],
+		]);
 	});
 
 	it("reads the install once a process", () => {
