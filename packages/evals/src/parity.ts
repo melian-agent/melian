@@ -458,8 +458,8 @@ class ResultsLock {
 		return new ResultsLock(path, claim);
 	}
 
-	// Read and then acted on, so a run that takes the lock between the two still races; a person removing a live run's
-	// lock opens that window, and the guideline says to remove one only once its run is gone.
+	// Read and then acted on: a lock deleted while its run lives, and taken by a second run between the read and the act,
+	// lets the first run save over the second's results or remove its lock. Delete a lock only once its run is gone.
 	holds(): boolean {
 		try {
 			return readFileSync(this.path, "utf8") === this.claim;
