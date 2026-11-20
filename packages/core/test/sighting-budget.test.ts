@@ -249,6 +249,23 @@ describe("a record's sighting budget", () => {
 		});
 	});
 
+	it("abridges under the note it writes, not the longest, and refuses a byte under that", () => {
+		// Each Why here is a byte shorter than the note naming all 22 files, but longer than the note naming one.
+		const all = Array.from({ length: 22 }, (_, index) =>
+			notice(index, {
+				message: `Changes ${index}.`,
+				what: `Changes ${index}.`,
+				whyHere: "w".repeat(note(22).length - 1),
+			}),
+		);
+		const last = byId(all).at(-1)!;
+		const fitted = new SightingBudget(bytes(all) - 1).fit(all);
+		expect(fitted.filter((finding, index) => finding !== all[index])).toEqual([last.abridged(note(1))]);
+		const exact = bytes(fitted);
+		expect(new SightingBudget(exact).fit(all)).toEqual(fitted);
+		expect(refusal(exact - 1, all)).toMatchObject({ code: "recordTooLarge" });
+	});
+
 	it("measures multi-byte detail in bytes at the bound and one past it", () => {
 		const wide = Array.from({ length: 50 }, (_, index) => notice(index, { what: "€".repeat(1500) }));
 		const exact = bytes(wide);

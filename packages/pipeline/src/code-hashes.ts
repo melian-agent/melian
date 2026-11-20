@@ -102,7 +102,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/secrets.ts": "be21525b82ca0d9ef74320d78b5c6335220befff81babeabd4f2e49f8456d59e",
 
-	"packages/core/src/sighting-budget.ts": "dd9e028e701c188ec76e193ebecee0fc23deefa601036d496e9dd1c7703cf2e9",
+	"packages/core/src/sighting-budget.ts": "2c927c4e4fcb8cb0360efe3b83306888ff66ecbb81df458a6ee1ad6e759e771e",
 
 	"packages/core/src/source.ts": "d9686f90568590c83f4fcbf64adc7d63c36b2e22c3eab35e2abc493556d13007",
 

@@ -33,10 +33,10 @@ export class SightingBudget {
 	}
 
 	/**
-	 * `findings`, in their order, cut to fit the budget. Under it nothing changes. Past it, in ID order, a finding keeps
-	 * its detail while the full findings so far and every later one abridged fit; every later one is
-	 * {@link Finding.abridged} with one note that counts their files. A finding that abridging would not make smaller
-	 * keeps its detail wherever it falls, so no finding grows. The same findings always give the same result, and no ID,
+	 * `findings`, in their order, cut to fit the budget. Under it nothing changes. Past it, in ID order, the findings before
+	 * the latest cut that fits keep their detail, and every later one is {@link Finding.abridged} with one note that
+	 * counts their files. A finding that abridging under that note would not make smaller keeps its detail wherever it
+	 * falls, so no finding grows. Shorter notes are tried first. The same findings always give the same result, and no ID,
 	 * severity or resolution changes. Findings whose canonical JSON core cannot write are returned unchanged, and the
 	 * store refuses their record as it always has.
 	 *
@@ -55,9 +55,31 @@ export class SightingBudget {
 			throw error;
 		}
 		const count = ordered.length;
-		// No note is longer than the one naming every file, so a finding smaller under it is smaller under any.
-		const longest = note(new Set(ordered.map((finding) => finding.properties.path)).size).length;
-		const shrinks = ordered.map((_, index) => bare[index]! + longest < full[index]!);
+		const kept = [0];
+		for (const size of full) kept.push(kept.at(-1)! + size);
+		if (2 + Math.max(count - 1, 0) + kept[count]! <= this.bytes) return [...findings];
+		// A note's length grows with the files it names, so these are its lengths, shortest first.
+		const files = new Set(ordered.map((finding) => finding.properties.path)).size;
+		const lengths = new Set(Array.from({ length: files }, (_, index) => note(index + 1).length));
+		for (const length of lengths) {
+			const shortened = this.#cut(ordered, full, bare, kept, length);
+			if (shortened !== undefined) return findings.map((finding) => shortened.get(finding) ?? finding);
+		}
+		// The message names no finding's text, since a failed check's error reaches the shared record.
+		throw new RecordError("recordTooLarge", tooLarge);
+	}
+
+	// The abridged findings of a cut that fits when the findings that shrink under a note of `length` are abridged, or
+	// undefined when none does. A cut whose own note is longer is passed over, since it could make a finding grow.
+	#cut(
+		ordered: readonly Finding[],
+		full: readonly number[],
+		bare: readonly number[],
+		kept: readonly number[],
+		length: number,
+	): Map<Finding, Finding> | undefined {
+		const count = ordered.length;
+		const shrinks = ordered.map((_, index) => bare[index]! + length < full[index]!);
 		// From each index on: how many files the findings that shrink name, the N of the note, how many shrink, and the
 		// bytes of all of them without the note.
 		const files: number[] = new Array(count + 1).fill(0);
@@ -70,22 +92,19 @@ export class SightingBudget {
 			shrinking[index] = shrinking[index + 1]! + (shrinks[index] ? 1 : 0);
 			abridged[index] = abridged[index + 1]! + (shrinks[index] ? bare[index]! : full[index]!);
 		}
-		const kept = [0];
-		for (const size of full) kept.push(kept.at(-1)! + size);
 		// The bytes of the array when the findings before `cut` keep their detail and the rest that shrink are abridged.
 		const total = (cut: number) =>
 			2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! + shrinking[cut]! * note(files[cut]!).length;
-		if (total(count) <= this.bytes) return [...findings];
-		// The message names no finding's text, since a failed check's error reaches the shared record.
-		if (total(0) > this.bytes) throw new RecordError("recordTooLarge", tooLarge);
-		let cut = 0;
-		while (cut < count && total(cut + 1) <= this.bytes) cut++;
-		const shortened = new Map(
-			ordered
-				.slice(cut)
-				.filter((_, index) => shrinks[cut + index])
-				.map((finding) => [finding, finding.abridged(note(files[cut]!))]),
-		);
-		return findings.map((finding) => shortened.get(finding) ?? finding);
+		// The latest cut that fits under a note no longer than `length`, so the most findings keep their detail.
+		for (let cut = count - 1; cut >= 0; cut--) {
+			if (note(files[cut]!).length > length || total(cut) > this.bytes) continue;
+			return new Map(
+				ordered
+					.slice(cut)
+					.filter((_, index) => shrinks[cut + index])
+					.map((finding) => [finding, finding.abridged(note(files[cut]!))]),
+			);
+		}
+		return undefined;
 	}
 }
