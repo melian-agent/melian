@@ -258,7 +258,7 @@ describe("built-in lenses", () => {
 			contracts: "2ee54076f47f",
 			conventions: "e5f0c8075927",
 			correctness: "204387b961a8",
-			design: "0f2e72de3c2d",
+			design: "197552452341",
 			durability: "1c1eef0fc010",
 			"removed-behaviour": "0fa2e8b06295",
 			tests: "416c8bc7bfe3",
@@ -271,7 +271,7 @@ describe("built-in lenses", () => {
 			contracts: "7fbcf8f72bcf",
 			conventions: "a97206229c6c",
 			correctness: "fca785f44f3a",
-			design: "a766d8d4346f",
+			design: "231fc61f3cc5",
 			"removed-behaviour": "3491e47f1ec6",
 			tests: "746dfb75f9fe",
 			"trust-boundary": "17324fb22a6c",
@@ -350,7 +350,7 @@ describe("built-in lenses", () => {
 				];
 			}),
 		);
-		expect(reading).toEqual({ fast: "no lens", standard: ["conventions"], full: ["conventions", "design"] });
+		expect(reading).toEqual({ fast: "no lens", standard: ["conventions"], full: ["conventions"] });
 	});
 
 	it("shows no lens in Melian's root tier a mutation inventory, and still shows it the progress-log entry beside it", async () => {
