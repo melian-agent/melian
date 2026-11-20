@@ -5,7 +5,12 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { visibleText } from "../packages/core/src/render.ts";
+
+// The workflow, this script and its list are the whole of what judges a head here, and each draws a policy notice, so
+// the script imports nothing from the workspace. A test holds this escaping to core's visibleText.
+const unsafe = /[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g;
+export const visible = (text) =>
+	text.replace(unsafe, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 
 const fileOf = (name) => name.replace(/^.*?\/((packages|scripts)\/)/, "$1");
 
@@ -111,7 +116,7 @@ export function compare({ linux, mac, list }) {
 	}
 	if (errors.length === 0)
 		lines.push(`${skipped.length} tests Linux skipped: every one passed on macOS or is allowed`);
-	return { lines: lines.map(visibleText), errors: errors.map(visibleText) };
+	return { lines: lines.map(visible), errors: errors.map(visible) };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
@@ -127,7 +132,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 		try {
 			return JSON.parse(readFileSync(path, "utf8"));
 		} catch {
-			process.stderr.write(`cannot read ${visibleText(path)} as JSON\n`);
+			process.stderr.write(`cannot read ${visible(path)} as JSON\n`);
 			process.exit(1);
 		}
 	};
