@@ -279,6 +279,19 @@ describe("installedPackages", () => {
 			expect(packagesOutsideInstall(roots)).toEqual(["sdk@2.0.0"]);
 		});
 
+		it("names each release outside once, sorted, however the walk meets them", () => {
+			const alpha = mkdtempSync(join(tmpdir(), "melian-installed-packages-alpha-"));
+			try {
+				writeFileSync(join(alpha, "package.json"), JSON.stringify({ name: "alpha", version: "1.0.0" }));
+				symlinkSync(alpha, join(scratch, "node_modules", "alpha"));
+				install("pi", { name: "pi", version: "1.1.0", dependencies: { sdk: "^2", alpha: "^1" } });
+				roots = [...roots, { ...roots[0]!, name: "alpha" }];
+				expect(packagesOutsideInstall(roots)).toEqual(["alpha@1.0.0", "sdk@2.0.0"]);
+			} finally {
+				rmSync(alpha, { recursive: true, force: true });
+			}
+		});
+
 		it("gives one process one digest, and two processes none in common, so no run is reused", () => {
 			expect(installedPackagesDigest(roots)).toBe(installedPackagesDigest(roots));
 			const digest = () =>
