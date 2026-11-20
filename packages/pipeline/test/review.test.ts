@@ -345,6 +345,7 @@ describe("reviewChangeset", () => {
 			]);
 		afterEach(() => {
 			code.version = "recorded";
+			code.packages = "installed";
 		});
 
 		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {
@@ -361,10 +362,13 @@ describe("reviewChangeset", () => {
 			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
 		});
 
-		it("dismisses under the dismissing build's code a review another build decided", async () => {
+		it.each<["version" | "packages", string]>([
+			["version", "code"],
+			["packages", "packages"],
+		])("dismisses under the dismissing build's %s a review another build decided", async (field, stored) => {
 			script();
 			const [finding] = (await reviewed()).verdict.findings.block;
-			code.version = "changed";
+			code[field] = "changed";
 
 			const recorded = await recordDismissal({
 				harness,
@@ -375,10 +379,10 @@ describe("reviewChangeset", () => {
 			});
 
 			expect(recorded.finding.properties).toMatchObject({ id: finding!.properties.id, status: "dismissed" });
-			const stored = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
+			const input = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
 				reviewedRevision()
 			]!.adjudication!;
-			expect(JSON.parse(stored.input).code).toBe("changed");
+			expect(JSON.parse(input.input)[stored]).toBe("changed");
 		});
 
 		it("attaches to the stored decision when the build's deciding code is the same", async () => {
