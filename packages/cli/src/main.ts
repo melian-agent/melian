@@ -26,6 +26,7 @@ import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
+import { recordsSize } from "./records-size.ts";
 import { relayRecords } from "./relay.ts";
 import { storePrune } from "./store.ts";
 import { parseTarget } from "./target.ts";
@@ -52,6 +53,8 @@ Commands:
                          Add the records a round of the pull request left in a directory store to melian/state,
                          refusing the whole batch unless the head's job may hand over every record in it. --check
                          checks the batch the same way and writes nothing.
+  records size [--json]  Print melian/state's entries, record bytes and listing bytes beside the store's limits,
+                         and a warning past half of any; --json prints the counts alone.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -343,7 +346,12 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			}
 			case "records": {
 				const [subcommand, ...targets] = rest;
-				if (subcommand !== "relay") throw new UsageError("records takes a subcommand: relay");
+				if (subcommand === "size") {
+					if (targets.length > 0 || values.check || expected !== undefined || values.from.length > 0)
+						throw new UsageError("records size takes no target and no option but --json");
+					return await recordsSize(scoped, { json: values.json });
+				}
+				if (subcommand !== "relay") throw new UsageError("records takes a subcommand: relay or size");
 				const target = one(targets, "records relay", "pull request");
 				if (parseTarget(target).kind !== "pullRequest")
 					throw new UsageError('records relay takes a pull request such as "#12", not a range');

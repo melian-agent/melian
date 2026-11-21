@@ -365,7 +365,7 @@ describe("melian records relay", { timeout: 60_000 }, () => {
 	});
 
 	it.each([
-		[["records"], "records takes a subcommand: relay"],
+		[["records"], "records takes a subcommand: relay or size"],
 		[
 			["records", "relay", "main...feature", "--from", "dir:x", "--expect-base", "a", "--expect-head", "b"],
 			"not a range",

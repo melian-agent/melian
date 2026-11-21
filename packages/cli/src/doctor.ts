@@ -498,26 +498,32 @@ async function recordTrust(root: string): Promise<{ state: Check["state"]; detai
 }
 
 // A file on the record branch that Melian did not write refuses calls until a writer removes it, so the line names it.
-async function recordStoreCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | undefined> {
-	const name = "records";
+// A second line gives the tip's size against each limit, which it reads even past one, and warns past half of any.
+async function recordStoreChecks(cwd: string, env: NodeJS.ProcessEnv): Promise<Check[]> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
-	if (root === undefined) return undefined;
+	if (root === undefined) return [];
 	const remote = await git(root, ["remote", "get-url", "origin"]).catch(() => undefined);
-	if (remote === undefined) return undefined;
+	if (remote === undefined) return [];
 	const trust = await recordTrust(root);
-	const branch = await branchContents(root, remote, env);
-	return {
-		name,
-		state: branch.state === "ok" ? trust.state : "warn",
-		detail: `${branch.detail}; ${trust.detail}`,
-	};
+	const { branch, size } = await branchContents(root, remote, env);
+	return [
+		{
+			name: "records",
+			state: branch.state === "ok" ? trust.state : "warn",
+			detail: `${branch.detail}; ${trust.detail}`,
+		},
+		{ name: "tip size", ...size },
+	];
 }
+
+type Reading = { state: Check["state"]; detail: string };
 
 async function branchContents(
 	root: string,
 	remote: string,
 	env: NodeJS.ProcessEnv,
-): Promise<{ state: Check["state"]; detail: string }> {
+): Promise<{ branch: Reading; size: Reading }> {
+	const failure = (error: unknown) => visibleText(error instanceof Error ? error.message : String(error));
 	let store: GitRecordStore | undefined;
 	try {
 		store = await GitRecordStore.open({
@@ -525,21 +531,43 @@ async function branchContents(
 			remote: fromCheckout(root, remote),
 			deadlineMs: 20_000,
 		});
-		const strays = await store.strays();
-		const notes = [
-			strays.length === 0
-				? "melian/state holds only records and cells Melian wrote, or is not there yet"
-				: `melian/state holds ${strays.length === 1 ? "a file" : `${strays.length} files`} Melian did not write, which a writer must remove: ${listed(strays)}`,
-			...sweepNotes(store.sweep),
-		];
-		return { state: strays.length === 0 && notes.length === 1 ? "ok" : "warn", detail: notes.join("; ") };
+		const opened = store;
+		const branch = await strayReading(opened).catch((error: unknown) => ({
+			state: "warn" as const,
+			detail: [failure(error), ...sweepNotes(opened.sweep)].join("; "),
+		}));
+		const size = await sizeReading(opened).catch((error: unknown) => ({
+			state: "warn" as const,
+			detail: `melian/state's size could not be read: ${failure(error)}`,
+		}));
+		return { branch, size };
 	} catch (error) {
-		// The sweep ran when the store opened, so what it left still needs naming when the branch cannot be read.
-		const failure = visibleText(error instanceof Error ? error.message : String(error));
-		return { state: "warn", detail: [failure, ...(store === undefined ? [] : sweepNotes(store.sweep))].join("; ") };
+		return {
+			branch: { state: "warn", detail: failure(error) },
+			size: { state: "warn", detail: `melian/state's size could not be read: ${failure(error)}` },
+		};
 	} finally {
 		await store?.close();
 	}
+}
+
+async function strayReading(store: GitRecordStore): Promise<Reading> {
+	const strays = await store.strays();
+	const notes = [
+		strays.length === 0
+			? "melian/state holds only records and cells Melian wrote, or is not there yet"
+			: `melian/state holds ${strays.length === 1 ? "a file" : `${strays.length} files`} Melian did not write, which a writer must remove: ${listed(strays)}`,
+		...sweepNotes(store.sweep),
+	];
+	return { state: strays.length === 0 && notes.length === 1 ? "ok" : "warn", detail: notes.join("; ") };
+}
+
+async function sizeReading(store: GitRecordStore): Promise<Reading> {
+	const size = await store.size();
+	const warning = size.warning();
+	return warning === undefined
+		? { state: "ok", detail: size.line() }
+		: { state: "warn", detail: `${size.line()}; ${warning}` };
 }
 
 // Five names as visible text, and a count of the rest.
@@ -624,7 +652,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await executableCheck(io.cwd, io.executable),
 			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
-			await recordStoreCheck(io.cwd, io.env),
+			...(await recordStoreChecks(io.cwd, io.env)),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
 			await mutationCheck(io.cwd, io.env),
