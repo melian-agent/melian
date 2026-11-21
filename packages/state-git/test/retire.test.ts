@@ -278,6 +278,7 @@ describe("the removal-only rule", { timeout: 60_000 }, () => {
 		expect(sorted(await store.retire(seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
 		expect(remote.files()).toEqual(["notes.txt"]);
 		expect(remote.git(["ls-tree", "--full-tree", remote.tip()!])).not.toContain("changesets");
+		expect(remote.git(["log", "-1", "--format=%s", remote.tip()!])).toBe("melian: retire");
 	});
 });
 
@@ -648,6 +649,12 @@ describe("the folders a retire reads", { timeout: 60_000 }, () => {
 		expect(remote.files()).toEqual(["README", "a/x.json", "changesets/Not_A_Name/x.json", `changesets/${third}`]);
 	});
 
+	it("reads no folders from a `changesets` that is a file", async () => {
+		const store = await remote.open();
+		remote.plant({ changesets: { bytes: "not a folder" } });
+		expect(await store.folders()).toEqual(new Map());
+	});
+
 	it("refuses a tip whose top level lists past its bytes", async () => {
 		const store = await seeded();
 		const tip = remote.tip()!;
@@ -660,6 +667,23 @@ describe("the folders a retire reads", { timeout: 60_000 }, () => {
 });
 
 describe("the commit a retire builds", { timeout: 60_000 }, () => {
+	it("names every changeset it would have retired when the rule refuses the commit", async () => {
+		const store = await seeded();
+		const seen = await store.folders();
+		vi.spyOn(StateTree, "removesOnly").mockResolvedValueOnce(false);
+		await expect(
+			store.retire(
+				new Map([
+					[changeset, seen.get(changeset)!],
+					[other, seen.get(other)!],
+				]),
+			),
+		).rejects.toMatchObject({
+			code: "unreachable",
+			message: `the commit retiring ${changeset}, ${other} changes more of ${remote.branch} than it removes; nothing was pushed`,
+		});
+	});
+
 	it("refuses a parent whose `changesets` is a file", async () => {
 		const store = await seeded();
 		const { repository } = await opened(store);
@@ -737,7 +761,12 @@ describe("the removal-only rule's own reads", { timeout: 60_000 }, () => {
 			[],
 			time,
 		);
-		const commit = await commitOf(repository, emptyTree, [parent], time);
+		const commit = await commitOf(
+			repository,
+			await plumb(repository, ["rev-parse", `${parent}^{tree}`], time),
+			[parent],
+			time,
+		);
 		expect(await StateTree.removesOnly(repository, parent, commit, time)).toBe(false);
 	});
 });
