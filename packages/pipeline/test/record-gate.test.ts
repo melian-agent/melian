@@ -1,6 +1,7 @@
-import { rmSync } from "node:fs";
+import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+	type AccountPayload,
 	Changeset,
 	defaultConfig,
 	everyRecordCounts,
@@ -36,7 +37,7 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ReviewRecords } from "../src/review-records.ts";
+import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
@@ -99,10 +100,16 @@ const config: MelianConfig = { ...defaultConfig, tiers: twoLensTiers };
 
 // One review of `range` in a harness of its own, so two reviews of one revision ask their lenses again, exporting to
 // `store`. `contracts` scripts the contracts lens.
-async function review(store: MemoryRecordStore, range: string, replies: readonly ScriptedReply[] = [quiet, quiet]) {
+async function review(
+	store: MemoryRecordStore,
+	range: string,
+	replies: readonly ScriptedReply[] = [quiet, quiet],
+	ran: CheckRunRecord[] = checks,
+	base: MelianConfig = config,
+) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
-	const routed: MelianConfig = { ...config, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
+	const routed: MelianConfig = { ...base, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
 	const harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
 		registry: createReviewRegistry(),
@@ -121,7 +128,7 @@ async function review(store: MemoryRecordStore, range: string, replies: readonly
 		lenses: await lensesOf(),
 		standards: [],
 		models: fake.review,
-		checkRun: await provenRun(harness, changeset, checks),
+		checkRun: await provenRun(harness, changeset, ran),
 		records: store,
 		policy: worktree,
 	}).then(
@@ -567,9 +574,12 @@ describe("the merge gate's refusals", () => {
 			counts: everyRecordCounts,
 		});
 
-		expect([outcome.verdict.status, outcome.failures]).toEqual([
+		expect([outcome.verdict.status, outcome.failures, outcome.rounds, outcome.ended, outcome.unjudged]).toEqual([
 			"not-reviewed",
 			[`git cannot tell whether round ${roundId(records)}'s base ${first} is in the base tip's history`],
+			[],
+			[],
+			[],
 		]);
 	});
 
@@ -603,6 +613,253 @@ describe("the merge gate's refusals", () => {
 			[],
 			[`round ${twice.id} names no account, or more than one`],
 		]);
+	});
+});
+
+// The store's records with its one round replaced by a round of the same revision that reads `read`, and replaces and
+// follows the rounds given.
+async function reround(
+	store: MemoryRecordStore,
+	change: {
+		read?: (read: SharedRecord[]) => SharedRecord[];
+		keep?: (record: SharedRecord) => boolean;
+		replaces?: string[];
+		before?: string[];
+	},
+): Promise<{ records: RecordEnvelope[]; round: SharedRecord }> {
+	const records = (await listed(store)).map((each) => SharedRecord.parseEnvelope(each));
+	const round = records.find(({ kind }) => kind === "round")!;
+	const byId = new Map(records.map((each) => [each.id, each]));
+	const manifest = round.manifest()!;
+	const { base, head } = Revision.parseKey(round.revision!)!;
+	const read = manifest.read.map(({ id }) => byId.get(id)!);
+	const forgedRead = change.read?.(read) ?? read;
+	const forged = ReviewRecords.of(round.changeset, { base, head }).round(
+		forgedRead,
+		undefined,
+		change.replaces ?? manifest.replaces,
+		change.before ?? manifest.before,
+	);
+	return {
+		records: [
+			...new Map(
+				[...records.filter((each) => each !== round && (change.keep?.(each) ?? true)), ...forgedRead, forged].map(
+					(each) => [each.id, each],
+				),
+			).values(),
+		].map((each) => each.toJSON()),
+		round: forged,
+	};
+}
+
+// Two reviews of the merge, each raising the same blocking finding in other words, and what each round said of it.
+async function saidPerRound(store: MemoryRecordStore) {
+	const what = new Map<string, string>();
+	let last: Awaited<ReturnType<typeof review>> | undefined;
+	for (const words of ["a is 2 now.", "a no longer reads 1."]) {
+		last = await review(store, "main...feature", [
+			reports({
+				...finding("src/a.ts", "P1"),
+				explanation: { what: words, why: "This change rewrote it.", fix: "Restore it." },
+			}),
+		]);
+		const rounds = (await listed(store))
+			.filter(({ kind }) => kind === "round")
+			.map((each) => SharedRecord.parseEnvelope(each).id);
+		what.set(rounds.find((id) => !what.has(id))!, words);
+	}
+	return { what, last };
+}
+
+describe("the merge gate's choice among rounds", () => {
+	it("keeps the first counted round's copy of a finding one dismissal clears in two rounds", async () => {
+		const store = exported();
+		const said = await saidPerRound(store);
+		const { harness, changeset, verdict } = said.last!;
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id: Object.values(verdict.findings).flat()[0]!.properties.id,
+			dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.rounds.length, rule(outcome)]).toEqual([2, []]);
+		expect(outcome.verdict.dismissed.map(({ properties }) => properties.explanation.what)).toEqual([
+			said.what.get(outcome.rounds[0]!.id),
+		]);
+	});
+
+	it("keeps the first counted round's copy of a finding two rounds raised at one resolution and severity", async () => {
+		const store = exported();
+		const said = await saidPerRound(store);
+		const outcome = await gate(await listed(store));
+
+		expect(outcome.rounds).toHaveLength(2);
+		expect(outcome.verdict.findings.block.map(({ properties }) => properties.explanation.what)).toEqual([
+			said.what.get(outcome.rounds[0]!.id),
+		]);
+	});
+
+	it("keeps a stricter resolution over a severity that ranks higher but resolves looser", async () => {
+		widen();
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P0: advisory"));
+		const store = exported();
+		const a = (line: number, severity: string) => finding("src/a.ts", severity, line);
+		await review(store, "main...feature", reportsEach(a(1, "P0"), a(2, "P1")));
+		await review(store, "main...feature", reportsEach(a(1, "P1"), a(2, "P0")));
+		const outcome = await gate(await listed(store));
+
+		expect(placed(outcome)).toEqual([
+			["src/a.ts", 1, "block", "P1"],
+			["src/a.ts", 2, "block", "P1"],
+		]);
+	});
+
+	it("orders findings that start on one line by ID, whatever their severity", async () => {
+		widen();
+		const store = exported();
+		const at2 = (severity: string, endLine?: number) => ({
+			...finding("src/a.ts", severity, 2),
+			...(endLine === undefined ? {} : { endLine }),
+		});
+		await review(store, "main...feature", reportsEach(at2("P1"), at2("P1", 3), at2("P0", 4)));
+		const outcome = await gate(await listed(store));
+
+		const ids = outcome.verdict.findings.block.map(({ id }) => id);
+		expect(ids).toHaveLength(3);
+		expect(ids).toEqual([...ids].sort());
+	});
+
+	it("orders the dismissed findings of every round by path, then line", async () => {
+		widen();
+		const store = exported();
+		const earlier = await at("main", older, () =>
+			review(store, "main...feature", reportsEach(finding("src/a.ts", "P1", 1), finding("src/c.ts", "P1", 2))),
+		);
+		const current = await review(
+			store,
+			"main...feature",
+			reportsEach(finding("src/a.ts", "P1", 2), finding("src/c.ts", "P1", 1)),
+		);
+		for (const { harness, changeset, verdict } of [earlier, current])
+			for (const { id } of Object.values(verdict.findings).flat())
+				await recordDismissal({
+					harness,
+					revision: changeset.revision,
+					id,
+					dismissal: { by: "maintainer", reason: "meant", at: "2026-11-20T00:00:00.000Z" },
+					repoRoot: repo,
+					records: { store, changeset: changeset.id },
+				});
+		const outcome = await gate(await listed(store));
+
+		expect(outcome.verdict.dismissed.map((each) => [each.properties.path, each.lines()[0]])).toEqual([
+			["src/a.ts", 1],
+			["src/a.ts", 2],
+			["src/c.ts", 1],
+			["src/c.ts", 2],
+		]);
+	});
+});
+
+describe("the merge gate's forged rounds", () => {
+	it("covers nothing for a round that replaces another", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		const { records, round } = await reround(store, { replaces: ["0".repeat(64)] });
+		const outcome = await gate(records);
+
+		expect([outcome.passes(), outcome.rounds]).toEqual([
+			false,
+			[{ id: round.id, revision: round.revision, covers: { refused: `replaces ${"0".repeat(64)}` } }],
+		]);
+	});
+
+	it("covers nothing for a round that names a record of another revision", async () => {
+		const store = exported();
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks());
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id: Object.values(verdict.findings).flat()[0]!.properties.id,
+			dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		const dismissal = (await listed(store))
+			.map((each) => SharedRecord.parseEnvelope(each))
+			.find(({ kind }) => kind === "dismissal")!;
+		// The account names the dismissal among its records, as a round that read it would, so only the revision differs.
+		const forgedAccount = (account: SharedRecord) => {
+			const payload = account.payload as AccountPayload;
+			const claimed = { ...payload, records: [...payload.records, dismissal.id].sort() };
+			return SharedRecord.parseEnvelope({
+				...account.toJSON(),
+				key: accountKey(account.revision!, claimed),
+				payload: claimed,
+			});
+		};
+		const { records, round } = await reround(store, {
+			read: (read) => [...read.map((each) => (each.kind === "account" ? forgedAccount(each) : each)), dismissal],
+			keep: (each) => each.kind !== "account",
+		});
+		const outcome = await gate(records);
+
+		expect([outcome.passes(), outcome.rounds]).toEqual([
+			false,
+			[
+				{
+					id: round.id,
+					revision: round.revision,
+					covers: { refused: `names record ${dismissal.id} of another revision` },
+				},
+			],
+		]);
+	});
+
+	it("names a dismissal no reader can judge, since a counted round follows a round the store does not hold", async () => {
+		const store = exported();
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks());
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		const first = (await listed(store)).find(({ kind }) => kind === "round")!;
+		const { records, round } = await reround(store, { before: ["0".repeat(64)] });
+		const outcome = await gate([...records, first]);
+
+		expect([rule(outcome), outcome.verdict.dismissed]).toEqual([[["src/a.ts", "block"]], []]);
+		expect(outcome.unjudged.map(({ finding: dismissed, round: since }) => [dismissed, since])).toContainEqual([
+			id,
+			round.id,
+		]);
+	});
+
+	it("does not count a check that failed as covered, though the policy lets it be skipped", async () => {
+		const leave: MelianConfig = { ...config, checks: { ...config.checks, allowSkip: ["static.tsc"] } };
+		const store = exported();
+		const failed: CheckRunRecord = { name: "static.tsc", status: "failed", reason: "tsc exited 2", error: "exit 2" };
+		await review(
+			store,
+			"main...feature",
+			[quiet, quiet],
+			checks.map((each) => (each.name === "static.tsc" ? failed : each)),
+			leave,
+		);
+		const outcome = await gate(await listed(store), everyRecordCounts, leave);
+
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([
+			["guardrails", "static.biome", "lens.correctness", "lens.contracts", "decisions.fast"],
+		]);
+		expect(outcome.verdict.notRun.map(({ name }) => name)).toEqual(["static.tsc"]);
 	});
 });
 
