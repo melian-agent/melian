@@ -1,0 +1,809 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "5a2df91c23a237993fe1fff5448e8ddf3abc1fe1",
+		"head": "6631a8ae75241f32eb922e1436769e582f94cbdc"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review-records.ts",
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 369,
+			"column": 14,
+			"endLine": 372,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e5b4bcec068d95be0fe5f387fe5f7f794fd770babcb13162c802a979820ecad1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 371,
+			"column": 14,
+			"endLine": 371,
+			"endColumn": 102,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "217add22d757a07be9138061e67afe69aa36e5bfe37267759548a142c87d2d4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 371,
+			"column": 50,
+			"endLine": 371,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a8bb1206f2c5b428b0b4c799d51e866a92846aa352f716b7899c9324d2c727ec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 371,
+			"column": 93,
+			"endLine": 371,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "61bb8eccaa08456fdb212b2c4098017b4fd66e96cddd5f3e3cae208af30b1398"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 373,
+			"column": 12,
+			"endLine": 373,
+			"endColumn": 14,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "8fe2a44e5ba7896199c993a08267c14463816d81373af5713c6218a51adc8bac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 385,
+			"column": 68,
+			"endLine": 385,
+			"endColumn": 70,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "3d79d33b90e3b7d545605a4c39afc2575d9a1dcb910599f362890eda696519a2",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "a string has no kind, so the listing yields no earlier dismissal, as the empty default does"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 408,
+			"column": 19,
+			"endLine": 408,
+			"endColumn": 102,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "374c5ea0930dd557cfbc41b75a3f31c6acc33a0f21fef2ae6d7de672ce0118aa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 408,
+			"column": 60,
+			"endLine": 408,
+			"endColumn": 71,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c5c9dd5998356a9a78d34b464463ff6ab9557e846d1f4ae172b9676154d81280"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 411,
+			"column": 41,
+			"endLine": 415,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "04609589afdd81d361348981c6107dabbc1c0cd98f37949df80d0ffc88d048b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7c4b5cd3edc046394fcf2f50a34f48faf072d9f5074aee72acd7adde76f0891c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d0b1606154ff449070cb5f3dce0f9d003213eb5f5d9be7716d066e29e7566907",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"exports a dismissal made again as superseding the record of the one it replaced, which then stands nowhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(each.kind !== \"dismissal\" || each.changeset !== this.changeset) && each.key !== facts.finding",
+			"status": "generated",
+			"id": "774f704dd4f2361ae5a53bcb3583cadc0540ebd76289f3fa312bc14120aaf521",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b77c098befe2b47bc6258b541025a5f8a8743683177a768f8a8cf85e3519ff91",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 69,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.kind !== \"dismissal\" && each.changeset !== this.changeset",
+			"status": "generated",
+			"id": "8b979c289591d015d4123b6cd275b82ce9c582f453bb29068ff2dcd512b61689",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "79169f5822513eb2e42d439b2cc3ab8d06265deaa0fbc38ff0c8af8866cccf23",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 7,
+			"endLine": 412,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.kind === \"dismissal\"",
+			"status": "generated",
+			"id": "c9a6900c5c965174336780cfd2104c48ecbea825730d45677ee14eb704bfba05",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 21,
+			"endLine": 412,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9f62076a9f94b8de565fc6d5dfcffb11d6d8d05d7bd2580685d1691b92d73056"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 36,
+			"endLine": 412,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e42c594150255dbd750773b55aa02f688e4feef48fcc10325be1f6d094529e27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 36,
+			"endLine": 412,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.changeset === this.changeset",
+			"status": "generated",
+			"id": "55c139d72a8c4979518b0f165d05e4947496204da229814af72bbe61953de80c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 73,
+			"endLine": 412,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "da0c82ad2f325aa0fe9b502377bf2fc48b069b516fc5870e2de163720f7bd510",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 73,
+			"endLine": 412,
+			"endColumn": 99,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.key === facts.finding",
+			"status": "generated",
+			"id": "b33d4486ec37c541d971a7e05079c9bee3c76d986f51fcd988229423a2443aeb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 108,
+			"endLine": 412,
+			"endColumn": 110,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "ba60390069c401c91f55230e2050d80da6dcd33e82461db5cec7ff15b7cc4051",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"exports a dismissal made again as superseding the record of the one it replaced, which then stands nowhere"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 414,
+			"column": 10,
+			"endLine": 414,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "04d8b82202d024f7d56e4da45d06e1d2c772b42697abb24b27553cd9f30a37c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 414,
+			"column": 10,
+			"endLine": 414,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4e6261b11bc862bb5f8330f7ecb83e372f4a750aef3cce0873a67306d8e4c9c1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"never supersedes itself, nor its own copy a listing taken by another round holds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 414,
+			"column": 10,
+			"endLine": 414,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "SharedRecord.parseEnvelope(bare).id !== own",
+			"status": "generated",
+			"id": "d4f2412d84ed0166d681156f856c622fd637103860ca2a043141a211b24db51c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 414,
+			"column": 56,
+			"endLine": 414,
+			"endColumn": 58,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "a2c98c46d3c01f967b334b23d21e2c8f427258bdac414f776e5bdfb0a445f401",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"never supersedes itself, nor its own copy a listing taken by another round holds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 414,
+			"column": 61,
+			"endLine": 414,
+			"endColumn": 98,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "38b3a0235ebde58ee6b4423feb585dbebb84b75dfb64f9279b08143ea2db3c7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 416,
+			"column": 6,
+			"endLine": 416,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7424588b055479ce27c4ed0fdcccb84b90259a4053fd1a5c44ca44bb2415bd4d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 416,
+			"column": 6,
+			"endLine": 416,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "cc053c4124393154ca1f9dfec970940ff6e7208f418c92b58a463271f43b0f4f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 416,
+			"column": 6,
+			"endLine": 416,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "earlier.length !== 0",
+			"status": "generated",
+			"id": "fbf04aed0b4699f868f46be732c7a6f79070f2acbdc9f8cfd5ad24e05581130b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 417,
+			"column": 28,
+			"endLine": 417,
+			"endColumn": 85,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5881484cc00e03af6374825096b1234b4ea32e2e5690b799cf942b80e5ec9ff3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 417,
+			"column": 55,
+			"endLine": 417,
+			"endColumn": 83,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(earlier)]",
+			"status": "generated",
+			"id": "2f032370fce86810928cbb8037fcfbba6d33d794c3c65746837a88f1db9f89a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"names every earlier dismissal of its finding the listing holds, and changes its key with them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 417,
+			"column": 55,
+			"endLine": 417,
+			"endColumn": 76,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "96b2c9841f0293b20d775d02b8d07759e33217393288cddda7c2aa5c87cbac9e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2468,
+			"column": 14,
+			"endLine": 2468,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ff7816f72ad08dbd9f3bf563091832256ff18a124f78107bdcaadbf2f285bd59",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2468,
+			"column": 14,
+			"endLine": 2468,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "fddcfdb15b73ccf748decb28afb2fa8e99b8158ffc43978edf1330550938c6e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2468,
+			"column": 14,
+			"endLine": 2468,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "request.records !== undefined",
+			"status": "generated",
+			"id": "eaad93c0406b75b9ecd63df1e423cfabb195d75b50740fe449277dc5a491ad1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"supersedes another host's dismissal of the root its store held, and names the record that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2468,
+			"column": 46,
+			"endLine": 2468,
+			"endColumn": 48,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "5ceb6296ea40de05a858e7e4eee7ab74aba1c88be7677d480187242627eaaddb",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "a string has no kind, and every read of the listing filters by kind, so a review with no store reads no earlier dismissal and no round, as the empty listing does"
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 37,
+	"omitted": 0,
+	"unmutated": []
+}

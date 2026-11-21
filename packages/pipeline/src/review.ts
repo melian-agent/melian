@@ -33,6 +33,7 @@ import {
 	type ModelRoute,
 	ModelRoutingError,
 	parseModelReference,
+	type RecordEnvelope,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -40,6 +41,7 @@ import {
 	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
+	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
@@ -81,7 +83,7 @@ import {
 	readRecordedDecision,
 } from "./decisions.ts";
 import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
-import { ReviewError } from "./errors.ts";
+import { DismissError, ReviewError, type UnsharedCode } from "./errors.ts";
 import {
 	clearSightings,
 	clearVerifications,
@@ -1558,7 +1560,12 @@ export interface Review {
 	readonly verdict: Verdict;
 	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, and the code that says why; empty when it left none out. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
+
+/** A dismissal a review's record export left out: the finding's ID and the {@link DismissError} code that refused it. */
+export type UnsharedDismissal = { readonly finding: string; readonly code: UnsharedCode };
 
 // Why a conversation's request ended without finishing: the model's own message where it gave one.
 function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
@@ -2291,6 +2298,20 @@ function refusalNote(whose: string, refused: readonly string[] | undefined, mode
 		: [`${whose}${refused.join(", ")} refused the content, so ${model} answered`];
 }
 
+// The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
+// before, and every held round of another revision that no such round names, so a round keeps the store's chain,
+// another host's rounds since this host's own included.
+function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
+	const rounds = held
+		.filter((each) => each.kind === "round" && each.revision !== reviewed)
+		.map((each) => SharedRecord.parse(each, reviewPayloads));
+	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
+	return rounds
+		.filter(({ id, revision }) => revision === previous || !named.has(id))
+		.map(({ id }) => id)
+		.sort();
+}
+
 // A verification outcome as its record holds it, with the budget's end's fields alone.
 function verificationOutcome(outcome: VerificationResult[string]): VerificationOutcome {
 	if (outcome.status === "done") return { status: "done", model: outcome.model };
@@ -2557,6 +2578,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const run = checked ?? request.checkRun;
 	const options = planned({ ...request, checkRun: undefined, checks: run?.records ?? supplied ?? [] });
 	const { changeset, config, standards, models } = options;
+	// The one listing the review fills each dismissal's `supersedes` from, in verification and export alike; a store
+	// that cannot be listed fails the review, as a failed export does.
+	const held = request.records === undefined ? [] : await request.records.list(changeset.id);
 	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
 	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
 	spans.step("standards.trust");
@@ -3170,7 +3194,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(restatement === undefined
 					? {}
 					: {
-							dismissed: restatement.dismissed,
+							dismissed: restatement.dismissed.map((each) => ({
+								...each,
+								record: predecessors.recordOf(changeset.id, each.id, held),
+							})),
 							dismissals: Object.fromEntries(
 								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
 							),
@@ -3392,24 +3419,31 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
+		const dismissals: SharedRecord[] = [];
+		const unsharedDismissals: UnsharedDismissal[] = [];
+		// A dismissal's record is written once: a store that holds it already gets nothing again.
+		const stored = new Set(held.map((each) => SharedRecord.parseEnvelope(each).id));
+		for (const id of state === undefined ? [] : Object.keys(state.items)) {
+			try {
+				const record = records.dismissalOf(state!, id, held, proof);
+				if (record !== undefined && !stored.has(record.id)) dismissals.push(record);
+			} catch (error) {
+				if (!(error instanceof DismissError) || (error.code !== "unprovenRun" && error.code !== "madeWithoutStore"))
+					throw error;
+				unsharedDismissals.push({ finding: id, code: error.code });
+			}
+		}
 		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
-		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
-		// issue #395 data it had to distrust.
-		const round = records.round(
-			read,
-			walkthrough,
-			[],
-			previous === undefined
-				? []
-				: stored
-						.filter((each) => each.kind === "round" && each.revision === previous)
-						.map((each) => SharedRecord.parseEnvelope(each).id),
-		);
+		// issue #395 data it had to distrust. `before` names only rounds of the one listing `held`, which this writer read.
+		const round = records.round(read, walkthrough, [], predecessors(held, reviewed, previous));
 		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
+				record.toJSON(),
+			),
 		);
+		return unsharedDismissals;
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
 	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
@@ -3658,7 +3692,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	let verificationCheck: CheckRecord | undefined;
 	// The verification task's request key and the outcomes it reached, which its record carries.
-	let verified: { key: string; result: VerificationResult } | undefined;
+	let verified:
+		| { key: string; result: VerificationResult; dismissals: { finding: string; record: string }[] }
+		| undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
@@ -3770,7 +3806,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
 				// The index names the request key the task attached under, which its record is keyed by.
 				const attachedAs = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
-				if (attachedAs?.task === verifying) verified = { key: attachedAs.input, result: results };
+				if (attachedAs?.task === verifying) {
+					// The dismissals the task's verifier was shown, each once; a task version 4 stored names no record.
+					const shown = new Map(
+						(
+							(await harness.getTask(verifying, context))!.input as unknown as VerificationInput
+						).candidates.flatMap((candidate) =>
+							(candidate.dismissed ?? []).flatMap(({ id, record }) =>
+								record === undefined ? [] : [[id, record] as const],
+							),
+						),
+					);
+					verified = {
+						key: attachedAs.input,
+						result: results,
+						dismissals: [...shown].map(([finding, record]) => ({ finding, record })),
+					};
+				}
 				const ended = Object.values(results).find((result) => result.status === "ended");
 				const failed = candidates
 					.map((candidate) => results[candidate.key])
@@ -3933,15 +3985,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
+	let unshared: readonly UnsharedDismissal[] = [];
 	if (request.records !== undefined && owned) {
 		const findings = findingsDecided;
-		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
+		const shown = new Set(verified?.dismissals.map(({ finding }) => finding));
+		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers, shown);
 		const verification =
 			verified === undefined || verificationCheck === undefined
 				? undefined
 				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
 						claims,
-						dismissals: [],
+						dismissals: verified.dismissals,
 						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
 							candidate,
 							outcome: verificationOutcome(outcome),
@@ -3964,7 +4018,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						});
 					});
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
-		await exportRound(
+		unshared = await exportRound(
 			request.records,
 			run,
 			options.checks ?? [],
@@ -3997,6 +4051,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -4006,6 +4061,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -4014,6 +4070,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
-	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }), unshared };
 }

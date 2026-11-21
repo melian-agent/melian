@@ -1,0 +1,60 @@
+{
+ "head": "6637ca750",
+ "file": "packages/core/src/record-payloads.ts",
+ "runs": [
+  {
+   "mutant": "if (true) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > accepts a whole dismissal payload, sample 11"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "mutant": "if (false) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > refuses a dismissal that lists its frontier out of order"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "mutant": "if (frontier !== undefined || !ordered(frontier, byText)) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > accepts a whole dismissal payload, sample 11"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "mutant": "if (true && !ordered(frontier, byText)) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > accepts a dismissal an earlier build wrote, which names no frontier"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "mutant": "if (frontier === undefined && !ordered(frontier, byText)) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > accepts a dismissal an earlier build wrote, which names no frontier"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "mutant": "if (frontier !== undefined && ordered(frontier, byText)) return \"lists its frontier out of order, or one twice\";",
+   "test": {
+    "file": "packages/core/test/review-payloads.test.ts",
+    "name": "review payload checks > accepts a whole dismissal payload, sample 11"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  }
+ ]
+}

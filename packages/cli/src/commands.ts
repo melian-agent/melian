@@ -42,6 +42,7 @@ import {
 	PublishError,
 	publishReview,
 	RecordedRound,
+	type Review,
 	ReviewError,
 	type ReviewHarness,
 	type ReviewOrigin,
@@ -406,9 +407,10 @@ export async function review(
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;
+		let unshared: Review["unshared"] = [];
 		const gaps: ProbeGap[] = [];
 		try {
-			({ verdict, decisionIndexWarning } = await reviewChangeset({
+			({ verdict, decisionIndexWarning, unshared } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -435,6 +437,7 @@ export async function review(
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 			decisionIndexWarning = error.decisionIndexWarning;
+			unshared = error.unshared;
 		}
 		if (options.probeGaps !== undefined) await writeFile(options.probeGaps, `${JSON.stringify(gaps)}\n`, "utf8");
 		summarize();
@@ -445,8 +448,12 @@ export async function review(
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
-		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
-		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
+		const texts = [
+			...(indexWarning === undefined ? [] : [indexWarning.text]),
+			...unshared.map(({ finding, code }) => `the dismissal of ${finding} is not shared with the records (${code})`),
+		];
+		for (const text of texts) io.stderr(`melian: ${text}\n`);
+		const warnings = texts.length === 0 ? {} : { warnings: texts };
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`
@@ -550,7 +557,9 @@ export function short(commit: string): string {
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-export function shellQuote(argument: string): string {
+// Control characters are written visibly first, so a path cannot rewrite the terminal the command is printed to.
+export function shellQuote(text: string): string {
+	const argument = visibleText(text);
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
@@ -679,6 +688,14 @@ export class ReviewSource {
 		return new ReviewSource(changeset, source);
 	}
 
+	// The source a stored review read its policy from: a pull request's base, or what a range reads.
+	static async ofStored(stored: StoredReview, env: Io["env"]): Promise<ReviewSource> {
+		const target = parseTarget(stored.argument);
+		if (target.kind !== "pullRequest") return ReviewSource.ofRange(stored.changeset, env);
+		const commit = await git(stored.changeset.repoRoot, ["rev-parse", pullRequestRefs(target.number).base]);
+		return ReviewSource.of(stored.changeset, { kind: "revision", commit });
+	}
+
 	// A range reads the working tree when its head is checked out, so the reviewer's own edits count, and otherwise the
 	// base.
 	static async ofRange(changeset: Changeset, env: Io["env"]): Promise<ReviewSource> {
@@ -795,16 +812,10 @@ async function recordedFindings(
 	store: string,
 	options: { readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
-	const target = parseTarget(argument);
-	const { changeset } = await StoredReview.open(io, argument);
+	const review = await StoredReview.open(io, argument);
+	const { changeset } = review;
 	const { repoRoot } = changeset;
-	const reviewed =
-		target.kind === "pullRequest"
-			? ReviewSource.of(changeset, {
-					kind: "revision",
-					commit: await git(repoRoot, ["rev-parse", pullRequestRefs(target.number).base]),
-				})
-			: await ReviewSource.ofRange(changeset, io.env);
+	const reviewed = await ReviewSource.ofStored(review, io.env);
 	const { source } = reviewed;
 	const { config } = await loadConfig(repoRoot, source, ".");
 	if (!(await reviewed.trustsWriters()))
@@ -835,16 +846,18 @@ async function recordedFindings(
 		target: argument,
 	});
 	const decided: { round: string; verdict: Verdict }[] = [];
-	for (const { id } of rounds)
+	for (const { id } of rounds) {
+		const round = RecordedRound.of(stored, id, () => true);
+		const contents = round.contents(changeset.revision);
+		for (const ended of "refused" in contents ? [] : contents.ended)
+			io.stderr(
+				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${shellQuote(argument)} ${ended.finding} --reason "<text>" --records ${shellQuote(store)}\n`,
+			);
 		decided.push({
 			round: id,
-			verdict: await RecordedRound.of(stored, id, () => true).verdict({
-				revision: changeset.revision,
-				config,
-				repoRoot,
-				policy: source,
-			}),
+			verdict: await round.verdict({ revision: changeset.revision, config, repoRoot, policy: source }),
 		});
+	}
 	io.stdout(
 		options.json
 			? `${JSON.stringify(
@@ -923,16 +936,24 @@ export async function dismiss(
 	argument: string,
 	id: string,
 	reason: string,
-	options: { readonly only: boolean } = { only: false },
+	options: { readonly only: boolean; readonly records?: string },
 ): Promise<number> {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw stored.missing();
+	// A record counts only from a writer the base trusts, so a dismissal is written to a store only under that policy.
+	if (options.records !== undefined && !(await (await ReviewSource.ofStored(stored, io.env)).trustsWriters()))
+		throw new CliError(
+			"the base's melian.yaml does not set trust.writers: true, so no reader would count the dismissal's record",
+		);
 	const by = await gitAuthor(changeset.repoRoot);
 	// Only the adjudication task: a review or publication a crash interrupted must not resume here.
 	const dismissHarness = await DismissHarness.open(await openStorage(path), idleModels(io.env));
+	let store: DirectoryRecordStore | undefined;
 	try {
+		if (options.records !== undefined)
+			store = await DirectoryRecordStore.open(resolve(io.cwd, options.records.slice("dir:".length)), reviewPayloads);
 		const dismissal = { by, reason, at: new Date().toISOString() };
 		const recorded = await recordDismissal({
 			harness: dismissHarness.harness,
@@ -941,9 +962,16 @@ export async function dismiss(
 			dismissal,
 			only: options.only,
 			repoRoot: changeset.repoRoot,
+			...(store === undefined ? {} : { records: { store, changeset: changeset.id } }),
 		}).catch((error: unknown) => {
 			if (!(error instanceof DismissError)) throw error;
 			if (error.code === "notReviewed") throw stored.missing();
+			if (error.code === "storeFailed") {
+				const why = error.cause instanceof Error ? error.cause.message : String(error.cause);
+				throw new CliError(
+					`the dismissal is not recorded, because the record store ${visibleText(options.records!)} failed: ${visibleText(why)}`,
+				);
+			}
 			if (error.code === "unknownFinding") {
 				throw new CliError(
 					`the review of ${short(changeset.revision.head)} has no finding ${id}; melian findings ${shellQuote(argument)} --all lists them`,
@@ -951,7 +979,7 @@ export async function dismiss(
 			}
 			throw error;
 		});
-		const { finding, also, live, replaced, verdict } = recorded;
+		const { finding, also, live, replaced, verdict, unshared } = recorded;
 		const { ruleId } = finding;
 		const { path: file, id: shown } = finding.properties;
 		const line = finding.locations[0]!.physicalLocation.region.startLine;
@@ -975,12 +1003,19 @@ export async function dismiss(
 			io.stdout(`Still live, merged with it before:\n${reports.join("")}`);
 		}
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
+		if (store === undefined)
+			io.stdout(
+				"The dismissal is not shared: no record names the rounds the store held as it was made, so no review exports it. Dismiss it again with --records to share it.\n",
+			);
+		for (const { finding: report, code } of unshared)
+			io.stderr(`melian: the dismissal of ${report} is not shared with the records (${code})\n`);
 		const target = parseTarget(argument);
 		if (target.kind === "pullRequest") {
 			io.stdout(`Run melian publish ${shellQuote(argument)} to post the new verdict to the pull request.\n`);
 		}
 		return 0;
 	} finally {
+		await store?.close();
 		await dismissHarness.close(context);
 	}
 }

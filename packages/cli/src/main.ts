@@ -53,11 +53,13 @@ Commands:
                          refusing the whole batch unless the head's job may hand over every record in it. --check
                          checks the batch the same way and writes nothing.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
-  dismiss <range|#pr> <id> --reason <text> [--only]
+  dismiss <range|#pr> <id> --reason <text> [--only] [--records dir:<path>]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
                          dismisses the reports merged into the finding by snippet unless --only names one report
                          alone; a report merged only through a hunk stays live, and the ID of a merged report
-                         dismisses that report alone.
+                         dismisses that report alone. --records writes the dismissal's record to the store now,
+                         superseding the dismissals of the finding that stand there, when the base's policy sets
+                         trust.writers: true; without it, the dismissal is never shared.
                          Exits 0 when recorded, 1 when the review or the finding is not found, or when the
                          dismissal was recorded but the verdict could not be decided again.
   compare <range|#pr> [--from <source>]... [--round <id|unattributed>]
@@ -269,8 +271,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			throw new UsageError("--claims-in is only available for mutants list");
 		if (name !== "probe" && values.timeout !== undefined)
 			throw new UsageError("--timeout is only available for probe");
-		if (name !== "review" && name !== "findings" && values.records !== undefined)
-			throw new UsageError("--records is only available for review and findings");
+		if (name !== "review" && name !== "findings" && name !== "dismiss" && values.records !== undefined)
+			throw new UsageError("--records is only available for review, findings and dismiss");
 		if (values.records !== undefined && !/^dir:./.test(values.records))
 			throw new UsageError('--records takes a store such as "dir:<path>"');
 		const expectBase = values["expect-base"];
@@ -393,7 +395,10 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 				}
 				const reason = single(values.reason, "dismiss");
 				if (reason === undefined) throw new UsageError("dismiss needs --reason <text>");
-				return await dismiss(scoped, target, id, readableReason(reason), { only: values.only });
+				return await dismiss(scoped, target, id, readableReason(reason), {
+					only: values.only,
+					...(values.records === undefined ? {} : { records: values.records }),
+				});
 			}
 			case "compare": {
 				const [first, ...others] = rest;

@@ -1,0 +1,328 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "f18ea0dc1458f0702c68984a899d7e8a89468a15",
+    "head": "9e19f99157d9e329251195e0e8e3cf8b02eef49b"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 199,
+      "column": 37,
+      "endLine": 204,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "307cd192d0a08616839ce11596781ba9879b1c7b15cf77bbff8bf8846482b71d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "f3a78670c2de7e44a95c457411bb62fe6431150bb04eafd8651f28677dfa658a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 33,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e9c2b8053c14bb8eaaf73b74e227a1591a33b410295cbbc2df7277824e894e8d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 200,
+      "column": 6,
+      "endLine": 200,
+      "endColumn": 33,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.kind === \"dismissal\"",
+      "status": "generated",
+      "id": "42837fd1120b99b059ad6f3cdc61a34d3b1b709618e262208a6a260b155a7e1c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 200,
+      "column": 22,
+      "endLine": 200,
+      "endColumn": 33,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8f2ab8aab347ae43af6f9bc49d68be55134ff62c083f6947c6e2c016ae989fef"
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 202,
+      "column": 6,
+      "endLine": 202,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7106e2827f573d8b30a8d235f982ac70dc4a1aabf60b9133122abdbf930842f7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 202,
+      "column": 6,
+      "endLine": 202,
+      "endColumn": 28,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c6c27f0a6fb888ce78729427b174f45cce6e5c491e9caf45decc33430d6c810e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 202,
+      "column": 6,
+      "endLine": 202,
+      "endColumn": 28,
+      "mutatorName": "EqualityOperator",
+      "replacement": "record.key === sighted",
+      "status": "generated",
+      "id": "3dc5e315fa8df94a3165ebd6235d08d22a4dd27a0e271eadfd2b5066f91522b5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 203,
+      "column": 10,
+      "endLine": 203,
+      "endColumn": 109,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8d7b973c14d700e4fbebe94a39bce6b6ad5450fa22a19d05c4d5397ce7575268",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/recorded-round.test.ts",
+          "path": [
+            "the dismissal records a reader applies",
+            "reads as not reviewed when a dismissal record's key is not its sighting's finding, standing beside the finding's own dismissal"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/recorded-round.ts",
+      "line": 203,
+      "column": 21,
+      "endLine": 203,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b094739ec27b570f4a971fa433058b7d054f0a46f118fe4a9d4931f4aec21808"
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 388,
+      "column": 6,
+      "endLine": 388,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "64d3689ff65083969aecf4bbf8f5e5d041635d0a6da80a8ec98dd65e582c0497",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "what a dismissal supersedes",
+            "names every earlier dismissal of its finding the listing holds, and changes its key with them"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 388,
+      "column": 6,
+      "endLine": 388,
+      "endColumn": 26,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "141c49691dfee321d178609121423abe530e64564200516bf2cebeb2873a3378",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "what a dismissal supersedes",
+            "writes no record keyed by one finding whose sighting is of another"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 388,
+      "column": 6,
+      "endLine": 388,
+      "endColumn": 26,
+      "mutatorName": "EqualityOperator",
+      "replacement": "id === facts.finding",
+      "status": "generated",
+      "id": "34662cd6a77270de79d1e79994151903bc3472add04a4f4d6b6cfce7ac727a32",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "what a dismissal supersedes",
+            "names every earlier dismissal of its finding the listing holds, and changes its key with them"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 388,
+      "column": 28,
+      "endLine": 388,
+      "endColumn": 105,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "316aeda46ed8c71032198e6b86d88f7d053656c0bfefd0ee343e64e0100f4742",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review-records.test.ts",
+          "path": [
+            "ReviewRecords",
+            "what a dismissal supersedes",
+            "writes no record keyed by one finding whose sighting is of another"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review-records.ts",
+      "line": 388,
+      "column": 44,
+      "endLine": 388,
+      "endColumn": 103,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "35fd373c0546a95326677575bae8b67ae79bb0b53bcf9ffbaff4c858acb946b7"
+    }
+  ],
+  "total": 15,
+  "omitted": 0,
+  "unmutated": []
+}

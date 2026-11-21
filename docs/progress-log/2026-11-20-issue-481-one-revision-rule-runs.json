@@ -1,0 +1,3207 @@
+{
+ "head": "32a366064",
+ "note": "Every mutant the instrumenter makes on the reader's lines: RecordedRound.contents, dismissalsOf, roundsSince, sightingsOf, byFinding, sharedDismissalHolds and the findings --records notice. Each killed claim ran its named test alone, unmutated then mutated.",
+ "runs": [
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 158,
+   "column": 84,
+   "endLine": 170,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 160,
+   "column": 6,
+   "endLine": 160,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 160,
+   "column": 6,
+   "endLine": 160,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > what a round's records hold > refuses a revision that is not the round's own, and a round its records cannot stand for",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 160,
+   "column": 6,
+   "endLine": 160,
+   "endColumn": 15,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > what a round's records hold > refuses a revision that is not the round's own, and a round its records cannot stand for",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 162,
+   "column": 6,
+   "endLine": 162,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > decides the verdict the review decided",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 162,
+   "column": 6,
+   "endLine": 162,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 162,
+   "column": 6,
+   "endLine": 162,
+   "endColumn": 31,
+   "mutatorName": "EqualityOperator",
+   "replacement": "asked === pieces.revision",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 162,
+   "column": 40,
+   "endLine": 162,
+   "endColumn": 96,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 162,
+   "column": 51,
+   "endLine": 162,
+   "endColumn": 94,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > reads as not reviewed when the caller's revision has another base than the round's",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 164,
+   "column": 46,
+   "endLine": 164,
+   "endColumn": 48,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > what a round's records hold > hands over the round's revision, its sightings, the revision's proving hunks and each dismissal record whole",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 165,
+   "column": 34,
+   "endLine": 165,
+   "endColumn": 36,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > what a round's records hold > hands over the round's revision, its sightings, the revision's proving hunks and each dismissal record whole",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 167,
+   "column": 7,
+   "endLine": 167,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 167,
+   "column": 7,
+   "endLine": 167,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round after it shared a lens record of another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 167,
+   "column": 7,
+   "endLine": 167,
+   "endColumn": 14,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round after it shared a lens record of another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 167,
+   "column": 27,
+   "endLine": 167,
+   "endColumn": 53,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reads a dismissal as ended, naming the round, once a round reviewed another revision and the author returned to the dismissed one",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 168,
+   "column": 12,
+   "endLine": 168,
+   "endColumn": 77,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 168,
+   "column": 12,
+   "endLine": 168,
+   "endColumn": 77,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 168,
+   "column": 79,
+   "endLine": 168,
+   "endColumn": 114,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 169,
+   "column": 9,
+   "endLine": 169,
+   "endColumn": 83,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > decides the verdict the review decided",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 307,
+   "column": 79,
+   "endLine": 340,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > decides the verdict the review decided",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 308,
+   "column": 8,
+   "endLine": 310,
+   "endColumn": 90,
+   "mutatorName": "MethodExpression",
+   "replacement": "set.unsuperseded()",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal record of another changeset",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 10,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 22,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal record of another changeset",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 22,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 22,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "LogicalOperator",
+   "replacement": "record.kind === \"dismissal\" || record.changeset === round.changeset",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal record of another changeset",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 22,
+   "endLine": 310,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "a record of another kind carries no frontier, so dismissalsOf returns nothing for it",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 22,
+   "endLine": 310,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.kind !== \"dismissal\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 38,
+   "endLine": 310,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 53,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal record of another changeset",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 310,
+   "column": 53,
+   "endLine": 310,
+   "endColumn": 89,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.changeset !== round.changeset",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 311,
+   "column": 43,
+   "endLine": 339,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 313,
+   "column": 7,
+   "endLine": 313,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 313,
+   "column": 7,
+   "endLine": 313,
+   "endColumn": 29,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal whose record names no frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 313,
+   "column": 7,
+   "endLine": 313,
+   "endColumn": 29,
+   "mutatorName": "EqualityOperator",
+   "replacement": "frontier !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 313,
+   "column": 38,
+   "endLine": 313,
+   "endColumn": 40,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > applies no dismissal whose record names no frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 315,
+   "column": 7,
+   "endLine": 315,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 315,
+   "column": 7,
+   "endLine": 315,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 315,
+   "column": 7,
+   "endLine": 315,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "since !== undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 315,
+   "column": 35,
+   "endLine": 315,
+   "endColumn": 37,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 318,
+   "column": 17,
+   "endLine": 318,
+   "endColumn": 34,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round since reviewed a revision that lacked a hunk it accepted, as the host reopens it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 318,
+   "column": 40,
+   "endLine": 318,
+   "endColumn": 85,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round since reviewed a revision that lacked a hunk it accepted, as the host reopens it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 318,
+   "column": 50,
+   "endLine": 318,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 318,
+   "column": 50,
+   "endLine": 318,
+   "endColumn": 85,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round since reviewed a revision that lacked a hunk it accepted, as the host reopens it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 318,
+   "column": 50,
+   "endLine": 318,
+   "endColumn": 85,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.revision === sighting.revision",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 319,
+   "column": 7,
+   "endLine": 319,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 319,
+   "column": 7,
+   "endLine": 319,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round since reviewed a revision that lacked a hunk it accepted, as the host reopens it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 319,
+   "column": 7,
+   "endLine": 319,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "moved === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 320,
+   "column": 11,
+   "endLine": 324,
+   "endColumn": 5,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reads a dismissal as ended, naming the round, once a round reviewed another revision and the author returned to the dismissed one",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 321,
+   "column": 5,
+   "endLine": 323,
+   "endColumn": 6,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > ends a dismissal once a round after it shared a lens record of another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 322,
+   "column": 13,
+   "endLine": 322,
+   "endColumn": 106,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reads a dismissal as ended, naming the round, once a round reviewed another revision and the author returned to the dismissed one",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 325,
+   "column": 21,
+   "endLine": 334,
+   "endColumn": 4,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 335,
+   "column": 21,
+   "endLine": 337,
+   "endColumn": 54,
+   "mutatorName": "MethodExpression",
+   "replacement": "since.flatMap(each => sightingsOf(set, each))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 336,
+   "column": 13,
+   "endLine": 336,
+   "endColumn": 45,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 337,
+   "column": 12,
+   "endLine": 337,
+   "endColumn": 53,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 337,
+   "column": 32,
+   "endLine": 337,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 337,
+   "column": 32,
+   "endLine": 337,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 337,
+   "column": 32,
+   "endLine": 337,
+   "endColumn": 53,
+   "mutatorName": "EqualityOperator",
+   "replacement": "properties.id !== key",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 338,
+   "column": 10,
+   "endLine": 338,
+   "endColumn": 36,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 338,
+   "column": 11,
+   "endLine": 338,
+   "endColumn": 35,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 348,
+   "column": 115,
+   "endLine": 367,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 350,
+   "column": 2,
+   "endLine": 352,
+   "endColumn": 87,
+   "mutatorName": "MethodExpression",
+   "replacement": "set.records()",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 11,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 23,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 23,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 23,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "LogicalOperator",
+   "replacement": "record.kind === \"round\" || record.changeset === round.changeset",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 23,
+   "endLine": 352,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 23,
+   "endLine": 352,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.kind !== \"round\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 39,
+   "endLine": 352,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 50,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps a dismissal past a round of another changeset at another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 352,
+   "column": 50,
+   "endLine": 352,
+   "endColumn": 86,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.changeset !== round.changeset",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 353,
+   "column": 8,
+   "endLine": 353,
+   "endColumn": 39,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 353,
+   "column": 20,
+   "endLine": 353,
+   "endColumn": 39,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 356,
+   "column": 22,
+   "endLine": 356,
+   "endColumn": 35,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 356,
+   "column": 37,
+   "endLine": 356,
+   "endColumn": 55,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 356,
+   "column": 37,
+   "endLine": 356,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "pending.length >= 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps a dismissal past a round of another changeset at another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": "timeout: the loop never ends; the named test alone hung past 120 s and passes unmutated in 3 s"
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 356,
+   "column": 37,
+   "endLine": 356,
+   "endColumn": 55,
+   "mutatorName": "EqualityOperator",
+   "replacement": "pending.length <= 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 357,
+   "column": 19,
+   "endLine": 357,
+   "endColumn": 71,
+   "mutatorName": "LogicalOperator",
+   "replacement": "rounds.get(pending.pop()!)?.manifest()!.before && []",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 357,
+   "column": 19,
+   "endLine": 357,
+   "endColumn": 55,
+   "mutatorName": "OptionalChaining",
+   "replacement": "rounds.get(pending.pop()!).manifest",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps a dismissal whose frontier names a round its writer held and this set does not",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 357,
+   "column": 69,
+   "endLine": 357,
+   "endColumn": 71,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "equivalent",
+   "evidence": "the fallback is taken only for a frontier round the set lacks, and no round's ID is 'Stryker was here', so the extra ID marks nothing held",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 358,
+   "column": 7,
+   "endLine": 358,
+   "endColumn": 20,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "held.has(id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 358,
+   "column": 7,
+   "endLine": 358,
+   "endColumn": 20,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "equivalent",
+   "evidence": "rounds follow each other as a chain with no cycle, so adding a held ID again only repeats work that ends",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 358,
+   "column": 7,
+   "endLine": 358,
+   "endColumn": 20,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 358,
+   "column": 22,
+   "endLine": 361,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 359,
+   "column": 4,
+   "endLine": 359,
+   "endColumn": 17,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held before its frontier, though a later round names it beside the frontier",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 360,
+   "column": 4,
+   "endLine": 360,
+   "endColumn": 21,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests no round its writer held two rounds before its frontier, though a later round names it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 362,
+   "column": 16,
+   "endLine": 362,
+   "endColumn": 73,
+   "mutatorName": "MethodExpression",
+   "replacement": "[...rounds.values()]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps an affected finding dismissed while the revision holds every hunk its proof names, and no longer",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 362,
+   "column": 16,
+   "endLine": 362,
+   "endColumn": 36,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 362,
+   "column": 44,
+   "endLine": 362,
+   "endColumn": 72,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 362,
+   "column": 54,
+   "endLine": 362,
+   "endColumn": 72,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "held.has(each.id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps an affected finding dismissed while the revision holds every hunk its proof names, and no longer",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 363,
+   "column": 15,
+   "endLine": 365,
+   "endColumn": 2,
+   "mutatorName": "MethodExpression",
+   "replacement": "[round, ...tested].some(each => set.missing(each).length === 0 && each.manifest()!.before.every(id => held.has(id) || rounds.has(id)))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 363,
+   "column": 15,
+   "endLine": 363,
+   "endColumn": 33,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 2,
+   "endLine": 364,
+   "endColumn": 115,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 12,
+   "endLine": 364,
+   "endColumn": 115,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 12,
+   "endLine": 364,
+   "endColumn": 115,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 12,
+   "endLine": 364,
+   "endColumn": 115,
+   "mutatorName": "LogicalOperator",
+   "replacement": "set.missing(each).length === 0 || each.manifest()!.before.every(id => held.has(id) || rounds.has(id))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 12,
+   "endLine": 364,
+   "endColumn": 42,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that names a record this set does not hold",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 12,
+   "endLine": 364,
+   "endColumn": 42,
+   "mutatorName": "EqualityOperator",
+   "replacement": "set.missing(each).length !== 0",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 46,
+   "endLine": 364,
+   "endColumn": 115,
+   "mutatorName": "MethodExpression",
+   "replacement": "each.manifest()!.before.some(id => held.has(id) || rounds.has(id))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 76,
+   "endLine": 364,
+   "endColumn": 114,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 84,
+   "endLine": 364,
+   "endColumn": 114,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > leaves a finding live past a round since that follows a round neither the set nor the writer held",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 84,
+   "endLine": 364,
+   "endColumn": 114,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 364,
+   "column": 84,
+   "endLine": 364,
+   "endColumn": 114,
+   "mutatorName": "LogicalOperator",
+   "replacement": "held.has(id) && rounds.has(id)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > tests a dismissal against no other finding's sightings in a round since it",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 376,
+   "column": 75,
+   "endLine": 382,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 377,
+   "column": 50,
+   "endLine": 377,
+   "endColumn": 64,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 378,
+   "column": 8,
+   "endLine": 380,
+   "endColumn": 98,
+   "mutatorName": "MethodExpression",
+   "replacement": "set.records()",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 10,
+   "endLine": 380,
+   "endColumn": 97,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 22,
+   "endLine": 380,
+   "endColumn": 97,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 22,
+   "endLine": 380,
+   "endColumn": 97,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 22,
+   "endLine": 380,
+   "endColumn": 97,
+   "mutatorName": "LogicalOperator",
+   "replacement": "named.has(record.id) || record.kind === \"lens\" || record.kind === \"check\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 47,
+   "endLine": 380,
+   "endColumn": 96,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 47,
+   "endLine": 380,
+   "endColumn": 96,
+   "mutatorName": "LogicalOperator",
+   "replacement": "record.kind === \"lens\" && record.kind === \"check\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 47,
+   "endLine": 380,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 47,
+   "endLine": 380,
+   "endColumn": 69,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.kind !== \"lens\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 63,
+   "endLine": 380,
+   "endColumn": 69,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose lens record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 73,
+   "endLine": 380,
+   "endColumn": 96,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose check record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 73,
+   "endLine": 380,
+   "endColumn": 96,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record.kind !== \"check\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 380,
+   "column": 89,
+   "endLine": 380,
+   "endColumn": 96,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > reopens a dismissal on a sibling round another host wrote without its frontier, whose check record cites a hunk the revision lacks",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 381,
+   "column": 11,
+   "endLine": 381,
+   "endColumn": 96,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 385,
+   "column": 97,
+   "endLine": 390,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > decides the verdict the review decided",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 388,
+   "column": 24,
+   "endLine": 388,
+   "endColumn": 87,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 388,
+   "column": 29,
+   "endLine": 388,
+   "endColumn": 56,
+   "mutatorName": "LogicalOperator",
+   "replacement": "standing.get(finding) && []",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 388,
+   "column": 54,
+   "endLine": 388,
+   "endColumn": 56,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 388,
+   "column": 59,
+   "endLine": 388,
+   "endColumn": 86,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 835,
+   "column": 11,
+   "endLine": 843,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 836,
+   "column": 8,
+   "endLine": 842,
+   "endColumn": 2,
+   "mutatorName": "MethodExpression",
+   "replacement": "[...sightings].some(({\n  properties: {\n    cause,\n    trigger\n  }\n}) => !reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks) && proofOf(cause, trigger).every(each => hunks.some(hunk => hunk.file === each.file && hunk.hash === each.hash)))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > the dismissal records a reader applies > keeps a dismissal whose writer held the round read, and a later round of another revision",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 836,
+   "column": 8,
+   "endLine": 836,
+   "endColumn": 22,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > the findings document > lifecycle > reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 837,
+   "column": 2,
+   "endLine": 841,
+   "endColumn": 4,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 838,
+   "column": 3,
+   "endLine": 841,
+   "endColumn": 4,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > the findings document > lifecycle > reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 838,
+   "column": 3,
+   "endLine": 841,
+   "endColumn": 4,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 838,
+   "column": 3,
+   "endLine": 841,
+   "endColumn": 4,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks) || proofOf(cause, trigger).every(each => hunks.some(hunk => hunk.file === each.file && hunk.hash === each.hash))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > the findings document > lifecycle > reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 838,
+   "column": 3,
+   "endLine": 838,
+   "endColumn": 90,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > the findings document > lifecycle > reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 839,
+   "column": 3,
+   "endLine": 841,
+   "endColumn": 4,
+   "mutatorName": "MethodExpression",
+   "replacement": "proofOf(cause, trigger).some(each => hunks.some(hunk => hunk.file === each.file && hunk.hash === each.hash))",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read with the dismissals shared beside it > dismisses a finding as the host does once a later round exports the dismissal",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 839,
+   "column": 33,
+   "endLine": 840,
+   "endColumn": 76,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 4,
+   "endLine": 840,
+   "endColumn": 76,
+   "mutatorName": "MethodExpression",
+   "replacement": "hunks.every(hunk => hunk.file === each.file && hunk.hash === each.hash)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 15,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 25,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 25,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 25,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "LogicalOperator",
+   "replacement": "hunk.file === each.file || hunk.hash === each.hash",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 25,
+   "endLine": 840,
+   "endColumn": 48,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 25,
+   "endLine": 840,
+   "endColumn": 48,
+   "mutatorName": "EqualityOperator",
+   "replacement": "hunk.file !== each.file",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 52,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/findings.ts",
+   "line": 840,
+   "column": 52,
+   "endLine": 840,
+   "endColumn": 75,
+   "mutatorName": "EqualityOperator",
+   "replacement": "hunk.hash !== each.hash",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/findings.test.ts > a shared dismissal at the revision it was made at > holds while each sighting cites only hunks the revision holds, matched by file and hash together",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 852,
+   "column": 45,
+   "endLine": 852,
+   "endColumn": 55,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 852,
+   "column": 51,
+   "endLine": 852,
+   "endColumn": 55,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 854,
+   "column": 22,
+   "endLine": 854,
+   "endColumn": 31,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > reads a round whose records cannot stand as not reviewed, and names no dismissal ended",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 854,
+   "column": 46,
+   "endLine": 854,
+   "endColumn": 48,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > reads a round whose records cannot stand as not reviewed, and names no dismissal ended",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 856,
+   "column": 4,
+   "endLine": 856,
+   "endColumn": 364,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "run": {
+    "base": [
+     1,
+     0
+    ],
+    "mutated": [
+     0,
+     1
+    ]
+   },
+   "survivorClasses": []
+  }
+ ]
+}
