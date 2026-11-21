@@ -1,0 +1,125 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "0e9574abe47304877351fda909a0721e61057665",
+		"head": "6f9cd2f061549235954923f9ba1bea7e9e7bb74c"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/recorded-round.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 97,
+			"column": 6,
+			"endLine": 97,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e1c25664c7b1d84447cbb6f559355914f79ebd3c1ff6942017fadbcd74786e31",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"decides the verdict the review decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 97,
+			"column": 6,
+			"endLine": 97,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1454fd6925c1947ac758ef34067b80e3f942419d1759d22f511181fd57954157",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"reads as not reviewed when the caller's revision has another base than the round's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 97,
+			"column": 6,
+			"endLine": 97,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "asked === pieces.revision",
+			"status": "generated",
+			"id": "e3bc0079d5fe82f6ae7012c0f1de6978d65365a63a95a9ef851d86e15b58709f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"reads as not reviewed when the caller's revision has another base than the round's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 97,
+			"column": 61,
+			"endLine": 97,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "27de198618e528f68af11d0be73036e1c19999a22bb279f742fd0af3648fdaf4"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 197,
+			"column": 8,
+			"endLine": 204,
+			"endColumn": 2,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ee8dabca588c3baf9e6e8d62bbc41d4ccc49249ecc71cb8d986f7dd910642ee6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"a round read back from its records",
+						"reads as not reviewed when the caller's revision has another base than the round's"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

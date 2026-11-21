@@ -2565,7 +2565,7 @@ describe("reviews recorded before levels joined the keys", () => {
 					rounds: [],
 					trigger: { hash: "a".repeat(64), proof: [] },
 				};
-				expect(() => records.dismissal(dismissal)).not.toThrow();
+				expect(() => records.made(dismissal, [])).not.toThrow();
 			} finally {
 				await current.close(context);
 			}

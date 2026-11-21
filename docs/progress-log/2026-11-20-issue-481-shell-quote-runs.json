@@ -1,0 +1,306 @@
+{
+ "head": "623a69828",
+ "note": "Every mutant the instrumenter makes inside shellQuote, plus one by hand that drops its visibleText call. Each ran its named test alone, unmutated then mutated; unmutated and mutated are [passed, failed] counts. shell-quote.test.ts is new in this pass.",
+ "runs": [
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "/^[\\w@%+=:,./-]+$/.test(argument)",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes a comment sign so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 38,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "/^[\\w@%+=:,./-]+$/.test(argument)",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 23,
+   "mutatorName": "Regex",
+   "replacement": "/[\\w@%+=:,./-]+$/",
+   "replaced": "/^[\\w@%+=:,./-]+$/",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes a comment sign so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 23,
+   "mutatorName": "Regex",
+   "replacement": "/^[\\w@%+=:,./-]+/",
+   "replaced": "/^[\\w@%+=:,./-]+$/",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes a space so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 23,
+   "mutatorName": "Regex",
+   "replacement": "/^[\\w@%+=:,./-]$/",
+   "replaced": "/^[\\w@%+=:,./-]+$/",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 23,
+   "mutatorName": "Regex",
+   "replacement": "/^[^\\w@%+=:,./-]+$/",
+   "replaced": "/^[\\w@%+=:,./-]+$/",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 563,
+   "column": 5,
+   "endLine": 563,
+   "endColumn": 23,
+   "mutatorName": "Regex",
+   "replacement": "/^[\\W@%+=:,./-]+$/",
+   "replaced": "/^[\\w@%+=:,./-]+$/",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > says a push ended a shared dismissal, and to dismiss it again",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 564,
+   "column": 5,
+   "endLine": 564,
+   "endColumn": 31,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "/[\"$`\\\\!]/.test(argument)",
+   "replaced": "!/[\"$`\\\\!]/.test(argument)",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes shell specials beside a single quote so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 564,
+   "column": 5,
+   "endLine": 564,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "!/[\"$`\\\\!]/.test(argument)",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes shell specials beside a single quote so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 564,
+   "column": 5,
+   "endLine": 564,
+   "endColumn": 31,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "!/[\"$`\\\\!]/.test(argument)",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian review and findings > tells the author to review first when nothing is stored",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 564,
+   "column": 6,
+   "endLine": 564,
+   "endColumn": 16,
+   "mutatorName": "Regex",
+   "replacement": "/[^\"$`\\\\!]/",
+   "replaced": "/[\"$`\\\\!]/",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian review and findings > tells the author to review first when nothing is stored",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 564,
+   "column": 40,
+   "endLine": 564,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "replaced": "`\"${argument}\"`",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes a comment sign so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 565,
+   "column": 8,
+   "endLine": 565,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "replaced": "`'${argument.replace(/'/g, `'\\\\''`)}'`",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes shell specials beside a single quote so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 565,
+   "column": 35,
+   "endLine": 565,
+   "endColumn": 42,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "replaced": "`'\\\\''`",
+   "claim": "new-test",
+   "evidence": "packages/cli/test/shell-quote.test.ts > shellQuote > quotes shell specials beside a single quote so bash reads it back unchanged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 562,
+   "column": 18,
+   "endLine": 562,
+   "endColumn": 35,
+   "mutatorName": "hand: drop visibleText",
+   "replacement": "text",
+   "replaced": "visibleText(text)",
+   "claim": "killed",
+   "evidence": "packages/cli/test/cli.test.ts > melian dismiss > writes a control character in the store's path as visible text in the command that dismisses again",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ]
+  }
+ ]
+}

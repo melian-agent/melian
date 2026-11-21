@@ -1329,6 +1329,47 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			git(repo, "checkout", "--quiet", "-b", "policy", base);
+			writeFileSync(join(repo, "POLICY.md"), "The policy commit.\n");
+			git(repo, "add", "POLICY.md");
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "policy");
+			const policy = git(repo, "rev-parse", "HEAD");
+			const out = join(scratch, "policy-results.json");
+			const settings = {
+				...env,
+				MELIAN_EVAL_PROBE_PASSES: "1",
+				MELIAN_EVAL_PROBE_SET: "misses",
+				MELIAN_EVAL_POLICY_COMMIT: "policy",
+				MELIAN_EVAL_PROBE_OUT: out,
+				MELIAN_EVAL_MISSES: missesFile([
+					{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+				]),
+			};
+			const refused = runners();
+			expect(await measure({ ...settings, MELIAN_EVAL_PROBE_TRUST: `${base},${head}` }, refused)).toMatchObject({
+				status: 2,
+				errors: [
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head and policy commit of m, so their probes cannot run",
+				],
+			});
+			expect(refused.range).not.toHaveBeenCalled();
+			expect(refused.models).not.toHaveBeenCalled();
+			const using = runners();
+			await measure({ ...settings, MELIAN_EVAL_PROBE_TRUST: `${base},${head},${policy}` }, using);
+			expect(vi.mocked(using.range).mock.calls.map(([target]) => [target.base, target.policy])).toEqual([
+				[base, policy],
+			]);
+			expect(JSON.parse(readFileSync(out, "utf8")).misses).toEqual([
+				expect.objectContaining({ name: "m", baseCommit: base, policyCommit: policy, headCommit: head }),
+			]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {

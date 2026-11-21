@@ -51,7 +51,9 @@ const candidate: VerificationCandidate = {
 	designAtBase: { sections: "sections", files: "files" },
 	fence: { coReported: false, silent: ["nit"] },
 	reportedAt: { "0123456789abcdef lens.correctness@1@careful": "P1" },
-	dismissed: [{ id: "fedcba9876543210", failureScenario: "an old scenario", evidence: [location] }],
+	dismissed: [
+		{ id: "fedcba9876543210", record: "1".repeat(64), failureScenario: "an old scenario", evidence: [location] },
+	],
 	dismissals: { fedcba9876543210: "identity" },
 };
 
@@ -78,6 +80,17 @@ describe("verificationRequest", () => {
 			"candidates.0.state.speaker.message",
 		];
 		expect(keyCoverage(verificationRequest, sample, { vary, excluded })).toEqual([]);
+	});
+
+	// Another host's dismissal of the same root is another record, so a verifier shown it judged under another ruling.
+	it("keys each shown dismissal's record, so a request that differs only by one has another key", () => {
+		const shownAs = (record: string): VerificationInput => ({
+			...sample,
+			candidates: [{ ...candidate, dismissed: [{ ...candidate.dismissed![0]!, record }] }],
+		});
+		expect(verificationRequest(shownAs("1".repeat(64))).key).toBe(verificationRequest(sample).key);
+		expect(verificationRequest(shownAs("2".repeat(64))).key).not.toBe(verificationRequest(sample).key);
+		expect(candidateKey(shownAs("2".repeat(64)).candidates[0]!)).not.toBe(candidateKey(candidate));
 	});
 
 	it("attaches a review with a fresh nonce to the same task", () => {
@@ -147,13 +160,17 @@ describe("verificationRequest", () => {
 });
 
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
-// that rests on a probe was asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
-// by adding the fresh failover wording. Issue #493 changed the shared evidence wording on purpose, for a probe that
-// ended with no record of how and one that exited 125, so these values moved again.
+// that rests on a probe is asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
+// by adding the fresh failover wording. A candidate with a dismissed root now keys that root's dismissal record, so only
+// a candidate with none keeps the key main's code gives it. Issue #493 changed the shared evidence wording on purpose,
+// for a probe that ended with no record of how and one that exited 125, so these values moved again.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
+		const { dismissed: _dismissed, dismissals: _dismissals, ...undismissed } = candidate;
 		expect(verifierVersion).toBe("c458134278f8c3ab");
-		expect(verificationRequest(sample).key).toBe("6ef060aa45f5df9171eb9dcc6512678d5d5d033b94eeeb4f92609de75a3e1b82");
+		expect(verificationRequest({ ...sample, candidates: [undismissed] }).key).toBe(
+			"10da900fd92bda541f31b48cd6f7fedc5810f76874018ba2d7c7c8b7d750ac2d",
+		);
 	});
 });
 

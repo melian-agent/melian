@@ -187,7 +187,7 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 			rounds: [],
 			trigger: { hash: "f".repeat(64), proof: [] },
 		};
-		expect(() => records.dismissal(facts)).toThrow(
+		expect(() => records.made(facts, [])).toThrow(
 			expect.objectContaining({ constructor: DismissError, code: "unprovenRun", finding: finding.properties.id }),
 		);
 	});
@@ -218,7 +218,7 @@ describe("an exported record holds no text Enola or the mutation check wrote", (
 			trigger: { hash: "f".repeat(64), proof: [] },
 			request: enolaRun,
 		} as DismissalFacts;
-		expect(() => records.dismissal(facts)).toThrow(
+		expect(() => records.made(facts, [])).toThrow(
 			expect.objectContaining({ constructor: DismissError, code: "unprovenRun", finding: finding.properties.id }),
 		);
 	});

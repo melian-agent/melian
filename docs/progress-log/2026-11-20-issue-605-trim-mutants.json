@@ -1,0 +1,1145 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "e17e59ca5a4198bc61c1238f8df69c6b42e3197d",
+    "head": "b32f743783dfc91a7e29a32fd568623b75c198a1"
+  },
+  "claimsIn": [
+    "packages/core/src/sighting-budget.ts",
+    "packages/core/src/findings.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 3,
+      "endLine": 1943,
+      "endColumn": 77,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "6be5d8b52eef78972eba32c9e36010bb9c5c632641b46862441cd4efb17d7646",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 3,
+      "endLine": 1943,
+      "endColumn": 77,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "aa1c9aedecf125bc79b039b538e2f58439569217e7bbc3ff01f90fd2bafe1354",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "never returns a trimmed finding larger than the one it was given, in UTF-8 bytes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 3,
+      "endLine": 1943,
+      "endColumn": 77,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(explanation.what) <= Buffer.byteLength(this.message.text)",
+      "status": "generated",
+      "id": "cca421adc90abc4cabadbb01981c4af7f05288a64da295649190dcb247cde9ca",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "an abridged finding",
+            "keeps as What the shorter of its What and its headline, in UTF-8 bytes, and the headline on a tie"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 3,
+      "endLine": 1943,
+      "endColumn": 77,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(explanation.what) >= Buffer.byteLength(this.message.text)",
+      "status": "generated",
+      "id": "0b27ae62ca69d5bc14fd155ad00d4c79dc0cf0293e1db4e13d158ca19d62b84e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1948,
+      "column": 15,
+      "endLine": 1948,
+      "endColumn": 91,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "5918d64e86e54e211d171ffed8f4c4d495110ab9b9d11924a7daa36c2160eafb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "leaves findings that fit it exactly as they are"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1948,
+      "column": 50,
+      "endLine": 1948,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "231ed204ca0a661ee5818a0aae08d79c490b96afbf2b6f10701c6427eb7d83fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "leaves findings that fit it exactly as they are"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 1,
+      "endLine": 16,
+      "endColumn": 121,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "501dc11d2e5304142fe5a3261e624bbe7e4cd8d56c8b149461e7c53b83d69919"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 23,
+      "endLine": 19,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "60a5107bd1faeac07afb1b013816c409b158aa8479a7deb3fffec2b92eb67398",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "keeps detail while the full findings so far and every later one abridged fit, and counts the rest's files"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 23,
+      "endLine": 19,
+      "endColumn": 34,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c30d3d1a5b9dc2225e004ae27d8a2360f67c4fc9d36f5d0143984a83fc133afc",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 23,
+      "endLine": 19,
+      "endColumn": 34,
+      "mutatorName": "EqualityOperator",
+      "replacement": "files !== 1",
+      "status": "generated",
+      "id": "e9dadc1a933146ac199c83be1a0a7eb7f19084e1e85777f30b1e9c2469fa9bec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 37,
+      "endLine": 19,
+      "endColumn": 58,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "b5d4d22a5287967028981526a0448ec7a3fc00336a9c6e32cf2bafe0ecb1cb82",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 38,
+      "endLine": 19,
+      "endColumn": 44,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "86701a055d10cc7fae3fc1893aa34c0d6fd248f3a331fb2fc801f67405301ef1"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 46,
+      "endLine": 19,
+      "endColumn": 57,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "216dae32212f343458d58f55348e28647d3be1208d367f75111662f642d769eb"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 61,
+      "endLine": 19,
+      "endColumn": 85,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "9e3c68ec6bdf00e48c8f183353651dc78902d8c94e6a4d5a9d76a9d6c550d956",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "keeps detail while the full findings so far and every later one abridged fit, and counts the rest's files"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 62,
+      "endLine": 19,
+      "endColumn": 69,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7e646ba9fa825c5cfc0d4f3313300e178028c00dd88952553511590ad5459e0a"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 19,
+      "column": 71,
+      "endLine": 19,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ea296f9d7a61ae4fa2998056eea79d2f620e0ed86d9e61c036970aa557377c6b"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 20,
+      "column": 8,
+      "endLine": 20,
+      "endColumn": 128,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7fbc6386b354735d6d54441db67486d5b9233c6264f08f0c0f540de6f16f4d4c"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 59,
+      "column": 43,
+      "endLine": 59,
+      "endColumn": 79,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4a8c1289e3df49fa13dd16cc2de5b6d3e542a8e32d90e10e8baab854ae545c75",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "keeps whole a finding whose Why here is as long as the longest note, and abridges one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 30,
+      "endLine": 60,
+      "endColumn": 81,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "aa0ec96525db21f371bf6d7093a19ce911f03372ef36a7e794a1b2ff4a770eac",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 44,
+      "endLine": 60,
+      "endColumn": 81,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "923cafc4ed75c1f9bef91a223595507a25659e89010fc8a0d5f773e7538e6d29",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "never returns a trimmed finding larger than the one it was given, in UTF-8 bytes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 44,
+      "endLine": 60,
+      "endColumn": 81,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "2238b38d56b2b1a2da2c861d1df92110fd1c3878d4aab5ef6412d690d1c27218",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 44,
+      "endLine": 60,
+      "endColumn": 81,
+      "mutatorName": "EqualityOperator",
+      "replacement": "bare[index]! + longest <= full[index]!",
+      "status": "generated",
+      "id": "3d90d071a9eb5fb596412a132e37f4724b1388fa675355fac40aa1448adf4445",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "keeps whole a finding whose Why here is as long as the longest note, and abridges one a byte longer"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 44,
+      "endLine": 60,
+      "endColumn": 81,
+      "mutatorName": "EqualityOperator",
+      "replacement": "bare[index]! + longest >= full[index]!",
+      "status": "generated",
+      "id": "2a23fe519ff0a173e9363870e7bac16b30645661901c673c1f1a6008b2751374",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 44,
+      "endLine": 60,
+      "endColumn": 66,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "bare[index]! - longest",
+      "status": "generated",
+      "id": "da14182804df14070b88da43aa9d4b75541e882fd07d13155cc2c94f457d07c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "never returns a trimmed finding larger than the one it was given, in UTF-8 bytes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 30,
+      "endLine": 64,
+      "endColumn": 50,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "new Array()",
+      "status": "generated",
+      "id": "e0a8b44610f6ec05af0a30a824ea379496378a01d458f144a13c1586389fc8e2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "leaves findings that fit it exactly as they are"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 40,
+      "endLine": 64,
+      "endColumn": 49,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count - 1",
+      "status": "generated",
+      "id": "e24d9fb749ce8851ae084e9193560ff19d0666f46055ddd4ca3665760afe89b5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "leaves findings that fit it exactly as they are"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 7,
+      "endLine": 68,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "598263b5f13ca7c3dda0bc9049a80b0ef656c1cf64de1cc1676d00959c1c654d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "never returns a trimmed finding larger than the one it was given, in UTF-8 bytes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 7,
+      "endLine": 68,
+      "endColumn": 21,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "d2f280e13c4826ef8476f6b736eac722be048bd6e5c83828c8cd72bee1b45d94",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 23,
+      "endLine": 68,
+      "endColumn": 65,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "dded383f6ed2b087f86725f0c67d632dd9d5f61353750d7550f210069cfaf15d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 70,
+      "column": 22,
+      "endLine": 70,
+      "endColumn": 70,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "shrinking[index + 1]! - (shrinks[index] ? 1 : 0)",
+      "status": "generated",
+      "id": "1c9c59e023dd1f12fdc9d32b5c493022531943d546bc4f0cd6b0c9e30a20c9fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 70,
+      "column": 32,
+      "endLine": 70,
+      "endColumn": 41,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "86fdb3516ed1846f60ff457a2aa51d68475632dd8dad396726d1c9bf1707d274",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 71,
+      "column": 21,
+      "endLine": 71,
+      "endColumn": 90,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "abridged[index + 1]! - (shrinks[index] ? bare[index]! : full[index]!)",
+      "status": "generated",
+      "id": "856e8234563e8cfcdfd3f8904e8c8a75cd18202860521cc33e9310a45e492f7f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 71,
+      "column": 30,
+      "endLine": 71,
+      "endColumn": 39,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "3256bcae7394ce6897bddd611a3d857ea9dd5dd0db7d3121b593129bba1d6ac6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 3,
+      "endLine": 77,
+      "endColumn": 104,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! - shrinking[cut]! * note(files[cut]!).length",
+      "status": "generated",
+      "id": "bb0b59da4ea561a0f06db7aecb29ccb5697ee2eaceec2b463b9a91b49bbd8eef",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 3,
+      "endLine": 77,
+      "endColumn": 59,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) + kept[cut]! - abridged[cut]!",
+      "status": "generated",
+      "id": "2853e2a4c3e6d6fe77da0f81420f6df6e02130adc98c00ab9558855f743f2e10",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 3,
+      "endLine": 77,
+      "endColumn": 42,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) - kept[cut]!",
+      "status": "generated",
+      "id": "c25130a2d75ed4502d9eda60557aa61541b3c143fa9da1d5bdc2aab3b86ac695",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 3,
+      "endLine": 77,
+      "endColumn": 29,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 - Math.max(count - 1, 0)",
+      "status": "generated",
+      "id": "398c92c23b6c105593f2dc8b3b17f756773b5642d1592a535bb0a10085736bd2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 7,
+      "endLine": 77,
+      "endColumn": 29,
+      "mutatorName": "MethodExpression",
+      "replacement": "Math.min(count - 1, 0)",
+      "status": "generated",
+      "id": "7c14f7808b020b217485d21561e11ffd88a02ea84db5189ec7566f3f0af9710d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 16,
+      "endLine": 77,
+      "endColumn": 25,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count + 1",
+      "status": "generated",
+      "id": "f38016656cc073691eeb04ec28bd7206e6aa02631b55c7e4310c2926cf8df705",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "leaves findings that fit it exactly as they are"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 77,
+      "column": 62,
+      "endLine": 77,
+      "endColumn": 104,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "shrinking[cut]! / note(files[cut]!).length",
+      "status": "generated",
+      "id": "ae4c89a270a34f7201dc6e3d48b52f513cf1f69d2df1554783e5c3372798abd2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 6,
+      "endLine": 80,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "da43859cb80c88bbd3245e440ce10d6ea961002583ec92b5d14799dd1d9ffa4e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 6,
+      "endLine": 80,
+      "endColumn": 27,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a11fd4bb05d38d1f8f5eb8004f2c4bf143d5a2899944b90cfadd1357ab2965d5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 6,
+      "endLine": 80,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(0) >= this.bytes",
+      "status": "generated",
+      "id": "a8c25c818cd00299082ed420a2277866cbfabe54004e8017d11bf479e2182a2f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 6,
+      "endLine": 80,
+      "endColumn": 27,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(0) <= this.bytes",
+      "status": "generated",
+      "id": "9b082325b92703dcb215d79926c1b849fa1186f0b1a042482d123efd5a832c59",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 29,
+      "endLine": 80,
+      "endColumn": 79,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "f490aa3b7d0a1fc715a9c9b8c84d37b6f7d08e6fdcf7c4d324078b3e9984063c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 80,
+      "column": 51,
+      "endLine": 80,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "dfd678a6026a7f1c3e5a094baba032bc2f7167a18a4f91b4b2b62b7f8ce80377"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 84,
+      "column": 3,
+      "endLine": 86,
+      "endColumn": 47,
+      "mutatorName": "MethodExpression",
+      "replacement": "ordered.slice(cut)",
+      "status": "generated",
+      "id": "929345a8e3eb7203aab73af8195474ef70a4e351a2b49081e616ec5092cae93f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "never returns a trimmed finding larger than the one it was given, in UTF-8 bytes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 84,
+      "column": 3,
+      "endLine": 85,
+      "endColumn": 15,
+      "mutatorName": "MethodExpression",
+      "replacement": "ordered",
+      "status": "generated",
+      "id": "ebb528ad5dfce7035443dd5e1144ee5eb0a09f33d1ea4465d859d68459dbcc8d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 86,
+      "column": 12,
+      "endLine": 86,
+      "endColumn": 46,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "06a253233f2287c504073e8941f9e6ef6254e1190390e20dbe6749cab590a42e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 86,
+      "column": 34,
+      "endLine": 86,
+      "endColumn": 45,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "cut - index",
+      "status": "generated",
+      "id": "e737a22346efeb897d46b047d10e7110e046db01dfde732313bb0c0ae64e6bc3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges every finding at its floor, and refuses them a byte under it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 87,
+      "column": 9,
+      "endLine": 87,
+      "endColumn": 68,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "4b1449df05af2489941607acd15969eb458a7e4f952931ea216d9cf2840a8f6f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 87,
+      "column": 22,
+      "endLine": 87,
+      "endColumn": 68,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "b6a39ceb4c24e07fc1c906828ee02b316195f062f654a76c2194299062db1faf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/sighting-budget.test.ts",
+          "path": [
+            "a record's sighting budget",
+            "abridges the last finding in ID order one byte past it, naming one more file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 41,
+      "column": 32,
+      "endLine": 41,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "65048f400db45eba186e793591985fcdb9b2f298137dd7dd03690819f609d3aa"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 45,
+      "column": 34,
+      "endLine": 45,
+      "endColumn": 100,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 105,
+      "column": 41,
+      "endLine": 105,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ee54953b1774b0fe418df0e6d778f38f88989faa554dd1a7b750ee40535e18e4"
+    }
+  ],
+  "total": 55,
+  "omitted": 0,
+  "unmutated": []
+}

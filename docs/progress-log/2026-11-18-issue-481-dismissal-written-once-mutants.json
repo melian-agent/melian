@@ -1,0 +1,3688 @@
+{
+ "melianMutants": 2,
+ "range": {
+  "base": "36d41caa3118f10254821890b0c56e4953f88be3",
+  "head": "51d07e766270b6fe46900dd0ed56a936d3dda5c6"
+ },
+ "claimsIn": [
+  "packages/pipeline/src/review-records.ts",
+  "packages/pipeline/src/dismiss.ts",
+  "packages/pipeline/src/review.ts",
+  "packages/cli/src/commands.ts"
+ ],
+ "adapters": [
+  {
+   "name": "typescript",
+   "version": "1",
+   "toolVersion": "10.0.0",
+   "source": "checkout"
+  }
+ ],
+ "installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+ "mutants": [
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 685,
+   "column": 84,
+   "endLine": 690,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "7b1d15b95d0fbf9dfec4f0736019ec29bf546bbae03736428fc2e72cde343b97",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 687,
+   "column": 6,
+   "endLine": 687,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "ca0702219255715f42677e3e247fc27dd9ea1d0c429967018e14abf3400b2f1b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/compare.test.ts",
+     "path": [
+      "melian compare \"#N\"",
+      "decides a pull request's round from its records under the policy its base commits"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 687,
+   "column": 6,
+   "endLine": 687,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "41865b2cbc8429395d1814e4225a167a7d27ed03ad68d90620fa99b6382bf1a3",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 687,
+   "column": 6,
+   "endLine": 687,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "target.kind === \"pullRequest\"",
+   "status": "generated",
+   "id": "78292a47b21d225bcecbe8d78792f2cd56832d55d15a276cae4944ca6ccaf211",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 687,
+   "column": 22,
+   "endLine": 687,
+   "endColumn": 35,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "cb5bd0e0d9d572f488819eee3969fd9d7726b6db3bb31c8525006f159eee2b92",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/compare.test.ts",
+     "path": [
+      "melian compare \"#N\"",
+      "decides a pull request's round from its records under the policy its base commits"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 688,
+   "column": 54,
+   "endLine": 688,
+   "endColumn": 104,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "e703b9680b34ff85e006654c9d41e61025c028e4ec858919b190dfe3410c067c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/compare.test.ts",
+     "path": [
+      "melian compare \"#N\"",
+      "decides a pull request's round from its records under the policy its base commits"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 688,
+   "column": 55,
+   "endLine": 688,
+   "endColumn": 66,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "03ca4ba6e6a9259a3d1df7773721703d6cc38aaff9b27a7f51907ff368ed32a2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/compare.test.ts",
+     "path": [
+      "melian compare \"#N\"",
+      "decides a pull request's round from its records under the policy its base commits"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 689,
+   "column": 43,
+   "endLine": 689,
+   "endColumn": 71,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "89964e355fae8d34f37a2b08706d527237f6e4a723375f9bb4f8030a8cb3be4d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/compare.test.ts",
+     "path": [
+      "melian compare \"#N\"",
+      "decides a pull request's round from its records under the policy its base commits"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 689,
+   "column": 51,
+   "endLine": 689,
+   "endColumn": 61,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f066477ea7a2e2b836b70cd2e27c009d8d1b4a80d6cc2c806e95c60185d9a5ff",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "a source of kind \"\" reads as a revision of the same commit everywhere it is opened, and trustsWriters then reads revision.base, which for a pull request is the commit its base ref named at the review; they differ only after the base ref is fetched again since"
+   },
+   "survivorClasses": [
+    "seeded-default"
+   ]
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 5,
+   "endLine": 937,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "f5cf1d8ed486897a7706fcc9dcfe131b42a6bd4e5ec13a17c7ec3c0ed5402bd4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 5,
+   "endLine": 937,
+   "endColumn": 108,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "58ed451375bfe7443a4a8800b73793d97a7b3ddfa253fd73ad022f2a9e5b7461",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "refuses --records, and dismisses nothing, when the base sets trust.writers: false"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 5,
+   "endLine": 937,
+   "endColumn": 108,
+   "mutatorName": "LogicalOperator",
+   "replacement": "options.records !== undefined || !(await (await ReviewSource.ofStored(stored, io.env)).trustsWriters())",
+   "status": "generated",
+   "id": "dcb13f376038dfad21641a10ebb0a60e8c78f25173405153ab23b16be8893def",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 5,
+   "endLine": 937,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "70bf05386e6fae7bf5774e439451becdcda1e1a894b08ddd5c54204049c1a55e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 5,
+   "endLine": 937,
+   "endColumn": 34,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.records === undefined",
+   "status": "generated",
+   "id": "0b2831cae48c41cf1c51535aebba7ba7ea7e4cd138d89ab4992e6997893ff069",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "refuses --records, and dismisses nothing, when the base sets trust.writers: false"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 937,
+   "column": 38,
+   "endLine": 937,
+   "endColumn": 108,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "await (await ReviewSource.ofStored(stored, io.env)).trustsWriters()",
+   "status": "generated",
+   "id": "b65dc5a36105824728bd214707c1e40ab74d66ba551cf935ecb55cb4c0046a71",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 938,
+   "column": 2,
+   "endLine": 940,
+   "endColumn": 4,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "c77dd7a736fb7423dcd7c5e711a34c26c9b933759634f1337c3d352dd840ef55",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "refuses --records, and dismisses nothing, when the base sets trust.writers: false"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 939,
+   "column": 3,
+   "endLine": 939,
+   "endColumn": 109,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "c94b2bf518c854c5eddf3acdd06ee4a54e4c4f172ab823ef0d7ad745752e601b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "refuses --records, and dismisses nothing, when the base sets trust.writers: false"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 946,
+   "column": 6,
+   "endLine": 946,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "fd593bfe0f3db209342e36f1ebe83d49cf4d77918568a796f0a453791b30fda8",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 946,
+   "column": 6,
+   "endLine": 946,
+   "endColumn": 35,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "4f4c5787aa08f1fc5d7c852a5b20b06699426978fed1d3b26f118ec6ea92c227",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 946,
+   "column": 6,
+   "endLine": 946,
+   "endColumn": 35,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.records === undefined",
+   "status": "generated",
+   "id": "ad820249c2446c9253ccc5f602dc25d2c0bfc4dee58100e96d44a66ac1ba66ff",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 947,
+   "column": 59,
+   "endLine": 947,
+   "endColumn": 95,
+   "mutatorName": "MethodExpression",
+   "replacement": "options.records",
+   "status": "generated",
+   "id": "8a862211106f302bf124b11d99ad6a6a4ecd47b6d6ebd347462137c16ff0b949",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 947,
+   "column": 81,
+   "endLine": 947,
+   "endColumn": 87,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "85696d8f6c98aba6055b1a47a36a6646331ec27f2ca8f0bae74446d42bf18edf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 956,
+   "column": 7,
+   "endLine": 956,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c6e6ec80be663147a5a2ca943a82f65596e89671e1164ed988e824e76215df2c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 956,
+   "column": 7,
+   "endLine": 956,
+   "endColumn": 26,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "cc71aa17c68afbd7635035deb492a170980b84486ac9a72f4c263a3b91b30608",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 956,
+   "column": 7,
+   "endLine": 956,
+   "endColumn": 26,
+   "mutatorName": "EqualityOperator",
+   "replacement": "store !== undefined",
+   "status": "generated",
+   "id": "44ce38c7de7c766d46e312e55350587828d6351cd1ffe250d7bc0fc3fc0afec1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 956,
+   "column": 34,
+   "endLine": 956,
+   "endColumn": 81,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "793f2de97ab8f469651102aad7b354de92440234be6eb0eb7ce603e449f9a471",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 956,
+   "column": 45,
+   "endLine": 956,
+   "endColumn": 79,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "4709d6b7fd514fff11f5e2dab0dd5b56ae1a46c0192ee34e70e17a5094f516f0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 991,
+   "column": 6,
+   "endLine": 991,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "e64c792a8ef3e8efc41dd8a6c4367222bc6a74414ec6e591bc6f294159fab888",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 991,
+   "column": 6,
+   "endLine": 991,
+   "endColumn": 25,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b6eb90248ddcfa8b327228c420318e514b4e29578ae0176c0a1a166f4d84c906",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 991,
+   "column": 6,
+   "endLine": 991,
+   "endColumn": 25,
+   "mutatorName": "EqualityOperator",
+   "replacement": "store !== undefined",
+   "status": "generated",
+   "id": "58aa2e980c94dca2f6982b5541e77e0974e689e74f5080798fce04cddc49ba48",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 992,
+   "column": 3,
+   "endLine": 994,
+   "endColumn": 5,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "b3bbf4a52816eace2940bf53d9de503a677342682100947ceb335828ff34e2ef",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 993,
+   "column": 4,
+   "endLine": 993,
+   "endColumn": 150,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "c5aeed7d698d5ea2f75bfc4d2f03f41b34239a6f9439a7a7c73d4d50be677dd7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 996,
+   "column": 3,
+   "endLine": 996,
+   "endColumn": 94,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "56a8c7f5c2198225cfd5eec1dbf4c8b2e9ed381644c031f604f299bcd5dec814",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/review-unshared.test.ts",
+     "path": [
+      "names each dismissal melian dismiss --records left unshared"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 996,
+   "column": 13,
+   "endLine": 996,
+   "endColumn": 92,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "53712e78b1836afbe95af3928d0da14d886afd33c49123fc41d1ae1ce550c0dd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/review-unshared.test.ts",
+     "path": [
+      "names each dismissal melian dismiss --records left unshared"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/commands.ts",
+   "line": 1003,
+   "column": 8,
+   "endLine": 1003,
+   "endColumn": 20,
+   "mutatorName": "OptionalChaining",
+   "replacement": "store.close",
+   "status": "generated",
+   "id": "0c53f25c3bfc4478fcc373cacfb05222a248d3b2836fd6f87b41321c50830d3c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "945bb5aff0fb76803238d6c71f2f1df6e502d8a994d25beb9f58023c2f510c89",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "ecb073927c5e78a88074bccf6a85ff298ef477185ec6e95631e18936744977be",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 100,
+   "mutatorName": "LogicalOperator",
+   "replacement": "name !== \"review\" && name !== \"findings\" && name !== \"dismiss\" || values.records !== undefined",
+   "status": "generated",
+   "id": "5789ae9e8ba0535166973a1951d70385c301ce67bb35fb08fdd3adc5854d3cda",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 68,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "64107aaa18fd7f23428dec9b6bfca93c8f0c0c2516234ef887efb4eb3c2afec4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 68,
+   "mutatorName": "LogicalOperator",
+   "replacement": "name !== \"review\" && name !== \"findings\" || name !== \"dismiss\"",
+   "status": "generated",
+   "id": "9c7bcf63d5c15454f06d26bc89840cc0dff3bf72d2172340a4e6b08e1c48c66e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "eed038b9277b4c9c742a70766241f9bb479476837fe2b76462a14da158b665f0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 46,
+   "mutatorName": "LogicalOperator",
+   "replacement": "name !== \"review\" || name !== \"findings\"",
+   "status": "generated",
+   "id": "78350c0e1c541fbcf4c6e4a2f3346abd73499a4acf80253069d0d6938b4ede10",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 23,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "76b045bdafab7e8a0e1e71d32e1814ec14c9ddeba1f18e22daa1c71aa186313d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 6,
+   "endLine": 234,
+   "endColumn": 23,
+   "mutatorName": "EqualityOperator",
+   "replacement": "name === \"review\"",
+   "status": "generated",
+   "id": "c77ddd78964227fbed5c7f740c0baeb4a6f1044ec85f5b30f1bd8ca7cc41e7ea",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 15,
+   "endLine": 234,
+   "endColumn": 23,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "5b16408e6aec7747196c76c99f515f12a00f5042d257c7ee138312504b52750b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 27,
+   "endLine": 234,
+   "endColumn": 46,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "42b7e48a4ca73905b25f43489987e649f0244626cf444463667cb9058afaa649",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 27,
+   "endLine": 234,
+   "endColumn": 46,
+   "mutatorName": "EqualityOperator",
+   "replacement": "name === \"findings\"",
+   "status": "generated",
+   "id": "4f8febe02ba1d5c05cc2852bec7e184b1c8abde90c5a046767d50f98727f5d62",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 36,
+   "endLine": 234,
+   "endColumn": 46,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "9fecfa09adc86757991f0a8e900a7b946def6abbe1f7dd1830414d06cc601a10",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 50,
+   "endLine": 234,
+   "endColumn": 68,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "870f1d44f97263fe5f77d12c75d73ed6a7dd57ce968b77ffd242ad86f3aa5861",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 50,
+   "endLine": 234,
+   "endColumn": 68,
+   "mutatorName": "EqualityOperator",
+   "replacement": "name === \"dismiss\"",
+   "status": "generated",
+   "id": "1d5854c916cf36f1b46ee76c10524ee9b5ff2daa925ac8a31d0c793da1b13d1e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 59,
+   "endLine": 234,
+   "endColumn": 68,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "e70cd47a13f9b6144aa5427ba00f2fc3c3d324b5bbd33b033241c0cc2387c087",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 72,
+   "endLine": 234,
+   "endColumn": 100,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "464a296ee01db99c9cfc2acddb4ceff8669caa5e3be227dde5c513327f4fcf7d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "reports missing stage telemetry and rejects invalid telemetry arguments"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 234,
+   "column": 72,
+   "endLine": 234,
+   "endColumn": 100,
+   "mutatorName": "EqualityOperator",
+   "replacement": "values.records === undefined",
+   "status": "generated",
+   "id": "9be7e5d5c87c0142efe1599d011ced8702714324861e333bc3f680ae515e744b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 235,
+   "column": 3,
+   "endLine": 235,
+   "endColumn": 88,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "1b72c50c31415e6590e7c9684c2e17ef57fa9fd452640bdaa0e689d938c486bf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 235,
+   "column": 24,
+   "endLine": 235,
+   "endColumn": 86,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "730b66edd2d30b73c39fbd5b20c9d91d0e5e7fd53fddad375608d7b7a48b16b5",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian review and findings",
+      "refuses --records outside review, and a store that is not a directory"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 337,
+   "column": 76,
+   "endLine": 340,
+   "endColumn": 5,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "46961b29907b155685e733f6c0f02887a7ebe53d72609569f9da8eca4dec3a9b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 339,
+   "column": 9,
+   "endLine": 339,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "23d8f9e5071d0440132ac7ebfdb317edbfc5a4d826dd486b1dda74e95fc462b1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 339,
+   "column": 9,
+   "endLine": 339,
+   "endColumn": 37,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "6f87a4d03b74e899db813c3d50449e2c8f3376bf44f2e8774449ce1b664f0664",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "passing records: undefined reads the same as passing none, since dismiss tests options.records !== undefined"
+   },
+   "survivorClasses": [
+    "nullish-logical"
+   ]
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 339,
+   "column": 9,
+   "endLine": 339,
+   "endColumn": 37,
+   "mutatorName": "EqualityOperator",
+   "replacement": "values.records !== undefined",
+   "status": "generated",
+   "id": "1b9e0fcc2fc8aabfd5e412a9cedc12551b9c84cd4065f728016b4288238a815b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/cli/src/main.ts",
+   "line": 339,
+   "column": 45,
+   "endLine": 339,
+   "endColumn": 72,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "85f55c018197bb0086518fffee0502cfbfc665ac164f79ee96608ace15083caf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/cli/test/cli.test.ts",
+     "path": [
+      "melian dismiss",
+      "writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 205,
+   "column": 10,
+   "endLine": 205,
+   "endColumn": 93,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "55958a2228b6987de0a6234ba56421a1522e05a41c493d5cc620977a57546f96",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/dismiss.test.ts",
+     "path": [
+      "recording a dismissal",
+      "waits for its own adjudication when the same dismissal is recorded again, adding no history"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 210,
+   "column": 9,
+   "endLine": 210,
+   "endColumn": 50,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a5c95769a852717f923c76ff026fcff831009417d41d3bdeff6be05a6037917e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 212,
+   "column": 39,
+   "endLine": 212,
+   "endColumn": 41,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "90ebb2713548d69d5acf0abaa92d910d481e55ad0c83bf308d27534b15cf4cfa",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 213,
+   "column": 5,
+   "endLine": 213,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "b1b84fcd0712dc3a4252751a2f651a68a027fb6c3af4ac59dfd592bf40b7cc42",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 213,
+   "column": 5,
+   "endLine": 213,
+   "endColumn": 34,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7dac7175236e2328b0223950d869069c7fac260f33fc8d642d2562d01b8c371f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 213,
+   "column": 5,
+   "endLine": 213,
+   "endColumn": 34,
+   "mutatorName": "EqualityOperator",
+   "replacement": "options.records === undefined",
+   "status": "generated",
+   "id": "4647f3f10d8369c5ce00c99f24eab49036101ea876cac00d8f8a5b57f348d56f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 213,
+   "column": 36,
+   "endLine": 229,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "f5f45fd835582821bc5dcf13a1c0b2a83847a7a5e8524ae9574cb312cf871d9b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 218,
+   "column": 15,
+   "endLine": 218,
+   "endColumn": 17,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "f3e6f6959efeaec2e8d863e24e9d0e7fb15fefbef6dcdd488219fc0835b3a820",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 219,
+   "column": 34,
+   "endLine": 227,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "6289d756eac547edc61453f931135060ab854a6688730a31933f9fba6f0a4f61",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 220,
+   "column": 7,
+   "endLine": 223,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "879f2d6ee27626a211b34e8a9ce33ea4fde88f2998b6182f0a15ce9fa01279ba",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 222,
+   "column": 8,
+   "endLine": 222,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "81352760ef0b35b1e44211f1545ecf39a819ba396a21c068470d022acdca3391",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes no record when a dismissal stored with no sighting is made again with the store"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 222,
+   "column": 8,
+   "endLine": 222,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "d973f0b4ac601e771898c505998b3463784384b458aab5d02f842ae07e40fc41",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 222,
+   "column": 8,
+   "endLine": 222,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record === undefined",
+   "status": "generated",
+   "id": "c3be89eed5c10bbf42c1993a7958bb2d623087c826059f38433ffb976fcf5e31",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 222,
+   "column": 30,
+   "endLine": 222,
+   "endColumn": 57,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "ab1779af5eff0d92a3053a89679dccf3cdded5eab8c74665fafb88ac5c70d714",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 223,
+   "column": 19,
+   "endLine": 226,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "1cf110bc9da7b4bf27ff0051a68ade1eb1b4143e3db9e758bd0a3aada305c724",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 8,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "203463617c2378677cbf53bd82126621cf45358e2d85ef66ed4b4a429d42e555",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 8,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "c66a7c60b7b7493ea3a6d60bdf2679929b7e286b1683554842bfa7d2b945102c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "rejects with another error that building a record throws, and writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 8,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "LogicalOperator",
+   "replacement": "!(error instanceof DismissError) && error.code !== \"unprovenRun\"",
+   "status": "generated",
+   "id": "c26172209c380b27f1a6ceb021a0c4d607d6e8223700da0219f3ee38fcec3da1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "rejects with a dismissal error of another code that building a record throws, and writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 8,
+   "endLine": 224,
+   "endColumn": 40,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "error instanceof DismissError",
+   "status": "generated",
+   "id": "1c80c4d8be430a8e69c0167641ce8fd277365014fbb92144fa074a153e9ee03a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 44,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "a00bdfa04842924aa06c87756210d62c86998d5832cccae9613419d74680646d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "rejects with a dismissal error of another code that building a record throws, and writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 44,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "EqualityOperator",
+   "replacement": "error.code === \"unprovenRun\"",
+   "status": "generated",
+   "id": "98773684d36bde17bba044ab66f69ac9d11628f3ea555589173a0a24ee3e2bdd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 224,
+   "column": 59,
+   "endLine": 224,
+   "endColumn": 72,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f435138d5475816c1b46b4148cd734b58688de52002c03b68029aecba747d27a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 225,
+   "column": 18,
+   "endLine": 225,
+   "endColumn": 55,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "c5869a65224b836789c919f4380797dc1e65b3511efff69fa6ffde248ad76cb2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+     "path": [
+      "a dismissed static finding, made with the store",
+      "is recorded, written to no store, and named by its code"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 266,
+   "column": 8,
+   "endLine": 266,
+   "endColumn": 99,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a0775047dbbe9fe215aea49595a9b17fe427f9a8fc01bbf17c05c3645747062e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 266,
+   "column": 35,
+   "endLine": 266,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "0a0bce1a2c7bf2b7c4b24c125d6655e78bd048b14846549b3ee9ca57a72eeb7f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/dismiss.test.ts",
+     "path": [
+      "recording a dismissal",
+      "replaces the reason of a finding dismissed again, keeping the first in its history"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 266,
+   "column": 35,
+   "endLine": 266,
+   "endColumn": 57,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "11c7c68a22acf09c082c95a7b9e2985c46a8be7528a26bef971157a900097940",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "an own replaced property holding undefined reads the same as a missing one to its one caller, which tests replaced === undefined"
+   },
+   "survivorClasses": [
+    "dropped-value"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 266,
+   "column": 35,
+   "endLine": 266,
+   "endColumn": 57,
+   "mutatorName": "EqualityOperator",
+   "replacement": "replaced !== undefined",
+   "status": "generated",
+   "id": "43f5dbcbec688048ddc3ea8f09d0b69c52723daa52e5ca7a545fb702c5deba62",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/dismiss.test.ts",
+     "path": [
+      "recording a dismissal",
+      "replaces the reason of a finding dismissed again, keeping the first in its history"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/dismiss.ts",
+   "line": 266,
+   "column": 65,
+   "endLine": 266,
+   "endColumn": 77,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "001e5092ff0106b408d94aeaf35fb2d7e9718b742b018a6ef1f4a196526886b2",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/dismiss.test.ts",
+     "path": [
+      "recording a dismissal",
+      "replaces the reason of a finding dismissed again, keeping the first in its history"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 359,
+   "column": 9,
+   "endLine": 359,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "de4c2b97657885e35f5aa784ad6901a677a904cce9022ef01c494de394cb3516",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 359,
+   "column": 9,
+   "endLine": 359,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b06527fef074f3d87946c87bb37a621422ec5680e911e6d5727b53a12d6f01e6",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 359,
+   "column": 9,
+   "endLine": 359,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "facts !== undefined",
+   "status": "generated",
+   "id": "be242385b318198bfb2382a39901bcd78f96e7b2ff0e81c911a2c73bfe84c155",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 363,
+   "column": 104,
+   "endLine": 366,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "ee026497dc3c9ea0b433cbc36b7f015b68b226dde70b2225de7c1a4e61c598b4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 365,
+   "column": 9,
+   "endLine": 365,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "02288e3f7ce85c2c142fa2db6e5dac16c132b868cc51242952792ede8075a53b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 365,
+   "column": 9,
+   "endLine": 365,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f7bae9bd388a72145e108a524afa69dca1e5fc572d15d4a097d60fa65b64fd1e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes no record when a dismissal stored with no sighting is made again with the store"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 365,
+   "column": 9,
+   "endLine": 365,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "facts !== undefined",
+   "status": "generated",
+   "id": "67fe24dce46848982212ddd61d47accd07fb54c601e3f1da6099995555f8807e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 381,
+   "column": 13,
+   "endLine": 381,
+   "endColumn": 101,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "d9170c8a38c7cf90884fdd41da50a36f4865784c7c362efccc12004ba4401817",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 381,
+   "column": 49,
+   "endLine": 381,
+   "endColumn": 99,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "4fccc49a0e3108e8a1d92f5729a8233ca0b3caa8fc8a0077164c1385c746b488",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 381,
+   "column": 92,
+   "endLine": 381,
+   "endColumn": 97,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "79cd359a30199250cc6e20ba71c894ccb0ea9116eaeb97565e7bd6d1adbf2ae5",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 383,
+   "column": 11,
+   "endLine": 383,
+   "endColumn": 13,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "83b34ff6379ea29f377bdff39001d5a4a9bb20b60eb4e0a314424b4c6c6bd2a9",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 396,
+   "column": 9,
+   "endLine": 396,
+   "endColumn": 87,
+   "mutatorName": "LogicalOperator",
+   "replacement": "this.#heldCopy(envelope, held) && SharedRecord.parse(envelope, reviewPayloads)",
+   "status": "generated",
+   "id": "e0a35515ff81f3eb4f548f18052385ba2d5308854ea468a00d244da1a79daa73",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 403,
+   "column": 79,
+   "endLine": 416,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "5f4750a914c479acc84bfa1c44b14b6c7f4a7c9596466993dbff1ff29e7ed68b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 406,
+   "column": 6,
+   "endLine": 406,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "4b9c979f04fe0f211ae606d022a4c8cdeaf2b0322efd494cb22d99b8c051f02d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 406,
+   "column": 6,
+   "endLine": 406,
+   "endColumn": 24,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "7c213582b988cbdc164f219df97f5bb87742f4ad3e2d6c0b4d4a22eb4952639d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "never supersedes itself, nor rewrites its own record a listing already holds"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 406,
+   "column": 6,
+   "endLine": 406,
+   "endColumn": 24,
+   "mutatorName": "EqualityOperator",
+   "replacement": "copy === undefined",
+   "status": "generated",
+   "id": "824257e1910150569db70fb1fc0acf96f69fd2598f1fc80752ff0e4ab17b7faf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 408,
+   "column": 43,
+   "endLine": 408,
+   "endColumn": 74,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "ab2e457bc34535e4d8d4dc98c8f4339c5498fb3cb8bfb841cba357e64ebb3901",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes no dismissal the listing already holds as superseded"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 408,
+   "column": 53,
+   "endLine": 408,
+   "endColumn": 74,
+   "mutatorName": "LogicalOperator",
+   "replacement": "each.supersedes && []",
+   "status": "generated",
+   "id": "47d4d5bb27a45e563ab435955dc66ede0eb08a2cc7bb8562aed7d6b05d46f42a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes no dismissal the listing already holds as superseded"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 408,
+   "column": 72,
+   "endLine": 408,
+   "endColumn": 74,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "d249ec31a1a0199ed9587baf6ded3a849bd1245f1816d0f83695e92221e155f9",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the seeded \"Stryker was here\" joins the set of superseded IDs, and no record ID is that string, so no standing dismissal is dropped"
+   },
+   "survivorClasses": [
+    "seeded-default"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 409,
+   "column": 45,
+   "endLine": 413,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "21c9428521a288a4c570592ab9eb2a5c28dc131dfbcb70f626678158f7fb3b1f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "651ac99ea7f5fba907f42675e0c9013fbb0e74e2f377c417798ee73483678633",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "b1c3969845c3e68c7328b238330c8ba37d66498190efc83193fde514842b27ba",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 99,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(each.kind !== \"dismissal\" || each.changeset !== this.changeset) && each.key !== facts.finding",
+   "status": "generated",
+   "id": "c6a986fa7df5f6acf1f8690e89d7a3ac1e08e6b3d1ba8a20bc71ecf98b247f12",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "787e478098f83f26e47c0715dfba8b05871e0238a6147bf2cda85a85979e488e",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 69,
+   "mutatorName": "LogicalOperator",
+   "replacement": "each.kind !== \"dismissal\" && each.changeset !== this.changeset",
+   "status": "generated",
+   "id": "fb31d8fe5f31483a8979c1fe8ff88a734f2ec410f69c759bbdee00f163e666c4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "30c4a8b170f7e74a1a82c9fe6783f02e689e533dddcb90ca7bda953b92db8556",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 7,
+   "endLine": 410,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.kind === \"dismissal\"",
+   "status": "generated",
+   "id": "aeb4dfe47759deb4a77318aa4eca8a255cc545f04150b1a63ff4d0f99452b394",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 21,
+   "endLine": 410,
+   "endColumn": 32,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "1fa21a73e8febc71350a02dc4902d6ac445d5a81023a9f020b1cbb1b997275e5",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 36,
+   "endLine": 410,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "89d4e0c4cade4fb292fc817723cb575b3e277bab7ebbcb20250c92e42616c261",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 36,
+   "endLine": 410,
+   "endColumn": 69,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.changeset === this.changeset",
+   "status": "generated",
+   "id": "df4d08f62660138e53b4cc97a7c3242fa47ef579e8222774f52753aa81bfd8d7",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 73,
+   "endLine": 410,
+   "endColumn": 99,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "dc8a9d6651afc887afd0554e9c0d51c37a6376ced150e1a01d59b1d83532b497",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 73,
+   "endLine": 410,
+   "endColumn": 99,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.key === facts.finding",
+   "status": "generated",
+   "id": "feec0e0b6d7af1eb18079700b363c20801e13a7fd973e3612a9e0b62a551f231",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 410,
+   "column": 108,
+   "endLine": 410,
+   "endColumn": 110,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "de80c037240b64f04d3de96e744273b888266ba2c6d1ee1ed4769799b99f13c8",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 10,
+   "endLine": 412,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "c00d40631a71b4454513e138886af55d156168d68293456f3ab83590494c4ddf",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 10,
+   "endLine": 412,
+   "endColumn": 40,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0b86189e235e02e03a269e6a2ee948dd7c619ab3940294f5613b1e28202464ea",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes no dismissal the listing already holds as superseded"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 10,
+   "endLine": 412,
+   "endColumn": 40,
+   "mutatorName": "LogicalOperator",
+   "replacement": "id === own && replaced.has(id)",
+   "status": "generated",
+   "id": "86f9ca1a7b099241dbbd6442f3c5d484c4c33932f4f231ad4f4424270440667f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes no dismissal the listing already holds as superseded"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 10,
+   "endLine": 412,
+   "endColumn": 20,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0ea68d905d5c923d286513ff13676aaf4efdc619bdfd11bf9a7628a6a0a7564a",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "made returns the held copy first, and a listing record whose own ID is own has no supersedes, so the held-copy search, which compares IDs without supersedes, already found it"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 10,
+   "endLine": 412,
+   "endColumn": 20,
+   "mutatorName": "EqualityOperator",
+   "replacement": "id !== own",
+   "status": "generated",
+   "id": "383540e0bf32a44abf496e8155066423adca34be8fae6fc2bb6a2ee9dc93eb3c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 43,
+   "endLine": 412,
+   "endColumn": 45,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[\"Stryker was here\"]",
+   "status": "generated",
+   "id": "b6e0885bb403716574853b509a61d0de4e9fd4a29a04c8e55e8f8208ccd4804f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes no dismissal the listing already holds as superseded"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 412,
+   "column": 48,
+   "endLine": 412,
+   "endColumn": 52,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "b20a485eb5416b8351a823866b7efc14222cd36e5cf374595e637837352f084a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 414,
+   "column": 6,
+   "endLine": 414,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "cb9661c5035eb417cbb2a9588a7eb4c2a9c2e6cba3c7ba1247ee093d411f0cd6",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 414,
+   "column": 6,
+   "endLine": 414,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "330a9792767798de6dc31378de964477fa5ea66a349e2eb39e7b3acff72bfe31",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 414,
+   "column": 6,
+   "endLine": 414,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "standing.length !== 0",
+   "status": "generated",
+   "id": "f837a34433ec4e113d9e3b4b80a3ac92e59435969adb910b5f27b06805f889be",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 415,
+   "column": 28,
+   "endLine": 415,
+   "endColumn": 86,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "4b4d7bf17f8ca63827a17ef760b0507ea0091965f57dbe1cd61b38a0bcdf3328",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 415,
+   "column": 55,
+   "endLine": 415,
+   "endColumn": 84,
+   "mutatorName": "MethodExpression",
+   "replacement": "[...new Set(standing)]",
+   "status": "generated",
+   "id": "60149284770b1930cf86d77f22ffa3a523d6fa7b5eaf8c2ecb79d92713559a8f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "names every standing dismissal of its finding the listing holds, and changes its key with them"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 415,
+   "column": 55,
+   "endLine": 415,
+   "endColumn": 77,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "status": "generated",
+   "id": "192658063be346d0bbf23e2227a44517f0478325f34df8f5e8b0765f8e5fa77a",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 419,
+   "column": 96,
+   "endLine": 427,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "f4cec7a4497c63f89e7b3786c62cf81d316d7056e2e93b67467411817ae1519b",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 421,
+   "column": 35,
+   "endLine": 425,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "a960a4c43b581c6e456d04a77f3dcc40e284a5701abdf9752ae451524620537c",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 98,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "690f3ad9e80e848516b6c96cf82ee43906760c503cf1fe0bc4acdccd0808732f",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 98,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0a9a4159dee5e0d238eef24d8f3b2042a6f11cd3eb5acaba145ad4fc9fb2feca",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 98,
+   "mutatorName": "LogicalOperator",
+   "replacement": "(each.kind !== \"dismissal\" || each.changeset !== this.changeset) && each.key !== envelope.key",
+   "status": "generated",
+   "id": "e902610af5f09abaad8521c8a5dc94a21295e69e681648e556ed9412c2d7299c",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f657c578dfba6ebe6d89fda0a9fc57b93fc2d1a8c12a7411ec9723250f3e86ac",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 69,
+   "mutatorName": "LogicalOperator",
+   "replacement": "each.kind !== \"dismissal\" && each.changeset !== this.changeset",
+   "status": "generated",
+   "id": "be3098de38e230f9c42c07c81fcde3fa25950db6cafbe8b3e564103d29780c4a",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "0e236b052c9dccd00ed8fd299328cbfe8eb5f3fbeb0d9a14ee2efc969df57d41",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 7,
+   "endLine": 422,
+   "endColumn": 32,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.kind === \"dismissal\"",
+   "status": "generated",
+   "id": "cdd4b9ca12c356243e7438d85daed2e76ede91a009d56232dcadc1eb5a93bd1d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 21,
+   "endLine": 422,
+   "endColumn": 32,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "f5c0c31e013122e02ea469fa8c69d3ce45319ba9d89032a6e95034e1c3d41d76",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 36,
+   "endLine": 422,
+   "endColumn": 69,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "d379b11c5ee5ab61128b15e05e4aa35ad0a2a2d2bc5d4f5635f8a2c299df93fa",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 36,
+   "endLine": 422,
+   "endColumn": 69,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.changeset === this.changeset",
+   "status": "generated",
+   "id": "59313d63dd1882ce42a447fbac65784a3720eedb82a8e05ab85c908bd69c6ee1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 73,
+   "endLine": 422,
+   "endColumn": 98,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "aa6b9e0ed00c556eb4898172d1b2d266a1a41bb0bd30371d7c4cefb01fb70dc1",
+   "claim": "equivalent",
+   "evidence": {
+    "reason": "the record ID is the SHA-256 of the whole canonical envelope, changeset, kind and key included, so a held record of another kind, changeset or key never has own's ID, and the ID comparison alone decides"
+   },
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 73,
+   "endLine": 422,
+   "endColumn": 98,
+   "mutatorName": "EqualityOperator",
+   "replacement": "each.key === envelope.key",
+   "status": "generated",
+   "id": "3d27ea53e6ed0ed61e8ca919655577265b5dbd85bcce515fd13e2c29cd761d90",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 422,
+   "column": 107,
+   "endLine": 422,
+   "endColumn": 112,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "status": "generated",
+   "id": "f5f19ad99b05d3bbef01845c12427b6565ed8f57644a89d6d8d531c6303ef0ab",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 424,
+   "column": 10,
+   "endLine": 424,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "feb44252a6f0fe9327fedcb1e93b790c1ed3b54be586c022278c336ae5252349",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 424,
+   "column": 10,
+   "endLine": 424,
+   "endColumn": 53,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "f97074637d42e03162094984a86987e7513b38d9d9051d18c9018040465572b1",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 424,
+   "column": 10,
+   "endLine": 424,
+   "endColumn": 53,
+   "mutatorName": "EqualityOperator",
+   "replacement": "SharedRecord.parseEnvelope(bare).id !== own",
+   "status": "generated",
+   "id": "519e3fcb2db7d0423f870276c92109cd16723d0a4010f8494ace0adcbcba7e8d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 426,
+   "column": 9,
+   "endLine": 426,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "34995a918ed6fc4673fd4052a0e58e3c40f365607e3024f9eae3578fe32a8dd4",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "exports the record a dismissal was made with, what it supersedes included"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 426,
+   "column": 9,
+   "endLine": 426,
+   "endColumn": 27,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "aee781a4d75ad2d8a2318a0cc7b0e37455b742dd2aaa1974a05807ffd81cf478",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 426,
+   "column": 9,
+   "endLine": 426,
+   "endColumn": 27,
+   "mutatorName": "EqualityOperator",
+   "replacement": "copy !== undefined",
+   "status": "generated",
+   "id": "9118d80bef9e5fc5c74c8234535a00e8339f06baa52325a55310c180af209f94",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 455,
+   "column": 9,
+   "endLine": 461,
+   "endColumn": 3,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "status": "generated",
+   "id": "575fb5a5d5060f3f9694c560c86eb6eae996c117c641ae5ab3d6c388adb4f5bd",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review-records.ts",
+   "line": 458,
+   "column": 9,
+   "endLine": 458,
+   "endColumn": 20,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "status": "ignored",
+   "ignoredBy": "config",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "id": "afe497c2643b7cc70ecf660927659658ba376600bd86c5cdd0042faf3a1058ca",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records.test.ts",
+     "path": [
+      "ReviewRecords",
+      "what a dismissal supersedes",
+      "leaves another host's later dismissal standing when a host that kept the earlier one exports it again"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3240,
+   "column": 34,
+   "endLine": 3240,
+   "endColumn": 79,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "status": "generated",
+   "id": "1ef087e06ccda08fec2aab7f433e3e577bbbc2af2f8356fa37dd20424d33701d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 8,
+   "endLine": 3244,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "7f003c8e8f61ce210c06a69abca10a29ca45641e3d85c8ac8adee29e0accfe86",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 8,
+   "endLine": 3244,
+   "endColumn": 54,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "status": "generated",
+   "id": "a99fa6f931573ed52fa7cbcecd6e7fe60db64499b04b364318f3b135d7d0b570",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 8,
+   "endLine": 3244,
+   "endColumn": 54,
+   "mutatorName": "LogicalOperator",
+   "replacement": "record !== undefined || !stored.has(record.id)",
+   "status": "generated",
+   "id": "6440f9965085b19d3883372645188236eded8b0a67e9cdd1332e73e3a6ec6a40",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 8,
+   "endLine": 3244,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "status": "generated",
+   "id": "36daed8ac0a7afdb86a18fe1cec0c1542dd9972ae7883362f2fae1a8e91efe51",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 8,
+   "endLine": 3244,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "record === undefined",
+   "status": "generated",
+   "id": "41ae7df47913fc5ff43786270696654a8b6a4cc1ab92e10ad3d858a2a0fca61d",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 32,
+   "endLine": 3244,
+   "endColumn": 54,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "stored.has(record.id)",
+   "status": "generated",
+   "id": "e4d5b7a75fbeb5608688076b256045c22f3a66d40321f67f7e682baf743936d0",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/pipeline/src/review.ts",
+   "line": 3244,
+   "column": 56,
+   "endLine": 3244,
+   "endColumn": 80,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "status": "generated",
+   "id": "09e3092fa6d17cb6c3466b929f71d7d90f3f51194753adf7d37c3693549b0a05",
+   "claim": "killed",
+   "evidence": {
+    "test": {
+     "file": "packages/pipeline/test/review-records-export.test.ts",
+     "path": [
+      "a review that names a record store after a dismissal",
+      "writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+     ]
+    }
+   },
+   "survivorClasses": []
+  }
+ ],
+ "total": 165,
+ "omitted": 0,
+ "unmutated": []
+}

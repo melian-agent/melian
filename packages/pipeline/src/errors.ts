@@ -97,6 +97,8 @@ export class ReviewError extends Error {
 	readonly verdict?: Verdict;
 	/** The review's long-log warning for the decision index, for a review that failed after giving a reviewer the index. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, for a review that failed after it exported its round. */
+	readonly unshared: readonly { readonly finding: string; readonly code: UnsharedCode }[];
 
 	constructor(
 		code: ReviewErrorCode,
@@ -107,6 +109,7 @@ export class ReviewError extends Error {
 			findings?: readonly Finding[];
 			verdict?: Verdict;
 			decisionIndexWarning?: string;
+			unshared?: readonly { readonly finding: string; readonly code: UnsharedCode }[];
 			cause?: unknown;
 		},
 	) {
@@ -118,26 +121,44 @@ export class ReviewError extends Error {
 		this.findings = options.findings ?? [];
 		if (options.verdict !== undefined) this.verdict = options.verdict;
 		if (options.decisionIndexWarning !== undefined) this.decisionIndexWarning = options.decisionIndexWarning;
+		this.unshared = options.unshared ?? [];
 	}
 }
 
 /** Why a finding could not be dismissed, or why its verdict was not decided again afterwards. */
-export type DismissErrorCode = "notReviewed" | "unknownFinding" | "notInstalled" | "adjudicationFailed" | "unprovenRun";
+export type DismissErrorCode =
+	| "notReviewed"
+	| "unknownFinding"
+	| "notInstalled"
+	| "adjudicationFailed"
+	| "unprovenRun"
+	| "madeWithoutStore"
+	| "storeFailed";
+
+/** Why a dismissal has no shared record: one of the {@link DismissErrorCode} values an export reports and goes on. */
+export type UnsharedCode = "unprovenRun" | "madeWithoutStore";
 
 /**
  * A dismissal could not be recorded: `notReviewed` when no verdict is stored for the revision, `unknownFinding` when the
  * verdict holds no finding with the ID, and `notInstalled` when the harness cannot adjudicate. `adjudicationFailed`
  * means the dismissal was recorded but the verdict was not decided again; the next review of the revision decides it.
  * `unprovenRun` means a static finding's dismissal cannot be exported, since the run its sighting was stamped with has
- * no stored request that asks for check code storing none of its tool's text. `revision` is the revision's key and `finding` the ID.
+ * no stored request that asks for check code storing none of its tool's text. `madeWithoutStore` means a dismissal was
+ * made with no record store, so no record names the rounds its host held then, and none is shared; `melian dismiss
+ * --records` shares it. `storeFailed` means the record store given failed, so nothing was recorded, on the host or in
+ * the store. `revision` is the revision's key and `finding` the ID.
  */
 export class DismissError extends Error {
 	readonly code: DismissErrorCode;
 	readonly revision: string;
 	readonly finding: string;
 
-	constructor(code: DismissErrorCode, message: string, options: { revision: string; finding: string }) {
-		super(message);
+	constructor(
+		code: DismissErrorCode,
+		message: string,
+		options: { revision: string; finding: string; cause?: unknown },
+	) {
+		super(message, "cause" in options ? { cause: options.cause } : undefined);
 		this.name = "DismissError";
 		this.code = code;
 		this.revision = options.revision;

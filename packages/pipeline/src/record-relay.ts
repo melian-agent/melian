@@ -11,6 +11,7 @@ import {
 	type RecordStore,
 	type RoundFacts,
 	type RoundManifest,
+	recordLimit,
 	reviewPayloads,
 	SharedRecord,
 	type TierAccount,
@@ -20,13 +21,15 @@ import {
 
 /**
  * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
- * beside the round. Each is a small part of the store's own bounds on the branch, so a few rounds cannot fill it.
+ * beside the round. A file may be as large as the store's record limit itself, so the relay hands over any record a
+ * store keeps. The batch is two such records, one full record and as much again for the rest, which is 1/32 of the git
+ * store's 256 MiB tip, so a few rounds cannot fill the branch.
  */
 export const relayLimits = {
 	entries: 2048,
 	files: 512,
-	fileBytes: 1024 * 1024,
-	bytes: 4 * 1024 * 1024,
+	fileBytes: recordLimit,
+	bytes: 2 * recordLimit,
 	extras: 64,
 } as const;
 

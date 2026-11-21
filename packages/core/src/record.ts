@@ -35,7 +35,7 @@ export type NamedRecord = { kind: string; key: string; id: string };
 
 /**
  * A round's manifest, by rule 4: every record it read, its walkthrough or `null` for none, the earlier rounds of its
- * revision it replaces, and the rounds of the revision before.
+ * revision it replaces, and the rounds it follows.
  */
 export type RoundManifest = {
 	read: NamedRecord[];
@@ -73,6 +73,11 @@ const supersedingKinds = new Set(["dismissal", "post", "status", "ledger-comment
 const fields = new Set(["v", "changeset", "revision", "kind", "key", "supersedes", "payload", "signer", "signature"]);
 const dotted = /^[a-z0-9-]+(?:\.[a-z0-9-]+)*$/;
 const revisionPattern = /^(?:[0-9a-f]{40}\.\.[0-9a-f]{40}|[0-9a-f]{64}\.\.[0-9a-f]{64})$/;
+/**
+ * The most bytes a record's canonical form may hold. Every store refuses a larger one in `add`, and the relay takes a
+ * file up to it, so a round's job never hands over a record no store would keep.
+ */
+export const recordLimit = 4 * 1024 * 1024;
 /** A SHA-256 hash in lowercase hex, as Melian computes a request's key, a record's ID, a cache key or a coverage ID. */
 export const hashPattern = "^[0-9a-f]{64}$";
 const recordId = new RegExp(hashPattern);
@@ -313,6 +318,15 @@ export class SharedRecord {
 			throw new RecordError("notCanonical", "a stored record's bytes are not its canonical form");
 		if (record.id !== id) throw new RecordError("idMismatch", `a record filed as ${id} has the ID ${record.id}`);
 		return record;
+	}
+
+	/**
+	 * This record, or `RecordError` `invalidRecord` when its canonical bytes pass {@link recordLimit} in UTF-8. Every
+	 * store's `add` asks it of each record of a batch before it writes any.
+	 */
+	storable(): SharedRecord {
+		if (Buffer.byteLength(this.bytes) > recordLimit) throw invalid(`a record is at most ${recordLimit} bytes`);
+		return this;
 	}
 
 	/** The SHA-256 of the key, in hex, which an adapter files the record under. */
