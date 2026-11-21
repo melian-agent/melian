@@ -1,0 +1,11 @@
+# The host caps every unjudged lens finding
+
+Amends: [A shared dismissal holds only at its own revision](2026-11-20-a-shared-dismissal-holds-only-at-its-own-revision.md), its account of when the host caps an unjudged finding
+
+Status: wording only. The coordinator asked for this correction in its session on 2026-11-21, after [pull request #575](https://github.com/melian-agent/melian/pull/575) merged with the wrong account. No rule changes, and the maintainer's agreement to how the reader caps stands.
+
+Problem: the amended decision says the host caps a lens finding no verifier judged only when the verifier should have judged it, and that a reader which capped every unjudged finding capped one "where the host would block". Its progress-log entry, `docs/progress-log/2026-11-20-issue-481-advisory-cap-on-shared-reads.md`, calls that finding "a P1 the host would block on". The code says otherwise. With verification run, `Finding.resolve` in `packages/core/src/findings.ts` caps every unjudged lens finding at advisory. The host leaves a finding it holds dismissed out of the verifier's request, so that finding is unjudged too, and the adjudication leaves it out of the count because it is dismissed. The host never blocks on it.
+
+Example: a maintainer dismisses a P1 with no store. The host holds it dismissed and counts nothing. A reader of shared records holds no record of the dismissal, so it must read the finding live. Capped at advisory, as the reader once did, the live finding passed the round. Uncapped, it blocks, which is the strict reading of a dismissal the reader cannot see.
+
+Solution: read the amended decision's advisory-cap section with these corrections. The host caps every unjudged lens finding and holds a dismissed one out of the count. The reader caps a subset of what the host caps: a finding the round asked its verifier about, and one whose every report came from a level that does not verify. Where the two part, the reader is the stricter, and a test covers each place. Its sentence that the reader caps "in two cases, as the host does" means those two cases are ones the host caps too, not that the host caps only them. Its Tests sentence "blocks, as the host would" reads "blocks, where the host holds the finding dismissed". The progress-log entry's "a P1 the host would block on" reads "a P1 the host holds dismissed".
