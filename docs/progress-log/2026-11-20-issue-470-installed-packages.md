@@ -57,3 +57,23 @@ On 2026-11-21, in the coordinator's session, the maintainer confirmed the whole-
 Melian's round at `5cc5b261f` raised one more acknowledge: the 50,000-directory bound, sized for Melian's own install, also applied to the instrumenter's install that `list_mutants` keys, and a customer monorepo past it aborted the review. The coordinator chose on 2026-11-21 that the instrumenter's install stops at the bound and reads as unidentified, while Melian's own still fails. The test of a review whose instrumenter's install is past the bound failed on `5cc5b261f` with "Melian cannot key its install: it holds more than 3 directories." and passes after the fix. The walk then reads no further directory and follows no further link, so the bound caps its cost.
 
 [The inventory](2026-11-21-issue-470-bound-mutants.json) lists the 22 mutants over `5cc5b261f...964154a8b`: all 15 generated fail a named test by hand, each run alone after it passed unmutated, and 7 are ignored.
+
+Melian's round at `68305a957` found that a module read from inside a pnpm store's entry made that entry its project, so the entry's links to its sibling packages read as outside. The coordinator chose on 2026-11-21 that a link's project is never a directory under a `node_modules`. The tests, read from inside a store entry under both bound modes, and the test of a workspace's own pnpm store failed on `68305a957` and pass on the fix. The stray-home and workspace tests stay green beside them.
+
+The same answer replaced the walk's stop rule with two kinds of shape, as [the decision](../decisions/2026-11-20-keys-hold-installed-packages.md#the-walks-boundary) now says. The first kind reads an install as identified when its code could have changed, so a stale answer is reused; it blocks. The second reads an ordinary install as unidentified, or fails the key, and only loses reuse; it becomes a follow-up issue. Listed by finding, the shapes this pull request met were these:
+
+- A root platform package left out of the key, from Codex's first review: first kind.
+- Two installs that swap a shared dependency's releases, from Codex's second review: first kind.
+- A platform rule that depended on the walk's order and dropped a pinned root, from the round at `82d44b8e4`: first kind.
+- Two copies of one release that swap which `sdk` each resolves, from Codex's third review: first kind.
+- No Melian package in the digest, under `"*"` workspace ranges, from the round at `c6acaadb5`: first kind.
+- A root npm nested beneath a workspace package, which put a copy outside the install and failed the key, from Codex's fourth review: second kind.
+- Two links that swap releases, from the round at `c4d4b9b4d`: first kind. A link out of the install, which failed every review, from the same round: second kind.
+- A platform build's own dependencies and an entry in a nested package, from the round at `da6be0769` and Codex's fifth review: first kind. An npm alias, which failed the key: second kind.
+- Text lines a place's name could forge, from Codex's sixth review: first kind.
+- A changed `exports`, `main` or `type` under one version, from Codex's seventh review: first kind.
+- A directory reached as two kinds of place, from the review of record: first kind. A root raised by a stray `node_modules`, so `npm link` read as inside, from the round at `31c0dd74e`: first kind. A FIFO manifest that blocked the walk, from the same round: second kind.
+- An install past the bound, which aborted a review offering `list_mutants`, from the round at `5cc5b261f`: second kind.
+- A module inside a pnpm store's entry, which left every pnpm install unidentified, from the round at `68305a957`: second kind.
+
+Every first-kind shape came from the forms that keyed what each producer's imports reach, or from how a place or link was written down. Since the whole-install key, the walk's misses have been second kind, except the two kinds of place and the stray root.

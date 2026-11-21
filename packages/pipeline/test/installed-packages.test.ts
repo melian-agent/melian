@@ -625,6 +625,39 @@ describe("Install.read", () => {
 			);
 			expect(read()).toMatchObject({ outside: [], identified: true });
 		});
+
+		it.each(["fails", "unidentified"] as const)(
+			"keeps a pnpm store's links inside when read from a module in the store, past the bound %s",
+			(past) => {
+				install(".pnpm/sdk@2.0.0/node_modules/sdk", { name: "sdk", version: "2.0.0" });
+				install(".pnpm/pi@1.1.0/node_modules/pi", { name: "pi", version: "1.1.0" });
+				const store = join(scratch, "node_modules", ".pnpm", "pi@1.1.0", "node_modules");
+				symlinkSync(join("..", "..", "sdk@2.0.0", "node_modules", "sdk"), join(store, "sdk"));
+				mkdirSync(join(store, "pi", "dist"));
+				writeFileSync(join(store, "pi", "dist", "index.js"), "");
+				const module = join(store, "pi", "dist", "index.js");
+				expect(Install.read(module, maxInstallDirectories, past)).toMatchObject({ outside: [], identified: true });
+			},
+		);
+
+		it("judges a link in a workspace's own pnpm store against that workspace", () => {
+			const store = join(workspace("app"), "node_modules", ".pnpm");
+			for (const name of ["x", "y"]) {
+				mkdirSync(join(store, `${name}@1.0.0`, "node_modules", name), { recursive: true });
+				writeFileSync(
+					join(store, `${name}@1.0.0`, "node_modules", name, "package.json"),
+					JSON.stringify({ name, version: "1.0.0" }),
+				);
+			}
+			const entry = join(store, "x@1.0.0", "node_modules");
+			symlinkSync(join("..", "..", "y@1.0.0", "node_modules", "y"), join(entry, "y"));
+			// The stray layout's link, out of the workspace but beneath the root.
+			symlinkSync(join(scratch, "work", "yaml"), join(entry, "yaml"));
+			writeFileSync(join(entry, "x", "index.js"), "");
+			expect(Install.read(join(entry, "x", "index.js")).outside).toEqual([
+				"packages/app/node_modules/.pnpm/x@1.0.0/node_modules/yaml",
+			]);
+		});
 	});
 
 	it("leaves the install unidentified, naming the place, for a manifest that is no regular file", () => {

@@ -174,8 +174,11 @@ class Walk {
 			return;
 		}
 		// A stray node_modules above a project raises the root, so a link counts as inside only within the nearest
-		// directory of the chain that holds it.
-		const project = this.#chain.find((directory) => this.#beneath(path, directory)) as string;
+		// directory of the chain that holds it and is no package, as a pnpm store's entry is, since a package lives under a
+		// node_modules.
+		const project = this.#chain.find(
+			(directory) => this.#beneath(path, directory) && !this.#place(directory).split("/").includes("node_modules"),
+		) as string;
 		if (!this.#beneath(target, project)) {
 			this.#add(at, "links outside");
 			this.#outside.push(at);
