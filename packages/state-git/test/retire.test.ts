@@ -849,3 +849,66 @@ describe("a folder too large to judge", { timeout: 120_000 }, () => {
 		);
 	});
 });
+
+describe("a `changesets` level that lists a name twice", { timeout: 60_000 }, () => {
+	// Rewrites the tip by hand so that `changesets` lists `changeset` twice: first `first`, then its clean folder. git
+	// mktree writes such a tree, and a remote that runs no fsck takes it.
+	function twice(first: "stray" | "blob"): { clean: string; tip: string } {
+		const clean = treeOf(changeset);
+		const junk = remote.git(["hash-object", "-w", "--stdin"], remote.path, { input: "junk" });
+		const copy =
+			first === "blob"
+				? `100644 blob ${junk}\t${changeset}`
+				: `040000 tree ${remote.git(["mktree"], remote.path, {
+						input: `${remote.git(["ls-tree", clean])}\n100644 blob ${junk}\tjunk.txt\n`,
+					})}\t${changeset}`;
+		const tip = remote.tip()!;
+		const folders = remote
+			.git(["ls-tree", `${tip}:changesets`])
+			.split("\n")
+			.flatMap((line) => (line.endsWith(`\t${changeset}`) ? [copy, line] : [line]));
+		const inner = remote.git(["mktree"], remote.path, { input: `${folders.join("\n")}\n` });
+		const root = remote
+			.git(["ls-tree", tip])
+			.split("\n")
+			.map((line) => (line.endsWith("\tchangesets") ? `040000 tree ${inner}\tchangesets` : line));
+		const tree = remote.git(["mktree"], remote.path, { input: `${root.join("\n")}\n` });
+		const commit = remote.git(["commit-tree", tree, "-p", tip, "-m", "planted"]);
+		remote.git(["update-ref", `refs/heads/${remote.branch}`, commit]);
+		return { clean, tip: commit };
+	}
+
+	for (const first of ["stray", "blob"] as const) {
+		it(`reads no folder for the name, and keeps both entries, when the first is a ${first}`, async () => {
+			const store = await seeded();
+			const { clean, tip } = twice(first);
+			const seen = await store.folders();
+			expect([...seen.keys()]).toEqual([other]);
+			expect(await store.retire(new Map([[changeset, clean]]))).toEqual(retirement({ absent: [changeset] }));
+			expect(remote.tip()).toBe(tip);
+		});
+	}
+
+	it("refuses a commit that removes a name its parent lists twice", async () => {
+		const store = await seeded();
+		const { tip } = twice("stray");
+		const { repository } = await opened(store);
+		const commit = await repository.withoutFolders(tip, [changeset], deadline());
+		expect(await StateTree.removesOnly(repository, tip, commit, deadline())).toBe(false);
+	});
+});
+
+describe("what the removal-only rule lets a commit remove", { timeout: 60_000 }, () => {
+	for (const [what, path] of [
+		["a file named as a changeset", `changesets/${third}`],
+		["a folder named as no changeset", "changesets/Not_A_Name/x.json"],
+	] as const) {
+		it(`refuses a commit that removes ${what}, which is a stray`, async () => {
+			const store = await seeded();
+			remote.plant({ [path]: { bytes: "{}" } });
+			const { repository, tip } = await opened(store);
+			const commit = await repository.commit(tip, [{ path, bytes: null }], deadline());
+			expect(await StateTree.removesOnly(repository, tip, commit, deadline())).toBe(false);
+		});
+	}
+});

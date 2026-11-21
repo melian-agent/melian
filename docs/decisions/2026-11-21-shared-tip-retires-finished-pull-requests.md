@@ -36,6 +36,7 @@ A folder is kept, and reported, when any of these hold:
 - Its tree ID at the fresh tip differs from the one the caller saw. A round wrote to it since, so the caller judges it again next time.
 - It holds a stray. No call removes a stray.
 - It is too large to judge whole. Such a folder counts as holding a stray.
+- `changesets/` lists its name twice. git writes such a tree, and a remote that runs no fsck takes it. Only one copy could be judged, and removing the name removes both, so neither is a folder.
 
 Every lost race fetches the tip and decides again. So a round's `add` that lands first keeps its folder, and an `add` after a retirement starts the folder afresh.
 
@@ -47,9 +48,10 @@ A retirement pushes only a commit that passes this rule:
 - Every root entry but `changesets` is the parent's, by name, mode, type and object ID.
 - `changesets` is still a tree, or is gone because every folder went.
 - Each entry left in `changesets` is one of the parent's, by name, mode, type and object ID.
+- Each entry gone from `changesets` is a tree that bears a changeset's name, and the parent's `changesets` lists no name twice.
 - At least one entry is gone.
 
-A commit that passes is pushed whatever the tip's totals. A retirement reads only the top level of `changesets/` and the folders it retires, so it works on a tip past any limit, and it is the one call that does. A commit that fails is refused as `unreachable`, and nothing is pushed. Every other write keeps its limit checks.
+A commit that passes is pushed whatever the tip's totals. A retirement reads only the top level of `changesets/` and the folders it was asked to retire, so it works on a tip past any limit, and it is the one call that does. A commit that fails is refused as `unreachable`, and nothing is pushed. Every other write keeps its limit checks.
 
 ### Who retires, and when
 
