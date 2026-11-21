@@ -22,3 +22,9 @@ The runs came in passes, each against its named test alone, after that test pass
 - The survivors of `record-gate.ts` ran at 91c424094, against the tests that commit added, over the source at 4a7c2f08c.
 
 The first form of the test for the ID tie-break used findings of one severity, and every line-230 mutant survived it. Each round's verdict already arrives sorted by path, severity, line and ID. The test now gives the P0 the middle ID, which the round lists first.
+
+## A fork's head
+
+Round 44870637568 found that the gate counted records for a fork's head, against rule 6 of the shared-record decision. The gate now asks `writerTrust`, as the relay does, and refuses a head that is not a writer's with exit 2. No signing key is pinned yet, so no record counts for such a head.
+
+The new test failed first at c1558877a, with the gate exiting 0, and passes at 087bcb5ec. Its five mutants are in `2026-11-21-issue-395-merge-gate-fork-mutants.json`, over `c1558877a...087bcb5ec`. Each ran at 087bcb5ec against its named test alone, and all five were killed: four by the fork's test, and the one that refuses every head by the test of a writer's head that merges.
