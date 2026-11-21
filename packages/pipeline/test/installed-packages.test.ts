@@ -219,6 +219,28 @@ describe("Install.read", () => {
 		expect(digest()).not.toBe(before.digest);
 	});
 
+	it.each([
+		["a scope", "@scope/node_modules/dep"],
+		["the root's node_modules", "node_modules/dep"],
+		["a plain directory inside a scoped package", "@scope/pkg/lib/node_modules/dep"],
+	])("keys every package in a node_modules inside %s, read from outside it", (_where, path) => {
+		install("@scope/pkg", { name: "@scope/pkg", version: "1.0.0" });
+		install(path, { name: "dep", version: "1.0.0" });
+		const before = read();
+		expect(before).toMatchObject({
+			entries: [
+				manifest(`node_modules/${path}`),
+				manifest("node_modules/@scope/pkg"),
+				manifest("node_modules/pi"),
+				manifest("node_modules/sdk"),
+				manifest("node_modules/unrelated"),
+			].sort((a, b) => (a[0] < b[0] ? -1 : 1)),
+			identified: true,
+		});
+		install(path, { name: "dep", version: "2.0.0" });
+		expect(read()).toMatchObject({ digest: expect.not.stringMatching(before.digest), identified: true });
+	});
+
 	it("moves when what a platform build needs moves, though its parent pins it exactly", () => {
 		install("pi", { name: "pi", version: "1.1.0", optionalDependencies: { bin: "1.0.0" } });
 		install("bin", { name: "bin", version: "1.0.0", cpu: ["x64"], dependencies: { helper: "^1" } });

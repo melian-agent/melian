@@ -230,13 +230,14 @@ class Walk {
 		for (const entry of entries) {
 			const path = join(directory, entry.name);
 			const slot = (mode === "modules" || mode === "scope") && !entry.name.startsWith(".");
+			// Node searches every directory named node_modules on the way up from a requiring file, whatever holds it.
 			const child: Mode =
-				slot && mode === "modules" && entry.name.startsWith("@")
-					? "scope"
-					: slot
-						? "package"
-						: entry.name === "node_modules"
-							? "modules"
+				entry.name === "node_modules"
+					? "modules"
+					: slot && mode === "modules" && entry.name.startsWith("@")
+						? "scope"
+						: slot
+							? "package"
 							: "tree";
 			if (entry.isSymbolicLink()) this.#follow(path, child);
 			else if (entry.isDirectory()) this.#scan(path, child);
