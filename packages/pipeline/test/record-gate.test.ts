@@ -898,6 +898,32 @@ describe("the merge gate's forged rounds", () => {
 		]);
 		expect(outcome.verdict.notRun.map(({ name }) => name)).toEqual(["static.tsc"]);
 	});
+
+	it("takes no coverage of a lens that ran below the floor the base tip now sets for it", async () => {
+		const store = exported();
+		const { verdict } = await review(store, "main...feature");
+		expect((verdict.ran ?? []).find(({ name }) => name === "lens.contracts")?.level).toBe("careful");
+		writeFileSync(join(repo, "melian.yaml"), "lenses:\n  contracts:\n    level: { floor: deep }\n");
+		const outcome = await gate(await listed(store));
+
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([
+			["guardrails", "static.biome", "static.tsc", "lens.correctness", "decisions.fast"],
+		]);
+		expect(outcome.verdict.notRun.map(({ name }) => name)).toEqual(["lens.contracts"]);
+		expect(outcome.passes()).toBe(false);
+	});
+
+	it("takes the coverage of a lens that ran at the floor the base tip sets for it", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		writeFileSync(join(repo, "melian.yaml"), "lenses:\n  contracts:\n    level: { floor: careful }\n");
+		const outcome = await gate(await listed(store));
+
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([
+			["guardrails", "static.biome", "static.tsc", "lens.correctness", "lens.contracts", "decisions.fast"],
+		]);
+		expect(outcome.passes()).toBe(true);
+	});
 });
 
 function roundId(records: readonly RecordEnvelope[]): string {

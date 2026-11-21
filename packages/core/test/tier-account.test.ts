@@ -363,4 +363,46 @@ describe("TierAccount", () => {
 			).toBeUndefined();
 		});
 	});
+
+	describe("meetsFloor", () => {
+		const of = (...selected: TierLenses["selected"]) =>
+			TierAccount.of(config, "full", { loaded: ["correctness", "contracts"], selected });
+		const careful = LevelBand.of({ floor: "careful" });
+
+		it("holds a lens's level at its floor and refuses one below it", () => {
+			const account = of({ name: "correctness", covers: ["src/user.ts"], band: careful });
+			expect(account.meetsFloor("correctness", "careful")).toBe(true);
+			expect(account.meetsFloor("correctness", "deep")).toBe(true);
+			expect(account.meetsFloor("correctness", "quick")).toBe(false);
+		});
+
+		it("holds any level under a floor of skip", () => {
+			expect(
+				of({ name: "correctness", covers: ["src/user.ts"], band: skipFloor }).meetsFloor("correctness", "quick"),
+			).toBe(true);
+		});
+
+		it("refuses a level below the floor of any one variant of the lens", () => {
+			const account = of(
+				{ name: "correctness", covers: ["src/user.ts"], band: quickFloor },
+				{ name: "correctness", covers: ["lib/user.ts"], band: careful },
+			);
+			expect(account.meetsFloor("correctness", "quick")).toBe(false);
+		});
+
+		it("refuses a run with no level, even of a lens no path selects", () => {
+			const account = of({ name: "correctness", covers: ["src/user.ts"], band: skipFloor });
+			expect(account.meetsFloor("correctness", undefined)).toBe(false);
+			expect(account.meetsFloor("contracts", undefined)).toBe(false);
+		});
+
+		it("reads only the named lens's floor", () => {
+			const account = of(
+				{ name: "correctness", covers: ["src/user.ts"], band: quickFloor },
+				{ name: "contracts", covers: ["src/user.ts"], band: careful },
+			);
+			expect(account.meetsFloor("correctness", "quick")).toBe(true);
+			expect(account.meetsFloor("contracts", "quick")).toBe(false);
+		});
+	});
 });

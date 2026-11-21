@@ -53,7 +53,7 @@ const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "
  * the base tip's policy, so a round that reads not reviewed still hands its findings over. A finding is dismissed only
  * when every counted round that sighted it holds a dismissal of it. Coverage comes only from a round of exactly the
  * merge's diff whose records stand as reviewed under the base tip's policy and tier, and whose verifier ran when its
- * account names one. A required check no such round ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
+ * account names one, and a lens only when it ran at least at the floor the base tip sets for it. A required check no such round ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
  * whose records cannot stand for it each leave the gate not reviewed.
  */
 export class RecordGate {
@@ -266,9 +266,12 @@ async function coverage(
 	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
 	if (claim.checks.includes("verifier") && !(reviewed.ran ?? []).some(({ name }) => name === "verifier"))
 		return { refused: "its verifier did not run" };
+	// A lens's level is the one the check in its standing record holds, which the round's host wrote.
+	const atFloor = ({ name, level }: CheckRecord) =>
+		!name.startsWith("lens.") || tier.meetsFloor(name.slice("lens.".length), level);
 	const leave = new Set(tier.allowSkip(facts));
 	return [
-		...(reviewed.ran ?? []).map(({ name }) => name),
+		...(reviewed.ran ?? []).filter(atFloor).map(({ name }) => name),
 		...reviewed.notRun.filter(({ status, name }) => status === "skipped" && leave.has(name)).map(({ name }) => name),
 	];
 }
