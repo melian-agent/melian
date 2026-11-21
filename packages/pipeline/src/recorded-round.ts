@@ -6,8 +6,12 @@ import {
 	type CheckRecord,
 	type ConfigFor,
 	type DismissalPayload,
+	type Finding,
 	type FindingSource,
+	Lens,
+	LensError,
 	type LensPayload,
+	loadConfig,
 	type MelianConfig,
 	type ProvingHunk,
 	type RecordEnvelope,
@@ -18,6 +22,7 @@ import {
 	reviewPayloads,
 	type SharedRecord,
 	type StoredFinding,
+	scrutinyLevels,
 	type Verdict,
 	type VerificationPayload,
 } from "@melian-agent/core";
@@ -29,7 +34,7 @@ import {
 	sharedDismissalHolds,
 	type VerificationClaim,
 } from "./findings.ts";
-import { provingHunk, reviewFiles } from "./lens-tools.ts";
+import { lensSource, provingHunk, reviewFiles } from "./lens-tools.ts";
 import { accountKey, inManifestOrder } from "./review-records.ts";
 
 /** What a recorded round's verdict is decided under, which its records do not hold. */
@@ -115,6 +120,8 @@ type Pieces =
 			readonly checks: CheckRecord[];
 			readonly sightings: StoredFinding[];
 			readonly claims: VerificationClaim[];
+			// The findings the round asked its verifier about, by the ID of the finding that speaks for each.
+			readonly asked: ReadonlySet<string>;
 			readonly dismissals: readonly PendingDismissal[];
 	  }
 	| { readonly refused: string };
@@ -246,32 +253,73 @@ export class RecordedRound {
 		const { repoRoot, policy } = context;
 		const policies =
 			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
-		return { pieces, findings, policies };
+		const verifies = repoRoot === undefined || policy === undefined ? undefined : await verifyingAt(repoRoot, policy);
+		return { pieces, findings, policies, verifies: verifies ?? new Map() };
 	}
 }
 
-// A round's findings merged from its records, with the policy the reader's checkout reads for them, if any.
+// A round's findings merged from its records, with the policy the reader's checkout reads for them, if any, and which
+// lens levels that policy verifies at.
 type Merged = {
 	readonly pieces: Decided;
 	readonly findings: ReturnType<typeof mergeSightings>;
 	readonly policies: Policies | undefined;
+	readonly verifies: ReadonlyMap<string, boolean>;
 };
 
 type Policies = Awaited<ReturnType<typeof configsFor>>;
 
-function adjudicated({ pieces, findings }: Merged, policies: Policies, context: RecordedRoundContext): Verdict {
+function adjudicated(
+	{ pieces, findings, verifies }: Merged,
+	policies: Policies,
+	context: RecordedRoundContext,
+): Verdict {
 	return new Adjudication({
 		findings,
 		manifest: pieces.account.checks,
 		checks: pieces.checks,
 		config: policies,
 		allowSkip: pieces.account.allowSkip,
-		// The host's round runs no verifier when every finding is dismissed, and its records then carry no claim of an
-		// earlier round's verification, so a finding whose dismissal does not count here stays uncapped.
-		verificationRan: pieces.account.checks.includes("verifier"),
+		// The host caps a finding no verifier judged when it asked about it, or when its lens ran only at levels that do
+		// not verify. A finding it dismissed is neither, so a dismissal that does not count here leaves it uncapped.
+		verificationRan: (report, defect) => pieces.asked.has(defect.id) || unverifiedAt(verifies, report),
 		...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
 		revision: context.revision,
 	}).adjudicate();
+}
+
+// The lenses the policy defines for the revision's paths, as the host's review loaded them; none when they fail to load,
+// so no finding is capped.
+// Whether each declared level of every lens the policy defines verifies, keyed by the source a run at that level
+// reports under, as the lens loads and as the root's settings tune it, which `configsFor` lists the same way.
+async function verifyingAt(repoRoot: string, policy: RepositorySource): Promise<ReadonlyMap<string, boolean>> {
+	let lenses: Lens[];
+	try {
+		lenses = await Lens.everywhere(repoRoot, policy);
+	} catch (error) {
+		if (error instanceof LensError) return new Map();
+		throw error;
+	}
+	const tuning = (await loadConfig(repoRoot, policy, ".")).config.lenses;
+	const verifies = new Map<string, boolean>();
+	for (const loaded of lenses) {
+		const settings = Object.hasOwn(tuning, loaded.name) ? tuning[loaded.name] : undefined;
+		for (const lens of [loaded, loaded.configured(settings)])
+			for (const level of scrutinyLevels) {
+				const declared = lens.levels[level];
+				if (declared === undefined) continue;
+				const { check, version } = lensSource(lens.name, lens.version, level);
+				verifies.set(`${check}@${version}`, declared.verify);
+			}
+	}
+	return verifies;
+}
+
+// A report no verifier judged is capped only when every source it was reported by is a level that does not verify. A
+// source no lens of the policy matches by name, version and declared level leaves it uncapped.
+function unverifiedAt(verifies: ReadonlyMap<string, boolean>, report: Finding): boolean {
+	const { source, reportedBy = [source] } = report.properties;
+	return reportedBy.every(({ check, version }) => verifies.get(`${check}@${version}`) === false);
 }
 
 // A verdict of not reviewed that says why the round's records cannot stand for it.
@@ -316,6 +364,7 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 	let verifier: CheckRecord | undefined;
 	const sightings: StoredFinding[] = [];
 	const claims: VerificationClaim[] = [];
+	const asked = new Set<string>();
 	for (const entry of named) {
 		const record = byId.get(entry.id)!;
 		if (record.kind === "check") {
@@ -330,10 +379,11 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 			if (check !== null) checks.push(present(check) as unknown as CheckRecord);
 			sightings.push(...(seen as unknown as StoredFinding[]));
 		} else if (record.kind === "verification") {
-			const { check, claims: judged } = record.payload as VerificationPayload;
+			const { check, claims: judged, outcomes } = record.payload as VerificationPayload;
 			if (check === null) return { refused: "names a verification without the verifier's check" };
 			verifier = present(check) as unknown as CheckRecord;
 			claims.push(...(judged as unknown as VerificationClaim[]));
+			for (const { candidate } of outcomes) asked.add(candidate);
 		}
 	}
 	// The host keeps one sighting, and one latest verdict, of a finding for each producer, so a round with two of either
@@ -350,6 +400,7 @@ function piecesOf(set: RecordSet, id: string): Pieces {
 		checks: ordered,
 		sightings,
 		claims,
+		asked,
 		dismissals: dismissalsOf(set, round),
 	};
 }

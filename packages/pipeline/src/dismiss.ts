@@ -98,8 +98,9 @@ export interface DismissalOptions {
 	readonly repoRoot: string;
 	/**
 	 * The record store to write each dismissal's record to, once, as it is made, and the changeset's ID there. Its record
-	 * supersedes the dismissals of the finding that stand in the store. Without it, the dismissal's record waits for a
-	 * review's export, and supersedes nothing.
+	 * supersedes the dismissals of the finding that stand in the store. Without it, no record is written, and a later
+	 * export leaves the dismissal unshared, as `madeWithoutStore`: only the writer, as it dismissed, can name the rounds
+	 * it held.
 	 */
 	readonly records?: { readonly store: RecordStore; readonly changeset: string };
 	readonly context?: Context;

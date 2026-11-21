@@ -528,7 +528,7 @@ describe("the merge gate's refusals", () => {
 			revision: merge.revision,
 			config,
 			policy: worktree,
-			tier: TierAccount.of(config, "full", []),
+			tier: TierAccount.of(config, "full", { loaded: [], selected: [] }),
 			counts: everyRecordCounts,
 		});
 
@@ -563,7 +563,7 @@ describe("the merge gate's refusals", () => {
 			revision: merge.revision,
 			config,
 			policy: worktree,
-			tier: TierAccount.of(config, "full", []),
+			tier: TierAccount.of(config, "full", { loaded: [], selected: [] }),
 			counts: everyRecordCounts,
 		});
 

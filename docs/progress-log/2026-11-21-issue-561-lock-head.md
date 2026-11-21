@@ -1,0 +1,11 @@
+# Issue 561: a parity lock holds the file a link leads to, and its mutants are rerun at the head
+
+Builder agent: the review of record of [pull request #625](https://github.com/melian-agent/melian/pull/625), at 3b69ac06, raised four P3s.
+
+**R1.** The lock was keyed by the name a run was given, not the file. Say run A holds `parity.json`, and a person starts run B on a link to it. B was not refused: it read A's live file, marked A's pending attempt as ended, and paid for the same review again. A run now locks the file a link leads to, and reads and saves that file. So B is refused, and a run on a link leaves the link a link. On 48948fac, the new test "refuses a second run that names the held results file through a link" got status 1 for 2. Its second assertion, that the link is still a link after a run on it, got false for true. Both pass now. The test's scratch directory is resolved with `realpathSync`, so on macOS, where the temporary directory is a link, the lock path the test expects is the one the run writes.
+
+**R2.** No test told two claims of one process apart. 621558ab added one; see `2026-11-21-issue-561-lock-refusal.md`.
+
+**R3.** The first two inventories claimed mutants at line numbers that later commits moved, two rows named a test that no longer exists, and two mutants had no claim. `2026-11-21-issue-561-lock-head-mutants.json` replaces them as the proof at this head. The enumerator listed 74 mutants over the whole branch, base 1b339d74, with none omitted. Each ran by hand against one named test, with exactly one test collected. Sixty-eight were killed. Six are equivalent, for the reasons the earlier entries give: the empty encoding, the dropped `finally` and `closeSync` around the claim's read, the empty catch in `holds`, and `rmSync`'s two options. A manual mutant that drops the reassignment of the results path to the file the lock holds was killed by the R1 test.
+
+**R4.** The earlier inventory called the mutant that sends every lock write error down the refusal path equivalent, which holds only when running as root. The new test "reports a lock it cannot create as that error, not as a lock another run holds" names a results file whose lock name passes the file system's 255-byte limit, which root meets too. It expects one error naming `ENAMETOOLONG`, and no review. That mutant now fails it.

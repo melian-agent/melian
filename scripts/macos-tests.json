@@ -1,0 +1,25 @@
+{
+	"suites": [
+		"scripts/codex-sandboxed.test.mjs",
+		"packages/pipeline/test/mutation-process-real.test.ts",
+		"packages/pipeline/test/probe-sandbox.test.ts",
+		"packages/cli/test/probe.test.ts",
+		"packages/pipeline/test/probe-keychain.test.ts",
+		"packages/state-git/test/sweep.test.ts"
+	],
+	"tag": "macos",
+	"tagged": ["packages/pipeline/test/probing-level.test.ts"],
+	"skipped": [
+		"packages/core/test/secrets.test.ts",
+		"packages/core/test/worktree-spelling.test.ts",
+		"packages/pipeline/test/probe-links-independent.test.ts"
+	],
+	"allowed": [
+		{
+			"file": "packages/core/test/secrets.test.ts",
+			"ancestorTitles": ["loadSecrets"],
+			"title": "refuses a command in a file another user owns, advising chown",
+			"reason": "Only root can give a file to another user, and neither runner is root."
+		}
+	]
+}

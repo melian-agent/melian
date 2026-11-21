@@ -557,7 +557,9 @@ export function short(commit: string): string {
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-export function shellQuote(argument: string): string {
+// Control characters are written visibly first, so a path cannot rewrite the terminal the command is printed to.
+export function shellQuote(text: string): string {
+	const argument = visibleText(text);
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
@@ -849,7 +851,7 @@ async function recordedFindings(
 		const contents = round.contents(changeset.revision);
 		for (const ended of "refused" in contents ? [] : contents.ended)
 			io.stderr(
-				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${shellQuote(argument)} ${ended.finding} --reason <text> --records ${shellQuote(store)}\n`,
+				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${shellQuote(argument)} ${ended.finding} --reason "<text>" --records ${shellQuote(store)}\n`,
 			);
 		decided.push({
 			round: id,

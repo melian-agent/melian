@@ -1,4 +1,4 @@
-# Issue #481: a shared reader remembers every cited hunk
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a shared reader remembers every cited hunk
 
 Codex's adversarial review of [pull request #575](https://github.com/melian-agent/melian/pull/575) found that a round read from shared records could keep a dismissal the host had reopened. The host remembers every proving hunk later sightings of a dismissed finding cite; the reader met a dismissal against the record's proof and the current sighting's alone. The coordinator answered on 2026-11-18: work that memory out from the records the reader already lists, with no change to any record's shape. That is a coordinator's answer, not a ruling. [The decision](../decisions/2026-11-18-a-shared-reader-remembers-every-cited-hunk.md) records the rule and its limit.
 

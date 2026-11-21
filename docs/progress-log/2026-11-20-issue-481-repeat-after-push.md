@@ -1,4 +1,4 @@
-# Issue #481: a dismissal made again after a push is shared at the pushed revision
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a dismissal made again after a push is shared at the pushed revision
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575), from the review of record at `cdcda0e4c`.
 

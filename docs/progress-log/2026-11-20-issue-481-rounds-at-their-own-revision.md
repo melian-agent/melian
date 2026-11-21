@@ -1,4 +1,4 @@
-# Issue #481: the reader tests each round at its own revision
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): the reader tests each round at its own revision
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575).
 
