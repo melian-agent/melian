@@ -572,6 +572,16 @@ jobs:
         with:
           name: ${{ needs.round.outputs.artifact }}
           path: ${{ runner.temp }}/round
+      # The tip's size comes from this job, which runs no head code, with the default branch's build: the round job runs
+      # the head's, which could write any size. The step holds no token, since the branch is public, and its output is
+      # counts alone, which the comment reads as whole numbers and words itself. A size it cannot read leaves no counts,
+      # and the comment says so and still goes out.
+      - name: Read melian/state's size
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
+          node packages/cli/bin/melian.js records size --json > "$RUNNER_TEMP/size.json"
       - name: Comment on the pull request
         id: comment
         env:
@@ -596,6 +606,7 @@ jobs:
           node scripts/round-comment.mjs --verdict "$out/verdict.json" --rounds "$out/rounds.json" \
             --exit "$(cat "$out/exit" 2>/dev/null || echo none)" --run-url "$RUN_URL" --run-id "$RUN_ID" --nonce "$nonce" --base "$BASE" --head "$HEAD" \
             --merge-base "$(cat "$out/merge-base" 2>/dev/null || echo none)" --probe-gaps "$out/probe-gaps.json" \
+            --size "$RUNNER_TEMP/size.json" \
             ${current_head:+--current-base "$current_base" --current-head "$current_head"} > "$RUNNER_TEMP/comment.md"
           # A rerun of this job alone finds the comment this run already posted, by its marker and by melian-status-bot's
           # login and account ID, 353727783, since a login can pass to another account. It updates that comment, so a post

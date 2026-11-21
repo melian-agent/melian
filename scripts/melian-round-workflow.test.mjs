@@ -1099,6 +1099,106 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("reads melian/state's size in the report job with the default branch's build, holding no token", () => {
+		const report = workflow.jobs.report.steps;
+		const at = (find) => report.findIndex(find);
+		const size = at((step) => step.name === "Read melian/state's size");
+		expect(report[size]).toEqual({
+			name: "Read melian/state's size",
+			"continue-on-error": true,
+			"timeout-minutes": 2,
+			run: [
+				'export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"',
+				'node packages/cli/bin/melian.js records size --json > "$RUNNER_TEMP/size.json"',
+				"",
+			].join("\n"),
+		});
+		expect(size).toBeGreaterThan(at((step) => step.uses?.startsWith("actions/checkout@")));
+		expect(size).toBeGreaterThan(at((step) => step.run === "npm ci --ignore-scripts"));
+		expect(size).toBe(at((step) => step.name === "Comment on the pull request") - 1);
+		expect(
+			workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@")).with.ref,
+		).toBeUndefined();
+		const comment = report.find((step) => step.name === "Comment on the pull request");
+		expect(comment.run).toContain('--size "$RUNNER_TEMP/size.json"');
+		expect(steps.filter((step) => JSON.stringify(step).includes("size.json")).map((step) => step.name)).toEqual([
+			"Read melian/state's size",
+			"Comment on the pull request",
+		]);
+		expect(steps.filter((step) => JSON.stringify(step).includes("records size")).map((step) => step.job)).toEqual([
+			"report",
+		]);
+	});
+
+	it("posts melian/state's size past half a limit, and says when it could not be read, and posts either way", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const mergeBase = "e".repeat(40);
+			// A fake gh answers only the fresh read of the pull request, the comment listing, and the post with the status token,
+			// which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X POST repos/o/r/issues/7/comments -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			const verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] };
+			writeFileSync(join(round, "verdict.json"), JSON.stringify(verdict));
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: mergeBase, head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${mergeBase}\n`);
+			writeFileSync(join(round, "nonce"), "0123456789abcdef0123456789abcdef\n");
+			const posted = join(dir, "posted.md");
+			const step = (size) => {
+				rmSync(posted, { force: true });
+				rmSync(join(dir, "size.json"), { force: true });
+				if (size !== undefined) writeFileSync(join(dir, "size.json"), size);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: `${base} ${head}`,
+						POSTED: posted,
+						STATUS_TOKEN: "status-token",
+					},
+				});
+				expect(ran.status, ran.stderr).toBe(0);
+				return readFileSync(posted, "utf8").split("\n").slice(1).join("\n");
+			};
+			const opening = "Melian round on `bbbbbbbbbbbb`...`111111111111`, exit 0: [run](https://example.test/run)\n\n";
+			const passed = "```text\nVerdict: passed\n\nNo findings above advisory.\n```\n";
+			const half = { entries: 32_768, recordBytes: 134_217_728, listingBytes: 33_554_432 };
+			expect(step(JSON.stringify(half))).toBe(`${opening}${passed}`);
+			expect(step(JSON.stringify({ ...half, entries: 32_769 }))).toBe(
+				`${opening}melian/state is past half its entry limit: 32,769 of 65,536. The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip.\n\n${passed}`,
+			);
+			for (const size of [undefined, "", "garbage", JSON.stringify({ ...half, entries: 32_769, note: "@everyone" })])
+				expect(step(size)).toBe(`${opening}melian/state's size could not be read\n\n${passed}`);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {
 		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
@@ -1128,6 +1228,7 @@ describe("the melian round workflow", () => {
 			writeFileSync(join(round, "exit"), "0\n");
 			writeFileSync(join(round, "merge-base"), `${mergeBase}\n`);
 			writeFileSync(join(round, "nonce"), "0123456789abcdef0123456789abcdef\n");
+			writeFileSync(join(dir, "size.json"), JSON.stringify({ entries: 1, recordBytes: 0, listingBytes: 0 }));
 			const posted = join(dir, "posted.md");
 			const step = (now) => {
 				rmSync(posted, { force: true });
