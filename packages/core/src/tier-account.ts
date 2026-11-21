@@ -1,8 +1,9 @@
 import type { CheckRecord } from "./adjudication.ts";
 import { checksOfTier } from "./checks.ts";
 import type { MelianConfig } from "./config.ts";
+import type { ScrutinyLevel } from "./lens.ts";
 import { mutationSkipHasLeave } from "./mutation.ts";
-import type { LevelBand } from "./triage.ts";
+import { type LevelBand, triageChoices } from "./triage.ts";
 
 /** The lenses a review knows for its change: every lens it loaded, and those it selected, which the caller derives. */
 export interface TierLenses {
@@ -143,6 +144,19 @@ export class TierAccount {
 		if (account.checks.some((name) => !recorded.has(name))) return "missingRecord";
 		if (!sameSet([...new Set(account.allowSkip)], [...new Set(this.allowSkip(facts))])) return "otherSkips";
 		return undefined;
+	}
+
+	/**
+	 * Whether `level` is at least the floor the policy sets for every path the selected lens `lens` covers. A run with no
+	 * level, as a record an older Melian wrote may hold, meets none.
+	 */
+	meetsFloor(lens: string, level: ScrutinyLevel | undefined): boolean {
+		return (
+			level !== undefined &&
+			this.#lenses.selected
+				.filter(({ name }) => name === lens)
+				.every(({ band }) => triageChoices.indexOf(level) >= triageChoices.indexOf(band.floor))
+		);
 	}
 
 	#disabled(lens: string): boolean {

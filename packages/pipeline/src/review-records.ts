@@ -10,12 +10,14 @@ import {
 	isReceipt,
 	isToolVersion,
 	KeyedRequest,
+	type LegacyAccountPayload,
 	type LensPayload,
 	type NamedRecord,
 	objectIdPattern,
 	type RecordEnvelope,
 	type RecordJson,
 	Revision,
+	type RoundFacts,
 	type RunStage,
 	recordCodes,
 	reviewPayloads,
@@ -513,6 +515,34 @@ export function accountKey(
 	{ records, resolutionPolicy }: Pick<AccountPayload, "records" | "resolutionPolicy">,
 ): string {
 	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
+}
+
+/**
+ * What the records an account counts say decides a skip, read as the review wrote them: each check record's result,
+ * each lens and verification record's check, the account's own filled records, and triage's answers when it decided.
+ */
+export function roundFacts(counted: readonly SharedRecord[], claim: AccountPayload | LegacyAccountPayload): RoundFacts {
+	const records: Pick<CheckRecord, "name" | "status" | "cause">[] = claim.filled.map(fact);
+	let triage: RoundFacts["triage"];
+	for (const record of counted) {
+		if (record.kind === "check") records.push(fact((record.payload as CheckPayload).result));
+		if (record.kind === "lens" || record.kind === "verification") {
+			const { check } = record.payload as LensPayload | VerificationPayload;
+			if (check !== null) records.push(fact(check));
+		}
+		const decision = record.kind === "triage" ? (record.payload as TriagePayload).decision : null;
+		if (decision !== null) {
+			const answers = decision.answers.map(({ question, chosen }) => ({ question, chosen }));
+			triage = { answers, inputCut: (record.payload as TriagePayload).inputCut };
+		}
+	}
+	return triage === undefined ? { records } : { records, triage };
+}
+
+// A stored check as `TierAccount` reads it: a record leaves out with `null` what a check record leaves out.
+function fact(check: { name: string; status: CheckRecord["status"]; cause?: string | null }) {
+	const { name, status, cause } = check;
+	return cause == null ? { name, status } : { name, status, cause: cause as CheckRecord["cause"] };
 }
 
 /**

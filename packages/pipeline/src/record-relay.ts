@@ -4,12 +4,10 @@ import { join } from "node:path";
 import {
 	type AccountPayload,
 	type CheckPayload,
-	type CheckRecord,
 	type LegacyAccountPayload,
 	type LensPayload,
 	RecordError,
 	type RecordStore,
-	type RoundFacts,
 	type RoundManifest,
 	recordLimit,
 	reviewPayloads,
@@ -18,6 +16,7 @@ import {
 	type TriagePayload,
 	type VerificationPayload,
 } from "@melian-agent/core";
+import { roundFacts } from "./review-records.ts";
 
 /**
  * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
@@ -125,12 +124,6 @@ export type RelayRun = {
 	/** The checks whose records a fork's job may hand over: those that run the head's code, as `headCodeChecks` names. */
 	readonly handedOver: readonly string[];
 };
-
-// A stored check as `TierAccount` reads it: a record leaves out with `null` what a check record leaves out.
-function fact(check: { name: string; status: CheckRecord["status"]; cause?: string | null }) {
-	const { name, status, cause } = check;
-	return cause == null ? { name, status } : { name, status, cause: cause as CheckRecord["cause"] };
-}
 
 // Lists a store's directories without following a link, which is no entry a directory store writes. It reads one entry
 // at a time and counts every entry of the walk, so a folder of a million entries costs no more than the bound.
@@ -242,28 +235,8 @@ export class RelayBatch {
 		const claim = account.payload as AccountPayload | LegacyAccountPayload;
 		const counted = claim.records.map((id) => (read.has(id) ? held.get(id) : undefined));
 		if (counted.some((record) => record === undefined)) throw new RelayRefusal("unresolvedRead", account.path);
-		const refusal = tier.refusal(claim, RelayBatch.#facts(counted as SharedRecord[], claim));
+		const refusal = tier.refusal(claim, roundFacts(counted as SharedRecord[], claim));
 		if (refusal !== undefined) throw new RelayRefusal("tierAccount", round.path, refusal);
-	}
-
-	// What the records an account counts say decides a skip, read as the review wrote them: each check record's result,
-	// each lens and verification record's check, the account's own filled records, and triage's answers when it decided.
-	static #facts(counted: readonly SharedRecord[], claim: AccountPayload | LegacyAccountPayload): RoundFacts {
-		const records: Pick<CheckRecord, "name" | "status" | "cause">[] = claim.filled.map(fact);
-		let triage: RoundFacts["triage"];
-		for (const record of counted) {
-			if (record.kind === "check") records.push(fact((record.payload as CheckPayload).result));
-			if (record.kind === "lens" || record.kind === "verification") {
-				const { check } = record.payload as LensPayload | VerificationPayload;
-				if (check !== null) records.push(fact(check));
-			}
-			const decision = record.kind === "triage" ? (record.payload as TriagePayload).decision : null;
-			if (decision !== null) {
-				const answers = decision.answers.map(({ question, chosen }) => ({ question, chosen }));
-				triage = { answers, inputCut: (record.payload as TriagePayload).inputCut };
-			}
-		}
-		return triage === undefined ? { records } : { records, triage };
 	}
 
 	// Every record file under the run's changeset, by path relative to `root`, refusing anything else the tree holds.

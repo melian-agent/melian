@@ -110,7 +110,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/static.ts": "f9cc54e743fe170b7d344c5cd519bcb4b8da0850de320d00f352231fae57d587",
 
-	"packages/core/src/tier-account.ts": "1627c3370d7b9c55805586a7483e94aee37ce9f84e42e0418cae40a0ba2b44dd",
+	"packages/core/src/tier-account.ts": "be7e69deec1706f8c7cabe11495ae7dfec8c90f84698ead3d53e2e19b5398961",
 
 	"packages/core/src/tool-manifest.ts": "21407f46f81459224319b5427d8528167e7824e9b36e7a6f2f477c4c337609b9",
 
