@@ -621,6 +621,21 @@ describe("a lens finding the verifier was never asked about", () => {
 		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
 	});
 
+	it("is capped as on the host when a nearer melian.yaml retiers the lens, since only the root's settings give its version", async () => {
+		writeFileSync(
+			join(repo, "src", "melian.yaml"),
+			lines("lenses:", "  contracts:", "    tier: light", "    level: { ceiling: quick }"),
+		);
+		const reviewed = await reportedAtQuick();
+		const [reported] = reviewed.verdict.findings.advisory;
+		const [loaded] = (await Lens.load(repo, worktree, ["."])).filter(({ name }) => name === "contracts");
+		expect(loaded!.configured({ tier: "light" }).version).not.toBe(loaded!.version);
+		expect(reported?.properties.source.version).toBe(`${loaded!.version}@quick`);
+		const verdict = await read(reviewed);
+		expect(resolutions(verdict)).toEqual([[reported!.properties.id, "new", "advisory"]]);
+		expectSharedVerdict(verdict.toJSON(), reviewed.verdict.toJSON());
+	});
+
 	it("is not capped when a level that verifies reported it beside one that does not", async () => {
 		const scenario: Scenario = { contracts: [reports(blocks), quiet, quiet], verifier: [] };
 		const store = exported();
