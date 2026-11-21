@@ -164,6 +164,7 @@ export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";
 export {
+	evidenceAgeDays,
 	graphAgeDays,
 	type LiveRun,
 	mutationAgeDays,
