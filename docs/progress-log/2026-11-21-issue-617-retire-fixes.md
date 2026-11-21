@@ -1,0 +1,10 @@
+# Issue 617, pull request A: the first fix pass on retire
+
+Builder agent: two fixes from the first reviews of [pull request #639](https://github.com/melian-agent/melian/pull/639). Each began with tests that failed on the head before it, for the reported reason.
+
+- ba6814f5, from the review of record. A tip whose `changesets/` listed one name twice let `retire` judge one copy and remove both, a stray included. `folders()` now reads no folder for a repeated name. The removal-only rule now refuses a parent that repeats a name, and a commit that removes anything but a changeset's folder. Five tests failed on 40cb85a9.
+- 2ec8b0ff, from the first Actions round's second finding, by the coordinator's answer on approach. `retire` applied the entry and byte limits to each folder alone and cached every judgement on the handle. So one call on a tip far past the byte limit read and held every record there. It now keeps a running total across the call. A folder past either limit, and every folder after it, is reported as `deferred`, unread, and nothing is cached past the call. Four tests failed on ba6814f5. In the two at the limits, the step at the limit stopped first on the missing `deferred` field. A scratch run that compared `removed` alone in that step showed the step past the limit failing as reported: the folder past it was removed.
+
+The round's first finding, that a retirement restarts a changeset against rule 3 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md), is with the maintainer, and this pass builds nothing for it.
+
+Mutants: 97 over the two commits, enumerated per commit. All 81 claimed were killed by hand, each against its named test alone. 16 are ignored by the configuration. The one string literal among them that a test would let survive, the `"deferred"` verdict, is equivalent too: `retire` files any verdict but `clean` or `stray` as deferred. The inventory is `2026-11-21-issue-617-retire-fixes-mutants.json`. Both commits changed `retire.test.ts`, so the earlier inventory's claims are rerun before the last round, as the targeted-rerun decision says.
