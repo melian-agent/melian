@@ -12,8 +12,11 @@ export class InstalledPackagesError extends Error {
 	}
 }
 
-// The most directories Melian reads to key an install; past it, keying fails.
+// The most directories Melian reads to key an install; past it, keying fails or the install is unidentified.
 export const maxInstallDirectories = 50_000;
+
+/** What reading an install does past its bound: fail, as for Melian's own, or stop and leave it unidentified. */
+export type PastBound = "fails" | "unidentified";
 
 type Mode = "modules" | "scope" | "package" | "tree";
 
@@ -38,8 +41,8 @@ export class Install {
 		this.unrecognised = unrecognised;
 	}
 
-	/** Reads the install Node resolves from `from`, a module's file URL or path, failing past `limit` directories. */
-	static read(from: string, limit = maxInstallDirectories): Install {
+	/** Reads the install Node resolves from `from`, a module's file URL or path, reading at most `limit` directories. */
+	static read(from: string, limit = maxInstallDirectories, past: PastBound = "fails"): Install {
 		let start: string;
 		try {
 			start = dirname(realpathSync(from.startsWith("file:") ? fileURLToPath(from) : from));
@@ -50,7 +53,7 @@ export class Install {
 		const root = chain.at(-1);
 		if (root === undefined)
 			throw new InstalledPackagesError(`Melian cannot key its install: no node_modules holds the module ${from}.`);
-		const walk = new Walk(chain, limit);
+		const walk = new Walk(chain, limit, past);
 		walk.run(chain.map((directory) => join(directory, "node_modules")));
 		return new Install(walk.entries(), walk.outside(), walk.unrecognised(start));
 	}
@@ -76,6 +79,8 @@ class Walk {
 	readonly #root: string;
 	readonly #chain: readonly string[];
 	readonly #limit: number;
+	readonly #past: PastBound;
+	#stopped = false;
 	readonly #entries = new Map<string, InstallEntry>();
 	readonly #outside: string[] = [];
 	readonly #entered = new Map<string, Mode>();
@@ -85,10 +90,11 @@ class Walk {
 	readonly #queue: [string, Mode][] = [];
 
 	// `chain` is each directory whose node_modules Node searches from the module, nearest first; the last is the root.
-	constructor(chain: readonly string[], limit: number) {
+	constructor(chain: readonly string[], limit: number, past: PastBound) {
 		this.#chain = chain;
 		this.#root = chain.at(-1) as string;
 		this.#limit = limit;
+		this.#past = past;
 	}
 
 	run(modules: readonly string[]) {
@@ -154,7 +160,7 @@ class Walk {
 	// where it really is, with every node_modules Node searches from there.
 	#follow(path: string, mode: Mode) {
 		// A node_modules that is itself a link is queued again from its own target's ancestors.
-		if (this.#followed.has(path)) return;
+		if (this.#stopped || this.#followed.has(path)) return;
 		this.#followed.add(path);
 		let target: string | undefined;
 		try {
@@ -194,10 +200,16 @@ class Walk {
 		// A directory npm lays out is one kind of place, so one reached as two, as a linked scope over a package is, is not.
 		if (seen !== undefined && seen !== mode) this.#odd.push(this.#place(directory));
 		if (seen !== undefined) return;
-		if (this.#entered.size >= this.#limit)
-			throw new InstalledPackagesError(
-				`Melian cannot key its install: it holds more than ${this.#limit} directories.`,
-			);
+		if (this.#entered.size >= this.#limit) {
+			if (this.#past === "fails")
+				throw new InstalledPackagesError(
+					`Melian cannot key its install: it holds more than ${this.#limit} directories.`,
+				);
+			// The walk reads nothing more, so the install is keyed by what it read and stands for no other.
+			this.#stopped = true;
+			this.#odd.push(".");
+			return;
+		}
 		this.#entered.set(directory, mode);
 		if (directory.endsWith(".zip")) this.#odd.push(this.#place(directory));
 		let entries: Dirent[];

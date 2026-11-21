@@ -17,7 +17,7 @@ import {
 	SourceError,
 	visibleText,
 } from "@melian-agent/core";
-import { Install } from "./installed-packages.ts";
+import { Install, maxInstallDirectories } from "./installed-packages.ts";
 import { MutationTargets, productionWithExtensions } from "./mutation-paths.ts";
 import { mutationInstallation } from "./mutation-static.ts";
 
@@ -160,7 +160,8 @@ export class TypeScriptMutationAdapter implements MutationAdapter {
 
 	/** The install the instrumenter resolves its own imports from, read from the instrumenter itself. */
 	install(): Install {
-		return Install.read(this.#module);
+		// A reviewed repository's install can be past the bound Melian's own is sized by, and is then unidentified.
+		return Install.read(this.#module, maxInstallDirectories, "unidentified");
 	}
 
 	async enumerate(

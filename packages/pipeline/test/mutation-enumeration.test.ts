@@ -13,6 +13,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import * as core from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { melianInstall } from "../src/code-version.ts";
+import { Install } from "../src/installed-packages.ts";
 import {
 	ancestorInstalls,
 	inside,
@@ -1717,6 +1718,17 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 			],
 		]);
 		expect(fallback.install().digest).toBe(melianInstall().digest);
+		// The checkout's install holds three directories: node_modules, the scope and the instrumenter.
+		const read = Install.read.bind(Install);
+		let bound = 3;
+		const bounded = vi
+			.spyOn(Install, "read")
+			.mockImplementation((from, _limit, ...rest) => read(from, bound, ...rest));
+		expect(installed.install().identified).toBe(true);
+		bound = 2;
+		const past = installed.install();
+		expect([past.identified, past.unrecognised[0]]).toEqual([false, "."]);
+		bounded.mockRestore();
 		gitIn(repo, "add", "-f", "node_modules/.keep");
 		gitIn(repo, "commit", "-qm", "tracked install");
 		expect((await TypeScriptMutationAdapter.open(repo)).source).toBe("melian");

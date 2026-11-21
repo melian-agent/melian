@@ -168,7 +168,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/harness.ts": "37a4787b1494f220946ba9cae00125d99f014ac6a571ece98dc842c24721c2e4",
 
-	"packages/pipeline/src/installed-packages.ts": "2e1ba81b6192035c23a7aa1480acea1b4dcef3f5a1006171474853568fc81989",
+	"packages/pipeline/src/installed-packages.ts": "b48526704649c747f392270fc3a6a133304cc6871e365ab1e84106dad75ab98d",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 
@@ -182,7 +182,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/mutation-cache.ts": "c208a31f4ad499026b86c7b3a6a1d581b2b7cdee96a28c505d2cd00ccaf5e78c",
 
-	"packages/pipeline/src/mutation-enumeration.ts": "a7032d2e4d1420d1a8d53fddac760abbc3da0af4cba5ea0f000cc486de4fe4ba",
+	"packages/pipeline/src/mutation-enumeration.ts": "21e8c4c4b62c4099311a04cd31f845aa70253195e735651182bf88aff4dd5a63",
 
 	"packages/pipeline/src/mutation-paths.ts": "b424ac4fbf34dba786bed82c85c88208589ad446a4b2e9a595ab764cbe10a8b4",
 

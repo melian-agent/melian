@@ -501,6 +501,29 @@ describe("Install.read", () => {
 		expect(failure(() => read(3))).toBe("Melian cannot key its install: it holds more than 3 directories.");
 	});
 
+	it("reads an install of as many directories as its bound, and one past it stops there, unidentified, when asked", () => {
+		const whole = read(4);
+		expect(Install.read(from, 4, "unidentified")).toEqual(whole);
+		expect(whole.identified).toBe(true);
+		const past = Install.read(from, 3, "unidentified");
+		expect(past.identified).toBe(false);
+		expect(past.unrecognised).toEqual(["."]);
+		expect(past.entries).toHaveLength(2);
+	});
+
+	it("follows no link once the walk has stopped at its bound", () => {
+		// The app's node_modules is read first and fills the bound, then the root's, a link, would be followed.
+		mkdirSync(join(scratch, "app", "node_modules", "a"), { recursive: true });
+		writeFileSync(join(scratch, "app", "main.js"), "");
+		renameSync(join(scratch, "node_modules"), join(scratch, "real_modules"));
+		symlinkSync(join(scratch, "real_modules"), join(scratch, "node_modules"));
+		const app = join(scratch, "app", "main.js");
+		expect(Install.read(app, 2, "unidentified").entries).toContainEqual(["node_modules", "links", "real_modules"]);
+		const past = Install.read(app, 1, "unidentified");
+		expect(past.entries).toEqual([]);
+		expect(past.unrecognised).toEqual(["."]);
+	});
+
 	it("bounds the walk at 50,000 directories by default", () => {
 		expect(maxInstallDirectories).toBe(50_000);
 	});

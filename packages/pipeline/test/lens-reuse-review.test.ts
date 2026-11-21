@@ -38,6 +38,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { blindCallers } from "../src/caveats.ts";
 import * as codeVersionModule from "../src/code-version.ts";
+import { Install } from "../src/installed-packages.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { MutationEnumerationError, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -686,6 +687,20 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 		const again = await review(offered);
 		expect(again.asked).toEqual([]);
 		expect(again.task).toBe(first.task);
+	});
+
+	it("runs a review whose instrumenter's install is past the bound, and reuses nothing from it", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		// A bound of three stands for a customer's install of more than 50,000 directories.
+		const read = Install.read.bind(Install);
+		vi.spyOn(Install, "read").mockImplementation((from, limit, ...rest) =>
+			read(from, from.includes("@stryker-mutator") ? 3 : limit, ...rest),
+		);
+		const first = await review(offered);
+		expect(first.asked).toEqual(["contracts", "correctness"]);
+		const again = await review(offered);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toBe("none");
 	});
 
 	it("fails the review on any other failure to resolve the instrumenter", async () => {
