@@ -758,6 +758,30 @@ describe("a lens finding the verifier was never asked about", () => {
 	});
 });
 
+describe("a round read beside the findings earlier rounds showed", () => {
+	it("lists a pre-existing important finding as carried when an earlier round showed it, and as new otherwise", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;", "export const b = 1;") },
+			{ "src/a.ts": lines("export const a = 2;", "export const b = 1;") },
+		);
+		const old = { ...blocks, line: 2, evidence: [{ file: "src/a.ts", line: 2, role: "cause" }] };
+		const reviewed = await review(exported(), { contracts: [reports(old)] });
+		const under = (seenBefore?: readonly string[]) =>
+			RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+				revision: reviewed.changeset.revision,
+				config: reviewed.config,
+				repoRoot: repo,
+				policy: worktree,
+				...(seenBefore === undefined ? {} : { seenBefore }),
+			});
+		const fresh = await under();
+		const [id] = (fresh.preExistingImportant ?? []).map((member) => member.id);
+		expect([id, fresh.importance(id!)]).toEqual([expect.any(String), "new"]);
+		expect((await under([id!])).importance(id!)).toBe("carried");
+	});
+});
+
 describe("what a round's records hold", () => {
 	it("hands over the round's revision, its sightings, the revision's proving hunks and each dismissal record whole", async () => {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
