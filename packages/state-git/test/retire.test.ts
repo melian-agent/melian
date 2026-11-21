@@ -1,9 +1,9 @@
 import { RecordError, recordLimit } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Deadline } from "../src/deadline.ts";
+import { Deadline, systemClock } from "../src/deadline.ts";
 import type { GitRecordStore, Retirement } from "../src/index.ts";
 import { RecordRepository, type TreeChange } from "../src/repository.ts";
-import { cellPath, StateTree } from "../src/state-tree.ts";
+import { cellPath, entryLimit, listingLimit, StateTree, tipLimit } from "../src/state-tree.ts";
 import { changeset, check, filed, keys, other, type Planted, Remote } from "./fixtures/remote.ts";
 
 const third = "pull-fedcba9876543210";
@@ -115,6 +115,9 @@ async function refuses(craft: Craft): Promise<void> {
 	await expect(store.retire(new Map([[changeset, seen.get(changeset)!]]))).rejects.toSatisfy((error: unknown) => {
 		expect(error).toBeInstanceOf(RecordError);
 		expect((error as RecordError).code).toBe("unreachable");
+		expect((error as RecordError).message).toBe(
+			`the commit retiring ${changeset} changes more of ${remote.branch} than it removes; nothing was pushed`,
+		);
 		return true;
 	});
 	expect(crafted).toHaveLength(1);
@@ -522,8 +525,9 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 	it("refuses folders and retire as closed on a closed handle", async () => {
 		const store = await seeded();
 		await store.close();
-		await expect(store.folders()).rejects.toMatchObject({ code: "closed" });
-		await expect(store.retire(new Map([[changeset, treeOf(changeset)]]))).rejects.toMatchObject({ code: "closed" });
+		const closed = { code: "closed", message: "the record store is closed" };
+		await expect(store.folders()).rejects.toMatchObject(closed);
+		await expect(store.retire(new Map([[changeset, treeOf(changeset)]]))).rejects.toMatchObject(closed);
 	});
 });
 
@@ -591,5 +595,228 @@ describe("a retired changeset", { timeout: 60_000 }, () => {
 		await store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
 		await store.add([check("late")]);
 		expect(keys(await store.list(changeset))).toEqual(["late"]);
+	});
+});
+
+// The store's own repository and the tip it fetched, for calls the store makes only on a tip past a limit.
+async function opened(store: GitRecordStore): Promise<{ repository: RecordRepository; tip: string }> {
+	const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+	await store.folders();
+	const repository = fetch.mock.contexts[0] as RecordRepository;
+	fetch.mockRestore();
+	return { repository, tip: remote.tip()! };
+}
+
+const deadline = () => Deadline.after(systemClock, 30_000);
+
+// `children` answers undefined, as for a listing past its bytes, for `treeish` alone.
+function pastBytes(treeish: string) {
+	const children = RecordRepository.prototype.children;
+	return vi.spyOn(RecordRepository.prototype, "children").mockImplementation(async function (
+		this: RecordRepository,
+		asked,
+		time,
+		maxBytes,
+	) {
+		return asked === treeish ? undefined : children.call(this, asked, time, maxBytes);
+	});
+}
+
+describe("what a retire is given", { timeout: 60_000 }, () => {
+	it("refuses a name that is no changeset's before it reads the branch", async () => {
+		const store = await seeded();
+		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
+		await expect(store.retire(new Map([["../changesets", emptyTree]]))).rejects.toMatchObject({
+			code: "invalidChangeset",
+		});
+		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
+describe("the folders a retire reads", { timeout: 60_000 }, () => {
+	it("reads only trees named as changesets inside `changesets`, and keeps every other entry when it retires them", async () => {
+		const store = await seeded();
+		remote.plant({
+			README: { bytes: "root" },
+			"a/x.json": { bytes: "{}" },
+			[`changesets/${third}`]: { bytes: "a file named as a changeset" },
+			"changesets/Not_A_Name/x.json": { bytes: "{}" },
+		});
+		const seen = await store.folders();
+		expect([...seen.keys()].sort()).toEqual([changeset, other].sort());
+		expect(sorted(await store.retire(seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
+		expect(remote.files()).toEqual(["README", "a/x.json", "changesets/Not_A_Name/x.json", `changesets/${third}`]);
+	});
+
+	it("refuses a tip whose top level lists past its bytes", async () => {
+		const store = await seeded();
+		const tip = remote.tip()!;
+		pastBytes(tip);
+		await expect(store.folders()).rejects.toMatchObject({
+			code: "unreachable",
+			message: `one level of ${tip} lists more than ${listingLimit} bytes`,
+		});
+	});
+});
+
+describe("the commit a retire builds", { timeout: 60_000 }, () => {
+	it("refuses a parent whose `changesets` is a file", async () => {
+		const store = await seeded();
+		const { repository } = await opened(store);
+		const time = deadline();
+		const file = await blob(repository, "not a tree", time);
+		const parent = await commitOf(
+			repository,
+			await mktree(repository, [`100644 blob ${file}\tchangesets`], time),
+			[],
+			time,
+		);
+		await expect(repository.withoutFolders(parent, [changeset], time)).rejects.toMatchObject({
+			code: "unreachable",
+			message: `${parent} holds no changesets folder in ${repository.path}`,
+		});
+	});
+
+	it("refuses a parent whose top level lists past its bytes", async () => {
+		const store = await seeded();
+		const { repository, tip } = await opened(store);
+		pastBytes(tip);
+		await expect(repository.withoutFolders(tip, [changeset], deadline())).rejects.toMatchObject({
+			code: "unreachable",
+			message: `listing ${tip} ran past ${listingLimit} bytes in ${repository.path}`,
+		});
+	});
+});
+
+describe("the removal-only rule's own reads", { timeout: 60_000 }, () => {
+	// The commit removes `changeset` and keeps `other`, so every listing the rule makes has an answer to lose.
+	async function removal() {
+		const store = await seeded();
+		const { repository, tip } = await opened(store);
+		const commit = await repository.withoutFolders(tip, [changeset], deadline());
+		expect(await StateTree.removesOnly(repository, tip, commit, deadline())).toBe(true);
+		return { repository, tip, commit };
+	}
+
+	it("refuses a removal-only tree on a commit whose one parent is not the tip", async () => {
+		await refuses(async (repository, parent, deadline) => {
+			const removed = await repository.commit(parent, removals(changeset), deadline);
+			const tree = await plumb(repository, ["rev-parse", `${removed}^{tree}`], deadline);
+			const aside = await commitOf(
+				repository,
+				await plumb(repository, ["rev-parse", `${parent}^{tree}`], deadline),
+				[],
+				deadline,
+			);
+			return commitOf(repository, tree, [aside], deadline);
+		});
+	});
+
+	for (const listing of ["parent", "commit", "parent's changesets", "commit's changesets"] as const) {
+		it(`refuses a removal when the ${listing} listing runs past its bytes`, async () => {
+			const { repository, tip, commit } = await removal();
+			const oids = {
+				parent: tip,
+				commit,
+				"parent's changesets": await plumb(repository, ["rev-parse", `${tip}:changesets`], deadline()),
+				"commit's changesets": await plumb(repository, ["rev-parse", `${commit}:changesets`], deadline()),
+			};
+			pastBytes(oids[listing]);
+			expect(await StateTree.removesOnly(repository, tip, commit, deadline())).toBe(false);
+		});
+	}
+
+	it("refuses a parent that holds no `changesets` tree", async () => {
+		const store = await seeded();
+		const { repository } = await opened(store);
+		const time = deadline();
+		const file = await blob(repository, "root", time);
+		const parent = await commitOf(
+			repository,
+			await mktree(repository, [`100644 blob ${file}\tnotes.txt`], time),
+			[],
+			time,
+		);
+		const commit = await commitOf(repository, emptyTree, [parent], time);
+		expect(await StateTree.removesOnly(repository, parent, commit, time)).toBe(false);
+	});
+});
+
+describe("a folder too large to judge", { timeout: 120_000 }, () => {
+	// `entries` lists the folder at `oid` padded with copies of its first entry to `count`, and answers others as git does.
+	function listed(oid: string, count: number | undefined) {
+		const entries = RecordRepository.prototype.entries;
+		return vi.spyOn(RecordRepository.prototype, "entries").mockImplementation(async function (
+			this: RecordRepository,
+			asked,
+			time,
+			maxBytes,
+		) {
+			const real = await entries.call(this, asked, time, maxBytes);
+			if (asked !== oid) return real;
+			if (count === undefined) return undefined;
+			return [...real!, ...Array.from({ length: count - real!.length }, () => real![0]!)];
+		});
+	}
+
+	// `sizes` answers git's sizes, with `size` for every blob or for the blob of `only`, or none for it with `undefined`.
+	function sized(size: number | undefined, only?: string) {
+		const sizes = RecordRepository.prototype.sizes;
+		return vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(async function (
+			this: RecordRepository,
+			oids,
+			time,
+		) {
+			const real = await sizes.call(this, oids, time);
+			for (const oid of oids) {
+				if (only !== undefined && oid !== only) continue;
+				if (size === undefined) real.delete(oid);
+				else real.set(oid, size);
+			}
+			return real;
+		});
+	}
+
+	async function retiring(store: GitRecordStore): Promise<Retirement> {
+		return store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
+	}
+
+	it("keeps a folder whose listing runs past its bytes", async () => {
+		const store = await seeded();
+		listed(treeOf(changeset), undefined);
+		expect(await retiring(store)).toEqual(retirement({ strays: [changeset] }));
+	});
+
+	it("removes a folder of exactly the entry limit, and keeps one an entry past it", async () => {
+		const store = await seeded();
+		const spy = listed(treeOf(changeset), entryLimit + 1);
+		expect(await retiring(store)).toEqual(retirement({ strays: [changeset] }));
+		spy.mockRestore();
+		listed(treeOf(changeset), entryLimit);
+		expect(await retiring(store)).toEqual(retirement({ removed: [changeset] }));
+	});
+
+	it("keeps a folder holding one record a byte past the record limit, or one git gives no size for", async () => {
+		const store = await seeded();
+		const record = remote.git(["rev-parse", `refs/heads/${remote.branch}:${filed(check("a")).path}`]);
+		const past = sized(recordLimit + 1, record);
+		expect(await retiring(store)).toEqual(retirement({ strays: [changeset] }));
+		past.mockRestore();
+		sized(undefined, record);
+		expect(await retiring(store)).toEqual(retirement({ strays: [changeset] }));
+	});
+
+	it("removes a folder whose records total exactly the tip's byte limit, and keeps one a record past it", async () => {
+		const store = await seeded();
+		const whole = tipLimit / recordLimit;
+		await store.add([
+			...Array.from({ length: whole - under(changeset).length }, (_, n) => check(`t${n}`)),
+			...Array.from({ length: whole + 1 - under(other).length }, (_, n) => check(`t${n}`, other)),
+		]);
+		expect([under(changeset).length, under(other).length]).toEqual([whole, whole + 1]);
+		sized(recordLimit);
+		expect(sorted(await store.retire(await store.folders()))).toEqual(
+			retirement({ removed: [changeset], strays: [other] }),
+		);
 	});
 });
