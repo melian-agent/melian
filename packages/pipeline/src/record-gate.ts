@@ -52,8 +52,8 @@ const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "
  * round at the head whose base the base tip holds, and every such round's findings on the merge's diff, decided under
  * the base tip's policy, so a round that reads not reviewed still hands its findings over. A finding is dismissed only
  * when every counted round that sighted it holds a dismissal of it. Coverage comes only from a round of exactly the
- * merge's diff whose records stand as reviewed under the base tip's policy and tier, and a required check no such round
- * ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
+ * merge's diff whose records stand as reviewed under the base tip's policy and tier, and whose verifier ran when its
+ * account names one. A required check no such round ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
  * whose records cannot stand for it each leave the gate not reviewed.
  */
 export class RecordGate {
@@ -263,6 +263,9 @@ async function coverage(
 	if (refusal !== undefined) return { refused: `does not account for the base tip's tier (${refusal})` };
 	const reviewed = await read.reviewed(under);
 	if ("refused" in reviewed) return reviewed;
+	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
+	if (claim.checks.includes("verifier") && !(reviewed.ran ?? []).some(({ name }) => name === "verifier"))
+		return { refused: "its verifier did not run" };
 	const leave = new Set(tier.allowSkip(facts));
 	return [
 		...(reviewed.ran ?? []).map(({ name }) => name),

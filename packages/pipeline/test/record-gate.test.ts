@@ -106,10 +106,14 @@ async function review(
 	replies: readonly ScriptedReply[] = [quiet, quiet],
 	ran: CheckRunRecord[] = checks,
 	base: MelianConfig = config,
+	verifier: readonly ScriptedReply[] = [],
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }] });
 	const heavy = fake.ref("heavy");
-	const routed: MelianConfig = { ...base, models: { heavy: { model: `${heavy.provider}/${heavy.modelId}` } } };
+	const routed: MelianConfig = {
+		...base,
+		models: { ...base.models, heavy: { model: `${heavy.provider}/${heavy.modelId}` } },
+	};
 	const harness = await openHarness(createMemoryStorage(), {
 		models: fake.models,
 		registry: createReviewRegistry(),
@@ -119,6 +123,7 @@ async function review(
 	scriptConversations(fake, [
 		{ match: correctness, replies: [quiet, quiet] },
 		{ match: contracts, replies: [...replies, quiet, quiet] },
+		...(verifier.length === 0 ? [] : [{ match: "Melian adversarial verifier", replies: verifier }]),
 	]);
 	const changeset = await Changeset.resolve(repo, range);
 	const verdict = await reviewChangeset({
@@ -841,6 +846,38 @@ describe("the merge gate's forged rounds", () => {
 			id,
 			round.id,
 		]);
+	});
+
+	it("covers nothing for a round whose verifier failed, so a finding it never judged does not pass", async () => {
+		const store = exported();
+		const broken = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "the request was malformed" });
+		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
+		const outcome = await gate(await listed(store));
+		expect(outcome.passes()).toBe(false);
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([{ refused: "its verifier did not run" }]);
+	});
+
+	it("blocks on the finding of a round no verifier model could serve, and takes no coverage from it", async () => {
+		const store = exported();
+		const unserved: MelianConfig = { ...config, models: { verifier: { model: "nowhere/none" } } };
+		const { verdict } = await review(store, "main...feature", blocks(), checks, unserved);
+		expect(verdict.status).toBe("not-reviewed");
+		const outcome = await gate(await listed(store));
+		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([{ refused: "its verifier did not run" }]);
+	});
+
+	it("takes the coverage of a second round whose verifier ran, beside one whose verifier failed", async () => {
+		const store = exported();
+		const broken = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "the request was malformed" });
+		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual(
+			expect.arrayContaining([{ refused: "its verifier did not run" }]),
+		);
+		expect(outcome.passes()).toBe(true);
 	});
 
 	it("does not count a check that failed as covered, though the policy lets it be skipped", async () => {
