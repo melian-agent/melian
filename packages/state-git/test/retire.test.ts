@@ -22,7 +22,7 @@ afterEach(async () => {
 });
 
 function retirement(found: Partial<Retirement>): Retirement {
-	return { removed: [], changed: [], strays: [], absent: [], ...found };
+	return { removed: [], changed: [], strays: [], absent: [], deferred: [], ...found };
 }
 
 function sorted(found: Retirement): Retirement {
@@ -31,6 +31,7 @@ function sorted(found: Retirement): Retirement {
 		changed: [...found.changed].sort(),
 		strays: [...found.strays].sort(),
 		absent: [...found.absent].sort(),
+		deferred: [...found.deferred].sort(),
 	};
 }
 
@@ -911,4 +912,118 @@ describe("what the removal-only rule lets a commit remove", { timeout: 60_000 },
 			expect(await StateTree.removesOnly(repository, tip, commit, deadline())).toBe(false);
 		});
 	}
+});
+
+describe("what one retire may judge", { timeout: 300_000 }, () => {
+	// `entries` lists the folder at `oid` padded with copies of its first entry to `count`, and answers others as git does.
+	function padded(oid: string, count: number) {
+		const entries = RecordRepository.prototype.entries;
+		return vi.spyOn(RecordRepository.prototype, "entries").mockImplementation(async function (
+			this: RecordRepository,
+			asked,
+			time,
+			maxBytes,
+		) {
+			const real = await entries.call(this, asked, time, maxBytes);
+			if (asked !== oid) return real;
+			return [...real!, ...Array.from({ length: count - real!.length }, () => real![0]!)];
+		});
+	}
+
+	// Every blob's size reads as the record limit, so a folder of `n` records weighs `n` record limits.
+	function heavy() {
+		const sizes = RecordRepository.prototype.sizes;
+		return vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(async function (
+			this: RecordRepository,
+			oids,
+			time,
+		) {
+			const real = await sizes.call(this, oids, time);
+			for (const oid of oids) real.set(oid, recordLimit);
+			return real;
+		});
+	}
+
+	// Fills each named changeset's folder to `count` files, its cell included.
+	async function fill(store: GitRecordStore, counts: Readonly<Record<string, number>>) {
+		await store.add(
+			Object.entries(counts).flatMap(([name, count]) =>
+				Array.from({ length: count - under(name).length }, (_, n) => check(`f${n}`, name)),
+			),
+		);
+		expect(Object.keys(counts).map((name) => under(name).length)).toEqual(Object.values(counts));
+	}
+
+	function both(seen: ReadonlyMap<string, string>): Map<string, string> {
+		return new Map([
+			[changeset, seen.get(changeset)!],
+			[other, seen.get(other)!],
+		]);
+	}
+
+	it("judges folders that together list exactly the entry limit, and defers the one that passes it", async () => {
+		const store = await seeded();
+		const seen = await store.folders();
+		const spy = padded(treeOf(changeset), entryLimit - under(other).length);
+		expect(await store.retire(both(seen))).toEqual(retirement({ removed: [changeset, other] }));
+		spy.mockRestore();
+		await seeded();
+		const again = await store.folders();
+		padded(treeOf(changeset), entryLimit - under(other).length + 1);
+		const found = await store.retire(both(again));
+		expect(under(other)).toHaveLength(1);
+		expect(found).toEqual(retirement({ removed: [changeset], deferred: [other] }));
+	});
+
+	it("judges folders whose records together total exactly the byte limit, and defers the one that passes it", async () => {
+		const store = await seeded();
+		const half = tipLimit / recordLimit / 2;
+		await fill(store, { [changeset]: half, [other]: half });
+		const weighed = heavy();
+		expect(await store.retire(both(await store.folders()))).toEqual(retirement({ removed: [changeset, other] }));
+		weighed.mockRestore();
+		await fill(store, { [changeset]: half, [other]: half + 1 });
+		heavy();
+		const found = await store.retire(both(await store.folders()));
+		expect(under(other)).toHaveLength(half + 1);
+		expect(found).toEqual(retirement({ removed: [changeset], deferred: [other] }));
+	});
+
+	it("on a tip far past the byte limit, retires what fits and defers the rest without reading their records", async () => {
+		const store = await seeded();
+		const most = (tipLimit / recordLimit) * 0.625;
+		await fill(store, { [changeset]: most, [other]: most, [third]: most });
+		const seen = await store.folders();
+		heavy();
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		const entries = vi.spyOn(RecordRepository.prototype, "entries");
+		const kept = new Set([...under(other), ...under(third)].map((path) => remote.oid(path)));
+		const found = await store.retire(seen);
+		const read = blobs.mock.calls.flatMap(([wanted]) => [...wanted.keys()]);
+		expect(read.filter((oid) => kept.has(oid))).toEqual([]);
+		expect(entries.mock.calls.map(([oid]) => oid)).not.toContain(treeOf(other));
+		expect(under(changeset)).toEqual([]);
+		expect(found).toEqual(retirement({ removed: [changeset], deferred: [third, other] }));
+		expect(
+			await store.retire(
+				new Map([
+					[other, treeOf(other)],
+					[third, treeOf(third)],
+				]),
+			),
+		).toEqual(retirement({ removed: [other], deferred: [third] }));
+	});
+
+	it("keeps no judgement past the call, so a read after it reads the folder's records again", async () => {
+		await seeded();
+		remote.plant({ [`changesets/${changeset}/junk.txt`]: { bytes: "junk" } });
+		const store = await remote.open();
+		const seen = await store.folders();
+		const found = await store.retire(new Map([[changeset, seen.get(changeset)!]]));
+		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
+		await store.strays();
+		const read = blobs.mock.calls.flatMap(([wanted]) => [...wanted.keys()]);
+		expect(read).toContain(remote.oid(filed(check("a")).path));
+		expect(found).toEqual(retirement({ strays: [changeset] }));
+	});
 });

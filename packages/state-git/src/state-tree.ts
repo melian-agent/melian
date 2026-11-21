@@ -250,31 +250,36 @@ export class StateTree {
 	}
 
 	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it.
-	// A folder too large to judge whole counts as holding one, so nothing unjudged is removed.
-	static async holdsStray(
+	// A folder too large to judge whole counts as holding one, so nothing unjudged is removed. One that fits alone but
+	// would take `spent`, what the call has judged so far, past a limit is deferred unread.
+	static async judgeFolder(
 		repository: RecordRepository,
 		changeset: string,
 		oid: string,
 		judged: Map<string, Judged>,
+		spent: { entries: number; bytes: number },
 		deadline: Deadline,
-	): Promise<boolean> {
+	): Promise<"stray" | "clean" | "deferred"> {
 		const listed = await repository.entries(oid, deadline, listingLimit);
-		if (listed === undefined || listed.length > entryLimit) return true;
+		if (listed === undefined || listed.length > entryLimit) return "stray";
 		const prefix = Buffer.from(`${changesetsName}/${changeset}/`);
 		const entries = listed.map((entry) => ({ ...entry, path: Buffer.concat([prefix, entry.path]) }));
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const sizes = await repository.sizes(readable, deadline);
-		if (readable.some((blob) => (sizes.get(blob) ?? Number.POSITIVE_INFINITY) > recordLimit)) return true;
+		if (readable.some((blob) => (sizes.get(blob) ?? Number.POSITIVE_INFINITY) > recordLimit)) return "stray";
 		const total = entries.reduce(
 			(sum, entry) => sum + (StateTree.#readable(entry) ? (sizes.get(entry.oid) as number) : 0),
 			0,
 		);
-		if (total > tipLimit) return true;
+		if (total > tipLimit) return "stray";
+		if (spent.entries + entries.length > entryLimit || spent.bytes + total > tipLimit) return "deferred";
+		spent.entries += entries.length;
+		spent.bytes += total;
 		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
 		const wanted = [...new Set(fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const blobs = await repository.blobs(new Map(wanted.map((blob) => [blob, sizes.get(blob) as number])), deadline);
 		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
-		return entries.some((entry) => (judged.get(keyOf(entry)) as Judged).is === "stray");
+		return entries.some((entry) => (judged.get(keyOf(entry)) as Judged).is === "stray") ? "stray" : "clean";
 	}
 
 	static async #children(repository: RecordRepository, treeish: string, deadline: Deadline): Promise<TreeEntry[]> {

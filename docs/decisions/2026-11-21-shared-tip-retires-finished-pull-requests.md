@@ -2,6 +2,7 @@
 
 Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-port.md), rule 13's keeping of the live record: the tip keeps open and recent pull requests' records, and a scheduled job retires the rest
 Amends: [the git record store decision](2026-11-14-git-record-store-refuses-by-location.md), what a tip past a limit refuses: a retirement is the one call that still works there
+Amends: [the git record store decision](2026-11-14-git-record-store-refuses-by-location.md#what-one-call-uses-and-what-bounds-it), its table of what one call uses: the rows a retirement adds
 
 The maintainer ruled on 2026-11-21, in the coordinator's session, on [issue #617](https://github.com/melian-agent/melian/issues/617). The tip keeps the records of open pull requests and of pull requests merged in the last 30 days ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7040616681)). A scheduled job that runs no pull request's code removes older ones. A warning shows when the store passes half of either limit. He agreed, on the same day and in the same session, to the plan's three further points ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7052775102)):
 
@@ -38,6 +39,8 @@ A folder is kept, and reported, when any of these hold:
 - It is too large to judge whole. Such a folder counts as holding a stray.
 - `changesets/` lists its name twice. git writes such a tree, and a remote that runs no fsck takes it. Only one copy could be judged, and removing the name removes both, so neither is a folder.
 
+A retirement judges folders in the order it was given them, and keeps a running total of the entries and readable bytes it has judged. A folder that would take that total past the entry limit or the byte limit is kept unjudged, and so is every folder after it. All of them are reported as deferred, for the next run to retire. So a tip far past the byte limit sheds what one call may hold, and the next run takes the rest.
+
 Every lost race fetches the tip and decides again. So a round's `add` that lands first keeps its folder, and an `add` after a retirement starts the folder afresh.
 
 ### The removal-only rule
@@ -53,7 +56,16 @@ A retirement pushes only a commit that passes this rule:
 
 A commit that passes is pushed whatever the tip's totals. A retirement reads only the top level of `changesets/` and the folders it was asked to retire, so it works on a tip past any limit, and it is the one call that does. A commit that fails is refused as `unreachable`, and nothing is pushed. Every other write keeps its limit checks.
 
-### Who retires, and when
+#### What a retirement holds
+
+| Resource | What bounds it | Test |
+| --- | --- | --- |
+| Memory for the folders' entries | 65,536 entries, `entryLimit`, across every folder one call judges, and per folder before its sizes are read | `retire.test.ts`, "judges folders that together list exactly the entry limit, and defers the one that passes it" |
+| Memory for the folders' records | 256 MiB of readable blobs, `tipLimit`, across every folder one call judges, from the sizes git reports, before any blob is read | `retire.test.ts`, "judges folders whose records together total exactly the byte limit …" and "on a tip far past the byte limit, retires what fits and defers the rest without reading their records" |
+| Memory for the top level of `changesets/` | 64 MiB, `listingLimit`, as for any listing | `retire.test.ts`, "refuses a tip whose top level lists past its bytes" |
+| Judgements of a retirement's folders | Held for the call alone and dropped when it returns; none goes into the handle's cache | `retire.test.ts`, "keeps no judgement past the call, so a read after it reads the folder's records again" |
+
+## Who retires, and when
 
 A scheduled workflow on the default branch retires. It runs no pull request's code. It learns which pull requests are open and when each merged or closed from GitHub's API, never from a record. [Issue #617](https://github.com/melian-agent/melian/issues/617) builds it in a later pull request.
 
