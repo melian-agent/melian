@@ -1,0 +1,950 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c49cb199566707022108182753ed29c722ed92bf",
+		"head": "0e9574abe47304877351fda909a0721e61057665"
+	},
+	"claimsIn": [
+		"packages/cli/src/commands.ts",
+		"packages/pipeline/src/errors.ts",
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 408,
+			"column": 37,
+			"endLine": 408,
+			"endColumn": 39,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "45e939277e051baa5299984e75b5c947cd1dc936e2939af888e640cdd1d08e28",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "both the review's result and its error overwrite the seed before anything reads it"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 446,
+			"column": 16,
+			"endLine": 449,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4aeb57ba04963adfca6e3fd7b67f3c93a4a0d4bd9037f2eb0376e462a86639f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 447,
+			"column": 7,
+			"endLine": 447,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "924a3ed3d5e41bd9c4722eb5e55bfc141a96794755055e54b4b8fb8baa3f1391",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"gives the decision index warning before each unshared dismissal"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 447,
+			"column": 7,
+			"endLine": 447,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "cf0ef255473cedba19bcf4d217a52ed5f310c384f9eea5d02edfd53dd42bf8c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 447,
+			"column": 7,
+			"endLine": 447,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "indexWarning !== undefined",
+			"status": "generated",
+			"id": "2a79341cfb564042b9a9896a6c19992ed26039c62ebca7a650319a729165a8c5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 447,
+			"column": 36,
+			"endLine": 447,
+			"endColumn": 38,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "7b2066c683641c453d75516b86acf56b07d32970b60d3085f067582a8c9e9c22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=true)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 447,
+			"column": 41,
+			"endLine": 447,
+			"endColumn": 60,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "dc908a96f6b446f54953fb7d9c803b2fc5c1015deec8355e7e1b50cf8f970f6e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"gives the decision index warning before each unshared dismissal"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 448,
+			"column": 19,
+			"endLine": 448,
+			"endColumn": 112,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "bac3778a36ce024df7561cfb47f5039acbd778b606e05a0adc840bc2072b207d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 448,
+			"column": 42,
+			"endLine": 448,
+			"endColumn": 112,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c7a3b7bf02c83fd32783efd0cb0fe9b653371dcf1e5287261dc2b3f154949ea9"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 450,
+			"column": 28,
+			"endLine": 450,
+			"endColumn": 59,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "1d8f9860c752049381682f6329a948828f870a147be9fd9e15f8b452534a921c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=false)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 450,
+			"column": 38,
+			"endLine": 450,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ec7419c22a149da5af16abdc5284d096927c7665ced2b1f99d3e4a0382a810f5"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 451,
+			"column": 19,
+			"endLine": 451,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5447fbb3508d50ecee7e7f2edafab7ebf645152a2942fcfc1f13c30bdd5b6319",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=true)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 451,
+			"column": 19,
+			"endLine": 451,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d141ca27e353b18a09b56cca74ac3bc2bd1914c57aae74b4b96b35f6ca32821f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of nothing, and prints no warnings, when the review left every dismissal shared"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 451,
+			"column": 19,
+			"endLine": 451,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "texts.length !== 0",
+			"status": "generated",
+			"id": "0a48e41092457acc7c2b453761ed4c8c5d5d3b14629760b121e55d054385afa4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=true)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 451,
+			"column": 45,
+			"endLine": 451,
+			"endColumn": 64,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cdc6ccea21e9d8dbfffa054d4c6b5b1dd5f521b1503d5bfb93876990053026e5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of each dismissal the review left unshared (json=true)"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/errors.ts",
+			"line": 124,
+			"column": 18,
+			"endLine": 124,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "options.unshared && []",
+			"status": "generated",
+			"id": "922200d97a50c9215f264520327dee068d863c3bccfb0a047095611eac4f0858",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of an unshared dismissal when the review failed after its export"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/errors.ts",
+			"line": 124,
+			"column": 38,
+			"endLine": 124,
+			"endColumn": 40,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "7dcc161229601ae2bde5b03d60f66e01e42d95087c4a31febf73f9faec671a93",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of no unshared dismissal when a failed review names none"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3234,
+			"column": 37,
+			"endLine": 3234,
+			"endColumn": 39,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "8738293ca09a89e492044fed976c567706f1421c34d279415ec586dcab1b6ce8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3235,
+			"column": 40,
+			"endLine": 3235,
+			"endColumn": 42,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "4a9c9f22d075b83f5262a09d655ad37c336093fc922aae5b804af18fa05e4e68",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3236,
+			"column": 19,
+			"endLine": 3236,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "389823bd7cdecfb51587dc4a6c3dd838bec66870adee7c0b9cf70abf3ab0a234",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3236,
+			"column": 19,
+			"endLine": 3236,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ce997acceb8be2d448448491b18a6c3df89d0b0412745d4910985c4012200a68",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "every review records its revision in the findings document in the commit that starts it, so the document exists whenever a review exports"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3236,
+			"column": 19,
+			"endLine": 3236,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "state !== undefined",
+			"status": "generated",
+			"id": "686ecd8f48430aa316a2be1c9b35d886de0dce119e2fe179914fd29eb5951e2c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3236,
+			"column": 41,
+			"endLine": 3236,
+			"endColumn": 43,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "9d76981a27cd30fc979d43f71e44c87e702be522c8a9c033b0f095df80462ec6",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the empty list is read only when the findings document is absent, and every review records its revision in the findings document in the commit that starts it, so the document exists whenever a review exports"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3236,
+			"column": 72,
+			"endLine": 3244,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a57bede1589b8dccd55e1daa49899668a6ed28969d51d49adbe84980ee782af7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3237,
+			"column": 7,
+			"endLine": 3240,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2f646d36213b1d10b634373d23ff8d4c0e095715d251805fc342ebd531c6700c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3239,
+			"column": 8,
+			"endLine": 3239,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "dda35cfd273b5ef46b8aea25dbc1492d4c28667da6b667e36252a10320a20fe3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3239,
+			"column": 8,
+			"endLine": 3239,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "581b50aa18fe46718ba1cff0d1597d4517d101f08fb92c3f8741dcde663225bc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"exports the dismissal as melian dismiss stored it, at the head it was made at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3239,
+			"column": 8,
+			"endLine": 3239,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record === undefined",
+			"status": "generated",
+			"id": "ca0926c2e78370cb7acbe2342d6fd2e9d092386254ae4fb33bd1ba0ed8f31ceb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3239,
+			"column": 30,
+			"endLine": 3239,
+			"endColumn": 54,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2e4c82f813e0f5480587738da56d432806094753124b6c3880cff8e0f4204fd3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"exports the dismissal as melian dismiss stored it, at the head it was made at"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3240,
+			"column": 19,
+			"endLine": 3243,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e48208bc9edeff96e018e14bc521c58a6c60991c037e6a53709937c7f0912dad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 8,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "92b14af874b43968aff58de854ff3f9729c11c50b8a651f40537c989c1a06170",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 8,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6e470df8b891288d9a58e19b7572376565d7737640c1bd28028aa4d5abd9333a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"fails the review with another error that building its record throws"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 8,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!(error instanceof DismissError) && error.code !== \"unprovenRun\"",
+			"status": "generated",
+			"id": "32bccbbd3bfb1a4d9e9d3dc92c4456f0d4d4f241c8c5519a17317ba0a0378c65",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"fails the review with a dismissal error of another code that building its record throws"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 8,
+			"endLine": 3241,
+			"endColumn": 40,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "error instanceof DismissError",
+			"status": "generated",
+			"id": "9aebeb541a88ffb05f0434b4a5bfcb0320097e86280ece3c1c1708c8ef8de9f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 44,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6072ef6029dc4d189e972b8cc0252eb1079a10a9299383e08b1b14cd14f97f22",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"fails the review with a dismissal error of another code that building its record throws"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 44,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "EqualityOperator",
+			"replacement": "error.code === \"unprovenRun\"",
+			"status": "generated",
+			"id": "717a71130f531adc9d3be6b90835e737d4967802ae0cfba6c2975539c5670b51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3241,
+			"column": 59,
+			"endLine": 3241,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f6039e3e743dfbd5226d8d2c2981f9712f67e81d4a646771e130bd55d5e268c9"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3242,
+			"column": 18,
+			"endLine": 3242,
+			"endColumn": 51,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3ad12151d180fba6f6ffecc197a990a61ec1181d7729d09f577e77585d3ef1ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, exported by a later round",
+						"is left out, named by its code, and read back as not dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3775,
+			"column": 46,
+			"endLine": 3775,
+			"endColumn": 48,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "aaa503c8e7352182b4f9d99ffa4df39c84338e4acb581cc0ce731de77ed8f250",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"warns of nothing, and prints no warnings, when the review left every dismissal shared"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3862,
+			"column": 8,
+			"endLine": 3862,
+			"endColumn": 112,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1e245735a4973c0ecb2e7ac0e3eb47e0a53286b17e4ab566c407761ee99b8a6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a static check's sightings, exported from a run that does not prove the text they hold is Melian's",
+						"leave no tool text in the record, from bare check records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3862,
+			"column": 33,
+			"endLine": 3862,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f22d0c7576d9ffe733deb6b3cbada7bb4229ffd971b79ebb8324e410f679725a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"reports a long decision index only when it gave the design lens the index"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3862,
+			"column": 33,
+			"endLine": 3862,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f867d06e60612de8fca67e77f2a6109ab329d522d7ce4e562094da95d51af68b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"reports nothing for a decision index under the threshold it gave the verifier"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3862,
+			"column": 33,
+			"endLine": 3862,
+			"endColumn": 67,
+			"mutatorName": "EqualityOperator",
+			"replacement": "decisionIndexWarning !== undefined",
+			"status": "generated",
+			"id": "e8df774db32742442a7bfb1f376d39bcef2524d6857ded6c1cbde766b082a41c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"reports a long decision index only when it gave the design lens the index"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3862,
+			"column": 75,
+			"endLine": 3862,
+			"endColumn": 99,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "46a5302fe6e51864680c69ae6a7e2d9c76dd3ea473579235845e476407751ccd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"the verifier",
+						"reports a long decision index only when it gave the design lens the index"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 44,
+	"omitted": 0,
+	"unmutated": []
+}

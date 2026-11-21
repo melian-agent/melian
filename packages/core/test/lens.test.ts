@@ -552,6 +552,25 @@ describe.each(sourceKinds)("a lens's declared resolution, from the %s", (kind) =
 		expect(lens!.version).toBe(plain!.version);
 	});
 
+	// A shared reader caps an unverified finding only when its lens's version says the level it ran at does not verify.
+	it("gives a level's verify setting its own version, and the default the same version as its explicit value", async () => {
+		const at = async (levels: string[]) => {
+			writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, ...levels]) });
+			const [lens] = named(await Lens.load(repo, source(), ["."]), "security");
+			return lens!;
+		};
+		const quick = await at(["levels:", "  quick: { tier: light }"]);
+		const verified = await at(["levels:", "  quick: { tier: light, verify: true }"]);
+		const unverified = await at(["levels:", "  quick: { tier: light, verify: false }"]);
+		const careful = await at([]);
+		const carefulUnverified = await at(["levels:", "  careful: { verify: false }"]);
+		expect([quick.level("quick").verify, verified.level("quick").verify]).toEqual([false, true]);
+		expect(verified.version).not.toBe(quick.version);
+		expect(unverified.version).toBe(quick.version);
+		expect([careful.level("careful").verify, carefulUnverified.level("careful").verify]).toEqual([true, false]);
+		expect(carefulUnverified.version).not.toBe(careful.version);
+	});
+
 	it("inherits the declared resolution through extends, and replaces it whole", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile([...security, "resolution: { ceiling: advisory, P3: silent }"]),

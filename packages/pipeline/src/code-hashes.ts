@@ -2,7 +2,7 @@
 // A blank line parts every entry, so two pull requests that change different modules merge without a conflict.
 
 export const moduleHashes: Readonly<Record<string, string>> = {
-	"packages/core/src/adjudication.ts": "52546aef085a6e6a569b9d488bf31922787db77b2e4c3a5274fcc726c652668b",
+	"packages/core/src/adjudication.ts": "5c0c39453b7aaadba9d01b55b0e70b012c59228612c84be6f77b295dccf67e8e",
 
 	"packages/core/src/analyser.ts": "ff7133210e79be3fe940c0e00c6b2721da26bb3091afc35cd6e677c82d57ff70",
 
@@ -84,11 +84,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
-	"packages/core/src/record-payloads.ts": "b6b3459f64e2cfa45f848b2852f1b3d84a5ee4d4d1292dcd15f0d98276142395",
+	"packages/core/src/record-payloads.ts": "67d30a19f07afdbe389c1a750b3e0847ab10fbdb25e54f18599577b0282b5d2c",
 
 	"packages/core/src/record-store.ts": "cf22d37a4f0b82f5e63ee9b0661df3b5a32b0af9287de86dc1629ede2705fc13",
 
-	"packages/core/src/record.ts": "3957096845057838ee3d4c897c7c3fec98cbfcef79a670a507a69d6901be1b1a",
+	"packages/core/src/record.ts": "4415fe0d0a45037e2ef5bed01d2f784d186f7c52426e31c3011b9c25a01bf459",
 
 	"packages/core/src/render.ts": "876fe6874e8ffb8c3916775212dfbf76db634f29a5aa2a1c43d018a841af0f2d",
 
@@ -158,15 +158,15 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/enola-static.ts": "8d9fadb5c8d72d31527374c59e86d131ef0fb5204c175b77ac7057741b9456d9",
 
-	"packages/pipeline/src/errors.ts": "7e1b0fad0c2cf88c60e8d071aa775d256fbb2c1471a55210aa98c97af9dd0105",
+	"packages/pipeline/src/errors.ts": "62f87457efc1a4a2cae468ee9cfc08991a42d6e9789960ae3da799ace7f3437f",
 
-	"packages/pipeline/src/findings.ts": "16b1ab790215a1ffb06bbbee8213f660ced5536230dd48eab31ae02e9d537c2d",
+	"packages/pipeline/src/findings.ts": "b42e3492a37248c74744edf4c6fe1852c14454d232a19af4be39756f03c0ca9f",
 
 	"packages/pipeline/src/graph-cache.ts": "e1e730c5a1f86852d9159f67664b36abc5fc69fad4c9bf56595e99289d194039",
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "37a4787b1494f220946ba9cae00125d99f014ac6a571ece98dc842c24721c2e4",
+	"packages/pipeline/src/harness.ts": "26af0c737cb88716edd3b7ff331dda2ab7ab46a8cf565ec491ea8c065dc56e16",
 
 	"packages/pipeline/src/installed-packages.ts": "3ef11f5ad57188f045a5e06e9585c75ed8b88a7460f4b792dba7745df2828fe0",
 

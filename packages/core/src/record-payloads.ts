@@ -386,7 +386,9 @@ export const telemetryPayloadSchema = Type.Object(
 /**
  * A dismissal record's payload, by rule 5 of the shared record decision: the dismisser, the reason, the time, the
  * severity the verdict showed, the frozen sighting with the revision it was seen at, the head the dismissal was made
- * at, the rounds its writer listed, and the accepted trigger with its proof.
+ * at, the rounds its writer listed, and the accepted trigger with its proof. `frontier` names, in ID order, every round
+ * of the changeset its writer's store held as the dismissal was made; a reader counts the sightings of a round neither
+ * it nor any ancestor of it names, and applies no dismissal whose record has none.
  */
 export const dismissalPayloadSchema = Type.Object(
 	{
@@ -398,6 +400,7 @@ export const dismissalPayloadSchema = Type.Object(
 		sighting: Type.Object({ revision, finding: Type.Unknown() }, strict),
 		head: Type.String({ pattern: `^${objectId}$` }),
 		rounds: Type.Array(recordId),
+		frontier: Type.Optional(Type.Array(recordId)),
 		trigger: Type.Object({ hash, proof: Type.Array(Type.Object({ file: text, hash }, strict)) }, strict),
 	},
 	strict,
@@ -583,11 +586,12 @@ export const reviewPayloads: PayloadChecks = {
 	dismissal: (payload) => {
 		const refused = shape(dismissalPayloadSchema, payload);
 		if (refused !== undefined) return refused;
-		const { at, sighting, head } = payload as DismissalPayload;
+		const { at, sighting, head, frontier } = payload as DismissalPayload;
 		const stamped = new Date(at);
 		if (Number.isNaN(stamped.getTime()) || stamped.toISOString() !== at)
 			return "holds an `at` that is not a time as Melian stamps one";
 		if (sighting.revision.split("..")[1] !== head) return "names a head that is not its sighting's revision's";
+		if (frontier !== undefined && !ordered(frontier, byText)) return "lists its frontier out of order, or one twice";
 		const parsed = finding(sighting.finding, "/sighting/finding");
 		if (typeof parsed === "string") return parsed;
 		const { check, version } = parsed.properties.source;

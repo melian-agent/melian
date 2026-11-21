@@ -5,14 +5,22 @@ import { join } from "node:path";
 import {
 	Changeset,
 	DirectoryRecordStore,
+	type DismissalPayload,
 	defaultConfig,
+	everyRecordCounts,
+	Finding,
 	Lens,
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	RecordError,
+	type RecordJson,
+	RecordSet,
+	type RepositorySource,
 	Revision,
 	reviewPayloads,
 	SharedRecord,
+	type StoredFinding,
 	TierAccount,
 } from "@melian-agent/core";
 import {
@@ -24,9 +32,14 @@ import {
 	type Harness,
 	type Message,
 	openHarness,
+	RecordedRound,
+	type RecordedRoundContents,
 	type ReviewOptions,
+	readVerdict,
+	recordDismissal,
 	reviewChangeset,
 	summarizeReview,
+	upsertFinding,
 } from "@melian-agent/pipeline";
 import {
 	createFakeModels,
@@ -38,12 +51,14 @@ import {
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { type CheckRunRecord, headCodeChecks } from "../src/checks.ts";
-import { FindingsDocument } from "../src/findings.ts";
-import type { ConversationId, Tx } from "../src/harness.ts";
+import { DismissError } from "../src/errors.ts";
+import { dismissFinding, FindingsDocument } from "../src/findings.ts";
+import { type ConversationId, StorageRejected, type Tx } from "../src/harness.ts";
+import { provingHunk, reviewFiles } from "../src/lens-tools.ts";
 import { RelayBatch } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -102,7 +117,7 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: CheckRun; readonly proven?: true } = {},
+	run: { readonly checkRun?: CheckRun; readonly proven?: true; readonly policy?: RepositorySource } = {},
 ) {
 	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 	const heavy = fake.ref("heavy");
@@ -125,8 +140,8 @@ async function review(
 			? fauxAssistantMessage(fauxToolCall("report_finding", changedReturn), { stopReason: "toolUse" })
 			: fauxAssistantMessage("No findings.");
 	scriptConversations(fake, [
-		{ match: correctness, replies: [answer, answer] },
-		{ match: contracts, replies: [answer, answer, answer] },
+		{ match: correctness, replies: Array.from({ length: 32 }, () => answer) },
+		{ match: contracts, replies: Array.from({ length: 32 }, () => answer) },
 		...(walkthrough === undefined ? [] : [{ match: walkthroughPrompt, replies: [walkthrough.reply ?? recorded] }]),
 	]);
 	const changeset = await Changeset.resolve(repo, "main...feature");
@@ -166,10 +181,16 @@ async function review(
 					},
 				}),
 		...(store === undefined ? {} : { records: store }),
+		...(run.policy === undefined ? {} : { policy: run.policy }),
 		...(walkthrough === undefined ? {} : { lensesStarted: () => walkthrough.started(summarize) }),
 		...(walkthrough?.wait === undefined ? {} : { walkthroughWait: walkthrough.wait }),
 	});
-	return { changeset, verdict: result.verdict, stored: (await store?.list(changeset.id)) ?? [] };
+	return {
+		changeset,
+		verdict: result.verdict,
+		unshared: result.unshared,
+		stored: (await store?.list(changeset.id)) ?? [],
+	};
 }
 
 const roundOf = (stored: RecordEnvelope[]) =>
@@ -331,11 +352,554 @@ describe("a review that names a record store", () => {
 		expect(verdict.findings.block.map(({ id }) => id)).toEqual(plain.verdict.findings.block.map(({ id }) => id));
 	});
 
+	it("fails the review with a record error when the store lists a round whose payload is no round", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const earlier = first.stored.find(({ kind }) => kind === "round")!;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const list = store.list.bind(store);
+		vi.spyOn(store, "list").mockImplementation(async (id) => [
+			...(await list(id)).filter((each) => SharedRecord.parseEnvelope(each).kind !== "round"),
+			{ ...earlier, payload: null },
+		]);
+		await expect(review(store)).rejects.toBeInstanceOf(RecordError);
+	});
+
+	it("names in before the rounds of the revision before that its store held when the review began, and no later one", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const earlier = first.stored.find(({ kind }) => kind === "round")!;
+		const { base, head } = first.changeset.revision;
+		const late = ReviewRecords.of(first.changeset.id, { base, head }).round([], undefined, [], []);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const list = store.list.bind(store);
+		let listed = 0;
+		vi.spyOn(store, "list").mockImplementation(async (id) => {
+			const held = await list(id);
+			if (listed++ === 0) await store.add([late.toJSON()]);
+			return held;
+		});
+		const later = await review(store);
+		const round = later.stored.find(({ kind, revision }) => kind === "round" && revision !== earlier.revision)!
+			.payload as { before: string[] };
+		expect(later.stored.map((each) => SharedRecord.parseEnvelope(each).id)).toContain(late.id);
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier).id]);
+	});
+
+	it("names in before, on a host with no history of the changeset, each round of another revision no other names", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const rounds = async () => {
+			const held = (await store.list((await Changeset.resolve(repo, "main...feature")).id)).filter(
+				({ kind }) => kind === "round",
+			);
+			return held.map((each) => ({
+				id: SharedRecord.parseEnvelope(each).id,
+				...(each.payload as { before: string[] }),
+				revision: each.revision,
+			}));
+		};
+		const fresh = async () => {
+			await harness?.close(context);
+			harness = undefined;
+			commit(repo, { [`src/${(await rounds()).length}.ts`]: lines("export const n = 1;") });
+			return review(store);
+		};
+		const first = await review(store);
+		const [one] = await rounds();
+		const second = await fresh();
+		const two = (await rounds()).find(({ revision }) => revision === Revision.key(second.changeset.revision))!;
+		expect(two.before).toEqual([one!.id]);
+		const third = await fresh();
+		const three = (await rounds()).find(({ revision }) => revision === Revision.key(third.changeset.revision))!;
+		expect(three.before).toEqual([two.id]);
+		expect(first.changeset.id).toBe(third.changeset.id);
+	});
+
+	it("names in before every branch of a forked history, on a host with no history of the changeset", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		const other = ReviewRecords.of(first.changeset.id, { base: "4".repeat(40), head: "5".repeat(40) }).round(
+			[],
+			undefined,
+			[],
+			[],
+		);
+		await store.add([other.toJSON()]);
+		await harness?.close(context);
+		harness = undefined;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		const round = later.stored.find(
+			({ kind, revision }) => kind === "round" && revision === Revision.key(later.changeset.revision),
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id, other.id].sort());
+	});
+
+	it("names in before no round of its own revision, on a host with no history of the changeset", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const second = await review(store);
+		const own = Revision.key(second.changeset.revision);
+		const [held] = second.stored.filter(({ kind, revision }) => kind === "round" && revision === own);
+		await harness?.close(context);
+		harness = undefined;
+		const again = await review(store, checks, undefined, ["contracts"]);
+		const round = again.stored.find(
+			(each) => each.kind === "round" && each.revision === own && each.key !== held!.key,
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id]);
+	});
+
+	it("names in before the rounds of its previous revision and another branch's, on a host with history", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const [earlier] = first.stored.filter(({ kind }) => kind === "round");
+		const other = ReviewRecords.of(first.changeset.id, { base: "4".repeat(40), head: "5".repeat(40) }).round(
+			[],
+			undefined,
+			[],
+			[],
+		);
+		await store.add([other.toJSON()]);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		const round = later.stored.find(
+			({ kind, revision }) => kind === "round" && revision === Revision.key(later.changeset.revision),
+		)!.payload as { before: string[] };
+		expect(round.before).toEqual([SharedRecord.parseEnvelope(earlier!).id, other.id].sort());
+	});
+
+	it("names in before another host's round written since its own, on a host with history", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const roundOf = (stored: readonly RecordEnvelope[], revision: string) =>
+			stored.find((each) => each.kind === "round" && each.revision === revision)!;
+		const first = await review(store);
+		const one = roundOf(first.stored, Revision.key(first.changeset.revision));
+		const hostA = harness;
+		harness = undefined;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const second = await review(store);
+		const two = roundOf(second.stored, Revision.key(second.changeset.revision));
+		const hostB = () => harness;
+		await hostB()?.close(context);
+		harness = hostA;
+		commit(repo, { "src/c.ts": lines("export const c = 1;") });
+		const third = await review(store);
+
+		const three = roundOf(third.stored, Revision.key(third.changeset.revision)).payload as { before: string[] };
+		expect((two.payload as { before: string[] }).before).toEqual([SharedRecord.parseEnvelope(one).id]);
+		expect(three.before).toEqual([SharedRecord.parseEnvelope(one).id, SharedRecord.parseEnvelope(two).id].sort());
+	});
+
 	it("adds the same bytes when the same head is reviewed again", async () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const first = (await review(store)).stored;
 		const second = (await review(store)).stored;
 		expect(second).toEqual(first);
+	});
+});
+
+const dismissal = { by: "Maintainer", reason: "a is meant to be 2 now.", at: "2026-11-16T00:00:00.000Z" };
+const dismissalsOf = (stored: RecordEnvelope[]) => stored.filter(({ kind }) => kind === "dismissal");
+
+// A review, and its finding dismissed as `melian dismiss --records` dismisses it, into `store`, or with no store when
+// `shared` is false.
+async function dismissedReview(store: MemoryRecordStore, shared = true) {
+	const first = await review(store);
+	const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+	const records = shared ? { records: { store, changeset: first.changeset.id } } : {};
+	await recordDismissal({
+		harness: harness!,
+		repoRoot: repo,
+		revision: first.changeset.revision,
+		id,
+		dismissal,
+		...records,
+	});
+	return { first, id };
+}
+
+describe("a review that names a record store after a dismissal", () => {
+	it("shares no dismissal made with no store, and names it as unshared", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store, false);
+		const later = await review(store);
+		expect(dismissalsOf(later.stored)).toEqual([]);
+		expect(later.unshared).toEqual([{ finding: id, code: "madeWithoutStore" }]);
+	});
+
+	it("shares the dismissal as melian dismiss stored it, at the head it was made at, naming the rounds its store held", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		expect(dismissalsOf(first.stored)).toEqual([]);
+		const held = (await store.list(first.changeset.id)).filter(({ kind }) => kind === "round");
+		expect(held).toHaveLength(1);
+
+		const { stored } = await review(store);
+		const root = (await harness!.root(context)).id;
+		const { lifecycle } = (await harness!.snapshot(FindingsDocument, root, context))!.items[id]!;
+		const { base, head } = first.changeset.revision;
+		expect(dismissalsOf(stored)).toEqual([
+			{
+				v: 1,
+				changeset: first.changeset.id,
+				kind: "dismissal",
+				key: id,
+				payload: {
+					v: 1,
+					by: dismissal.by,
+					reason: dismissal.reason,
+					at: dismissal.at,
+					severity: "P2",
+					sighting: {
+						revision: `${base}..${head}`,
+						finding: JSON.parse(
+							JSON.stringify({
+								...lifecycle.dismissedSighting!.sighting,
+								properties: { ...lifecycle.dismissedSighting!.sighting.properties, status: "new" },
+							}),
+						),
+					},
+					head,
+					rounds: [],
+					frontier: held.map((each) => SharedRecord.parseEnvelope(each).id),
+					trigger: {
+						hash: lifecycle.dismissedTrigger!.hash,
+						proof: JSON.parse(JSON.stringify(lifecycle.dismissedTrigger!.proof)),
+					},
+				},
+			},
+		]);
+	});
+
+	it("adds the same dismissal record, by its bytes and its ID, when a later round is exported", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const once = dismissalsOf((await review(store)).stored);
+		expect(once).toHaveLength(1);
+
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const later = await review(store);
+		expect(later.changeset.revision.head).not.toBe((once[0]!.payload as { head: string }).head);
+		const again = dismissalsOf(later.stored);
+		expect(again).toEqual(once);
+		expect(again.map((each) => SharedRecord.parseEnvelope(each).id)).toEqual(
+			once.map((each) => SharedRecord.parseEnvelope(each).id),
+		);
+	});
+
+	it("writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+			records: { store, changeset: first.changeset.id },
+		});
+		const written = dismissalsOf(await store.list(first.changeset.id)).map((each) =>
+			SharedRecord.parseEnvelope(each),
+		);
+		const replacing = written.find((each) => each.id !== once!.id)!;
+		expect(written).toHaveLength(2);
+		expect(replacing.supersedes).toEqual([once!.id]);
+		expect((replacing.toJSON().payload as { reason: string }).reason).toBe(again.reason);
+
+		const add = vi.spyOn(store, "add");
+		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(stored.map(({ id }) => id).sort()).toEqual(written.map(({ id }) => id).sort());
+		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
+		expect(standing.map(({ id }) => id)).toEqual([replacing.id]);
+		expect(made.unshared).toEqual([]);
+	});
+
+	it("writes nothing on a second review for a dismissal whose record the store holds", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const once = dismissalsOf((await review(store)).stored);
+		expect(once).toHaveLength(1);
+		const add = vi.spyOn(store, "add");
+		const again = await review(store);
+		expect(add).toHaveBeenCalled();
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(dismissalsOf(again.stored)).toEqual(once);
+	});
+
+	it("keeps a dismissal record an earlier build exported with what it superseded, and writes no other", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+		});
+		// An earlier build built the record at export, superseding every dismissal of the finding its listing held.
+		const root = (await harness!.root(context)).id;
+		const state = (await harness!.snapshot(FindingsDocument, root, context))!;
+		const made = ReviewRecords.of(first.changeset.id, first.changeset.revision).madeOf(state, id, [])!.toJSON();
+		const { frontier: _, ...unbounded } = made.payload as { frontier?: string[] };
+		const earlier = SharedRecord.parse(
+			{ ...made, payload: unbounded as RecordJson, supersedes: [once!.id] },
+			reviewPayloads,
+		);
+		await store.add([earlier.toJSON()]);
+
+		const add = vi.spyOn(store, "add");
+		const stored = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		expect(dismissalsOf(add.mock.calls.flatMap(([records]) => [...records]))).toEqual([]);
+		expect(stored.map(({ id }) => id).sort()).toEqual([once!.id, earlier.id].sort());
+		const standing = RecordSet.of(stored, { counts: everyRecordCounts, payloads: reviewPayloads }).unsuperseded();
+		expect(standing.map(({ id }) => id)).toEqual([earlier.id]);
+	});
+
+	it("shares no dismissal made again with no store, so the record of the one it replaced stands alone", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { first, id } = await dismissedReview(store);
+		const [once] = dismissalsOf((await review(store)).stored).map((each) => SharedRecord.parseEnvelope(each));
+		const again = { ...dismissal, reason: "a is 2 by design.", at: "2026-11-17T00:00:00.000Z" };
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: again,
+		});
+		expect(dismissalsOf(await store.list(first.changeset.id))).toHaveLength(1);
+
+		const later = await review(store);
+		expect(dismissalsOf(later.stored).map((each) => SharedRecord.parseEnvelope(each).id)).toEqual([once!.id]);
+		expect(later.unshared).toEqual([{ finding: id, code: "madeWithoutStore" }]);
+		expect(made.unshared).toEqual([]);
+	});
+
+	it("exports no record of a dismissal stored with no sighting, as one before findings document version 11 was", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const root = await harness!.root(context);
+		const { base, head } = first.changeset.revision;
+		await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, `${base}..${head}`), context);
+
+		const { stored } = await review(store);
+		expect((await harness!.snapshot(FindingsDocument, root.id, context))!.items[id]!.lifecycle.status).toBe(
+			"dismissed",
+		);
+		expect(dismissalsOf(stored)).toEqual([]);
+	});
+
+	it("writes no record when a dismissal stored with no sighting is made again with the store", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const root = await harness!.root(context);
+		const { base, head } = first.changeset.revision;
+		await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, `${base}..${head}`), context);
+
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+
+		expect(made.unshared).toEqual([]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+	});
+
+	it("shares a dismissal made again with the same reason after a push, at the pushed revision", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store);
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const pushed = await review(store);
+		const revision = Revision.key(pushed.changeset.revision);
+		const contentsAt = (held: RecordEnvelope[]) =>
+			RecordedRound.of(
+				held,
+				SharedRecord.parseEnvelope(
+					held.filter((each) => each.kind === "round" && each.revision === revision).at(-1)!,
+				).id,
+				everyRecordCounts,
+			).contents(pushed.changeset.revision) as RecordedRoundContents;
+		expect(contentsAt(await store.list(pushed.changeset.id)).ended).toHaveLength(1);
+
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: pushed.changeset.revision,
+			id,
+			dismissal: { ...dismissal, at: "2026-11-18T00:00:00.000Z" },
+			records: { store, changeset: pushed.changeset.id },
+		});
+
+		const contents = contentsAt(await store.list(pushed.changeset.id));
+		expect({ dismissals: contents.dismissals.map((each) => each.finding), ended: contents.ended }).toEqual({
+			dismissals: [id],
+			ended: [],
+		});
+	});
+});
+
+describe("a review that names a record store, when building a dismissal's record fails", () => {
+	it.each([
+		["an error of no dismissal", () => new Error("the store's record is malformed")],
+		[
+			"a dismissal error that is no reason to leave the record unshared",
+			() => new DismissError("notInstalled", "no dismissal task", { revision: "r", finding: "f" }),
+		],
+	])("fails the review on %s", async (_, made) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		const thrown = made();
+		const spy = vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw thrown;
+		});
+		try {
+			await expect(review(store)).rejects.toBe(thrown);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+});
+
+describe("a review that names a record store, when a dismissal's run is unproven", () => {
+	it("names the dismissal unshared, and finishes the review", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const { id } = await dismissedReview(store);
+		const spy = vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw new DismissError("unprovenRun", "the run is unproven", { revision: "r", finding: id });
+		});
+		try {
+			const later = await review(store);
+			expect(later.unshared).toEqual([{ finding: id, code: "unprovenRun" }]);
+		} finally {
+			spy.mockRestore();
+		}
+	});
+});
+
+describe("a dismissal shared across hosts", () => {
+	it("ends at a round a third host, with no history of the changeset, exports after a second at another revision", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await dismissedReview(store);
+		await review(store);
+		for (const file of ["src/b.ts", "src/c.ts"]) {
+			await harness?.close(context);
+			harness = undefined;
+			commit(repo, { [file]: lines("export const b = 1;") });
+			await review(store);
+		}
+		const changeset = await Changeset.resolve(repo, "main...feature");
+		const held = await store.list(changeset.id);
+		const round = held
+			.filter(({ kind, revision }) => kind === "round" && revision === Revision.key(changeset.revision))
+			.map((each) => SharedRecord.parseEnvelope(each).id)
+			.at(-1)!;
+		const contents = (await RecordedRound.of(held, round, everyRecordCounts).contents(
+			changeset.revision,
+		)) as RecordedRoundContents;
+		expect(contents.dismissals).toEqual([]);
+		expect(contents.ended).toHaveLength(1);
+	});
+});
+
+describe("a dismissal made with a store that fails", () => {
+	const dismiss = (store: MemoryRecordStore, first: Awaited<ReturnType<typeof review>>, id: string) =>
+		recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+	const statusOf = async (id: string) => {
+		const root = (await harness!.root(context)).id;
+		return (await harness!.snapshot(FindingsDocument, root, context))!.items[id]!.lifecycle.status;
+	};
+
+	it.each(["list", "add"] as const)(
+		"refuses when the store's %s fails, and records nothing on the host or in the store",
+		async (method) => {
+			const store = new MemoryRecordStore({ payloads: reviewPayloads });
+			const first = await review(store);
+			const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+			const refused = new Error(`the store's ${method} is unreachable`);
+			vi.spyOn(store, method).mockRejectedValueOnce(refused);
+
+			const made = dismiss(store, first, id);
+
+			await expect(made).rejects.toMatchObject({ code: "storeFailed", cause: refused });
+			await expect(made).rejects.toThrow(
+				new RegExp(
+					`^the dismissal is not recorded, because the record store failed: the store's ${method} is unreachable${
+						method === "add" ? "; the store may hold its record, so run the command again" : ""
+					}$`,
+				),
+			);
+			const root = (await harness!.root(context)).id;
+			const verdict = await readVerdict(harness!, root, Revision.key(first.changeset.revision), context);
+			expect([await statusOf(id), verdict?.defect(id)?.speaker.properties.status]).toEqual(["new", "new"]);
+			expect(dismissalsOf(await store.list(first.changeset.id))).toEqual([]);
+		},
+	);
+
+	it("keeps the record in the store, records nothing on the host, and refuses, when the store's add lands and then fails, until dismiss again writes the same record", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const add = store.add.bind(store);
+		const refused = new Error("the store's add is unreachable");
+		vi.spyOn(store, "add").mockImplementationOnce(async (records) => {
+			await add(records);
+			throw refused;
+		});
+
+		await expect(dismiss(store, first, id)).rejects.toMatchObject({ code: "storeFailed", cause: refused });
+		const shared = dismissalsOf(await store.list(first.changeset.id));
+		expect([await statusOf(id), shared.length]).toEqual(["new", 1]);
+
+		const made = await dismiss(store, first, id);
+		expect([await statusOf(id), made.finding.properties.status]).toEqual(["dismissed", "dismissed"]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual(shared);
+	});
+
+	it("leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store);
+		const id = first.verdict.all().find(({ ruleId }) => ruleId === "changed-return")!.id;
+		const add = vi.spyOn(store, "add");
+		const storage = Object.getPrototypeOf(createMemoryStorage());
+		const commit = storage.commit;
+		let refused = false;
+		// The host's first commit after the store's write fails, as a full disk would fail it.
+		vi.spyOn(storage, "commit").mockImplementation(function (this: unknown, ...args: unknown[]) {
+			if (add.mock.calls.length === 0 || refused) return commit.apply(this, args);
+			refused = true;
+			return Promise.reject(new StorageRejected("the disk is full"));
+		});
+
+		await expect(dismiss(store, first, id)).rejects.toThrow("the disk is full");
+		const shared = dismissalsOf(await store.list(first.changeset.id));
+		expect([await statusOf(id), shared.length]).toEqual(["new", 1]);
+
+		vi.mocked(storage.commit).mockRestore();
+		const made = await dismiss(store, first, id);
+		expect([await statusOf(id), made.finding.properties.status]).toEqual(["dismissed", "dismissed"]);
+		expect(dismissalsOf(await store.list(first.changeset.id))).toEqual(shared);
 	});
 });
 
@@ -575,5 +1139,357 @@ describe("a review that names a record store and writes a walkthrough", () => {
 
 		expect(verdict.all().map(({ properties }) => properties.source.check)).toEqual(["lens.contracts"]);
 		expect(Date.now() - began).toBeLessThan(30_000);
+	});
+});
+
+describe("a dismissal shared across hosts that each hold some of its rounds", () => {
+	// Each host keeps its own findings and holds only the rounds it ran; every host shares one record store and one
+	// repository. The oracle runs every round and every dismissal in order, as a host that held them all would.
+	const worktree: RepositorySource = { kind: "worktree" };
+	type Host = { harness: Harness | undefined; latest?: Awaited<ReturnType<typeof review>> };
+	type Step = {
+		readonly kind: "commit-a" | "commit-other" | "review" | "dismiss" | "sync";
+		readonly host: number;
+		// The host whose store a sync copies into `host`'s.
+		readonly from?: number;
+	};
+
+	const random = (seed: number) => () => {
+		seed = (seed + 0x6d2b79f5) | 0;
+		let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+
+	function historyOf(seed: number, syncs = false): Step[] {
+		const next = random(seed);
+		const hosts = 2 + Math.floor(next() * 2);
+		const pick = () => Math.floor(next() * hosts);
+		// Every history opens with a review and a dismissal on host 0, and ends with a review the reader reads.
+		const steps: Step[] = [
+			{ kind: "review", host: 0 },
+			{ kind: "dismiss", host: 0 },
+		];
+		const kinds: Step["kind"][] = [
+			"commit-a",
+			"commit-other",
+			"review",
+			"review",
+			"dismiss",
+			...(syncs ? (["sync"] as const) : []),
+		];
+		for (let length = 3 + Math.floor(next() * 5); length > 0; length--) {
+			const kind = kinds[Math.floor(next() * kinds.length)]!;
+			const host = pick();
+			steps.push(
+				kind === "sync"
+					? { kind, host, from: (host + 1 + Math.floor(next() * (hosts - 1))) % hosts }
+					: { kind, host },
+			);
+		}
+		steps.push({ kind: "review", host: pick() });
+		return steps;
+	}
+
+	const findingOf = (reviewed: Awaited<ReturnType<typeof review>>) =>
+		reviewed.verdict.all().find(({ ruleId }) => ruleId === "changed-return")?.id;
+
+	async function statusOn(on: Harness, id: string) {
+		const root = (await on.root(context)).id;
+		return (await on.snapshot(FindingsDocument, root, context))!.items[id]?.lifecycle.status;
+	}
+
+	// Runs one review on `host`, whose harness the shared `review` helper opens and keeps.
+	async function reviewOn(host: Host, store: MemoryRecordStore | undefined) {
+		harness = host.harness;
+		try {
+			host.latest = await review(store, checks, undefined, undefined, { policy: worktree });
+		} finally {
+			host.harness = harness;
+			harness = undefined;
+		}
+		return host.latest;
+	}
+
+	// Dismisses as `melian dismiss` does, at the revision `as` last reviewed, which `host` reviewed too.
+	async function dismissOn(host: Host, as: Host, store: MemoryRecordStore | undefined, at: string) {
+		const latest = as.latest!;
+		const id = findingOf(latest);
+		if (id === undefined) return;
+		await recordDismissal({
+			harness: host.harness!,
+			repoRoot: repo,
+			revision: latest.changeset.revision,
+			id,
+			dismissal: { ...dismissal, at },
+			...(store === undefined ? {} : { records: { store, changeset: latest.changeset.id } }),
+		});
+	}
+
+	// What a reader of the last round makes of the finding, and what the oracle's own lifecycle makes of it.
+	async function outcomeOf(steps: readonly Step[]) {
+		// The finding sits on line 1; line 2 shares its hunk, so an edit there reopens it and keeps its ID.
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;") },
+			{ "src/a.ts": lines("export const a = 2;", "export const k = 0;") },
+		);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const hosts: Host[] = [0, 1, 2].map(() => ({ harness: undefined }));
+		const oracle: Host = { harness: undefined };
+		let edits = 0;
+		let k = 0;
+		try {
+			for (const [index, step] of steps.entries()) {
+				const host = hosts[step.host]!;
+				// Each edit toggles the line beside the finding, in its hunk, so one reopens it and the next restores the text it
+				// was dismissed over.
+				if (step.kind === "commit-a") {
+					k = 1 - k;
+					commit(repo, { "src/a.ts": lines("export const a = 2;", `export const k = ${k};`) });
+				}
+				if (step.kind === "commit-other") commit(repo, { "src/b.ts": lines(`export const b = ${edits++};`) });
+				if (step.kind === "review") {
+					await reviewOn(host, store);
+					await reviewOn(oracle, undefined);
+				}
+				if (step.kind === "dismiss" && host.latest !== undefined) {
+					const at = new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString();
+					const before = (await store.list(host.latest.changeset.id)).length;
+					await dismissOn(host, host, store, at);
+					// A host that dismisses again what it holds dismissed records nothing, so the oracle, which would dismiss at its
+					// own later revision, has nothing to mirror.
+					if ((await store.list(host.latest.changeset.id)).length > before)
+						await dismissOn(oracle, host, undefined, at);
+				}
+			}
+			const last = oracle.latest!;
+			const id = findingOf(last);
+			if (id === undefined) return "absent" as const;
+			const held = await store.list(last.changeset.id);
+			const round = held
+				.filter(({ kind, revision }) => kind === "round" && revision === Revision.key(last.changeset.revision))
+				.map((each) => SharedRecord.parseEnvelope(each).id)
+				.at(-1)!;
+			// The reader reads the round as `melian findings --records` does, under the policy the review read.
+			const read = await RecordedRound.of(held, round, everyRecordCounts).verdict({
+				revision: last.changeset.revision,
+				config: defaultConfig,
+				repoRoot: repo,
+				policy: worktree,
+			});
+			// The round reads not reviewed for its skipped checks alone; a refusal of its records is the reader's own.
+			const refused = read.notRun.find(({ name }) => name === "records");
+			if (refused !== undefined) throw new Error(`the reader refused the round: ${refused.reason}`);
+			const reader = read.dismissed.some(({ properties }) => properties.id === id);
+			const host = (await statusOn(oracle.harness!, id)) === "dismissed";
+			return reader && host ? "both" : reader ? "readerOnly" : host ? "hostOnly" : "neither";
+		} finally {
+			for (const each of [...hosts, oracle]) await each.harness?.close(context);
+		}
+	}
+	// The proving hunks of the revision `base..head`, as a lens cites them.
+	async function hunksAt(revision: string) {
+		const [base, head] = revision.split("..") as [string, string];
+		const { files } = (await Changeset.resolve(repo, { mode: "twoDot", base, head })).revision;
+		return reviewFiles(files).flatMap((file) => file.hunks.map(provingHunk));
+	}
+
+	// Whether a host that holds `dismissal`, and then meets every round in `order` its writer did not hold, through its
+	// own lifecycle, still holds the finding dismissed: the host of the maintainer's guarantee of 2026-11-20.
+	async function replayHolds(
+		set: RecordSet,
+		dismissal: SharedRecord,
+		order: readonly string[],
+		held: ReadonlySet<string>,
+	) {
+		const { sighting, by, reason, at } = dismissal.payload as DismissalPayload;
+		const finding = Finding.parse(sighting.finding);
+		const records = new Map(set.records().map((each) => [each.id, each]));
+		const fake = createFakeModels();
+		const replay = await openHarness(createMemoryStorage(), {
+			models: fake.models,
+			registry: createReviewRegistry(),
+		});
+		try {
+			const root = await replay.root(context, { agent: { model: fake.ref() } });
+			const meet = async (seen: Finding, revision: string) => {
+				const hunks = await hunksAt(revision);
+				await root.commit((tx) => upsertFinding(tx, root.id, seen, revision, hunks), context);
+			};
+			await meet(finding, sighting.revision);
+			await root.commit(
+				(tx) => dismissFinding(tx, root.id, finding.id, { by, reason, at }, sighting.revision),
+				context,
+			);
+			for (const id of order.filter((each) => !held.has(each))) {
+				const round = records.get(id)!;
+				for (const { id: read } of round.manifest()!.read)
+					for (const seen of (records.get(read)!.payload as { sightings?: StoredFinding[] }).sightings ?? [])
+						if (seen.properties.id === finding.id) await meet(Finding.parse(seen), round.revision!);
+			}
+			return (await statusOn(replay, finding.id)) === "dismissed";
+		} finally {
+			await replay.close(context);
+		}
+	}
+
+	// Hosts that each keep a store of their own and copy another's into it now and then, so a host can write a round
+	// without having seen another's, or dismiss with a frontier that lacks one. The oracle is the maintainer's guarantee
+	// of 2026-11-20: for every dismissal the reader keeps, a host that holds it and then meets every round its writer did
+	// not hold still holds it, and so does the host that wrote it.
+	async function setOutcomeOf(steps: readonly Step[]) {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;") },
+			{ "src/a.ts": lines("export const a = 2;", "export const k = 0;") },
+		);
+		const hosts: (Host & { readonly store: MemoryRecordStore })[] = [0, 1, 2].map(() => ({
+			harness: undefined,
+			store: new MemoryRecordStore({ payloads: reviewPayloads }),
+		}));
+		// What each dismissal's writer held.
+		const made = new Map<string, { readonly host: number; readonly held: ReadonlySet<string> }>();
+		// Every round in the order a host wrote it.
+		const order: string[] = [];
+		let changeset: string | undefined;
+		let read: string | undefined;
+		let edits = 0;
+		let k = 0;
+		const ids = async (store: MemoryRecordStore) =>
+			changeset === undefined ? [] : (await store.list(changeset)).map((each) => SharedRecord.parseEnvelope(each));
+		try {
+			for (const [index, step] of steps.entries()) {
+				const host = hosts[step.host]!;
+				if (step.kind === "commit-a") {
+					k = 1 - k;
+					commit(repo, { "src/a.ts": lines("export const a = 2;", `export const k = ${k};`) });
+				}
+				if (step.kind === "commit-other") commit(repo, { "src/b.ts": lines(`export const b = ${edits++};`) });
+				if (step.kind === "sync" && changeset !== undefined)
+					await host.store.add(await hosts[step.from!]!.store.list(changeset));
+				if (step.kind === "review") {
+					const had = new Set((await ids(host.store)).map(({ id }) => id));
+					harness = host.harness;
+					let reviewed: Awaited<ReturnType<typeof review>>;
+					try {
+						reviewed = await review(host.store, checks, undefined, undefined, { policy: worktree });
+					} finally {
+						host.harness = harness;
+						harness = undefined;
+					}
+					changeset = reviewed.changeset.id;
+					host.latest = reviewed;
+					// A review that reuses its stored verdict writes no new round, so the host's latest at the revision is the one.
+					const at = (await ids(host.store)).filter(
+						({ kind, revision }) => kind === "round" && revision === Revision.key(reviewed.changeset.revision),
+					);
+					read = (at.find(({ id }) => !had.has(id)) ?? at.at(-1)!).id;
+					if (!order.includes(read)) order.push(read);
+				}
+				if (step.kind === "dismiss" && host.latest !== undefined) {
+					const before = await ids(host.store);
+					await dismissOn(host, host, host.store, new Date(Date.UTC(2026, 10, 16, 0, index)).toISOString());
+					const written = (await ids(host.store)).find(
+						({ id, kind }) => kind === "dismissal" && !before.some((each) => each.id === id),
+					);
+					if (written !== undefined)
+						made.set(written.id, {
+							host: step.host,
+							held: new Set(before.filter(({ kind }) => kind === "round").map(({ id }) => id)),
+						});
+				}
+			}
+			const last = hosts[steps.at(-1)!.host]!;
+			const id = findingOf(last.latest!);
+			if (id === undefined) return "absent" as const;
+			const everyStore = new MemoryRecordStore({ payloads: reviewPayloads });
+			for (const each of hosts) await everyStore.add(await each.store.list(changeset!));
+			const held = await everyStore.list(changeset!);
+			const set = RecordSet.of(held, { counts: everyRecordCounts, payloads: reviewPayloads });
+			const round = RecordedRound.of(held, read!, everyRecordCounts);
+			const contents = round.contents(last.latest!.changeset.revision) as RecordedRoundContents;
+			let guarantee = true;
+			for (const kept of contents.dismissals.filter(({ finding }) => finding === id)) {
+				const { host: writerOf, held: writerHeld } = made.get(kept.record)!;
+				const dismissal = set.records().find((each) => each.id === kept.record)!;
+				const writerHolds = (await statusOn(hosts[writerOf]!.harness!, id)) === "dismissed";
+				guarantee &&= writerHolds && (await replayHolds(set, dismissal, order, writerHeld));
+			}
+			const verdict = await round.verdict({
+				revision: last.latest!.changeset.revision,
+				config: defaultConfig,
+				repoRoot: repo,
+				policy: worktree,
+			});
+			const refused = verdict.notRun.find(({ name }) => name === "records");
+			if (refused !== undefined) throw new Error(`the reader refused the round: ${refused.reason}`);
+			const reader = verdict.dismissed.some(({ properties }) => properties.id === id);
+			const writer = (await statusOn(last.harness!, id)) === "dismissed";
+			return { reader, guarantee, writer };
+		} finally {
+			for (const each of hosts) await each.harness?.close(context);
+		}
+	}
+
+	// Seed 112 let a reader that followed only the read round's chain keep a dismissal the set reopens: a host wrote a
+	// round without the frontier, citing a changed hunk, and the round read never names it. The host that wrote the round
+	// read never saw that round, so it holds the finding dismissed where the reader reads it live.
+	it("keeps seed 112: a round written without the frontier ends the dismissal, though the round read never names it", async () => {
+		const outcome = await setOutcomeOf(historyOf(112, true));
+		expect(outcome).toEqual({ reader: false, guarantee: true, writer: true });
+	});
+
+	const syncSeeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
+	it("keeps no dismissal a host would reopen, when hosts keep stores of their own that sync late", {
+		timeout: 60_000 + syncSeeds * 5_000,
+	}, async () => {
+		const outcomes: Record<string, number[]> = {};
+		for (let seed = 1; seed <= syncSeeds; seed++) {
+			const outcome = await setOutcomeOf(historyOf(seed, true)).catch((error: unknown) => {
+				throw new Error(`seed ${seed} failed`, { cause: error });
+			});
+			const name =
+				outcome === "absent"
+					? outcome
+					: `${outcome.reader && !outcome.guarantee ? "broken" : "held"}:${outcome.reader ? "kept" : "live"}${outcome.writer === outcome.reader ? "" : ",writer differs"}`;
+			outcomes[name] = [...(outcomes[name] ?? []), seed];
+		}
+		process.stderr.write(`property seeds, separate stores: ${JSON.stringify(outcomes)}\n`);
+		expect(Object.keys(outcomes).filter((name) => name.startsWith("broken"))).toEqual([]);
+		expect(Object.keys(outcomes).some((name) => name.startsWith("held:kept"))).toBe(true);
+		expect(Object.keys(outcomes).some((name) => name.startsWith("held:live"))).toBe(true);
+	});
+
+	// Seeds that once found a defect, each kept as a named case. Seed 9 let a reader that skipped each round's own
+	// revision dismiss the finding: dismissed on host 0, reopened by an edit beside it in a round on host 1, then
+	// restored and read in a later round there.
+	const kept: readonly { readonly seed: number; readonly why: string }[] = [
+		{ seed: 9, why: "a round on another host reopened the dismissal, and a later one restored the text" },
+		{
+			seed: 302,
+			why: "a host dismissed again a finding it held dismissed, which records nothing for others to read",
+		},
+	];
+
+	it.each(kept)("keeps seed $seed: $why", async ({ seed }) => {
+		expect(await outcomeOf(historyOf(seed))).not.toBe("readerOnly");
+	});
+
+	const seeds = Number(process.env.MELIAN_PROPERTY_SEEDS ?? 20);
+	it("never lets a reader's dismissal stand where a host that held every round reopened it", {
+		timeout: 60_000 + seeds * 5_000,
+	}, async () => {
+		const outcomes: Record<string, number[]> = {};
+		for (let seed = 1; seed <= seeds; seed++) {
+			const outcome = await outcomeOf(historyOf(seed)).catch((error: unknown) => {
+				throw new Error(`seed ${seed} failed`, { cause: error });
+			});
+			outcomes[outcome] = [...(outcomes[outcome] ?? []), seed];
+		}
+		process.stderr.write(`property seeds: ${JSON.stringify(outcomes)}\n`);
+		expect(outcomes.readerOnly).toBeUndefined();
+		expect(outcomes.both?.length ?? 0).toBeGreaterThan(0);
+		expect(outcomes.neither?.length ?? 0).toBeGreaterThan(0);
 	});
 });

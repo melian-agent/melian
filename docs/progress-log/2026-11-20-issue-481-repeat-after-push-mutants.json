@@ -1,0 +1,345 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "cdcda0e4c034f12915aa2c4c73344643bacb32f3",
+		"head": "758415a3d69d07d2e5eb37752290b38209078487"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4a31f9e61456f1b813c5e8a72a37f7b7b72985b69c13f634956512f5448eeb95",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 161,
+			"column": 38,
+			"endLine": 161,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3484180063fa5106a677db4a53e9730d73e79e61c66ca5735df04fba5f2dac74"
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 616,
+			"column": 3,
+			"endLine": 618,
+			"endColumn": 78,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3f7e3dd80ef00b77ccd713f2bd4a05e15d28b43ea535764e643a7b2a0f6b6a6f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"shares a dismissal made again with the same reason after a push, at the pushed revision"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 616,
+			"column": 3,
+			"endLine": 618,
+			"endColumn": 78,
+			"mutatorName": "LogicalOperator",
+			"replacement": "severity === undefined && record.lifecycle.dismissedSighting?.run === run && (record.lifecycle.dismissedSighting?.revision ?? accepting) === accepting",
+			"status": "generated",
+			"id": "05b22c5fd90f5ff949aaae396bef3b376e7fdd56f5e7dfae5f11664159e702bd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 616,
+			"column": 3,
+			"endLine": 616,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "66c2e8a738e425efc7f9a6d692513a46d32297573c146f6d49508b0256088bf1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings.test.ts",
+					"path": [
+						"the findings document",
+						"lifecycle",
+						"changes nothing when a dismissal shown at no severity is made again"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 616,
+			"column": 3,
+			"endLine": 616,
+			"endColumn": 25,
+			"mutatorName": "EqualityOperator",
+			"replacement": "severity !== undefined",
+			"status": "generated",
+			"id": "6498ee494067a5e4e3c3fe485afee2263aa90605e4b340753650a1f5eec2e415",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"shares a dismissal made again with the same reason after a push, at the pushed revision"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 617,
+			"column": 4,
+			"endLine": 618,
+			"endColumn": 77,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d6f2d2cf89879bc151c1d192321bb773211a938db47f49f8303c12495d0a51c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 617,
+			"column": 4,
+			"endLine": 618,
+			"endColumn": 77,
+			"mutatorName": "LogicalOperator",
+			"replacement": "record.lifecycle.dismissedSighting?.run === run || (record.lifecycle.dismissedSighting?.revision ?? accepting) === accepting",
+			"status": "generated",
+			"id": "f388b7da3a94cf5fbfce32e70413e93e4f874898e27ce5019b7c90d3a87e5f8c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"shares a dismissal made again with the same reason after a push, at the pushed revision"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 617,
+			"column": 4,
+			"endLine": 617,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "347ba5682a77cc2fad8179f68cb10663ae26c2c92c2a63c8de49b17eb18f5ce6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings.test.ts",
+					"path": [
+						"the findings document",
+						"lifecycle",
+						"takes a static finding's dismissal made again under a new run, with the new run"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 617,
+			"column": 4,
+			"endLine": 617,
+			"endColumn": 51,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record.lifecycle.dismissedSighting?.run !== run",
+			"status": "generated",
+			"id": "d55f0ecc0aa2c17e5c9a0b7ae7fbbfb3d857f42452f247c104c6b8d0313f2aa7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 617,
+			"column": 4,
+			"endLine": 617,
+			"endColumn": 43,
+			"mutatorName": "OptionalChaining",
+			"replacement": "record.lifecycle.dismissedSighting.run",
+			"status": "generated",
+			"id": "431f6ccc705b25ed30078fc4966cf10895dfaeb15bcb77fc4185e2fd73d24133",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 618,
+			"column": 4,
+			"endLine": 618,
+			"endColumn": 77,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6f72284fd9f96f89fbfe9ba35aeaf70135db8d119011ca33275bcda51bd9a088",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"shares a dismissal made again with the same reason after a push, at the pushed revision"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 618,
+			"column": 4,
+			"endLine": 618,
+			"endColumn": 77,
+			"mutatorName": "EqualityOperator",
+			"replacement": "(record.lifecycle.dismissedSighting?.revision ?? accepting) !== accepting",
+			"status": "generated",
+			"id": "89b390f95e780acc1b3aaf00a9e79d489c895cf86c77ae29e0130f420d339dcf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 618,
+			"column": 5,
+			"endLine": 618,
+			"endColumn": 62,
+			"mutatorName": "LogicalOperator",
+			"replacement": "record.lifecycle.dismissedSighting?.revision && accepting",
+			"status": "generated",
+			"id": "fd1bba3124917e0d1f4364c6cfefa6344b44a63b34cb3c5b198036dc1b575f2d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 618,
+			"column": 5,
+			"endLine": 618,
+			"endColumn": 49,
+			"mutatorName": "OptionalChaining",
+			"replacement": "record.lifecycle.dismissedSighting.revision",
+			"status": "generated",
+			"id": "d8f701688a705945e9301de78815a2b828e7550179cb80272d5c595ae9255d2c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		}
+	],
+	"total": 14,
+	"omitted": 0,
+	"unmutated": []
+}

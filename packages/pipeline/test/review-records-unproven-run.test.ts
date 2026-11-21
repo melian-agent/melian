@@ -22,9 +22,11 @@ import {
 	createMemoryStorage,
 	createNodeExecutionEnv,
 	createReviewRegistry,
+	DismissError,
 	type Harness,
 	openHarness,
 	RecordedRound,
+	recordDismissal,
 	reviewChangeset,
 	runChecks,
 } from "@melian-agent/pipeline";
@@ -32,6 +34,7 @@ import { createFakeModels, fauxAssistantMessage, scriptConversations } from "@me
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CheckSources, ChecksDocument, identityKey } from "../src/checks.ts";
 import { replaceCheckFindings } from "../src/findings.ts";
+import { ReviewRecords } from "../src/review-records.ts";
 import { baseAndHead, gitIn, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -58,6 +61,7 @@ afterEach(async () => {
 	await harness?.close(context);
 	harness = undefined;
 	vi.unstubAllEnvs();
+	vi.restoreAllMocks();
 	rmSync(repo, { recursive: true, force: true });
 });
 
@@ -155,7 +159,7 @@ async function review(
 		await replaceCheckFindings(tx, root.id, "static.biome", at, [sighting(text)], stamp(held.stamps?.biome, 11));
 		await replaceCheckFindings(tx, root.id, "static.tsc", at, [], stamp(held.stamps?.tsc, 12));
 	}, context);
-	const { verdict } = await reviewChangeset({
+	const { verdict, unshared } = await reviewChangeset({
 		harness,
 		changeset,
 		config,
@@ -167,7 +171,7 @@ async function review(
 		records: store,
 	});
 	const stored = await store.list(changeset.id);
-	return { changeset, config, verdict, stored };
+	return { changeset, config, verdict, stored, unshared };
 }
 
 const bytes = (stored: readonly RecordEnvelope[]) => JSON.stringify(stored);
@@ -361,5 +365,138 @@ describe("a check run handed to a review", () => {
 		await expect(
 			review(new MemoryRecordStore({ payloads: reviewPayloads }), { checkRun, asMade: true }),
 		).rejects.toMatchObject({ code: "foreignCheckRun", lenses: [] });
+	});
+});
+
+describe("a dismissed static finding, exported by a later round", () => {
+	it("is left out, named by its code, and read back as not dismissed", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" },
+		});
+
+		const second = await review(store, {}, undefined);
+
+		expect(second.verdict.status).toBe("passed");
+		expect(second.unshared).toEqual([{ finding: id, code: "unprovenRun" }]);
+		expect(second.stored.filter(({ kind }) => kind === "dismissal")).toEqual([]);
+		const read = await readBack(second);
+		expect(read.status).not.toBe("passed");
+		expect(read.dismissed).toEqual([]);
+	});
+
+	it.each([
+		["another error", () => new Error("the dismissal's sighting is unreadable")],
+		[
+			"a dismissal error of another code",
+			() =>
+				new DismissError("notReviewed", "the dismissal's sighting is unreadable", { revision: "r", finding: "f" }),
+		],
+	])("fails the review with %s that building its record throws", async (_, error) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" },
+		});
+		const thrown = error();
+		vi.spyOn(ReviewRecords.prototype, "dismissalOf").mockImplementation(() => {
+			throw thrown;
+		});
+
+		await expect(review(store, {}, undefined)).rejects.toBe(thrown);
+	});
+});
+
+describe("a dismissed static finding, made with the store", () => {
+	const dismissal = { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" };
+
+	it("is recorded, written to no store, and named by its code", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		const add = vi.spyOn(store, "add");
+
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+
+		expect(made.verdict.status).toBe("passed");
+		expect(made.unshared).toEqual([{ finding: id, code: "unprovenRun" }]);
+		expect(add.mock.calls).toEqual([[[]]]);
+	});
+
+	it.each([
+		["another error", () => new Error("the store's listing is unreadable")],
+		[
+			"a dismissal error of another code",
+			() => new DismissError("notReviewed", "the store's listing is unreadable", { revision: "r", finding: "f" }),
+		],
+	])("rejects with %s that building a record throws, and writes nothing", async (_, error) => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, {}, undefined);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+		const thrown = error();
+		vi.spyOn(ReviewRecords.prototype, "madeOf").mockImplementation(() => {
+			throw thrown;
+		});
+		const add = vi.spyOn(store, "add");
+
+		await expect(
+			recordDismissal({
+				harness: harness!,
+				repoRoot: repo,
+				revision: first.changeset.revision,
+				id,
+				dismissal,
+				records: { store, changeset: first.changeset.id },
+			}),
+		).rejects.toBe(thrown);
+		expect(add).not.toHaveBeenCalled();
+	});
+});
+
+describe("a dismissed static finding whose run the store proves", () => {
+	const dismissal = { by: "maintainer", reason: "the debugger is meant to stay", at: "2026-11-18T00:00:00.000Z" };
+
+	it("is recorded in the store, exported by a later round, and read back as dismissed", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = await review(store, { checkRun: runUnder(current) }, undefined, proven);
+		const id = first.verdict.all().find(({ properties }) => properties.source.check === "static.biome")!.id;
+
+		const made = await recordDismissal({
+			harness: harness!,
+			repoRoot: repo,
+			revision: first.changeset.revision,
+			id,
+			dismissal,
+			records: { store, changeset: first.changeset.id },
+		});
+
+		expect(made.unshared).toEqual([]);
+		const recorded = (await store.list(first.changeset.id)).filter(({ kind }) => kind === "dismissal");
+		expect(recorded.map(({ key }) => key)).toEqual([id]);
+
+		const second = await review(store, { checkRun: runUnder(current) }, undefined, proven);
+
+		expect(second.unshared).toEqual([]);
+		expect(second.stored.filter(({ kind }) => kind === "dismissal")).toEqual(recorded);
+		const read = await readBack(second);
+		expect(read.dismissed.map(({ properties }) => properties.id)).toEqual([id]);
 	});
 });

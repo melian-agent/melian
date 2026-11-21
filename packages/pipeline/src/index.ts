@@ -47,6 +47,7 @@ export {
 	type PublishErrorCode,
 	ReviewError,
 	type ReviewErrorCode,
+	type UnsharedCode,
 } from "./errors.ts";
 export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
@@ -89,7 +90,13 @@ export {
 	readPublished,
 	type SupersededPublication,
 } from "./publish.ts";
-export { RecordedRound, type RecordedRoundContext } from "./recorded-round.ts";
+export {
+	type EndedDismissal,
+	RecordedRound,
+	type RecordedRoundContents,
+	type RecordedRoundContext,
+	type SharedDismissalRecord,
+} from "./recorded-round.ts";
 export {
 	ChangePrompt,
 	createReviewRegistry,
@@ -103,6 +110,7 @@ export {
 	type ReviewHarnessOptions,
 	type ReviewOptions,
 	reviewChangeset,
+	type UnsharedDismissal,
 } from "./review.ts";
 export { withheld } from "./review-records.ts";
 export {

@@ -13,6 +13,7 @@ import {
 	type LensPayload,
 	type NamedRecord,
 	objectIdPattern,
+	type RecordEnvelope,
 	type RecordJson,
 	Revision,
 	type RunStage,
@@ -37,6 +38,7 @@ import {
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
+import type { FindingsState } from "./findings.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
 import type { StaticProof } from "./static-proof.ts";
 
@@ -97,6 +99,8 @@ export type DismissalFacts = {
 	// `run` is the request key the sighting's check run stamped when it was dismissed, which no payload carries.
 	readonly sighting: { readonly revision: string; readonly finding: StoredFinding; readonly run?: string };
 	readonly rounds: readonly string[];
+	// The rounds of the changeset the writer's store held as the dismissal was made, which only `made` knows.
+	readonly frontier?: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
 };
 
@@ -314,7 +318,7 @@ export class ReviewRecords {
 
 	/**
 	 * A round's record: every record it read, its walkthrough, the rounds of this revision it replaces, and the rounds
-	 * of the revision before, each read once in ID order, as core requires. Its key is a request of the revision and
+	 * it follows, each read once in ID order, as core requires. Its key is a request of the revision and
 	 * the IDs it read, so a round that read the same records is the same record.
 	 */
 	round(
@@ -336,11 +340,132 @@ export class ReviewRecords {
 	}
 
 	/**
-	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5. A static finding's is shared
-	 * only when `proof` shows the run its sighting was stamped with stored none of its tool's text.
+	 * The record of the dismissal of `id`, a finding `state` holds, that `melian dismiss` wrote to the store and `held`
+	 * holds, so every round shares the same bytes; `undefined` for a finding with no frozen sighting, which a dismissal
+	 * stored before findings document version 11 lacks and every reopen drops. It throws `DismissError`
+	 * `madeWithoutStore` when `held` holds no such record: only the writer, as it dismissed, could name the rounds its
+	 * store held then.
 	 */
-	dismissal(facts: DismissalFacts, proof?: StaticProof): SharedRecord {
-		const { check } = facts.sighting.finding.properties.source;
+	dismissalOf(
+		state: FindingsState,
+		id: string,
+		held: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.dismissal(facts, held, proof);
+	}
+
+	/** The record `held` holds of the dismissal `facts` describe, as for `dismissalOf`. */
+	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
+		const copy = this.#heldCopy(this.#dismissalEnvelope(facts, proof), held);
+		if (copy !== undefined) return copy;
+		throw new DismissError(
+			"madeWithoutStore",
+			`The dismissal of ${facts.finding} was made with no record store, so no record names the rounds its host held then, and it is not shared.`,
+			{ revision: facts.sighting.revision, finding: facts.finding },
+		);
+	}
+
+	/**
+	 * What tells the dismissal of `id`, a finding `state` holds, from any other: the ID of the record `held` holds of
+	 * it, or for a dismissal made with no store, the ID its record would have with no frontier and no supersedes.
+	 * `undefined` as for `dismissalOf`.
+	 */
+	dismissalIdentity(state: FindingsState, id: string, held: readonly RecordEnvelope[]): string | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		if (facts === undefined) return undefined;
+		const envelope = this.#dismissalEnvelope(facts);
+		return this.#heldCopy(envelope, held)?.id ?? ReviewRecords.#bare(envelope);
+	}
+
+	/** The record `made` writes for the dismissal of `id` that `state` holds, or `undefined` as for `dismissalOf`. */
+	madeOf(
+		state: FindingsState,
+		id: string,
+		listing: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.made(facts, listing, proof);
+	}
+
+	static #dismissalFacts(state: FindingsState, id: string): DismissalFacts | undefined {
+		const { lifecycle } = state.items[id]!;
+		const sighting = lifecycle.dismissedSighting;
+		if (sighting === undefined) return undefined;
+		return {
+			finding: id,
+			by: lifecycle.dismissedBy!,
+			reason: lifecycle.dismissedReason!,
+			at: lifecycle.dismissedAt!,
+			severity: lifecycle.dismissedSeverity!,
+			// A sighting holds no lifecycle, so it reads as new, as `dismissedRoots` reads it.
+			sighting: {
+				revision: sighting.revision,
+				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+				...(sighting.run === undefined ? {} : { run: sighting.run }),
+			},
+			rounds: [],
+			trigger: lifecycle.dismissedTrigger!,
+		};
+	}
+
+	/**
+	 * The record of a dismissal `melian dismiss` has just made, written once, keyed by the finding's ID; it carries no
+	 * revision, by rule 5, and names the head of its own sighting. `listing` holds the records the writer's store holds
+	 * as the dismissal is made: the record names every round of the changeset there as its frontier, and supersedes each
+	 * dismissal of its finding that stands there. The record `listing` already holds for this dismissal is returned as
+	 * it is, so a dismissal made again writes nothing new.
+	 */
+	made(facts: DismissalFacts, listing: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
+		const frontier = listing
+			.filter((each) => each.kind === "round" && each.changeset === this.changeset)
+			.map((each) => SharedRecord.parseEnvelope(each).id);
+		const envelope = this.#dismissalEnvelope({ ...facts, frontier }, proof);
+		const copy = this.#heldCopy(envelope, listing);
+		if (copy !== undefined) return copy;
+		const own = SharedRecord.parse(envelope, reviewPayloads).id;
+		// Only a record in the same slot supersedes, as `RecordSet` rules, so an edge from any other is no replacement.
+		const slot = listing.filter(
+			(each) => each.kind === "dismissal" && each.changeset === this.changeset && each.key === facts.finding,
+		);
+		const replaced = new Set(slot.flatMap((each) => each.supersedes ?? []));
+		const standing = slot.flatMap((each) => {
+			const { id } = SharedRecord.parseEnvelope(each);
+			return id === own || replaced.has(id) ? [] : [id];
+		});
+		if (standing.length === 0) return SharedRecord.parse(envelope, reviewPayloads);
+		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(standing)].sort() }, reviewPayloads);
+	}
+
+	// A record in `held` that is this dismissal, whatever its writer's listing let it supersede or name as its frontier.
+	#heldCopy(envelope: RecordEnvelope, held: readonly RecordEnvelope[]): SharedRecord | undefined {
+		const own = ReviewRecords.#bare(envelope);
+		const copy = held.find(
+			(each) =>
+				each.kind === "dismissal" &&
+				each.changeset === this.changeset &&
+				each.key === envelope.key &&
+				ReviewRecords.#bare(each) === own,
+		);
+		return copy === undefined ? undefined : SharedRecord.parse(copy, reviewPayloads);
+	}
+
+	// The ID of a dismissal record with no `supersedes` and no frontier: what two records of one dismissal share.
+	static #bare(envelope: RecordEnvelope): string {
+		const { supersedes: _, payload, ...rest } = envelope;
+		const { frontier: __, ...kept } = payload as { frontier?: unknown };
+		return SharedRecord.parseEnvelope({ ...rest, payload: kept as RecordJson }).id;
+	}
+
+	// A static finding's dismissal is shared only when `proof` shows the run its sighting was stamped with stored none of
+	// its tool's text.
+	#dismissalEnvelope(facts: DismissalFacts, proof?: StaticProof): RecordEnvelope {
+		const { id, source } = facts.sighting.finding.properties;
+		// A reader refuses a set holding such a record, so writing one would cost every round that reads it.
+		if (id !== facts.finding) throw new Error(`a dismissal of ${facts.finding} holds a sighting of ${id}`);
+		const { check } = source;
 		if (check.startsWith("static.") && proof?.asks(check, facts.sighting.run) !== true)
 			throw new DismissError(
 				"unprovenRun",
@@ -357,14 +482,18 @@ export class ReviewRecords {
 				revision: facts.sighting.revision,
 				finding: shareable(sighting(facts.sighting.finding)) as unknown as RecordJson,
 			},
-			head: this.head,
+			head: Revision.parseKey(facts.sighting.revision)!.head,
 			rounds: [...new Set(facts.rounds)].sort(),
+			...(facts.frontier === undefined ? {} : { frontier: [...new Set(facts.frontier)].sort() }),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
-		return SharedRecord.parse(
-			{ v: 1, changeset: this.changeset, kind: "dismissal", key: facts.finding, payload },
-			reviewPayloads,
-		);
+		return {
+			v: 1,
+			changeset: this.changeset,
+			kind: "dismissal",
+			key: facts.finding,
+			payload: payload as unknown as RecordJson,
+		};
 	}
 
 	#record(kind: string, key: string, payload: unknown): SharedRecord {

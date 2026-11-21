@@ -293,6 +293,7 @@ const payloads: readonly [string, RecordJson][] = [
 			sighting: { revision, finding: finding("lens.security", `${lensVersion}@careful`) },
 			head,
 			rounds: [hash("1"), hash("2")],
+			frontier: [hash("1"), hash("2")],
 			trigger: {
 				hash: hash("7"),
 				proof: [

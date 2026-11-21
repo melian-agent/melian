@@ -367,7 +367,8 @@ describe("a dismissal of a static finding whose sighting its run stamped", { tim
 		const reviewed = await round(async () => {});
 		const facts = await dismissed(reviewed);
 		const proof = await StaticProof.read(harness, reviewed.root.id, context);
-		const record = ReviewRecords.of(reviewed.changeset.id, reviewed.changeset.revision).dismissal(facts, proof);
+		const listing = await reviewed.store.list(reviewed.changeset.id);
+		const record = ReviewRecords.of(reviewed.changeset.id, reviewed.changeset.revision).made(facts, listing, proof);
 
 		expect(facts.sighting.run).toMatch(/^[0-9a-f]{64}$/);
 		expect(record.kind).toBe("dismissal");
@@ -382,8 +383,7 @@ describe("a dismissal of a static finding whose sighting its run stamped", { tim
 			repoRoot: repo,
 			policy: { kind: "worktree" },
 		});
-		// Today's reader reads no dismissal record, so the finding still blocks there; issue #481 reads it as dismissed.
-		expect(read.status).toBe("findings");
+		expect(read.dismissed.map(({ properties }) => properties.id)).toEqual([facts.finding]);
 	});
 
 	it("is refused when the stamp it kept names no request the store holds as code that stores no tool text", async () => {
@@ -398,7 +398,7 @@ describe("a dismissal of a static finding whose sighting its run stamped", { tim
 			[{ ...facts, sighting: unstamped }, proof],
 			[{ ...facts, sighting: { ...facts.sighting, run: "d".repeat(64) } }, proof],
 		] as const)
-			expect(() => records.dismissal(given, by)).toThrow(
+			expect(() => records.made(given, [], by)).toThrow(
 				expect.objectContaining({ constructor: DismissError, code: "unprovenRun", finding: facts.finding }),
 			);
 	});
