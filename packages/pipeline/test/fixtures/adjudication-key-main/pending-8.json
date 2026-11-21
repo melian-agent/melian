@@ -1,0 +1,7 @@
+{
+  "commit": "56f7fb059",
+  "task": 14,
+  "version": 8,
+  "status": "pending",
+  "input": "{\"allowSkip\":[],\"base\":\"8b854d1174e8a1a7e798ad08b28d5a8edf5eb8ca\",\"checks\":[{\"name\":\"static.mutation\",\"status\":\"ran\"}],\"code\":\"8c6e2d357cb931530ff83b61fcffda94f9cd11cf56e310b0b27b77f18569b245\",\"config\":{\"resolution\":{\"P0\":\"block\",\"P1\":\"block\",\"P2\":\"acknowledge\",\"P3\":\"advisory\",\"nit\":\"silent\",\"preExisting\":{\"P0\":\"advisory\",\"P1\":\"advisory\",\"P2\":\"advisory\",\"P3\":\"advisory\",\"nit\":\"advisory\"}},\"ruleAliases\":{}},\"files\":[],\"findingsVersion\":0,\"head\":\"8aa3e8756e25bd8e8feb1fbfe7a187941e63c32b\",\"manifest\":[\"static.mutation\"],\"producers\":[{\"check\":\"static.mutation\"}],\"provenance\":{\"kind\":\"range\",\"lenses\":[],\"manifest\":[\"static.mutation\"],\"policy\":\"config\",\"verifierVersion\":\"a19ab2f7fcb43ecc\"},\"repoRoot\":\"/tmp/melian-review-O8k6EH\",\"root\":1,\"verificationRan\":true}"
+}

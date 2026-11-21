@@ -40,13 +40,13 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@melian-agent/core": "*",
-		"@melian-agent/decisions": "*",
-		"@melian-agent/github": "*",
-		"@melian-agent/pipeline": "*",
-		"@melian-agent/state-git": "*"
+		"@melian-agent/core": "0.0.0",
+		"@melian-agent/decisions": "0.0.0",
+		"@melian-agent/github": "0.0.0",
+		"@melian-agent/pipeline": "0.0.0",
+		"@melian-agent/state-git": "0.0.0"
 	},
 	"devDependencies": {
-		"@melian-agent/evals": "*"
+		"@melian-agent/evals": "0.0.0"
 	}
 }

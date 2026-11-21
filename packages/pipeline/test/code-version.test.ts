@@ -35,3 +35,25 @@ describe("codeVersion", () => {
 		expect(() => codeVersion("inherited")).toThrow("inherited reaches constructor, whose hash is not recorded");
 	});
 });
+
+describe("melianInstall", () => {
+	it("reads Melian's install from its own module, once a process", async () => {
+		vi.resetModules();
+		const { Install } = await import("../src/installed-packages.ts");
+		const read = vi.spyOn(Install, "read");
+		const { melianInstall } = await import("../src/code-version.ts");
+		const first = melianInstall();
+		expect(melianInstall()).toBe(first);
+		expect(read.mock.calls).toEqual([[new URL("../src/code-version.ts", import.meta.url).href]]);
+		expect(first.digest).toBe(Install.read(new URL("../src/code-version.ts", import.meta.url).href).digest);
+	});
+
+	it("fails for Melian's own install past the bound, where a reviewed repository's is unidentified", async () => {
+		vi.resetModules();
+		const { Install } = await import("../src/installed-packages.ts");
+		const read = Install.read.bind(Install);
+		vi.spyOn(Install, "read").mockImplementation((from, _limit, ...rest) => read(from, 3, ...rest));
+		const { melianInstall } = await import("../src/code-version.ts");
+		expect(() => melianInstall()).toThrow("Melian cannot key its install: it holds more than 3 directories.");
+	});
+});

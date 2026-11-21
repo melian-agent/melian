@@ -216,7 +216,7 @@ it.each([
 			status: "failed",
 			error: {
 				message:
-					"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+					"another build's adjudication code, or another install's packages, created this task, so this build decides nothing; run melian review again to decide it here",
 			},
 		});
 		const task = (await storage.task(id, context))!;

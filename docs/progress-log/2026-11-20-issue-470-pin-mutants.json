@@ -1,0 +1,311 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "4232b61a7de31754fa92e90410acb1d5aeab16a2",
+		"head": "097638b6045b7d8e0d7c3dece256d6ee5a9bf8bb"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 170,
+			"column": 48,
+			"endLine": 170,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "aeaf6c62071735936946760cac07b6c37d71885f36d6b4666ff0f84c8247d039"
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 21,
+			"column": 48,
+			"endLine": 21,
+			"endColumn": 105,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a0f7f7c694e3ca89ee37b481dc15fc4e01588c688a55eea8660095ebd6210e2c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts a workspace package pinned to its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 21,
+			"column": 62,
+			"endLine": 21,
+			"endColumn": 105,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "019aa99b9799a8a8a3b705d2c80416099fc86d58e57e487e8597a2695717ee2f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects a workspace package declared as *, not its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 26,
+			"column": 8,
+			"endLine": 26,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "bb53550a0f6ad1015e83fbae7077206c45fe9db50148b791e020a7b92a3d7d43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts exact versions and prereleases"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 26,
+			"column": 8,
+			"endLine": 26,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c162e46a1e68de4899b5dae3db7ccc84739a8fe663ce5ea6fc32732d5512daaf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects a workspace package declared as *, not its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 26,
+			"column": 37,
+			"endLine": 31,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "64c56176ee623acb5faf38a81f892e0a2b6dac85069c69650ebb78832c18ffb1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects a workspace package declared as *, not its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 27,
+			"column": 9,
+			"endLine": 27,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5660864cad981525601a1ec51276a381b268614a70be0210fec3715535294ccb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts a workspace package pinned to its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 27,
+			"column": 9,
+			"endLine": 27,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0332d0c6026ac842ae336c2930e380ec86dd9cdd64678b3ff39ce2189fd9a406",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects a workspace package declared as *, not its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 27,
+			"column": 9,
+			"endLine": 27,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "version === workspaceVersions.get(name)",
+			"status": "generated",
+			"id": "0566e9af36397a15c9477e0a8aeff3699d9c40b9ee25d73d5b9f18239f9a6e65",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts a workspace package pinned to its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 28,
+			"column": 6,
+			"endLine": 30,
+			"endColumn": 8,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "da0de8c2384076fbe3a1a577a04c6f91a4a3e91deb67c50126bff5159c9dcc22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects a workspace package declared as *, not its own version"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 29,
+			"column": 7,
+			"endLine": 29,
+			"endColumn": 128,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b7e9fcf7e26e0e4e98befd8637356973a7a91447c04cc06022362520eebb59fe"
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 31,
+			"column": 15,
+			"endLine": 31,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "exact.test(version)",
+			"status": "generated",
+			"id": "6dc06dbccc432e8000d6484de9b18b10f44d77168908e15e5b644da1b9a979aa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts exact versions and prereleases"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 31,
+			"column": 15,
+			"endLine": 31,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "82e06885befaa8786799162a856307318d0c5e9bd5720502ba87441160c91306",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"accepts exact versions and prereleases"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/check-pinned-deps.mjs",
+			"line": 31,
+			"column": 15,
+			"endLine": 31,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a9cbc08a3bb8ef945a4099ea88f94d1733c813a4ca130bd8d7fad99fb92d8f6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/check-pinned-deps.test.mjs",
+					"path": [
+						"findUnpinned",
+						"rejects ranges"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 14,
+	"omitted": 0,
+	"unmutated": []
+}

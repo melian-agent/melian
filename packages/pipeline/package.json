@@ -55,8 +55,8 @@
 		"@earendil-works/chord": "1.1.0",
 		"@earendil-works/pi-ai": "1.1.0",
 		"@earendil-works/pi-durable": "1.1.0",
-		"@melian-agent/core": "*",
-		"@melian-agent/decisions": "*",
+		"@melian-agent/core": "0.0.0",
+		"@melian-agent/decisions": "0.0.0",
 		"@stryker-mutator/instrumenter": "10.0.0",
 		"semver": "7.8.5",
 		"typescript": "7.0.2"

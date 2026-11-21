@@ -86,7 +86,9 @@ const sighting = (text: string | undefined) =>
 // A request for `versions` of Melian's own check code, and a check run that names it by `key`, its own by default.
 // Every run's request keys the checkout's install, here one identified, so no second run shares the key.
 const install = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
-const askFor = (versions: Record<string, number>) => KeyedRequest.of("check", { checks: versions, install });
+// And Melian's own install, identified, so only the checkout's install decides.
+const packages = { digest: "b".repeat(64), identified: true };
+const askFor = (versions: Record<string, number>) => KeyedRequest.of("check", { checks: versions, install, packages });
 const runUnder = (versions: Record<string, number>, key?: string): CheckRun => {
 	const asked = askFor(versions);
 	return {
@@ -242,7 +244,7 @@ describe("a static check's sightings, exported from a run that does not prove th
 			"a run whose stored request was edited after it was keyed",
 			{ checkRun: runUnder(current) },
 			// It still asks for today's code, so only its hash fails.
-			{ ...proven, requests: { [asked.key]: { checks: current, install, edited: true } } },
+			{ ...proven, requests: { [asked.key]: { checks: current, install, packages, edited: true } } },
 			"withheld",
 		],
 		[
@@ -284,6 +286,7 @@ describe("a static check's sightings, exported from a run that does not prove th
 		const unkeyed = KeyedRequest.of("check", {
 			checks: current,
 			install: { digests: { "package-lock.json": "unavailable" }, identified: false },
+			packages,
 		});
 		const blocked = checks.map((check) => (check.name === "static.tsc" ? { ...check, findings: 1 } : check));
 		const reviewed = await review(

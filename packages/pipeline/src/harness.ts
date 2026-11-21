@@ -33,7 +33,6 @@ import type { ExecutionEnv } from "@earendil-works/pi-durable/env";
 import { NodeExecutionEnv } from "@earendil-works/pi-durable/env/node";
 import { openNodeJsonlStorage } from "@earendil-works/pi-durable/storage/jsonl/node";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
-import { installedVersion } from "./installed-version.ts";
 
 export type { Context } from "@earendil-works/chord";
 export { copyJson } from "@earendil-works/chord";
@@ -169,16 +168,6 @@ export async function holdsWork(
 		at = head.head;
 	}
 }
-
-/**
- * The installed releases of the Pi packages whose code shapes what a model is shown. Pi Durable renders the system
- * prompt's sections and writes the turns the harness adds, such as a cut tool result's note; pi-ai turns the
- * conversation into each provider's request. Chord carries no text a model reads.
- */
-export const piVersions: { readonly durable: string; readonly ai: string } = {
-	durable: installedVersion("@earendil-works/pi-durable", import.meta.url),
-	ai: installedVersion("@earendil-works/pi-ai", import.meta.url),
-};
 
 /** A context that is never cancelled, for work with no caller to cancel it. */
 export const backgroundContext: Context = BACKGROUND_CONTEXT;

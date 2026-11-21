@@ -1,5 +1,5 @@
 import { KeyedRequest, type LensToolName, type RecordJson, requestJson, type Severity } from "@melian-agent/core";
-import { piVersions } from "./harness.ts";
+import { melianInstall } from "./code-version.ts";
 import {
 	injectionPolicySection,
 	lensListedTools,
@@ -33,9 +33,17 @@ export type LensRequestRun = {
 	readonly probe?: { readonly probesAs?: string; readonly [field: string]: unknown };
 };
 
-// Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, and whether
-// that is the checkout's install or Melian's; `unavailable` when neither resolves.
-export type MutantLister = { readonly version: string; readonly source: "checkout" | "melian" } | "unavailable";
+// Which installed instrumenter answers `list_mutants`: its version, read from the package it resolves to, whether that
+// is the checkout's install or Melian's, and the digest of the installed packages beneath it, Babel among them;
+// `unavailable` when neither resolves.
+export type MutantLister =
+	| {
+			readonly version: string;
+			readonly source: "checkout" | "melian";
+			readonly packages: string;
+			readonly identified: boolean;
+	  }
+	| "unavailable";
 
 /** What a lens run is asked, before it is keyed. */
 export type LensRequestInput<Run extends LensRequestRun> = {
@@ -70,7 +78,8 @@ type ToolSpec = {
 
 type LensRequestBody = {
 	run: RecordJson;
-	pi: { durable: string; ai: string };
+	packages: string;
+	identified: boolean;
 	policy: { section: string; text: string };
 	tools: ToolSpec[];
 	limits: typeof lensToolLimits;
@@ -95,8 +104,8 @@ const specOf = ({ name, description, parameters, outputLimits, argumentBytes }: 
 });
 
 /**
- * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the installed Pi
- * Durable and pi-ai releases that render and send it, the injection policy that renders ahead of its instructions with
+ * A lens run's request, keyed by what its conversations are shown: the run under a fixed nonce, the installed packages
+ * beneath Pi Durable and pi-ai, which render and send it, the injection policy that renders ahead of its instructions with
  * the name of the section that tags it, each tool its planner and prober are offered by name, description and
  * schema, both wordings a failover may send, the revision's base and head, `escalateAt`, the escalation by its next run's
  * key, the probing wording of its own lens for a run that probes and the shared lines for one that escalates, the
@@ -117,7 +126,8 @@ export function lensRequest<Run extends LensRequestRun>(
 		"lens",
 		{
 			run: requestJson(keyed),
-			pi: { ...piVersions },
+			packages: melianInstall().digest,
+			identified: melianInstall().identified,
 			policy: { section: injectionPolicySection.key, text: injectionPolicy(identityNonce) },
 			tools: [...read, reportFinding, ...(probes ? [recordPlan] : [])].map(specOf),
 			limits: lensToolLimits,

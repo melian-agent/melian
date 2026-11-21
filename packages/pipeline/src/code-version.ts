@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { moduleHashes, producerModules } from "./code-hashes.ts";
+import { Install } from "./installed-packages.ts";
 
 /**
  * The version of the code that decides `producer`'s result: a SHA-256 over the recorded path and hash of each module its
@@ -16,4 +17,16 @@ export function codeVersion(producer: string): string {
 		return `${path} ${hash}\n`;
 	});
 	return createHash("sha256").update(lines.join("")).digest("hex");
+}
+
+let install: Install | undefined;
+
+/**
+ * Melian's own install, every copy and link beneath the root Node resolves Melian's imports from, so a key holding its
+ * digest moves with any package any producer could reach. Read once a process, on first use, since the install does not
+ * change under a running review. Throws for an install Melian cannot read.
+ */
+export function melianInstall(): Install {
+	install ??= Install.read(import.meta.url);
+	return install;
 }

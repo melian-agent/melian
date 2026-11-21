@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { type LensProbingWording, type LensToolName, lensProbingWording, type Severity } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it, vi } from "vitest";
-import { piVersions } from "../src/harness.ts";
+import { melianInstall } from "../src/code-version.ts";
 import { handoverWording, lensRequest, type MutantLister } from "../src/lens-request.ts";
 import {
 	injectionPolicySection,
@@ -14,6 +14,7 @@ import {
 } from "../src/lens-tools.ts";
 import { probingWording, probingWordingOf } from "../src/probing.ts";
 import { identityNonce, injectionPolicy } from "../src/untrusted.ts";
+import { withMovedPackage } from "./fixtures/moved-package.ts";
 
 const sample = {
 	run: {
@@ -141,32 +142,31 @@ describe("lensRequest", () => {
 		});
 	});
 
-	it("keys the installed Pi Durable and pi-ai releases, which render the conversation and send it", () => {
-		const pins = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).dependencies;
-		expect(build(sample).request.pi).toEqual({
-			durable: pins["@earendil-works/pi-durable"],
-			ai: pins["@earendil-works/pi-ai"],
-		});
+	it("keys Melian's whole install, which holds Pi Durable and pi-ai, which render the conversation and send it", () => {
+		expect(build(sample).request.packages).toBe(melianInstall().digest);
 	});
 
-	it("asks again when Pi Durable, pi-ai or the policy's section name changes", () => {
+	it("asks again when any package in Melian's install moves, one Pi never imports included", async () => {
 		const before = build(sample).key;
-		const versions = piVersions as { durable: string; ai: string };
+		const rebuilt = async () => {
+			vi.resetModules();
+			return build(sample, (await import("../src/lens-request.ts")).lensRequest).key;
+		};
+		expect(await withMovedPackage("long", "0.0.1", rebuilt)).not.toBe(before);
+		expect(await withMovedPackage("yaml", "0.0.1", rebuilt)).not.toBe(before);
+		vi.resetModules();
+		expect(await rebuilt()).toBe(before);
+	});
+
+	it("asks again when the policy's section name changes", () => {
+		const before = build(sample).key;
 		const policy = injectionPolicySection as { key: string };
-		const changes: [object, string, string][] = [
-			[versions, "durable", "9.9.9"],
-			[versions, "ai", "9.9.9"],
-			[policy, "key", "policy"],
-		];
-		for (const [target, field, value] of changes) {
-			const record = target as Record<string, string>;
-			const original = record[field]!;
-			try {
-				record[field] = value;
-				expect(build(sample).key, field).not.toBe(before);
-			} finally {
-				record[field] = original;
-			}
+		const original = policy.key;
+		try {
+			policy.key = "policy";
+			expect(build(sample).key).not.toBe(before);
+		} finally {
+			policy.key = original;
 		}
 		expect(build(sample).key).toBe(before);
 	});
@@ -216,7 +216,7 @@ describe("lensRequest", () => {
 	});
 
 	describe("the instrumenter that answers list_mutants", () => {
-		const lister = { version: "10.0.0", source: "checkout" as const };
+		const lister = { version: "10.0.0", source: "checkout" as const, packages: "e".repeat(64), identified: true };
 		const asking = {
 			...sample,
 			run: { ...sample.run, tools: ["read_file", "list_mutants"] as LensToolName[] },
@@ -224,7 +224,7 @@ describe("lensRequest", () => {
 		};
 		const tools = ["read_file", "search", "list_files", "list_mutants"];
 
-		it("keys its version and source, and every other input, for a run offered list_mutants", () => {
+		it("keys its version, source and packages, and every other input, for a run offered list_mutants", () => {
 			const vary = (name: string, value: unknown) =>
 				name.startsWith("run.tools.")
 					? tools.find((tool) => tool !== value && !asking.run.tools.includes(tool as LensToolName))

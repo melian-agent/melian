@@ -20,6 +20,7 @@ import { DecisionFiles, decisionIndexWarning } from "@melian-agent/decisions";
 import { createGitHubProvider, parseGitHubRemote, resolveGitHubToken } from "@melian-agent/github";
 import {
 	createReviewModels,
+	melianInstall,
 	Probe,
 	piAuthPath,
 	providersWithCredentials,
@@ -213,6 +214,31 @@ async function staticCheck(cwd: string): Promise<Check | undefined> {
 		state: sources.some((source) => source.from === "missing") ? "warn" : "ok",
 		detail: sources.map((source) => `${source.tool} from ${where[source.from]}`).join(", "),
 	};
+}
+
+// A package Melian runs that a link takes out of its install, as `npm link` does, or a layout other than npm's, such as
+// Yarn's Plug'n'Play, leaves the install unidentified: the review still runs, and reuses no run.
+function packagesCheck(): Check {
+	let install: ReturnType<typeof melianInstall>;
+	try {
+		install = melianInstall();
+	} catch (error) {
+		return { name: "packages", state: "fail", detail: visibleText((error as Error).message) };
+	}
+	const { outside, unrecognised } = install;
+	const reasons = [
+		...(outside.length === 0
+			? []
+			: [`${visibleText(outside.join(", "))} ${outside.length === 1 ? "links" : "link"} outside Melian's install`]),
+		...(unrecognised.length === 0
+			? []
+			: [
+					`${visibleText(unrecognised.join(", "))} ${unrecognised.length === 1 ? "is" : "are"} not laid out as npm lays out an install`,
+				]),
+	];
+	return reasons.length === 0
+		? { name: "packages", state: "ok", detail: "nothing in Melian's install links outside it" }
+		: { name: "packages", state: "warn", detail: `${reasons.join("; ")}, so no review reuses a run` };
 }
 
 // Mutation testing runs only the checkout's own Stryker: Melian carries none, and without one the check records a skip
@@ -627,6 +653,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await recordStoreCheck(io.cwd, io.env),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),
+			packagesCheck(),
 			await mutationCheck(io.cwd, io.env),
 			await probeCheck(),
 			await standardsCheck(io.cwd),

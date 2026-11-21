@@ -27,6 +27,7 @@ import {
 	type ToolLog,
 } from "@melian-agent/core";
 import { type CheckRequestInput, checkRequest, checkReusable, maxKeyedPolicyBytes } from "./check-request.ts";
+import { melianInstall } from "./code-version.ts";
 import { replaceCheckFindings } from "./findings.ts";
 import {
 	backgroundContext,
@@ -730,6 +731,7 @@ async function runIdentity(
 		tools: (await ToolProvisioning.manifest()).toJSON(),
 		analysers: { biome: analyser("biome"), tsc: analyser("tsc") },
 		install: installDigests(repoRoot),
+		packages: { digest: melianInstall().digest, identified: melianInstall().identified },
 		...(input.config.static.mutation.enabled
 			? {
 					mutation: {

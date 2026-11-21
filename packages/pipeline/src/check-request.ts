@@ -25,6 +25,8 @@ export type CheckRequestInput = {
 	readonly analysers: { readonly biome: AnalyserFacts; readonly tsc: AnalyserFacts };
 	/** The checkout's lockfiles and install records, which Biome and tsc resolve from. */
 	readonly install: InstallDigests;
+	/** Melian's own install, which its checks run from: its digest, and whether nothing beneath it links out of it. */
+	readonly packages: { readonly digest: string; readonly identified: boolean };
 	/** Present only when the configuration enables `static.mutation`. */
 	readonly mutation?: {
 		readonly stryker: { readonly version: string; readonly installation: unknown; readonly source: StaticToolSource };
@@ -97,15 +99,15 @@ export function writesFixedText(asked: KeyedRequest<RecordJson>, check: string):
  * Whether a run of this request may stand for a later one with the same key. A key holds what was read, so an input
  * that could not be read leaves nothing to compare, and the run is not reused.
  */
-export function checkReusable(input: Pick<CheckRequestInput, "policy" | "install">): boolean {
-	return input.policy !== "unread" && input.install.identified;
+export function checkReusable(input: Pick<CheckRequestInput, "policy" | "install" | "packages">): boolean {
+	return input.policy !== "unread" && input.install.identified === true && input.packages.identified === true;
 }
 
 /**
  * A check run's request, keyed by everything that decides its results: the configuration less its display keys, the
  * policy source, Melian's tool pins, the version and source of each static tool, the checkout's install, Stryker's facts,
- * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for the checks,
- * the host it runs on, and a working tree's `melian.yaml` text. It leaves out the paths that name the host, `LANG` when
+ * the head's trust and the tools' `LANG` when mutation testing is on, the version of Melian's own code for the checks
+ * and of the installed packages it imports, the host it runs on, and a working tree's `melian.yaml` text. It leaves out the paths that name the host, `LANG` when
  * mutation is off, and `PATH`, `HOME` and `TMPDIR`, which no bounded fact stands for.
  */
 export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson> {
@@ -120,6 +122,7 @@ export function checkRequest(input: CheckRequestInput): KeyedRequest<RecordJson>
 			// Biome and tsc store no tool text, so `LANG` changes no finding of theirs; the head's tests can read it.
 			...(input.mutation === undefined ? {} : { mutation: { ...strykerFrom(input.mutation), lang: input.lang } }),
 			code: codeVersion("checks"),
+			packages: input.packages,
 			host: input.host,
 			policy: input.policy,
 		}),
