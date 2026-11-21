@@ -338,14 +338,16 @@ export type RecordErrorCode =
 	| "unreachable"
 	| "unknownFile"
 	| "closed"
-	| "trustUnstated";
+	| "trustUnstated"
+	| "recordTooLarge";
 
 /**
  * A shared record was refused, or a record store could not answer. `invalidRecord`, `unknownKind` and
  * `supersedesNotAllowed` refuse an envelope; `notCanonical` and `idMismatch` refuse stored bytes that are not the
  * canonical bytes of the ID they are stored under. `disposed` refuses a write to a disposed changeset. `unreachable`
  * means the store cannot answer fresh, and `unknownFile` that it holds something no record or cell explains.
- * `trustUnstated` refuses a record set whose caller named no trust. `path`
+ * `trustUnstated` refuses a record set whose caller named no trust. `recordTooLarge` refuses findings that cannot fit a
+ * record even with their detail left out. `path`
  * names the offending file or field, where there is one.
  */
 export class RecordError extends Error {

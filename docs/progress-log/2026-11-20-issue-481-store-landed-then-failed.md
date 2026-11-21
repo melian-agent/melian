@@ -1,4 +1,4 @@
-# Issue #481: a store write that lands and then fails
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a store write that lands and then fails
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575).
 

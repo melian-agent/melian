@@ -1,0 +1,43 @@
+{
+ "mutants": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 1015,
+   "column": 10,
+   "endLine": 1019,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > checkoutCommit > refuses an artefact inside the checkout, whatever path names it, and accepts one beside it",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 1016,
+   "column": 7,
+   "endLine": 1018,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > checkoutCommit > refuses an artefact inside the checkout, whatever path names it, and accepts one beside it",
+   "result": "killed",
+   "survivorClasses": []
+  }
+ ],
+ "total": 2,
+ "omitted": 0,
+ "unmutated": [],
+ "manual": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 1014,
+   "change": "the whole path left unresolved, so only the parent directory is resolved",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > checkoutCommit > refuses an artefact inside the checkout, whatever path names it, and accepts one beside it",
+   "result": "killed"
+  }
+ ]
+}

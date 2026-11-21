@@ -1359,7 +1359,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		expect(notices[0]).toContain(`it was dismissed at revision ${dismissedAt}`);
 		expect(notices[0]).toContain("as after a push");
 		expect(notices[0]).toContain(
-			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason <text> --records dir:${store}`,
+			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason "<text>" --records dir:${store}`,
 		);
 		expect(read.stdout).toContain(id);
 	});
@@ -1382,9 +1382,47 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 
 		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
 		expect(notices).toHaveLength(1);
-		expect(notices[0]).toContain(
-			`dismiss it again: melian dismiss "#12...HEAD" ${id} --reason <text> --records "${store}"`,
+		const command = notices[0]!.slice(notices[0]!.indexOf("melian dismiss "));
+		const words = spawnSync(
+			"bash",
+			["--noprofile", "--norc", "-c", `words() { printf '%s\\0' "$@"; }; words ${command}`],
+			{
+				cwd: scratch,
+				encoding: "utf8",
+			},
 		);
+		expect(words).toMatchObject({ status: 0, stderr: "" });
+		expect(words.stdout.split("\0").slice(0, -1)).toEqual([
+			"melian",
+			"dismiss",
+			target,
+			id,
+			"--reason",
+			"<text>",
+			"--records",
+			store,
+		]);
+	});
+
+	it("writes a control character in the store's path as visible text in the command that dismisses again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = `dir:${join(scratch, "records\u001b[2Jcleared")}`;
+		melian(repo, ["review", "trusting", "--records", store], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", store], env).status).toBe(0);
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", "trusting", "--records", store], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", "trusting", "--records", store], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).not.toContain("\u001b");
+		expect(notices[0]).toContain(`--records 'dir:${join(scratch, "records\\u001b[2Jcleared")}'`);
 	});
 
 	it.each([

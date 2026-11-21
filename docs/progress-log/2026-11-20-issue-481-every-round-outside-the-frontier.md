@@ -1,4 +1,4 @@
-# Issue #481: the reader tests every round outside a dismissal's frontier
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): the reader tests every round outside a dismissal's frontier
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575). The coordinator chose this on 2026-11-20, after round 2 of the `melian round` workflow found that the reader walked only the read round's chain: a coordinator's answer under rule 7 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md), not a ruling.
 

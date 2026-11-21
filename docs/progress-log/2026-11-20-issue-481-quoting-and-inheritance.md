@@ -1,4 +1,4 @@
-# Issue #481: a quoted dismiss-again command, and inheritance stated as a cost
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a quoted dismiss-again command, and inheritance stated as a cost
 
 For [issue #481](https://github.com/melian-agent/melian/issues/481), on [pull request #575](https://github.com/melian-agent/melian/pull/575). This pass took the coordinator's three items from the host round at `cdcda0e4c`.
 
@@ -26,7 +26,7 @@ Inheritance at one revision could not come from the verification record alone. T
 
 No code changed. The one-revision decision now restates the written-once decision's gap: when a record reaches the store and the host records nothing, a reader of a round at the dismissed revision reads the finding dismissed, while the writing host blocks until `melian dismiss` runs again. A round at another revision ends it for the reader too.
 
-## A round's `before`, after issue #611
+## A round's `before`, after [issue #611](https://github.com/melian-agent/melian/issues/611)
 
 The maintainer dropped [issue #611](https://github.com/melian-agent/melian/issues/611) on 2026-11-20, in the coordinator's session. The one-revision decision now amends the shared-reader decision's two rulings of 2026-11-18 on the chain, and says what replaced them. The writer still names in `before` the host's previous revision's rounds, joined with the store's frontier, on every host. The relay still refuses a round with a non-empty `before`. No field was removed.
 

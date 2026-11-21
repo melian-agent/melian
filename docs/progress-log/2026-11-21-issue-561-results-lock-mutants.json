@@ -1,0 +1,407 @@
+{
+ "total": 22,
+ "omitted": 0,
+ "unmutated": [],
+ "mutants": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 419,
+   "column": 26,
+   "endLine": 426,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 421,
+   "column": 5,
+   "endLine": 423,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 423,
+   "column": 11,
+   "endLine": 425,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 424,
+   "column": 2,
+   "endLine": 424,
+   "endColumn": 18,
+   "mutatorName": "OptionalChaining",
+   "replacement": "held.lock.close",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": [
+    "optional-chain"
+   ]
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 433,
+   "column": 35,
+   "endLine": 435,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 437,
+   "column": 39,
+   "endLine": 448,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 438,
+   "column": 15,
+   "endLine": 438,
+   "endColumn": 28,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 439,
+   "column": 6,
+   "endLine": 441,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 440,
+   "column": 23,
+   "endLine": 440,
+   "endColumn": 41,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 440,
+   "column": 43,
+   "endLine": 440,
+   "endColumn": 57,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 440,
+   "column": 51,
+   "endLine": 440,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 441,
+   "column": 19,
+   "endLine": 446,
+   "endColumn": 3,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 442,
+   "column": 7,
+   "endLine": 442,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 442,
+   "column": 7,
+   "endLine": 442,
+   "endColumn": 58,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "equivalent",
+   "evidence": "Every write error but EEXIST that this host can raise for the lock path, ENOENT and ENOTDIR from a missing or non-directory parent, makes the read of the same path fail with the same code and message, so the run exits 2 with the same error; only a permission error, which root never meets, would differ.",
+   "result": "survived, equivalent",
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 442,
+   "column": 7,
+   "endLine": 442,
+   "endColumn": 58,
+   "mutatorName": "EqualityOperator",
+   "replacement": "(thrown as NodeJS.ErrnoException).code === \"EEXIST\"",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": [
+    "compound-condition"
+   ]
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 442,
+   "column": 50,
+   "endLine": 442,
+   "endColumn": 58,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 444,
+   "column": 4,
+   "endLine": 444,
+   "endColumn": 157,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 444,
+   "column": 24,
+   "endLine": 444,
+   "endColumn": 57,
+   "mutatorName": "MethodExpression",
+   "replacement": "readFileSync(path, \"utf8\")",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 444,
+   "column": 43,
+   "endLine": 444,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 450,
+   "column": 15,
+   "endLine": 452,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > holds its results file for the life of a run, so a second run on it exits 2 and changes nothing, and releases it when the run ends",
+   "result": "killed",
+   "survivorClasses": []
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 451,
+   "column": 20,
+   "endLine": 451,
+   "endColumn": 35,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "new-test",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > finishes a run whose lock was removed while it ran",
+   "result": "killed",
+   "survivorClasses": [
+    "dropped-value"
+   ]
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 451,
+   "column": 29,
+   "endLine": 451,
+   "endColumn": 33,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "false",
+   "claim": "new-test",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > finishes a run whose lock was removed while it ran",
+   "result": "killed",
+   "survivorClasses": [
+    "dropped-value"
+   ]
+  }
+ ],
+ "manual": [
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 549,
+   "change": "old-path clause dropped from the selected-files filter",
+   "claim": "killed",
+   "evidence": "packages/evals/test/graph-callers.test.ts > opens the graph over the changed files the lenses select, a rename by its old path included, and names every changed path",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 549,
+   "change": "selected-files filter replaced by true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/graph-callers.test.ts > opens the graph over the changed files the lenses select, a rename by its old path included, and names every changed path",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/goldens.ts",
+   "line": 552,
+   "change": "changed paths replaced by an empty list",
+   "claim": "killed",
+   "evidence": "packages/evals/test/graph-callers.test.ts > opens the graph over the changed files the lenses select, a rename by its old path included, and names every changed path",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 787,
+   "change": "policy setting replaced by undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing > reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 787,
+   "change": "|| replaced by &&",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing > reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 550,
+   "change": "policy commit left out of the vouched commits",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing > reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 990,
+   "change": "saved policyCommit dropped",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing > reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/probing.ts",
+   "line": 561,
+   "change": "target policy dropped",
+   "claim": "killed",
+   "evidence": "packages/evals/test/probing.test.ts > measureProbing > reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 325,
+   "change": "some replaced by every",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > counts a covered file a cut lens read as seen, whichever other files it read, and one it read only beside as unread",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 325,
+   "change": "read.path === path replaced by !==",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > counts a covered file a cut lens read as seen, whichever other files it read, and one it read only beside as unread",
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 325,
+   "change": "read clause replaced by true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > counts a covered file a cut lens read as seen, whichever other files it read, and one it read only beside as unread",
+   "result": "killed"
+  }
+ ]
+}

@@ -3,6 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, syml
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
+	type ChangedFile,
 	Changeset,
 	checksOfTier,
 	defaultConfig,
@@ -12,15 +13,20 @@ import {
 	loadConfig,
 	type MelianConfig,
 	type ResolvedFinding,
+	Revision,
 	revisionLimits,
 	Verdict,
 } from "@melian-agent/core";
 import {
 	backgroundContext,
+	CallerContext,
 	createMemoryStorage,
 	createRegistry,
 	openHarness,
+	openSqliteStorage,
 	StageTelemetry,
+	type StaticRun,
+	TelemetryReader,
 	TokenUsage,
 	upsertFinding,
 } from "@melian-agent/pipeline";
@@ -34,8 +40,11 @@ import {
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	buildGoldenRepository,
+	buildGraph,
+	commitGoldenTree,
 	type Golden,
 	type GoldenRun,
+	graphCached,
 	loadGoldens,
 	type RangeRun,
 	runGolden,
@@ -168,6 +177,7 @@ function missesFile(misses: readonly Record<string, unknown>[]): string {
 	return path;
 }
 
+const changed: ChangedFile[] = [{ status: "modified", path: "src/a.ts", binary: false, hunks: [] }];
 describe("ProbingCombination", () => {
 	it("reads a planner and prober pair, and a model alone as the level without probes, as core reads a model", () => {
 		const pair = ProbingCombination.parse(" pair = openrouter/anthropic/claude > openai-codex/gpt ", "medium");
@@ -213,7 +223,7 @@ describe("ProbingCombination", () => {
 
 	it("routes the planner as trust-boundary's own route and the prober on its tier, each at its tier's reasoning", async () => {
 		const loaded = await lenses();
-		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "medium").routed(config, loaded);
+		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "medium").routed(config, loaded, changed);
 		expect(routed.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
 			route: { model: "a/plan", thinking: "high" },
@@ -224,7 +234,7 @@ describe("ProbingCombination", () => {
 		expect(boundary.level("careful").probe).toBeUndefined();
 		const others = (lensSet: readonly Lens[]) => lensSet.filter((lens) => lens.name !== "trust-boundary");
 		expect(others(routed.lenses)).toEqual(others(loaded));
-		const light = ProbingCombination.parse("pair=a/plan>b/probe", "light").routed(config, loaded);
+		const light = ProbingCombination.parse("pair=a/plan>b/probe", "light").routed(config, loaded, changed);
 		expect(light.config.models.light).toStrictEqual({ model: "b/probe" });
 		expect(light.config.models.medium).toEqual(config.models.medium);
 	});
@@ -255,7 +265,7 @@ describe("ProbingCombination", () => {
 			const { probe: _, ...deep } = lens.level("deep");
 			return Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, deep } });
 		});
-		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "heavy").routed(config, loaded);
+		const routed = ProbingCombination.parse("pair=a/plan>b/probe", "heavy").routed(config, loaded, changed);
 		expect(routed.lenses.find((lens) => lens.name === "trust-boundary")!.level("deep").probe).toEqual({
 			prober: "heavy",
 		});
@@ -264,7 +274,7 @@ describe("ProbingCombination", () => {
 	it("probes each lens the run names, on the same routes, and leaves the rest as they loaded", async () => {
 		const loaded = await lenses();
 		const both = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "correctness"]);
-		const routed = both.routed(config, loaded);
+		const routed = both.routed(config, loaded, changed);
 		expect(routed.config.lenses.correctness).toEqual({ route: { model: "a/plan", thinking: "high" } });
 		expect(routed.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
@@ -290,7 +300,11 @@ describe("ProbingCombination", () => {
 			const lens = routed.lenses.find((each) => each.name === name)!;
 			return (["quick", "careful", "deep"] as const).map((level) => lens.level(level).probe);
 		};
-		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(config, loaded);
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]).routed(
+			config,
+			loaded,
+			changed,
+		);
 		expect(pair.config.lenses["trust-boundary"]).toEqual({
 			level: { floor: "deep" },
 			route: { model: "a/plan", thinking: "high" },
@@ -299,7 +313,7 @@ describe("ProbingCombination", () => {
 		expect(pair.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
 		expect(probes(pair, "conventions")).toEqual([undefined, { prober: "medium" }, undefined]);
 		expect(probes(pair, "correctness")).toEqual([undefined, undefined, { prober: "medium" }]);
-		const off = ProbingCombination.parse("off=a/plan", "medium", ["correctness"]).routed(config, loaded);
+		const off = ProbingCombination.parse("off=a/plan", "medium", ["correctness"]).routed(config, loaded, changed);
 		for (const name of ["trust-boundary", "conventions", "correctness"])
 			expect(probes(off, name), name).toEqual([undefined, undefined, undefined]);
 		expect(off.config.lenses.conventions).toEqual({ route: { model: "a/plan", thinking: "high" } });
@@ -310,16 +324,20 @@ describe("ProbingCombination", () => {
 	it("refuses a lens core would not let probe, and one the policy does not load, naming each", async () => {
 		const loaded = await lenses();
 		expect(() =>
-			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(config, loaded),
+			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(
+				config,
+				loaded,
+				changed,
+			),
 		).toThrow(
 			'MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
 		);
-		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded)).toThrow(
-			/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/,
-		);
-		expect(() => ProbingCombination.parse("off=a/plan", "medium", ["nowhere"]).routed(config, loaded)).toThrow(
-			"MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load",
-		);
+		expect(() =>
+			ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded, changed),
+		).toThrow(/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/);
+		expect(() =>
+			ProbingCombination.parse("off=a/plan", "medium", ["nowhere"]).routed(config, loaded, changed),
+		).toThrow("MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load");
 	});
 
 	it("refuses a named lens when any variant of it cannot probe, not only the first", async () => {
@@ -332,7 +350,11 @@ describe("ProbingCombination", () => {
 			shadowsBuiltin: true,
 		});
 		expect(() =>
-			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(config, [...loaded, shadow]),
+			ProbingCombination.parse("off=a/plan", "medium", ["trust-boundary"]).routed(
+				config,
+				[...loaded, shadow],
+				changed,
+			),
 		).toThrow(
 			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, which cannot probe: "probe" takes its wording from the built-in lens a lens extends/,
 		);
@@ -342,20 +364,46 @@ describe("ProbingCombination", () => {
 		const loaded = await lenses();
 		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
 		const tiers = { full: ["lens.trust-boundary"], careful: ["lens.correctness"] };
-		expect(() => pair.routed({ ...config, tiers, stages: {} }, loaded)).toThrow(
+		expect(() => pair.routed({ ...config, tiers, stages: {} }, loaded, changed)).toThrow(
 			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
 		);
-		expect(() => pair.routed({ ...config, tiers, stages: { "pull-request": "full" } }, loaded)).toThrow(
+		expect(() => pair.routed({ ...config, tiers, stages: { "pull-request": "full" } }, loaded, changed)).toThrow(
 			"MELIAN_EVAL_PROBE_LENSES names correctness, which the review's full tier does not run",
 		);
-		const careful = pair.routed({ ...config, tiers, stages: { "pull-request": "careful" } }, loaded);
+		const careful = pair.routed({ ...config, tiers, stages: { "pull-request": "careful" } }, loaded, changed);
 		expect(careful.config.lenses.correctness).toStrictEqual({ route: { model: "a/plan", thinking: "high" } });
+	});
+
+	it("refuses a lens the review's configuration switches off, or narrows away from every changed file", async () => {
+		const loaded = await lenses();
+		const pair = ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["correctness"]);
+		const refusal = "MELIAN_EVAL_PROBE_LENSES names correctness, which reviews none of the changed files";
+		for (const settings of [{ enabled: false }, { paths: ["docs/**"] }]) {
+			const narrowed = { ...config, lenses: { ...config.lenses, correctness: settings } };
+			expect(() => pair.routed(narrowed, loaded, changed), JSON.stringify(settings)).toThrow(refusal);
+		}
+		const routed = pair.routed(
+			{ ...config, lenses: { ...config.lenses, correctness: { paths: ["src/**"] } } },
+			loaded,
+			changed,
+		);
+		expect(routed.config.lenses.correctness).toStrictEqual({
+			paths: ["src/**"],
+			route: { model: "a/plan", thinking: "high" },
+		});
+		expect(() => pair.routed(config, loaded, [{ ...changed[0]!, path: "docs/a.md" }])).not.toThrow();
+		const renamed = [{ ...changed[0]!, status: "renamed" as const, oldPath: "src/a.ts", path: "docs/a.ts" }];
+		const fromSrc = { ...config, lenses: { ...config.lenses, correctness: { paths: ["src/**"] } } };
+		expect(() => pair.routed(fromSrc, loaded, renamed)).not.toThrow();
+		const toDocs = { ...config, lenses: { ...config.lenses, correctness: { paths: ["docs/**"] } } };
+		expect(() => pair.routed(toDocs, loaded, renamed)).not.toThrow();
 	});
 
 	it("drops every probe for the level without probes, and leaves the tiers as they were", async () => {
 		const routed = ProbingCombination.parse("off=a/plan", "medium").routed(
 			{ ...config, lenses: {}, models: { medium: { model: "m/medium" } } },
 			await lenses(),
+			changed,
 		);
 		expect(routed.config.models).toEqual({ medium: { model: "m/medium" } });
 		expect(routed.config.lenses["trust-boundary"]).toStrictEqual({ route: { model: "a/plan" } });
@@ -382,7 +430,7 @@ describe("a probing golden", { timeout: 120_000 }, () => {
 					["off=a/plan", []],
 					["pair=a/plan>b/probe", ["trust-boundary"]],
 				] as const) {
-					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded);
+					const routed = ProbingCombination.parse(entry, "light").routed(config, loaded, changed);
 					const probers = routed.lenses
 						.filter((lens) => tier.includes(`lens.${lens.name}`))
 						.filter((lens) => Object.values(lens.levels).some((level) => level?.probe !== undefined))
@@ -448,6 +496,10 @@ describe("Miss", () => {
 		expect(() => Miss.load(missesFile([missing]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([{ ...fields, extra: "x" }]))).toThrow(/must be a JSON array of misses/);
 		expect(() => Miss.load(missesFile([]))).toThrow(/must be a JSON array of misses/);
+		expect(() => Miss.load(missesFile([fields, { ...fields, file: "g.ts" }]))).toThrow(
+			/names more than one miss called m$/,
+		);
+		expect(Miss.load(missesFile([fields, { ...fields, name: "n" }])).map(({ name }) => name)).toEqual(["m", "n"]);
 		for (const field of Object.keys(fields))
 			expect(() => Miss.load(missesFile([{ ...fields, [field]: "" }])), field).toThrow(
 				/must be a JSON array of misses/,
@@ -539,6 +591,34 @@ try { Miss.load(${JSON.stringify(misses)})[0].headCommit(); } catch { console.lo
 				loaded.filter((lens) => lens.name !== "trust-boundary"),
 			);
 		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("resolves a miss's commits in its own repository, whatever repository GIT_DIR and GIT_WORK_TREE name", () => {
+		const { repo, base } = buildGoldenRepository(lost);
+		const other = mkdtempSync(join(scratch, "other-"));
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			git(other, "init", "-q");
+			writeFileSync(join(other, "x"), "x\n");
+			git(other, "add", "x");
+			git(other, "-c", "user.name=o", "-c", "user.email=o@example.com", "commit", "-q", "-m", "other");
+			git(other, "branch", "feature");
+			const elsewhere = git(other, "rev-parse", "feature");
+			vi.stubEnv("GIT_DIR", join(other, ".git"));
+			vi.stubEnv("GIT_WORK_TREE", other);
+			const miss = Miss.load(missesFile([{ ...fields, repo, base, head: "feature" }]))[0]!;
+			expect(miss.headCommit()).toBe(head);
+			expect(miss.target(ProbeTrust.parse(elsewhere), "whole", [], "feature")).toMatchObject({
+				repo,
+				base,
+				head,
+				policy: head,
+				writer: { trusted: false, detail: `this invocation does not vouch for ${base} and ${head}` },
+			});
+		} finally {
+			vi.unstubAllEnvs();
 			rmSync(repo, { recursive: true, force: true });
 		}
 	});
@@ -958,7 +1038,12 @@ describe("ProbingSettings", () => {
 		expect(ProbingSettings.parse(env).combinations[0]!.proberTier).toBe("medium");
 		expect(ProbingSettings.parse(env).probeLenses).toEqual(["trust-boundary"]);
 		expect(ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: "" }).probeLenses).toEqual(["trust-boundary"]);
-		const named = ProbingSettings.parse({ ...env, MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary " });
+		const named = ProbingSettings.parse({
+			...env,
+			MELIAN_EVAL_PROBE_LENSES: " correctness, ,trust-boundary ",
+			MELIAN_EVAL_MISSES: "m.json",
+			MELIAN_EVAL_PROBE_SET: "misses",
+		});
 		expect(named.probeLenses).toEqual(["correctness", "trust-boundary"]);
 		expect(named.combinations[0]!.lenses).toEqual(["correctness", "trust-boundary"]);
 		expect(ProbingSettings.parse(env).missReview).toBe("lens");
@@ -981,6 +1066,15 @@ describe("ProbingSettings", () => {
 		[{ MELIAN_EVAL_PROBER_TIER: "verifier" }, /MELIAN_EVAL_PROBER_TIER must be light, medium or heavy/],
 		[{ MELIAN_EVAL_PROBE_LENSES: "correctness,correctness" }, /MELIAN_EVAL_PROBE_LENSES repeats correctness/],
 		[{ MELIAN_EVAL_PROBE_LENSES: " , " }, /MELIAN_EVAL_PROBE_LENSES names no lens/],
+		// Round 44241903552 on #550: another lens was scored on goldens curated for trust-boundary's probing.
+		[
+			{ MELIAN_EVAL_PROBE_LENSES: "correctness" },
+			/^MELIAN_EVAL_PROBE_LENSES names correctness, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses$/,
+		],
+		[
+			{ MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness", MELIAN_EVAL_MISSES: "m.json" },
+			/^MELIAN_EVAL_PROBE_LENSES names trust-boundary, correctness, but only trust-boundary has probing goldens; measure any other lens on misses with MELIAN_EVAL_PROBE_SET=misses$/,
+		],
 		[{ MELIAN_EVAL_MISS_REVIEW: "Whole" }, /^MELIAN_EVAL_MISS_REVIEW must be lens or whole, not "Whole"$/],
 		[{ MELIAN_EVAL_VERIFIER_MODEL: "" }, /MELIAN_EVAL_VERIFIER_MODEL/],
 		[{ MELIAN_EVAL_MODEL: "nomodel" }, /MELIAN_EVAL_MODEL/],
@@ -1004,21 +1098,36 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		defect = (await runGolden(lost, { kind: "scripted", probes: "unconfined" })).findings;
 	});
 
-	it("exits 2 at the first review for a probe lens core refuses, or one the golden's policy does not load or run", async () => {
-		for (const [named, refusal] of [
-			["tests", /^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/],
-			["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
-			[
-				"trust-boundary-probes",
-				/^MELIAN_EVAL_PROBE_LENSES names trust-boundary-probes, which the review's full tier does not run$/,
-			],
-		] as const) {
-			const using = runners({ goldens: () => [lost], golden: vi.fn(runGolden) });
-			const { status, lines, errors } = await measure({ ...env, MELIAN_EVAL_PROBE_LENSES: named }, using);
-			expect(errors, named).toEqual([expect.stringMatching(refusal)]);
-			expect(status, named).toBe(2);
-			expect(using.golden, named).toHaveBeenCalledTimes(1);
-			expect(lines, named).toEqual(["pair: planner a/plan, prober b/probe on the medium tier"]);
+	it("exits 2 at the first review for a probe lens core refuses, or one the miss's policy does not load", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base, head } = buildGoldenRepository(failOpen);
+		const misses = missesFile([
+			{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+		]);
+		const settings = {
+			...env,
+			MELIAN_EVAL_MISSES: misses,
+			MELIAN_EVAL_PROBE_SET: "misses",
+			MELIAN_EVAL_MISS_REVIEW: "whole",
+			MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+		};
+		try {
+			for (const [named, refusal] of [
+				[
+					"tests",
+					/^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/,
+				],
+				["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
+			] as const) {
+				const using = runners({ range: vi.fn(runRange) });
+				const { status, lines, errors } = await measure({ ...settings, MELIAN_EVAL_PROBE_LENSES: named }, using);
+				expect(errors, named).toEqual([expect.stringMatching(refusal)]);
+				expect(status, named).toBe(2);
+				expect(using.range, named).toHaveBeenCalledTimes(1);
+				expect(lines, named).toEqual(["pair: planner a/plan, prober b/probe on the medium tier"]);
+			}
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
 		}
 	});
 
@@ -1196,17 +1305,69 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 
 	it("counts no lens the combination probes as sharing the prober's tier, though it names several", async () => {
 		const tiers = { "lens.trust-boundary": "medium", "lens.correctness": "medium", "lens.tests": "medium" } as const;
-		const using = runners({ golden: vi.fn(async (each: Golden) => ({ golden: each, ...ran([], { tiers }) })) });
-		const { lines } = await measure(
-			{
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const using = runners({ range: vi.fn(async () => ran([], { tiers })) });
+			const { lines } = await measure(
+				{
+					...env,
+					MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness",
+					MELIAN_EVAL_PROBE_PASSES: "1",
+					MELIAN_EVAL_PROBE_SET: "misses",
+					MELIAN_EVAL_MISS_REVIEW: "whole",
+					MELIAN_EVAL_PROBE_TRUST: `${base},${head}`,
+					MELIAN_EVAL_MISSES: missesFile([
+						{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+					]),
+				},
+				using,
+			);
+			expect(using.range).toHaveBeenCalledTimes(1);
+			expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("reviews a miss under the policy MELIAN_EVAL_POLICY_COMMIT names, saves that commit, and refuses it unvouched", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			git(repo, "checkout", "--quiet", "-b", "policy", base);
+			writeFileSync(join(repo, "POLICY.md"), "The policy commit.\n");
+			git(repo, "add", "POLICY.md");
+			git(repo, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "-m", "policy");
+			const policy = git(repo, "rev-parse", "HEAD");
+			const out = join(scratch, "policy-results.json");
+			const settings = {
 				...env,
-				MELIAN_EVAL_PROBE_LENSES: "trust-boundary,correctness",
 				MELIAN_EVAL_PROBE_PASSES: "1",
-				MELIAN_EVAL_GOLDEN: clean.name,
-			},
-			using,
-		);
-		expect(lines).toContain("pair: other lens checks on the prober's medium tier: lens.tests");
+				MELIAN_EVAL_PROBE_SET: "misses",
+				MELIAN_EVAL_POLICY_COMMIT: "policy",
+				MELIAN_EVAL_PROBE_OUT: out,
+				MELIAN_EVAL_MISSES: missesFile([
+					{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] },
+				]),
+			};
+			const refused = runners();
+			expect(await measure({ ...settings, MELIAN_EVAL_PROBE_TRUST: `${base},${head}` }, refused)).toMatchObject({
+				status: 2,
+				errors: [
+					"MELIAN_EVAL_PROBE_TRUST does not vouch for the base and head and policy commit of m, so their probes cannot run",
+				],
+			});
+			expect(refused.range).not.toHaveBeenCalled();
+			expect(refused.models).not.toHaveBeenCalled();
+			const using = runners();
+			await measure({ ...settings, MELIAN_EVAL_PROBE_TRUST: `${base},${head},${policy}` }, using);
+			expect(vi.mocked(using.range).mock.calls.map(([target]) => [target.base, target.policy])).toEqual([
+				[base, policy],
+			]);
+			expect(JSON.parse(readFileSync(out, "utf8")).misses).toEqual([
+				expect.objectContaining({ name: "m", baseCommit: base, policyCommit: policy, headCommit: head }),
+			]);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 
 	it("runs the misses alone, scoring their share found, leaving an unadjudicated hit unscored, and refuses a base or head the invocation does not vouch for", async () => {
@@ -2683,6 +2844,71 @@ describe("runRange", { timeout: 60_000 }, () => {
 		}
 	});
 
+	it("reviews a range under the policy of the commit it names, which the invocation must vouch for", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const head = git(repo, "rev-parse", "feature");
+			const policyOf = (branch: string, lens: string) => {
+				git(repo, "checkout", "--quiet", "-b", branch, base);
+				writeFileSync(join(repo, "melian.yaml"), `lenses:\n  ${lens}:\n    paths: ["nowhere/**"]\n`);
+				const commit = commitGoldenTree(repo, join(failOpen.directory, "base"), branch);
+				git(repo, "checkout", "--quiet", "feature");
+				return commit;
+			};
+			const quiet = policyOf("quiet", "correctness");
+			const blind = policyOf("blind", "trust-boundary");
+			const at = { repo, base, head, file: "src/scan.ts", rule: "fail-open", lines: [16, 16] };
+			const [miss, either] = Miss.load(
+				missesFile([
+					{ name: "m", ...at },
+					{ name: "e", ...at, alternativeRules: ["wrong-result"] },
+				]),
+			);
+			const vouched = ProbeTrust.parse(`${base},${head},${quiet}`);
+			const target = miss!.target(vouched, "whole", ["trust-boundary"], "quiet");
+			expect(target).toMatchObject({ base, head, policy: quiet, writer: { trusted: true, by: "reviewer" } });
+			expect(miss!.target(ProbeTrust.parse(`${base},${head}`), "whole", [], "quiet").writer).toEqual({
+				trusted: false,
+				detail: `this invocation does not vouch for ${quiet}`,
+			});
+			expect(miss!.target(vouched, "whole", []).policy).toBeUndefined();
+			expect(() => miss!.target(vouched, "whole", [], "nowhere")).toThrow();
+			expect(await miss!.reviewers(target, "whole")).toEqual({ lenses: ["trust-boundary"] });
+			expect(await either!.reviewers(either!.target(vouched, "whole", [], "quiet"), "whole")).toEqual({
+				check: "rule undeclared",
+				refusal: `e: wrong-result is not a rule any lens in ${quiet}'s full tier that reviews src/scan.ts declares`,
+			});
+			expect(await either!.reviewers(either!.target(vouched, "whole", []), "whole")).toEqual({
+				lenses: ["correctness", "trust-boundary"],
+			});
+			expect(await miss!.reviewers(miss!.target(vouched, "lens", undefined, "blind"), "lens")).toEqual({
+				check: "file uncovered",
+				refusal: `m: ${blind}'s policy does not let the trust-boundary lens review src/scan.ts`,
+			});
+			const paths = ["src/scan.ts", "src/rules.ts"];
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, paths);
+			scriptLenses(fake, lenses, {
+				...Object.fromEntries(lenses.map(({ name }) => [name, [{ text: "Reported 0 findings." }]])),
+				verifier: {},
+			});
+			const run = await runRange(target, {
+				kind: "live",
+				models: fake.review,
+				model: `${provider}/plan`,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+			});
+			const ran = run.telemetry.stages
+				.filter(({ name }) => name === "melian.lens")
+				.map(({ subject }) => subject.split("@")[0]);
+			expect(ran).toContain("trust-boundary");
+			expect(ran).not.toContain("correctness");
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it("gives no score to a range whose base or head the invocation does not vouch for, since its probes cannot run", async () => {
 		const { repo, base } = buildGoldenRepository(lost);
 		try {
@@ -2704,6 +2930,218 @@ describe("runRange", { timeout: 60_000 }, () => {
 						probing: ProbingCombination.parse(`pair=${provider}/plan>${provider}/probe`, "medium"),
 					}),
 				).rejects.toThrow(/lens\.trust-boundary: .*ran without probes/);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("an arm that needs the graph", { timeout: 60_000 }, () => {
+	const enolaLog = {
+		version: "2.1.0" as const,
+		runs: [{ tool: { driver: { name: "enola", version: "1" } }, results: [] }],
+	};
+	const snapshotOf = (commit: string, letter: string) => ({
+		commit,
+		snapshotId: `sha256:${letter.repeat(64)}`,
+		receipt: `receipt-${letter}`,
+	});
+	const targetOf = (repo: string, base: string, head: string, trust: string) =>
+		Miss.load(missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]))[0]!.target(
+			ProbeTrust.parse(trust),
+			"whole",
+			[],
+		);
+
+	it("builds the head's graph with the call the CLI's static.enola makes, and returns the head's snapshot", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			const run = vi.fn(
+				async (): Promise<StaticRun> => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.base, "b"), snapshotOf(revision.head, "h")],
+				}),
+			);
+			expect(await buildGraph(target, run)).toBe(`sha256:${"h".repeat(64)}`);
+			expect(run).toHaveBeenCalledTimes(1);
+			const [input] = run.mock.calls[0] as unknown as [Record<string, unknown>];
+			expect({ ...input, env: undefined, environment: undefined, settings: undefined }).toEqual({
+				env: undefined,
+				environment: undefined,
+				settings: undefined,
+				repoRoot: repo,
+				base: revision.base,
+				policyCommit: base,
+				commit: revision.head,
+				tool: "enola",
+			});
+			expect(input.environment).toBe(process.env);
+			expect(input.settings).toMatchObject({ enabled: true });
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("builds and reads the graph under the policy commit's Enola settings, not the base's, when the two differ", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		const open = vi.spyOn(CallerContext, "open").mockResolvedValue({
+			coverageSource: () => ({ parts: [], paths: [], root: repo }),
+		} as unknown as CallerContext);
+		try {
+			git(repo, "checkout", "-q", "-b", "policy", base);
+			writeFileSync(join(repo, "melian.yaml"), "static:\n  enola: { enabled: false, timeout: 77 }\n");
+			git(repo, "add", "melian.yaml");
+			git(repo, "-c", "user.name=Policy", "-c", "user.email=policy@example.com", "commit", "-q", "-m", "policy");
+			const policy = git(repo, "rev-parse", "HEAD").trim();
+			const target = { ...targetOf(repo, base, head, `${base},${head}`), policy };
+			const { revision } = await Changeset.resolve(repo, target.range);
+			const run = vi.fn(
+				async (): Promise<StaticRun> => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.head, "h")],
+				}),
+			);
+			await buildGraph(target, run);
+			expect(await graphCached(target)).toBe(true);
+			const [built] = run.mock.calls[0] as unknown as [Record<string, unknown>];
+			for (const input of [built, open.mock.calls[0]![0]])
+				expect(input).toMatchObject({
+					base: revision.base,
+					policyCommit: policy,
+					settings: { enabled: true, timeout: 77, severity: {} },
+				});
+		} finally {
+			open.mockRestore();
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses to build the graph of a head MELIAN_EVAL_PROBE_TRUST does not vouch for, before Enola runs", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const run = vi.fn(async (): Promise<StaticRun> => ({ status: "skipped", reason: "unreached" }));
+			await expect(buildGraph(targetOf(repo, base, head, base), run)).rejects.toThrow(
+				/^Enola reads the head's own configuration, so it builds a graph only of a head MELIAN_EVAL_PROBE_TRUST vouches for$/,
+			);
+			expect(run).not.toHaveBeenCalled();
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("fails the build when Enola skips the head or records no snapshot of it", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			await expect(
+				buildGraph(target, async () => ({ status: "skipped", reason: "Enola is not installed" })),
+			).rejects.toThrow(/^Enola skipped the head: Enola is not installed$/);
+			await expect(
+				buildGraph(target, async () => ({
+					status: "ran",
+					log: enolaLog,
+					notes: [],
+					snapshots: [snapshotOf(revision.base, "b")],
+				})),
+			).rejects.toThrow(/^Enola ran but recorded no snapshot of the head$/);
+			await expect(buildGraph(target, async () => ({ status: "ran", log: enolaLog, notes: [] }))).rejects.toThrow(
+				/^Enola ran but recorded no snapshot of the head$/,
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("says a head's graph is cached when the callers Enola left can be read without a build", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		const open = vi.spyOn(CallerContext, "open").mockResolvedValue({
+			coverageSource: () => ({ parts: [], paths: [], root: repo }),
+		} as unknown as CallerContext);
+		try {
+			const target = targetOf(repo, base, head, `${base},${head}`);
+			const { revision } = await Changeset.resolve(repo, target.range);
+			expect(await graphCached(target)).toBe(true);
+			expect(open).toHaveBeenCalledTimes(1);
+			expect(open.mock.calls[0]![0]).toMatchObject({ commit: revision.head, base: revision.base, tool: "enola" });
+			expect(open.mock.calls[0]![1]).toEqual(revision.files);
+		} finally {
+			open.mockRestore();
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("says a head's graph is not cached in a repository Enola never ran in", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			expect(await graphCached(targetOf(repo, base, head, `${base},${head}`))).toBe(false);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it("fails its review when Enola's graph of the head cannot be read", async () => {
+		const { repo, base, head } = buildGoldenRepository(golden("trust-boundary-fail-open"));
+		try {
+			const fake = createFakeModels({ models: [{ id: "x" }] });
+			const target = Miss.load(
+				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]),
+			)[0]!.target(ProbeTrust.parse(`${base},${head}`), "whole", []);
+			await expect(
+				runRange(target, {
+					kind: "live",
+					models: fake.review,
+					model: `${fake.ref("x").provider}/x`,
+					probing: { graph: true, routed: (config, lenses) => ({ config, lenses }) },
+				}),
+			).rejects.toThrow(/^The arm needs Enola's graph of the head, which could not be read: /);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("a live review that keeps its store", { timeout: 60_000 }, () => {
+	it("writes the store to its file, and refuses a file that already holds one", async () => {
+		const failOpen = golden("trust-boundary-fail-open");
+		const { repo, base } = buildGoldenRepository(failOpen);
+		try {
+			const fake = createFakeModels({ models: [{ id: "plan" }] });
+			const provider = fake.ref("plan").provider;
+			const head = git(repo, "rev-parse", "feature");
+			const lenses = await Lens.load(repo, { kind: "revision", commit: base }, ["src/scan.ts", "src/rules.ts"]);
+			scriptLenses(fake, lenses, { "trust-boundary": failOpen.script["trust-boundary"]!, verifier: {} });
+			const miss = Miss.load(
+				missesFile([{ name: "m", repo, base, head, file: "src/scan.ts", rule: "fail-open" }]),
+			)[0]!;
+			const store = join(scratch, "kept.sqlite");
+			const mode = {
+				kind: "live",
+				models: fake.review,
+				verifierModel: `${provider}/plan`,
+				probing: ProbingCombination.parse(`off=${provider}/plan`, "medium"),
+				store,
+			} as const;
+			const run = await runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), mode);
+			const kept = await openSqliteStorage(store);
+			try {
+				const target = miss.target(ProbeTrust.parse(`${base},${head}`));
+				const key = Revision.key((await Changeset.resolve(repo, target.range)).revision);
+				const stages = (await TelemetryReader.open(kept).read(key)).stages.map(({ id, subject }) => [id, subject]);
+				expect(stages.length).toBeGreaterThan(0);
+				expect(stages).toEqual(run.telemetry.stages.map(({ id, subject }) => [id, subject]));
+			} finally {
+				await kept.close(backgroundContext);
+			}
+			await expect(runRange(miss.target(ProbeTrust.parse(`${base},${head}`)), mode)).rejects.toThrow(
+				`${store} already holds a store, which this review would resume rather than measure afresh`,
+			);
 		} finally {
 			rmSync(repo, { recursive: true, force: true });
 		}

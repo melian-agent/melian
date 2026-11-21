@@ -72,8 +72,9 @@ lenses:
 
 guardrails:
   # A merge_group run uses the group commit's workflow files, so an edit to one changes the gate judging its own group.
+  # check (macos, 24) judges a head by that head's own list and comparator, so a change to either needs a person's read.
   policy-change-review:
-    files: [".github/**"]
+    files: [".github/**", "scripts/macos-tests.json", "scripts/compare-platform-reports.mjs"]
 
   forbidden-paths:
     rules:

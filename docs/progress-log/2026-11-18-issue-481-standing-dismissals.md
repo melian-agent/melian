@@ -1,4 +1,4 @@
-# Issue #481: every standing dismissal counts, and a dismissal made again supersedes the old one
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): every standing dismissal counts, and a dismissal made again supersedes the old one
 
 [Issue #481](https://github.com/melian-agent/melian/issues/481) shares a dismissal through the record store. [The first entry](2026-11-16-issue-481-dismissal-records.md) built the export, the verification key and the reader. This entry covers what followed it on the same pull request.
 

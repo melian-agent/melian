@@ -1506,7 +1506,10 @@ describe("the verifier", () => {
 		expect((await review(true)).verdict.status).toBe("passed");
 		expect(requests[verifierMarker]).toHaveLength(2);
 	});
-	it("fails over to the next verifier model", async () => {
+	it.each([
+		"HTTP 503 service unavailable",
+		"Codex error: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.",
+	])("fails over to the next verifier model from %j", async (errorMessage) => {
 		const models: string[] = [];
 		const requests = scriptConversations(fake, [
 			{
@@ -1521,10 +1524,7 @@ describe("the verifier", () => {
 				replies: [
 					(_messages, modelId) => {
 						models.push(modelId);
-						return fauxAssistantMessage("", {
-							stopReason: "error",
-							errorMessage: "HTTP 503 service unavailable",
-						});
+						return fauxAssistantMessage("", { stopReason: "error", errorMessage });
 					},
 					(messages, modelId) => {
 						models.push(modelId);

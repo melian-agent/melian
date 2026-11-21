@@ -1,0 +1,192 @@
+{
+ "total": 11,
+ "omitted": 0,
+ "unmutated": [],
+ "mutants": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 59,
+   "column": 15,
+   "endLine": 59,
+   "endColumn": 45,
+   "mutatorName": "LogicalOperator",
+   "replacement": "rest.model && rest.accept?.[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [
+    "nullish-logical"
+   ],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 59,
+   "column": 29,
+   "endLine": 59,
+   "endColumn": 45,
+   "mutatorName": "OptionalChaining",
+   "replacement": "rest.accept[0]",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [
+    "optional-chain"
+   ],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 60,
+   "column": 14,
+   "endLine": 60,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 60,
+   "column": 14,
+   "endLine": 60,
+   "endColumn": 33,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 60,
+   "column": 14,
+   "endLine": 60,
+   "endColumn": 33,
+   "mutatorName": "EqualityOperator",
+   "replacement": "first !== undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 60,
+   "column": 43,
+   "endLine": 60,
+   "endColumn": 68,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 61,
+   "column": 8,
+   "endLine": 61,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 61,
+   "column": 8,
+   "endLine": 61,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a route that names no model its first accepted model alone, so no later accepted model answers",
+   "survivorClasses": [
+    "dropped-value"
+   ],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 61,
+   "column": 8,
+   "endLine": 61,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "thinking !== undefined",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 61,
+   "column": 40,
+   "endLine": 61,
+   "endColumn": 61,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives each lens of the tier the graph and its guidance, high thinking, and a deep level its share binds",
+   "survivorClasses": [],
+   "result": "killed"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 594,
+   "column": 66,
+   "endLine": 594,
+   "endColumn": 80,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > measureParity > refuses to save through a file or link planted at its temporary path, and leaves the link's target alone",
+   "survivorClasses": [],
+   "result": "killed"
+  }
+ ],
+ "ignored": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 594,
+   "column": 25,
+   "endLine": 594,
+   "endColumn": 64,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  },
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 594,
+   "column": 74,
+   "endLine": 594,
+   "endColumn": 78,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+   "status": "Ignored"
+  }
+ ],
+ "manual": [
+  {
+   "file": "packages/evals/src/parity.ts",
+   "line": 175,
+   "change": "lensGraphToolNames.every replaced by some, round finding cc286c358930200a",
+   "claim": "killed",
+   "evidence": "packages/evals/test/parity.test.ts > ParityArm > gives a lens holding only some graph tools the rest of them and their guidance",
+   "result": "killed"
+  }
+ ]
+}

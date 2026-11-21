@@ -18,9 +18,11 @@ import {
 	type MutationSkipCause,
 	mutationSkips,
 	type PolicyText,
+	packwerkNotices,
 	type RecordJson,
 	type RepositorySource,
 	Revision,
+	SightingBudget,
 	type StaticTool,
 	staticFindings,
 	type ToolLog,
@@ -294,16 +296,41 @@ async function runStatic(
 		head: head.log,
 	});
 	const notes = [...leaveNotes, ...report.notes, ...head.notes, ...(base.status === "ran" ? base.notes : [])];
+	const version = head.log.runs[0].tool.driver.version;
+	// Enola reads Packwerk's files from the head, so a head that edits them draws the guardrail's notice from the files
+	// Enola's own facts name. The guardrails check never sees Enola's facts.
+	const notices =
+		head.packwerk === undefined
+			? []
+			: await packwerkNotices({ repoRoot, revision, source: input.source }, head.packwerk, {
+					check: input.check,
+					version,
+				});
 	return {
 		status: "ran",
-		report: { findings: report.findings, notes },
-		version: head.log.runs[0].tool.driver.version,
+		report: { findings: [...report.findings, ...notices], notes },
+		version,
 		...(head.snapshots === undefined ? {} : { snapshots: head.snapshots }),
 		provisional: head.provisional,
 	};
 }
 
 async function runCheck(
+	input: CheckInput,
+	env: () => Promise<ExecutionEnv | undefined>,
+	context: Context,
+	mutation: MutationHooks,
+	environment: NodeJS.ProcessEnv,
+): Promise<Outcome> {
+	const outcome = await outcomeOf(input, env, context, mutation, environment);
+	if (outcome.report === undefined) return outcome;
+	return {
+		...outcome,
+		report: { ...outcome.report, findings: SightingBudget.checkRecord.fit(outcome.report.findings) },
+	};
+}
+
+async function outcomeOf(
 	input: CheckInput,
 	env: () => Promise<ExecutionEnv | undefined>,
 	context: Context,

@@ -1,4 +1,4 @@
-# Issue #481: a dismissal replaced during the final judgement
+# [Issue #481](https://github.com/melian-agent/melian/issues/481): a dismissal replaced during the final judgement
 
 [Issue #481](https://github.com/melian-agent/melian/issues/481)'s restatement test, "asks the verifier again when the root's dismissal is replaced while it judges", failed about one run in three under load with `expected 1 to be 2`. The review asks the verifier again only when an earlier verification wave made the first judgement. When both lenses ended before any wave started, the final step made the only judgement, and it reads the dismissals once. Holding the wave back 500 ms, in a scratch worktree, made the test fail every time; the restatement then showed for attention and `verdict.dismissed` was empty.
 
