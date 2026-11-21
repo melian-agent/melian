@@ -10,8 +10,9 @@ export const entryLimit = 65_536;
 export const listingLimit = entryLimit * 1024;
 
 const mib = 1024 * 1024;
+// Names no prune until pull request C of issue 617 adds one, so the warning never names a remedy that does not exist.
 const remedy =
-	"The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip.";
+	"Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.";
 
 type Counted = { readonly entries: number; readonly recordBytes: number; readonly listingBytes: number };
 
@@ -85,14 +86,13 @@ export class TipSize {
 	/** A warning naming each count past half its limit, or past the limit itself, or undefined when none is. */
 	warning(): string | undefined {
 		const counted = this.counted;
-		const clauses =
-			counted === undefined
-				? [`past its listing limit: more than ${grouped(listingLimit)} bytes`]
-				: [
-						clause("entry", counted.entries, entryLimit, ""),
-						clause("record byte", counted.recordBytes, tipLimit, " bytes"),
-						clause("listing", counted.listingBytes, listingLimit, " bytes"),
-					].filter((each) => each !== undefined);
+		if (counted === undefined)
+			return `melian/state's listing was too large to read, past ${grouped(listingLimit)} bytes, so the store is past its listing limit. ${remedy}`;
+		const clauses = [
+			clause("entry", counted.entries, entryLimit, ""),
+			clause("record byte", counted.recordBytes, tipLimit, " bytes"),
+			clause("listing", counted.listingBytes, listingLimit, " bytes"),
+		].filter((each) => each !== undefined);
 		return clauses.length === 0 ? undefined : `melian/state is ${clauses.join("; ")}. ${remedy}`;
 	}
 }

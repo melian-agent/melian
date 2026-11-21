@@ -1190,7 +1190,7 @@ describe("the melian round workflow", () => {
 			const half = { entries: 32_768, recordBytes: 134_217_728, listingBytes: 33_554_432 };
 			expect(step(JSON.stringify(half))).toBe(`${opening}${passed}`);
 			expect(step(JSON.stringify({ ...half, entries: 32_769 }))).toBe(
-				`${opening}melian/state is past half its entry limit: 32,769 of 65,536. The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip.\n\n${passed}`,
+				`${opening}melian/state is past half its entry limit: 32,769 of 65,536. Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.\n\n${passed}`,
 			);
 			for (const size of [undefined, "", "garbage", JSON.stringify({ ...half, entries: 32_769, note: "@everyone" })])
 				expect(step(size)).toBe(`${opening}melian/state's size could not be read\n\n${passed}`);

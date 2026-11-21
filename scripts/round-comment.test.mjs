@@ -151,7 +151,7 @@ describe("RoundComment", () => {
 		const noted = (line) => plain.replace(`${header(2)}\n\n`, `${header(2)}\n\n${line}\n\n`);
 		const half = { entries: 32_768, recordBytes: 134_217_728, listingBytes: 33_554_432 };
 		const remedy =
-			"The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip.";
+			"Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.";
 		expect(read({ size: size(half) }).body()).toBe(plain);
 		expect(read({ size: size({ ...half, entries: 32_769 }) }).body()).toBe(
 			noted(`melian/state is past half its entry limit: 32,769 of 65,536. ${remedy}`),
@@ -163,7 +163,7 @@ describe("RoundComment", () => {
 			noted(`melian/state is past half its listing limit: 33,554,433 of 67,108,864 bytes. ${remedy}`),
 		);
 		expect(read({ size: size({ listingPastLimit: true }) }).body()).toBe(
-			noted(`melian/state is past its listing limit: more than 67,108,864 bytes. ${remedy}`),
+			noted(`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`),
 		);
 		const unread = noted("melian/state's size could not be read");
 		for (const value of [

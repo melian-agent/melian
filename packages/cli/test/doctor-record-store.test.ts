@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { ProcessTable } from "@melian-agent/core";
 import * as pipeline from "@melian-agent/pipeline";
-import { GitRecordStore } from "@melian-agent/state-git";
+import { GitRecordStore, TipSize } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { check, Remote } from "../../state-git/test/fixtures/remote.ts";
@@ -396,7 +396,7 @@ describe("doctor's tip size line", { timeout: 300_000 }, () => {
 		output = "";
 		expect(await doctor(io)).toBe(0);
 		expect(sizeLine()).toMatch(
-			/^warn tip size melian\/state: 32,769 of 65,536 entries, \d+ MiB of 256 MiB, listing \d+ MiB of 64 MiB; melian\/state is past half its entry limit: 32,769 of 65,536\. The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip\.$/,
+			/^warn tip size melian\/state: 32,769 of 65,536 entries, \d+ MiB of 256 MiB, listing \d+ MiB of 64 MiB; melian\/state is past half its entry limit: 32,769 of 65,536\. Nothing removes records from melian\/state yet; https:\/\/github\.com\/melian-agent\/melian\/issues\/617 adds the prune\.$/,
 		);
 	});
 
@@ -409,6 +409,15 @@ describe("doctor's tip size line", { timeout: 300_000 }, () => {
 		);
 		expect(sizeLine()).toMatch(
 			/^warn tip size melian\/state: 65,537 of 65,536 entries, .*; melian\/state is past its entry limit: 65,537 of 65,536\. /,
+		);
+	});
+
+	it("warns, and says why nothing is counted, on a tip whose listing is too large to read", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore.prototype, "size").mockResolvedValue(TipSize.unlisted());
+		expect(await doctor(io)).toBe(0);
+		expect(sizeLine()).toBe(
+			"warn tip size melian/state: listing more than 64 MiB of 64 MiB, so its entries and bytes are not counted; melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.",
 		);
 	});
 

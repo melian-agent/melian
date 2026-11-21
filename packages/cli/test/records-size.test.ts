@@ -64,7 +64,7 @@ describe("melian records size", { timeout: 120_000 }, () => {
 		expect(await main(["records", "size"], io)).toBe(0);
 		const [line, warning, rest] = out.split("\n");
 		expect([line, rest]).toEqual([expect.stringMatching(/^melian\/state: 32,769 of 65,536 entries, /), ""]);
-		expect(warning).toMatch(/^melian\/state is past half its entry limit: 32,769 of 65,536\. The daily prune /);
+		expect(warning).toMatch(/^melian\/state is past half its entry limit: 32,769 of 65,536\. Nothing removes records /);
 	});
 
 	it("prints the counts alone as JSON, which a size reads back", async () => {

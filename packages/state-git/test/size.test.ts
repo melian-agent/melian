@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 const remedy =
-	"The daily prune removes the records of pull requests merged or closed over 30 days ago; if it has run, open work fills the tip.";
+	"Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.";
 const sized = (entries: number, recordBytes: number, listingBytes: number) =>
 	TipSize.of({ entries, recordBytes, listingBytes });
 // Empty files outside every changeset's folder, which count as entries and hold no record bytes.
@@ -50,7 +50,7 @@ describe("a tip's size", () => {
 			"melian/state: listing more than 64 MiB of 64 MiB, so its entries and bytes are not counted",
 		);
 		expect(TipSize.unlisted().warning()).toBe(
-			`melian/state is past its listing limit: more than 67,108,864 bytes. ${remedy}`,
+			`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`,
 		);
 	});
 
@@ -203,6 +203,9 @@ describe("the store's size", { timeout: 300_000 }, () => {
 		const store = await remote.open();
 		remote.plant(strays(entryLimit, kibPath));
 		expect(await store.size()).toEqual(sized(entryLimit, 0, listingLimit));
+		expect((await store.size()).warning()).toBe(
+			`melian/state is past half its entry limit: 65,536 of 65,536; past half its listing limit: 67,108,864 of 67,108,864 bytes. ${remedy}`,
+		);
 	});
 
 	it("warns of none at exactly half the entry limit, and of entries one past it", async () => {
