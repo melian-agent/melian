@@ -163,7 +163,9 @@ describe("RoundComment", () => {
 			noted(`melian/state is past half its listing limit: 33,554,433 of 67,108,864 bytes. ${remedy}`),
 		);
 		expect(read({ size: size({ listingPastLimit: true }) }).body()).toBe(
-			noted(`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`),
+			noted(
+				`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`,
+			),
 		);
 		const unread = noted("melian/state's size could not be read");
 		for (const value of [
