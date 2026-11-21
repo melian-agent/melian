@@ -1,0 +1,442 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "168d83a327e2bd3934c464ca0e7f3ddfaec6c941",
+		"head": "c093d9dc5a3680e45c3d6ff8446928b6d8b592df"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-tools.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6c28d2859cf46f113cfd24deb3b20459649a7959a9af9614a3d33a7781a76155",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "92213ad5f5aaf1bfec5453b9a1bedaa84a15fbea59e85bcbdb460dd095270e18",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 108,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probe !== undefined && refuted === undefined || !probing!.answered?.includes(probe.attack)",
+			"status": "generated",
+			"id": "a0a68fd4a83dcb38354e65c786add5576028bc67040444a5c7eeff48730acc14",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "495937c84cf1d92cc4e26ca889b4ae6992eb5d603264740a6ee8db0334061eae",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"refuses a fourth correction of one finding, keeping the third"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 62,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probe !== undefined || refuted === undefined",
+			"status": "generated",
+			"id": "b790fa6690315ed8fc67e426d8b9a7e4004c83271fc330a8477e373aa39596a8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ac3bacbafdc1d5cf7982726947ea63f7ae197e5bbf8e691c4e0b1f9610da5f17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"refuses a fourth correction of one finding, keeping the third"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 18,
+			"endLine": 1636,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probe === undefined",
+			"status": "generated",
+			"id": "1ba9da15154321f8db1d2563c304b524b76d415777d908a1fcf9c93fa7a9cfa0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 41,
+			"endLine": 1636,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "83eda2fd0a3cf9eb8e381651101beec507bac27fa8846a2d8824e7d263a79892",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a prober's fifth refutation of one finding as a correction past the cap"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 41,
+			"endLine": 1636,
+			"endColumn": 62,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refuted !== undefined",
+			"status": "generated",
+			"id": "c28bf4ce2be2842dfbb205396928667961db8cbe494fb427de3535279a6280ae",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 66,
+			"endLine": 1636,
+			"endColumn": 108,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probing!.answered?.includes(probe.attack)",
+			"status": "generated",
+			"id": "bb22fe3dd3c2e457cdf891ce7c514aac80c1f8fabf48457c0ef817402baddb27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1636,
+			"column": 67,
+			"endLine": 1636,
+			"endColumn": 94,
+			"mutatorName": "OptionalChaining",
+			"replacement": "probing!.answered.includes",
+			"status": "generated",
+			"id": "2cc9e78ad85ab9491980c8c76deeed8ec08dd804952465b0dd510acbdc704eb8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "be76a30fcbba96a910bed3bf592ac9e8dcd05bfeb25bdb53f5c233322622c9e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4e2c93ea8ee1a30dcf22ad97902b68ddb84d557bb248b303ae6f30e4d73ea814",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 48,
+			"mutatorName": "LogicalOperator",
+			"replacement": "calls.length > maxCorrections || !answers",
+			"status": "generated",
+			"id": "3ee56fb7f57383f3a707ce92f8745e4622a3e35ca1dbef837f8544c9b14b6e87",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1b922c007755c3175a6e6304f427022b0727044a52155d67d59386289a8cc576",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"refuses a fourth correction of one finding, keeping the third"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "calls.length >= maxCorrections",
+			"status": "generated",
+			"id": "3d659c9a144aec17b9cf70294c80eb0ab478319c41b3a7f15f08a76e1f4ac5d0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"refuses a fourth correction of one finding, keeping the third"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 7,
+			"endLine": 1640,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "calls.length <= maxCorrections",
+			"status": "generated",
+			"id": "78bcccc01a35f897ae9c6a2916caa56eff3422d073f2a4e51b6e9b2197c03ca8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 40,
+			"endLine": 1640,
+			"endColumn": 48,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "answers",
+			"status": "generated",
+			"id": "2c5855c3a352e704d7dd5f4e24ef7545fb0d817d6e51a2e1f5ffdad4cb104242",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1640,
+			"column": 57,
+			"endLine": 1640,
+			"endColumn": 62,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ac0aa7005ea130d8a955656b4ab6496f62e63f64e8919222542d608ff609b411",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"answers five failed attacks with one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 19,
+	"omitted": 0,
+	"unmutated": []
+}

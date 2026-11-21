@@ -33,13 +33,13 @@ export const probingWording = Object.freeze({
 	attacks: "attacks",
 	planLabel: "plan",
 	planAnswer:
-		"Answer every attack: run at least one probe for it with run_probe, naming its number, and more for anything a probe shows; or record it skipped with skip_attack and the reason. Report each defect a failing probe shows with report_finding, passing that probe's ID. When every attack has an answer, answer with one line saying how many findings you reported.",
+		"Answer every attack: run at least one probe for it with run_probe, naming its number, and more for anything a probe shows; or record it skipped with skip_attack and the reason. Report each defect a failing probe shows with report_finding, passing that probe's ID. A probe that failed only because you wrote it wrongly, such as a syntax error in its script, never exercised its attack: probe the attack again, and close that probe with skip_attack, naming it as probe, with the reason it never exercised the attack. When every attack has an answer, answer with one line saying how many findings you reported.",
 	planRow:
 		"{number}. {target}\n   Why: {reason}\n   A passing probe shows: {passing}\n   A failing probe shows: {failing}",
 	unansweredOne:
-		"Attack {attacks} has neither a probe nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
+		"Attack {attacks} has no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or close a probe that failed only because you wrote it wrongly with skip_attack, naming it as probe, with the reason it never exercised the attack; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
 	unansweredMany:
-		"Attacks {attacks} have neither a probe nor a skip. Answer each: run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
+		"Attacks {attacks} have no finding on a probe that failed, nor a probe that passed or a skip. Answer each: report the defect a failing probe showed with report_finding, passing that probe's ID; or close a probe that failed only because you wrote it wrongly with skip_attack, naming it as probe, with the reason it never exercised the attack; or, where no probe failed, run a probe for it with run_probe, or record it skipped with skip_attack and the reason. Then answer with one line saying how many findings you reported.",
 	plannerHeading: "## Your role at this level: the attack planner",
 	plannerRole:
 		"This level runs probes. You plan; another reviewer, the prober, receives your plan alone, writes a probe for each attack and runs it against the head. You write no probe and run nothing. At this level you report no finding but an injection attempt: the prober reports what its probes show. A probe runs the head's own code at every step of an attack's route that can run in its sandbox, and stands in only for what cannot exist there, such as a CI runner, an upload service, the network or a real login. Plan each attack that way, and name the stand-ins it needs.",
@@ -58,7 +58,7 @@ export const probingWording = Object.freeze({
 	second: "second",
 	seconds: "seconds",
 	probesAnswer:
-		"Answer every attack with at least one probe, and add probes for anything one shows. Run the head's own code at every step of the attack's route that can run here, and stand in only for what cannot exist in the sandbox, such as a CI runner, an upload service, the network or a real login. Print which steps ran and which were stood in for, and say the same in a finding's failure scenario. When no probe can show an attack even with those stand-ins, as when it needs another machine or a race no probe can win, record it skipped with skip_attack and the reason. Stop when every attack has an answer.",
+		"Answer every attack with at least one probe, and add probes for anything one shows. Run the head's own code at every step of the attack's route that can run here, and stand in only for what cannot exist in the sandbox, such as a CI runner, an upload service, the network or a real login. Print which steps ran and which were stood in for, and say the same in a finding's failure scenario. When no probe can show an attack even with those stand-ins, as when it needs another machine or a race no probe can win, record it skipped with skip_attack and the reason. A probe that ran past its time, was cut at its output limit, ended with no exit code, or exited 125 to say it could not test answers no attack, since it shows nothing. A probe that failed only because you wrote it wrongly, such as a syntax error in its script, never exercised its attack: probe the attack again, and close that probe with skip_attack, naming it as probe, with the reason it never exercised the attack. Stop when every attack has an answer.",
 	findingsHeading: "## Findings",
 	carriedHeading: "## Findings a quicker look reported",
 	carried:
@@ -91,6 +91,8 @@ const sharedEvidenceWording = Object.freeze({
 	timedOut: "timed out",
 	cut: "printed past its output limit and was ended",
 	signalled: "was ended by {signal}",
+	unrecorded: "ended with no record of how",
+	untestable: "exited 125 to say it could not test its attack, which shows nothing",
 	passed: "passed, exiting 0",
 	failed: "failed, exiting {code}",
 	nothing: "(nothing)",
@@ -216,26 +218,60 @@ export type ProbeRecord = {
 };
 
 // A planner's conversation holds the plan it recorded. A prober's holds a copy of the plan it was given, every probe it
-// ran by ID, each attack it skipped with why, and the probe each finding it reported rests on, by finding ID.
+// ran by ID, each attack it skipped with why, each failed probe it closed with why, the probe each finding it reported
+// rests on, by finding ID, and each attack a finding was reported on one of its probes.
 type ProbingState = {
 	plan?: Attack[];
 	probes?: Record<string, ProbeRecord>;
 	// Each run_probe call's ID, recorded before its probe starts, so a refused probe counts toward the limit too.
 	attempts?: string[];
 	skips?: Record<string, string>;
+	// Each failed probe the prober said never exercised its attack, by probe ID, with why.
+	closed?: Record<string, string>;
+	// The first probe each finding rests on, which its verifier reruns.
 	findings?: Record<string, string>;
+	// Kept apart from `findings`, since two attacks can fail on one defect and so report one finding ID.
+	answered?: number[];
 	// Set in the commit that gives the plan to the prober: the planner may no longer replace it, so all hold one plan.
 	frozen?: true;
 };
 
+// Version 1 was written by a runner that reported a probe a signal ended as exit 128 plus the signal's number, with no
+// signal, so version 2 reads such a result as one that ended with no record of how. Versions 1 and 2 kept only the latest
+// probe of each finding, so version 3 reads the attacks they answered from it.
 export const ProbingDocument = defineDoc<ProbingState>({
 	kind: "melian.probing",
-	version: 1,
+	version: 3,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({}),
+	migrate: (value, fromVersion) => {
+		const state = value as ProbingState;
+		const probes =
+			fromVersion === 1 && state.probes !== undefined
+				? Object.fromEntries(
+						Object.entries(state.probes).map(([id, probe]) => [
+							id,
+							{ ...probe, result: unsignalled(probe.result) },
+						]),
+					)
+				: state.probes;
+		const answered = [...new Set(Object.values(state.findings ?? {}).flatMap((id) => probes?.[id]?.attack ?? []))];
+		return {
+			...state,
+			...(probes === undefined ? {} : { probes }),
+			...(answered.length === 0 ? {} : { answered }),
+		};
+	},
 });
+
+// Bubblewrap reported a signal n as exit 128 + n, and Linux numbers its signals up to 64.
+function unsignalled(result: StoredProbeResult): StoredProbeResult {
+	return result.exitCode !== null && result.exitCode > 128 && result.exitCode <= 128 + 64 && result.signal === null
+		? { ...result, exitCode: null }
+		: result;
+}
 
 /**
  * What a probing level lets a probe hold. Tighter than {@link probeLimits}: every probe is stored with the review so the
@@ -313,9 +349,12 @@ export function probeFailed(result: StoredProbeResult): boolean {
 	return probeConclusive(result) && result.exitCode !== 0;
 }
 
-/** Whether a probe's result says anything: it exited with a code, within its time limit and its output limit. */
+/**
+ * Whether a probe's result says anything: it exited with a code other than 125, within its time limit and its output
+ * limit. A probe exits 125 to say it could not test its attack, as `git bisect` reads it.
+ */
 export function probeConclusive(result: StoredProbeResult): boolean {
-	return !result.timedOut && !result.truncated && result.exitCode !== null;
+	return !result.timedOut && !result.truncated && result.exitCode !== null && result.exitCode !== 125;
 }
 
 /** A probe's run, or why it could not run. */
@@ -569,7 +608,11 @@ export function probeClaimKey(claim: {
 function outcome(result: StoredProbeResult): string {
 	if (result.timedOut) return sharedEvidenceWording.timedOut;
 	if (result.truncated) return sharedEvidenceWording.cut;
-	if (result.exitCode === null) return fill(sharedEvidenceWording.signalled, { signal: String(result.signal) });
+	if (result.exitCode === null)
+		return result.signal === null
+			? sharedEvidenceWording.unrecorded
+			: fill(sharedEvidenceWording.signalled, { signal: result.signal });
+	if (result.exitCode === 125) return sharedEvidenceWording.untestable;
 	return result.exitCode === 0
 		? sharedEvidenceWording.passed
 		: fill(sharedEvidenceWording.failed, { code: result.exitCode });
@@ -762,11 +805,30 @@ export const ProbeReruns = defineDoc<{
 	tasks?: Record<string, { task: number; key: string }>;
 }>({
 	kind: "melian.probe-reruns",
-	version: 1,
+	version: 2,
 	scope: "conversation",
 	history: "latest",
 	fork: "current",
 	initial: () => ({ runs: {} }),
+	// Version 1 holds runs from the runner that reported a signal as exit 128 plus its number, as ProbingDocument says.
+	migrate: (value) => {
+		const state = value as {
+			runs: Record<string, Record<string, ProbeRun>>;
+			tasks?: Record<string, { task: number; key: string }>;
+		};
+		const runs = Object.fromEntries(
+			Object.entries(state.runs).map(([revision, byKey]) => [
+				revision,
+				Object.fromEntries(
+					Object.entries(byKey).map(([key, run]) => [
+						key,
+						"result" in run ? { ...run, result: unsignalled(run.result) } : run,
+					]),
+				),
+			]),
+		);
+		return { ...state, runs };
+	},
 });
 
 let renderings: string | undefined;
@@ -822,6 +884,8 @@ export function probeEvidenceRenderings(): string {
 			ran({ exitCode: null, signal: "SIGKILL" }),
 			nonce,
 		),
+		"evidence, unrecorded": renderProbeEvidence(wording, "c1", claim, ran({ exitCode: null, signal: null }), nonce),
+		"evidence, untestable": renderProbeEvidence(wording, "c1", claim, ran({ exitCode: 125 }), nonce),
 	})
 		.map(([name, text]) => `=== ${name} ===\n${text}\n`)
 		.join("\n");

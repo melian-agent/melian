@@ -162,13 +162,14 @@ describe("verificationRequest", () => {
 // Written by main's code at 512c8ae2, before lenses had probing wording of their own: a verification with no claim
 // that rests on a probe is asked under the key, and the verifier's version, it had then. Issue #488 moved the key once,
 // by adding the fresh failover wording. A candidate with a dismissed root now keys that root's dismissal record, so only
-// a candidate with none keeps the key main's code gives it.
+// a candidate with none keeps the key main's code gives it. Issue #493 changed the shared evidence wording on purpose,
+// for a probe that ended with no record of how and one that exited 125, so these values moved again.
 describe("a verification no probe evidence reaches", () => {
 	it("keeps the key and the verifier's version main gave it", () => {
 		const { dismissed: _dismissed, dismissals: _dismissals, ...undismissed } = candidate;
-		expect(verifierVersion).toBe("a19ab2f7fcb43ecc");
+		expect(verifierVersion).toBe("c458134278f8c3ab");
 		expect(verificationRequest({ ...sample, candidates: [undismissed] }).key).toBe(
-			"ace12258fc705b6da1ffbf45308c20eb468e1ad8ef7dab2bacaf1f4681caef75",
+			"10da900fd92bda541f31b48cd6f7fedc5810f76874018ba2d7c7c8b7d750ac2d",
 		);
 	});
 });
@@ -262,6 +263,13 @@ describe("a verification of claims that rest on probes", () => {
 			words.set("tests", own);
 		}
 		expect(verificationRequest(probed("tests")).key).toBe(tests);
+	});
+
+	// Codex's review of pull request #532: a probe that exits 125 says it could not test its attack, and the verifier
+	// read it as "failed, exiting 125", a failure that confirms the claim. The request keys the wording it is shown.
+	it("keys the wording that shows the verifier a probe that exited 125 could not test the attack", () => {
+		const keyed = JSON.stringify(verificationRequest(probed("trust-boundary")).request);
+		expect(keyed).toContain("exited 125 to say it could not test its attack, which shows nothing");
 	});
 
 	it("refuses to key a probed claim of a lens with no probing wording of its own", () => {

@@ -281,6 +281,12 @@ fs.writeFileSync(stop + ".count", String(count));
 		],
 		[{ exitCode: null, signal: "SIGTERM", timedOut: false, truncated: false }, 30, 1, "Probe: ended by SIGTERM"],
 		[
+			{ exitCode: null, signal: null, timedOut: false, truncated: false },
+			30,
+			1,
+			"Probe: ended with no record of how",
+		],
+		[
 			{ exitCode: 0, signal: null, timedOut: false, truncated: true },
 			30,
 			1,
@@ -453,7 +459,7 @@ fs.writeFileSync(stop + ".count", String(count));
 			const output = "y".repeat(pipeline.probeLimits.output.default);
 			expect(result.stdout.slice(0, output.length + 1)).toBe(`${output}\n`);
 			expect(result.stdout.slice(output.length + 1)).toMatch(
-				/^Probe: (exited \d+|ended by SIG[A-Z]+); its output was cut at its limit\n$/,
+				/^Probe: (exited \d+|ended by SIG[A-Z]+|ended with no record of how); its output was cut at its limit\n$/,
 			);
 		});
 	});
