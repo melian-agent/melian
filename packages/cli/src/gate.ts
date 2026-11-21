@@ -10,7 +10,7 @@ import {
 } from "@melian-agent/core";
 import { ChangeLenses, RecordGate } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
-import { type Io, ReviewSource, reviewExitCodes, shellQuote, terminalEmoji } from "./commands.ts";
+import { type Io, ReviewSource, reviewExitCodes, shellQuote, terminalEmoji, writerTrust } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
 import { checkExpected, fetchedPullRequest, gitHubFor, parseTarget } from "./target.ts";
 
@@ -32,6 +32,12 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	if (!(await ReviewSource.of(changeset, source).trustsWriters()))
 		throw new CliError(
 			"the base tip's melian.yaml does not set trust.writers: true, so no record in the store counts",
+		);
+	// Without a pinned key the gate cannot tell the trusted host's record of a fork's head from a writer's.
+	const writer = await writerTrust(provider, pullRequest);
+	if (!writer.trusted)
+		throw new CliError(
+			`the head is not a writer's (${writer.detail}), and only a record the trusted host's pinned key signed counts for such a head; no key is pinned, so no record in the store counts`,
 		);
 	const { config } = await loadConfig(repoRoot, source, ".");
 	const tier = config.stages["pull-request"] ?? "full";

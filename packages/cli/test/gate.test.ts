@@ -154,7 +154,27 @@ async function pullRequest(
 		stderr = "";
 	};
 	const gate = (target = `#${number}`) => main(["gate", target], io);
-	return { changeset, records, facts, check, account, round, relay, gate, out: () => stdout, err: () => stderr };
+	// The same pull request, as GitHub answers once its head is a fork's: a writer can add a fork's round to melian/state by hand.
+	const fromFork = async () => {
+		state.headRepository = { owner: "someone", name: "example" };
+		vi.spyOn(targets, "fetchedPullRequest").mockResolvedValue({
+			pullRequest: await provider.pullRequest(number),
+			changeset,
+		});
+	};
+	return {
+		changeset,
+		records,
+		facts,
+		check,
+		account,
+		round,
+		relay,
+		gate,
+		fromFork,
+		out: () => stdout,
+		err: () => stderr,
+	};
 }
 
 // A P1 Biome finding on the head's changed line, which blocks under the default resolution.
@@ -267,6 +287,17 @@ describe("melian gate", { timeout: 60_000 }, () => {
 			`melian: round ${round.id} counts for its findings and covers no check: it was decided under no resolution policy, so no reader can decide it\n` +
 				"melian: no counted round stands as reviewed of the merge's diff as it stands. To review it again: gh workflow run melian-round.yml -f pull_request=7\n",
 		);
+	});
+
+	it("passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records", async () => {
+		const { check, account, round, relay, gate, fromFork, out, err } = await pullRequest();
+		await relay(check, account, round);
+		await fromFork();
+		expect(await gate()).toBe(2);
+		expect(err()).toBe(
+			"melian: the head is not a writer's (the head is from a fork), and only a record the trusted host's pinned key signed counts for such a head; no key is pinned, so no record in the store counts\n",
+		);
+		expect(out()).toBe("");
 	});
 
 	it("counts nothing when the base tip does not trust writers", async () => {
