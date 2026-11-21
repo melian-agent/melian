@@ -915,6 +915,46 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 		});
 	});
 
+	it("exports Melian's first read of each valid miss, from the round's own telemetry and diff", () => {
+		const { repo, files, env } = reviewed();
+		const path = codexFile(files, [codexFinding(1, "Interface is wide")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const json = (args: string[] = []) =>
+			JSON.parse(melian(repo, ["compare", "export", range, "--json", ...args], env).stdout) as {
+				comparisons: Record<string, { external: { id: string }[] }>;
+				missCauses?: {
+					note: string;
+					rounds: Record<string, Record<string, { firstRead: string; runs: unknown[] }>>;
+				};
+			};
+		expect(json()).not.toHaveProperty("missCauses");
+		const [round] = Object.keys(json().comparisons);
+		const external = JSON.stringify(json().comparisons[round!]).match(/"id":"([0-9a-f]{16})"/)![1]!;
+		expect(
+			melian(
+				repo,
+				["compare", "adjudicate", range, external, "--verdict", "valid", "--reason", "needs-execution"],
+				env,
+			).status,
+		).toBe(0);
+		const caused = json().missCauses;
+		expect(caused?.note).toContain("when this record was exported");
+		expect(Object.keys(caused?.rounds ?? {})).toEqual([round]);
+		const record = caused!.rounds[round!]![external]!;
+		expect(record).toEqual({ firstRead: "seen, not reported", runs: expect.any(Array), sightings: [] });
+		expect(record.runs).toContainEqual({
+			lens: expect.stringMatching(/^correctness@[0-9a-f]{12}$/),
+			level: "careful",
+			stage: expect.stringMatching(/^conversation:\d+$/),
+			conversation: expect.any(Number),
+			ended: "completed",
+			shownWhole: true,
+			read: [[1, 1]],
+		});
+		expect(melian(repo, ["compare", "export", range], env).stdout).toContain(`: seen, not reported. Covering runs: `);
+		expect(melian(repo, ["compare", "stats"], env).stdout).toContain('First read "seen, not reported": 1.');
+	});
+
 	it("refuses export before a comparison exists", () => {
 		const { repo, env } = reviewed();
 		expect(melian(repo, ["compare", "export", range], env)).toMatchObject({

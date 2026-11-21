@@ -2,14 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type FileHandle, lstat, mkdir, open, readdir, readFile, rename, rmdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
-import {
-	type ExternalFinding,
-	type ExternalSite,
-	type Finding,
-	isChangesetId,
-	lensCovers,
-	type Verdict,
-} from "@melian-agent/core";
+import { type ExternalFinding, type ExternalSite, type Finding, isChangesetId, type Verdict } from "@melian-agent/core";
 import {
 	AssistantEntry,
 	backgroundContext,
@@ -18,6 +11,7 @@ import {
 	type EntryRecord,
 	type Storage,
 } from "./harness.ts";
+import { MissLines } from "./miss-cause.ts";
 import type { Round } from "./rounds.ts";
 import { type Stage, TelemetryReader } from "./telemetry.ts";
 
@@ -119,16 +113,9 @@ export class MissEvidence {
 	 */
 	static stagesAt(telemetry: readonly Stage[], findings: readonly Finding[], site: ExternalSite | undefined): Stage[] {
 		if (site === undefined) return [];
+		const lines = MissLines.of(site.file, [[site.start, site.end]]);
 		const sighted = new Set<string>();
-		for (const finding of findings) {
-			const [start, end] = finding.lines();
-			if (
-				finding.properties.path !== site.file ||
-				!finding.properties.source.check.startsWith("lens.") ||
-				start > site.end ||
-				end < site.start
-			)
-				continue;
+		for (const finding of lines.sighted(findings)) {
 			sighted.add(finding.properties.id);
 			for (const other of finding.properties.alsoReportedAs ?? [])
 				if (other.check.startsWith("lens.")) sighted.add(other.id);
@@ -137,7 +124,7 @@ export class MissEvidence {
 		return telemetry.filter(
 			(stage) =>
 				stage.conversation !== undefined &&
-				((stage.name === "melian.lens" && stage.coverage !== undefined && lensCovers(stage.coverage, site.file)) ||
+				(lines.covers(stage) ||
 					(stage.name === "melian.verification.candidate" &&
 						stage.subject.split(",").some((id) => sighted.has(id)))),
 		);

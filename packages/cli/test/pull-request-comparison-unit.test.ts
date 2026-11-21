@@ -139,6 +139,7 @@ it("passes exact membership facts and ownership to the writer and reports mixed 
 		},
 		true,
 		false,
+		false,
 	);
 	expect(repository.openStorage).toHaveBeenCalledExactlyOnceWith(`/state/scripted/${id}.sqlite`);
 	expect(write).toHaveBeenCalledExactlyOnceWith(
@@ -499,6 +500,18 @@ it("passes an explicit export context while retaining own history reads", async 
 	expect(ComparisonStores.read).toHaveBeenCalledExactlyOnceWith(
 		io,
 		{ repository: { owner: "owner", name: "repo" }, pullRequest: 7 },
+		true,
+		true,
+		false,
+	);
+});
+
+it("asks the stores for first reads only when the export asks for them", async () => {
+	expect(await (await PullRequestComparison.open(io, 7, true, true)).export({ json: true })).toBe(0);
+	expect(ComparisonStores.read).toHaveBeenCalledExactlyOnceWith(
+		io,
+		{ repository: { owner: "owner", name: "repo" }, pullRequest: 7 },
+		true,
 		true,
 		true,
 	);

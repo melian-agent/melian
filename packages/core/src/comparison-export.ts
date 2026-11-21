@@ -4,6 +4,7 @@ import type { ExportedMissReason, StoredComparisonAdjudication } from "./compari
 import type { ComparisonEntry } from "./comparison-set.ts";
 import { ComparisonSet, markdownText } from "./comparison-set.ts";
 import { ComparisonError } from "./errors.ts";
+import type { MissCauseRecord } from "./miss-cause.ts";
 import { visibleText } from "./render.ts";
 
 /** One valid miss as the measurement tool's misses file holds it. */
@@ -59,6 +60,19 @@ export class ComparisonExport {
 						.filter((entry) => entry.unattributed !== undefined)
 						.map((entry) => [entry.unattributed!, entry.comparison.toJSON()]),
 				),
+				...(this.caused().length === 0
+					? {}
+					: {
+							missCauses: {
+								note: causeNote,
+								rounds: Object.fromEntries(
+									this.caused().map(({ entry, causes }) => [
+										entry.round ?? Revision.key(entry.comparison),
+										causes,
+									]),
+								),
+							},
+						}),
 			},
 			null,
 			2,
@@ -167,7 +181,11 @@ export class ComparisonExport {
 			"Adjudication records valid, noise, or duplicate, with severity and a miss reason where required. Pending findings await the maintainer.\n\n",
 		];
 		let section = 0;
-		for (const { comparison, verdict, round, unattributed } of this.entries) {
+		const rows = new Map<ComparisonEntry, Map<string, string>>();
+		for (const entry of this.entries) {
+			const { comparison, verdict, round, unattributed } = entry;
+			const labels = new Map<string, string>();
+			rows.set(entry, labels);
 			if (unattributed !== undefined)
 				out.push(`Unattributed comparison at ${comparison.head.slice(0, 12)}: no round can be proven.\n\n`);
 			const label =
@@ -193,6 +211,7 @@ export class ComparisonExport {
 					tableHeader,
 				);
 				for (const [index, finding] of findings.entries()) {
+					labels.set(finding.id, `${letter}${index + 1}`);
 					const judgement = comparison.judgement(finding.id);
 					const adjudication = comparison.needsReason(finding.id)
 						? "Pending: miss reason required"
@@ -236,6 +255,15 @@ export class ComparisonExport {
 			}
 		}
 		if (notes === 0) out.push("No maintainer notes recorded.\n");
+		const caused = this.caused();
+		if (caused.length > 0) {
+			out.push("\n## Melian's first read of each miss\n\n", `${markdownText(causeNote)}\n\n`);
+			for (const { entry, causes } of caused)
+				for (const [id, record] of Object.entries(causes))
+					out.push(
+						`- ${markdownText(ComparisonExport.causeLine(rows.get(entry)?.get(id) ?? id, id, entry, record))}\n`,
+					);
+		}
 		out.push(
 			"\n## Counts\n\n",
 			`${new ComparisonSet(this.entries).renderStats({ drain: false }).trimEnd().split("\n").map(markdownText).join("\n")}\n`,
@@ -251,6 +279,31 @@ export class ComparisonExport {
 		return `${out.join("").trimEnd()}\n`;
 	}
 
+	// The attributed entries that carry a first read of at least one miss, in record order.
+	private caused(): { readonly entry: ComparisonEntry; readonly causes: Readonly<Record<string, MissCauseRecord>> }[] {
+		return this.entries.flatMap((entry) =>
+			entry.unattributed === undefined && entry.causes !== undefined && Object.keys(entry.causes).length > 0
+				? [{ entry, causes: entry.causes }]
+				: [],
+		);
+	}
+
+	private static causeLine(label: string, id: string, entry: ComparisonEntry, record: MissCauseRecord): string {
+		const runs = record.runs.map(
+			(run) =>
+				`${run.lens} ${run.level}${run.role === undefined ? "" : ` ${run.role}`}, ${run.stage}: ${run.ended}, ${run.shownWhole ? "shown the file whole" : "not shown the file whole"}, ${run.read.length === 0 ? "read none of its lines" : `read lines ${run.read.map(([first, last]) => (first === last ? `${first}` : `${first}-${last}`)).join(", ")}`}`,
+		);
+		const sightings = record.sightings.map(
+			(sighting) =>
+				`${sighting.id} of ${sighting.finding}, ${sighting.check} ${sighting.rule}: ${sighting.verification}${sighting.lowered === true ? ", lowered" : ""}`,
+		);
+		return [
+			`${label === id ? id : `${label}, ${id}`}, ${entry.round ?? Revision.display(entry.comparison)}: ${record.firstRead}.`,
+			`Covering runs: ${runs.length === 0 ? "none" : runs.join("; ")}.`,
+			`Sightings: ${sightings.length === 0 ? "none" : sightings.join("; ")}.`,
+		].join(" ");
+	}
+
 	private judgement(value: StoredComparisonAdjudication | undefined): string {
 		if (value === undefined) return "Pending";
 		return markdownText(
@@ -264,6 +317,9 @@ export class ComparisonExport {
 		);
 	}
 }
+
+const causeNote =
+	"Melian's first read of each valid miss, computed from the round's own records when this record was exported. A later rule can change it. It is not a person's reason.";
 
 const tableHeader = "| # | Reviewer | File | Summary | Adjudication | Golden |\n|---|---|---|---|---|---|\n";
 

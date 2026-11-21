@@ -235,6 +235,8 @@ Each finding is adjudicated valid, noise, or a duplicate, with a severity. A dup
 - `needs-execution`: it was found by running code, not by reading it. It joins [verifier evals](#verifier-evals) and the tool manifest's list, not the lens golden corpus.
 - `out-of-scope`: Melian does not review this kind of change. It owes nothing, and does not count against Melian's recall.
 
+Beside the person's reason, `melian compare export` prints Melian's first read of each valid miss, in a section of its own and under `missCauses` in JSON. It is `not covered`, `cut short`, `never shown`, `seen, not reported`, `reported, refuted`, `reported, not matched` or `no record`, with the IDs and numbers it rests on. Melian computes it from the round's records each time it reads the comparison, so a record holds the first read as of its export, and a later rule can read the same miss differently. It is never a reason, and it never stands in for one.
+
 A Melian finding judged noise owes a clean golden for the lens that raised it. A golden is owed only where the adjudication says so, naming its lens; a difference alone owes nothing. A golden drawn from a record names its finding in a `README.md` beside `expected.json`, since the expected file's schema is Martian's and has no field for it.
 
 [goldens/BACKLOG.md](../../packages/evals/goldens/BACKLOG.md) lists, by lens, the owed goldens not yet written. Its present entries are kept by hand until goldens drain them. `melian compare backlog --markdown` prints the later generated section; replace the generated section after the frozen entries.

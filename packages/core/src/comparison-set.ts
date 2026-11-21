@@ -1,6 +1,7 @@
 import type { Verdict } from "./adjudication.ts";
 import type { Comparison } from "./comparison.ts";
 import { type ComparisonAdjudicationRecord, missReasons } from "./comparison-adjudication.ts";
+import { type MissCauseName, type MissCauseRecord, missCauses } from "./miss-cause.ts";
 import { visibleText } from "./render.ts";
 
 /** Counts for one reviewer; pending reports enter neither precision nor recall. */
@@ -22,6 +23,8 @@ export interface ComparisonStats {
 	readonly pendingMatches: number;
 	readonly reasonlessMisses: number;
 	readonly misses: Record<(typeof missReasons)[number], number>;
+	/** Valid misses by Melian's first read, one per defect, or absent when no comparison carries one. */
+	readonly causes?: Record<MissCauseName, number>;
 }
 
 /** A golden the current maintainer judgement owes. */
@@ -50,6 +53,11 @@ export interface ComparisonEntry {
 	readonly round?: string;
 	readonly unattributed?: string;
 	readonly verdict?: Verdict;
+	/**
+	 * Melian's first read of each valid miss, by external finding ID, computed from the round's own records as the
+	 * comparison was read. Absent when the reader computed none.
+	 */
+	readonly causes?: Readonly<Record<string, MissCauseRecord>>;
 }
 
 /** Several changesets' local comparisons, including their earlier rounds. */
@@ -106,9 +114,11 @@ export class ComparisonSet {
 			}
 			for (const reason of missReasons) misses[reason] += stats.misses[reason];
 		}
+		const causes = this.causes();
 		return {
 			pendingMatches,
 			reasonlessMisses,
+			...(causes === undefined ? {} : { causes }),
 			reviewers: [...counts.values()]
 				.sort((a, b) => a.reviewer.localeCompare(b.reviewer))
 				.map((each) => ({
@@ -121,6 +131,24 @@ export class ComparisonSet {
 				})),
 			misses,
 		};
+	}
+
+	/**
+	 * Valid misses by Melian's first read, once per defect: the first finding of each external-only group, in site
+	 * order, judged valid and carrying a cause. Absent when no attributed comparison was read with causes.
+	 */
+	private causes(): Record<MissCauseName, number> | undefined {
+		const read = this.entries.filter((entry) => entry.unattributed === undefined && entry.causes !== undefined);
+		if (read.length === 0) return undefined;
+		const counts = Object.fromEntries(missCauses.map((cause) => [cause, 0])) as Record<MissCauseName, number>;
+		for (const { comparison, causes } of read)
+			for (const group of comparison.externalOnly()) {
+				const first = group.external.find(
+					(finding) => comparison.judgement(finding.id)?.verdict === "valid" && causes![finding.id] !== undefined,
+				);
+				if (first !== undefined) counts[causes![first.id]!.firstRead]++;
+			}
+		return counts;
 	}
 
 	/**
@@ -233,6 +261,8 @@ export class ComparisonSet {
 		if (filtered) out.push(`Clone-wide, not narrowed by the filter:\nPending matches: ${stats.pendingMatches}.\n`);
 		for (const reason of missReasons) out.push(`${reason}: ${stats.misses[reason]}.\n`);
 		out.push(`Valid misses without a reason: ${stats.reasonlessMisses}.\n`);
+		if (stats.causes !== undefined)
+			for (const cause of missCauses) out.push(`First read "${cause}": ${stats.causes[cause]}.\n`);
 		for (const candidate of this.candidates())
 			out.push(
 				`Candidate check: ${visibleText(candidate.key)}, seen on ${candidate.changesets.length} changesets (${candidate.changesets.map(visibleText).join(", ")}).\n`,

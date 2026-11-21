@@ -329,6 +329,20 @@ export class Revision {
 	}
 
 	/**
+	 * Whether a head-side hunk of `path` holds a line of one of `ranges`, each an inclusive `[first, last]` at head. The
+	 * diff has no context lines, so a prompt that carries the file's diff whole shows only the lines its hunks hold.
+	 */
+	shows(path: string, ranges: readonly (readonly [number, number])[]): boolean {
+		return this.files
+			.filter((file) => file.path === path)
+			.flatMap((file) => file.hunks)
+			.some(
+				({ newStart, newLines }) =>
+					newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first),
+			);
+	}
+
+	/**
 	 * The hunk that introduced lines `startLine` to `endLine` of `path` at head, as a finding's trigger names it, with
 	 * its added lines as the snippet; `undefined` when no hunk adds any of them.
 	 */

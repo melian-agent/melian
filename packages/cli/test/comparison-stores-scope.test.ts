@@ -75,6 +75,13 @@ no-owner: 0.
 needs-execution: 0.
 out-of-scope: 0.
 Valid misses without a reason: 0.
+First read "not covered": 0.
+First read "cut short": 0.
+First read "never shown": 0.
+First read "seen, not reported": 0.
+First read "reported, refuted": 0.
+First read "reported, not matched": 0.
+First read "no record": 1.
 Drain not due; next comparison threshold: 3.
 Unattributed pull request rounds: 1.
 `;
