@@ -14,7 +14,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -65,7 +68,10 @@
 			"replacement": "``",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > prints a listing past its limit, and counts nothing",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -103,7 +109,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -115,7 +124,10 @@
 			"replacement": "\"Stryker was here!\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -127,7 +139,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -139,7 +154,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -151,7 +169,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
@@ -163,7 +184,10 @@
 			"replacement": "\"\"",
 			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
 			"status": "Ignored",
-			"note": "Ignored by the configuration."
+			"claim": "killed",
+			"evidence": "packages/state-git/test/size.test.ts > a tip's size > says past half at exactly each limit, and past the limit one past it, naming every measure in one line",
+			"result": "killed",
+			"survivorClasses": []
 		},
 		{
 			"file": "packages/state-git/src/tip-size.ts",
