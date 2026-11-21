@@ -1,0 +1,2010 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "c2e68c4e77de66f8a996dd88d58c41e822d0ddb4",
+    "head": "e17e59ca5a4198bc61c1238f8df69c6b42e3197d"
+  },
+  "claimsIn": [
+    "packages/core/src/record.ts",
+    "packages/core/src/record-store.ts",
+    "packages/core/src/directory-record-store.ts",
+    "packages/core/src/testing.ts",
+    "packages/state-git/src/state-tree.ts",
+    "packages/state-git/src/git-record-store.ts",
+    "packages/pipeline/src/checks.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/core/src/directory-record-store.ts",
+      "line": 150,
+      "column": 35,
+      "endLine": 150,
+      "endColumn": 104,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "463f677955f5d5aec72d6836c453dc4f8e15811576c614e30002180cf94a0599",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the directory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1939,
+      "column": 33,
+      "endLine": 1945,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a5a17cff62b3e618da0fb493e67ae5bfe73f0ad58a291dfeda43ee015389ee85"
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1941,
+      "column": 23,
+      "endLine": 1944,
+      "endColumn": 3,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0b4b590495c2c170cb0c6cdb8c318b86b9841e2341feb48b495962c5b2ebf512"
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 15,
+      "endLine": 1943,
+      "endColumn": 110,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "c07690b2f87551bcc4a8da1289be0dbe5e2f880fa89f8716680ceffcd5768b97"
+    },
+    {
+      "file": "packages/core/src/findings.ts",
+      "line": 1943,
+      "column": 50,
+      "endLine": 1943,
+      "endColumn": 108,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f979ad4c9d96909fb59b321d5f6e2014ec74777f6e8180755b80e4b17300b69f"
+    },
+    {
+      "file": "packages/core/src/record-store.ts",
+      "line": 120,
+      "column": 29,
+      "endLine": 120,
+      "endColumn": 94,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "a1b34a5cedb355cae11b4eec876b72365d13837d7f6d070a3f9c286b147f9b19",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 80,
+      "column": 27,
+      "endLine": 80,
+      "endColumn": 42,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "4 * 1024 / 1024",
+      "status": "generated",
+      "id": "15899e4cd357bd16097098386b87ee3110cbd16195ffafde6b98f2c68cc49c04",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "MemoryRecordStore",
+            "hands out copies, so a caller's edit never reaches the store"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 80,
+      "column": 27,
+      "endLine": 80,
+      "endColumn": 35,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "4 / 1024",
+      "status": "generated",
+      "id": "a7493a2a659d1b23b99a4b00dfb2294910488bda3eb292145f4e354b3e6a03f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "MemoryRecordStore",
+            "hands out copies, so a caller's edit never reaches the store"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 327,
+      "column": 26,
+      "endLine": 330,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2dc635211efc6975fba6c8a561fa46c3c5ddf4217e38c75a0351472604ce9992",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 328,
+      "column": 6,
+      "endLine": 328,
+      "endColumn": 49,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3cba26fd107e616cbfc127132fdb27b0edf8f26746f4361122bb1980ef598802",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 328,
+      "column": 6,
+      "endLine": 328,
+      "endColumn": 49,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "a7f7b29a34a942dd19e7b8bf4c359874dc09739f30ee2bbc69bec2588946139e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 328,
+      "column": 6,
+      "endLine": 328,
+      "endColumn": 49,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(this.bytes) >= recordLimit",
+      "status": "generated",
+      "id": "3dcc851e63dc09bd6ae3beb52c088908a893079de8ff46dac44255e842483498",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 328,
+      "column": 6,
+      "endLine": 328,
+      "endColumn": 49,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(this.bytes) <= recordLimit",
+      "status": "generated",
+      "id": "aca78401e5226a636e90e482217c942f0eb224c1638f4edbe39f692cfc8a588e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/record.ts",
+      "line": 328,
+      "column": 65,
+      "endLine": 328,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "714515a535b1074544691f248a47925aa41e703075bffce8f508bb8297cd51d2"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 11,
+      "column": 39,
+      "endLine": 13,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "487023b342c0c064527d4f93a733053aa76611e471348fbc32caac2204e68be6"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 15,
+      "column": 37,
+      "endLine": 17,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "2a9b005e95358d27f2fdd3a46485f16f92e6f424577eeb056c80c4b5b28170ef"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 8,
+      "endLine": 16,
+      "endColumn": 125,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "fe3238e68bff1924fdd8f87a6f666f18fd3ed4cd6ac598fe0814e3ee3686e730"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 56,
+      "endLine": 16,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7757f30e6b50590f407161b49be049b3d07b98eeb9281c145edba004dea1c0e1"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 56,
+      "endLine": 16,
+      "endColumn": 67,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "082d96ee0680cd72853332f5db8b5ffc4ddf53c1682177e2665b116385e3cb49"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 56,
+      "endLine": 16,
+      "endColumn": 67,
+      "mutatorName": "EqualityOperator",
+      "replacement": "files !== 1",
+      "status": "generated",
+      "id": "444b35ee3c606d4974e124fe126f5094cd5ea9f7897a86e62628965445aff83e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 70,
+      "endLine": 16,
+      "endColumn": 76,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c2e09651c76f37901ff2e0495a12ae1aea07132e06b082d62241ed6981294304"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 16,
+      "column": 79,
+      "endLine": 16,
+      "endColumn": 86,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "71220c776a67b34c48de89a399c6351716616b8b99564377b90b2355b6f4187a"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 22,
+      "column": 50,
+      "endLine": 22,
+      "endColumn": 81,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "recordLimit + envelopeAllowance",
+      "status": "generated",
+      "id": "a96c902b13fc91ce52b5f8b33ca30f7088096a0e454d6f893fd88aa42d9968ea"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 29,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "f24eee0583e4c98e5a75b172e39db116b3a7fbe77bce508f1d2fb087c8ea729c"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 38,
+      "column": 46,
+      "endLine": 70,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a2c59292c66ed134d51610acc57480eed3cd9c63a5d3b2eb77da50446924ebf0"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 18,
+      "endLine": 39,
+      "endColumn": 88,
+      "mutatorName": "MethodExpression",
+      "replacement": "[...findings]",
+      "status": "generated",
+      "id": "f0b6b67e4d9237c1e2c444ffcfadf46e7caf361fd1d319babfff00643d34f57e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 18,
+      "endLine": 39,
+      "endColumn": 31,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "3f02edaf5d107b73496bcada349fed7f2ed848df81ca64a833c80eb29580c8e1"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 37,
+      "endLine": 39,
+      "endColumn": 87,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "1abf15007d784f5e8c4d5522ee9654bd2a374334cc3a0ec29bbc3cda52a417c2"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 48,
+      "endLine": 39,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "cf0712fa958a628c74701f0104bac4490845449f28bf8caddd70f4baf22c72e5"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 48,
+      "endLine": 39,
+      "endColumn": 59,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "fce56062667e831f62b904a41789840ca4e4820f18f967e929425e9788598e49"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 48,
+      "endLine": 39,
+      "endColumn": 59,
+      "mutatorName": "EqualityOperator",
+      "replacement": "a.id <= b.id",
+      "status": "generated",
+      "id": "fbc52fc9c0337237bcca557e676bf6debfac06690c95e373b9adad856ffde5ff"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 48,
+      "endLine": 39,
+      "endColumn": 59,
+      "mutatorName": "EqualityOperator",
+      "replacement": "a.id >= b.id",
+      "status": "generated",
+      "id": "400634d47a277508c07ed0595e56dadadc22bca0371ac2097d24900f6c83c371"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 62,
+      "endLine": 39,
+      "endColumn": 64,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "1564369b8478f492746ce2cb2a0ef9dac747a2bd50964519b9c033cce7dc3265"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 67,
+      "endLine": 39,
+      "endColumn": 78,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "c2d49c67904ce4488dd0ef65af963b4c79b9ad73a1b1b058ad5fc875e18a1c1e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 67,
+      "endLine": 39,
+      "endColumn": 78,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "23c4e4677655dcf22f738a014267a5d27e5d7d0c1a63a02dd8869b3d07e1305e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 67,
+      "endLine": 39,
+      "endColumn": 78,
+      "mutatorName": "EqualityOperator",
+      "replacement": "a.id >= b.id",
+      "status": "generated",
+      "id": "55faef289972d1ddc3a052c7a72d8ae614a70a0e0d78f5c90345438bb56b7271"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 39,
+      "column": 67,
+      "endLine": 39,
+      "endColumn": 78,
+      "mutatorName": "EqualityOperator",
+      "replacement": "a.id <= b.id",
+      "status": "generated",
+      "id": "1e73e2713aede11e890e2165035ea7a3db3c4a46552e56728a8581adf0b93fc4"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 42,
+      "column": 6,
+      "endLine": 45,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "8c0518c4e28b12a412d46d01ff31e96afff361e0862ee34757831e608f99536b"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 43,
+      "column": 22,
+      "endLine": 43,
+      "endColumn": 58,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "d20b0407f630234123b70f8f7c6289da4b6b71bba58fec1cef5dfc287fd3c1b1"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 44,
+      "column": 22,
+      "endLine": 44,
+      "endColumn": 93,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "b1eee4f30a774095333194405cae295b65a7f839877b5e69ae596392baeed2c4"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 44,
+      "column": 35,
+      "endLine": 44,
+      "endColumn": 93,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "bytes(finding.abridged(note(1)).toJSON()) + note(1).length",
+      "status": "generated",
+      "id": "4f73c632492845cea07f15546f5e5d37acf3d1f338af6b8bead84da8b5fb7e60"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 45,
+      "column": 18,
+      "endLine": 48,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "702a8085b703a86e91d5d7797270288b740b8503898fbee65d8ee49d38bb9b25"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 46,
+      "column": 7,
+      "endLine": 46,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "ef57ca0449aa143ddf6c7f7a8374c13ed02ff9624d5eba2ddfacecc7f5c0c2d6"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 46,
+      "column": 7,
+      "endLine": 46,
+      "endColumn": 35,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "14d50f5aadab6c7418d90889cecab82fccd639fb0b8daf5b5665b36912cadac3"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 46,
+      "column": 44,
+      "endLine": 46,
+      "endColumn": 57,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "83125f4793b649195522196d4ca385cb676ec54aa869ce5235f63596ef8aff94"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 51,
+      "column": 26,
+      "endLine": 51,
+      "endColumn": 46,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "new Array()",
+      "status": "generated",
+      "id": "45500d6d7932727342388d61e4bf48f6b9520ee81590c13701ddde7e6da98bd4"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 51,
+      "column": 36,
+      "endLine": 51,
+      "endColumn": 45,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count - 1",
+      "status": "generated",
+      "id": "073097eb7687b8de66089937ed1927988023a23cb3a30ccb46d173249fbc42af"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 52,
+      "column": 29,
+      "endLine": 52,
+      "endColumn": 49,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "new Array()",
+      "status": "generated",
+      "id": "505fbdbcaf50c2e2d921ec0c2783f949c5cfe52fb427f9c46f968b724c362639"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 52,
+      "column": 39,
+      "endLine": 52,
+      "endColumn": 48,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count - 1",
+      "status": "generated",
+      "id": "33cdc8a5c4fb50bdf1e68d349af56f83c564118488c82a324b643c016b9aab52"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 19,
+      "endLine": 54,
+      "endColumn": 28,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count + 1",
+      "status": "generated",
+      "id": "f843cab19613143044ae91489ec181a2080157f6d83c072997cde3a6f90ae5f5"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 30,
+      "endLine": 54,
+      "endColumn": 40,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "3edf60dc63669ab389f7b6c16e4cc6e914b5e6ad57f1281c0b6540cbe0dbf21a"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 30,
+      "endLine": 54,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "index > 0",
+      "status": "generated",
+      "id": "2735c0af9534cbc3b29e841f3a6d6905968e81e19a1ad112a17608e065a7b729"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 30,
+      "endLine": 54,
+      "endColumn": 40,
+      "mutatorName": "EqualityOperator",
+      "replacement": "index < 0",
+      "status": "generated",
+      "id": "09f0f63273b25ed13ea83b2b72035315c03ae2662e3efd5b5ae9fe32ade85121"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 42,
+      "endLine": 54,
+      "endColumn": 49,
+      "mutatorName": "UpdateOperator",
+      "replacement": "index++",
+      "status": "generated",
+      "id": "67265c9720b5a3f33003f6ef42c4f6babb0354ac621cac21ebef9f5858a1f308"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 54,
+      "column": 51,
+      "endLine": 58,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "705c5a261daff505b694f40c41e987ad9b2353f9ff12e50b17f06409f6a11861"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 55,
+      "column": 3,
+      "endLine": 55,
+      "endColumn": 45,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "dec49e74bfcbad34125d5bab5cd91258f2a42584d49287abf12cd9919582b78e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 57,
+      "column": 21,
+      "endLine": 57,
+      "endColumn": 56,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "abridged[index + 1]! - bare[index]!",
+      "status": "generated",
+      "id": "e968328137c347ff9e7574f5eee40400d8e8aa11730b43d1efc4cff0ee9642e3"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 57,
+      "column": 30,
+      "endLine": 57,
+      "endColumn": 39,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "index - 1",
+      "status": "generated",
+      "id": "ff96156d640228948d4d19e47588f8da2559d3df7c5b48ac76b6051be4228268"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 59,
+      "column": 15,
+      "endLine": 59,
+      "endColumn": 18,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "6afc44973b115798ad9432f6544b9d15da3eed10837050052817eeef8d4159ef"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 37,
+      "endLine": 60,
+      "endColumn": 56,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "kept.at(-1)! - size",
+      "status": "generated",
+      "id": "ffd9df1429561cd158e160f8f649cd96ac08a68e2bce6b2212d6b695caba2eac"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 60,
+      "column": 45,
+      "endLine": 60,
+      "endColumn": 47,
+      "mutatorName": "UnaryOperator",
+      "replacement": "+1",
+      "status": "generated",
+      "id": "82a2cc608a3c42030afa71e31ecea2f7f07529fc062a7265790f959a739326db"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 62,
+      "column": 16,
+      "endLine": 63,
+      "endColumn": 102,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "0d9724fdba8d62ca44db0f9000727e943497d90e5bd4427a005b9c7c50c411e9"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 102,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) + kept[cut]! + abridged[cut]! - (count - cut) * note(files[cut]!).length",
+      "status": "generated",
+      "id": "4f68fe3c6c76a04c7324703cedb67ba1b330a7b6752936e3aa28751666d9825f"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 59,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) + kept[cut]! - abridged[cut]!",
+      "status": "generated",
+      "id": "7073227e91578533c4be80554fa3b4e227a8a3eace5c0b9462d325de9e877990"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 42,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 + Math.max(count - 1, 0) - kept[cut]!",
+      "status": "generated",
+      "id": "fe93a0da721a773c5b1599fca7fd81844acc52dbe72c3f3093990b187e5503ac"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 29,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "2 - Math.max(count - 1, 0)",
+      "status": "generated",
+      "id": "7394bb319c21a1488205fc062bebaf194d0e810449245125f3fe32e6eef13af1"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 7,
+      "endLine": 63,
+      "endColumn": 29,
+      "mutatorName": "MethodExpression",
+      "replacement": "Math.min(count - 1, 0)",
+      "status": "generated",
+      "id": "f301c45369aebc7afc888d74291a2d4b8b617dc68bb756e615b0cc967d229017"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 16,
+      "endLine": 63,
+      "endColumn": 25,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count + 1",
+      "status": "generated",
+      "id": "53d1c2074ac5ab6b36f8c4909a3cf4a4389f027f57744b513b04369b6893f15a"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 62,
+      "endLine": 63,
+      "endColumn": 102,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "(count - cut) / note(files[cut]!).length",
+      "status": "generated",
+      "id": "883f69c203cded499aa5c4d8a2aa6ac138f75ecc306b37240e7adddfbb06c16d"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 63,
+      "column": 63,
+      "endLine": 63,
+      "endColumn": 74,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "count + cut",
+      "status": "generated",
+      "id": "4e6f19577acbc1e6ce21ed6c504d1a481f99e872b48d5bfcf316bd13afb66183"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "833d40f9a1fd8aa712174301cdc27b4fb5989b82617c9570750c001b812c3a02"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "beaf18a043a2d6ddfb1fbd072d6d331e2b703e8c5dba6406b3d72fa423178583"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(count) < this.bytes",
+      "status": "generated",
+      "id": "1e74540b653ca5a301345d762e7f2383842e56fe681c7e2b0e17c2055039fc40"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 6,
+      "endLine": 64,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(count) > this.bytes",
+      "status": "generated",
+      "id": "c116a5692f38c7d438a8a892a2d565b232a3b272eac04b215d003b2f6ece5427"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 64,
+      "column": 41,
+      "endLine": 64,
+      "endColumn": 54,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "94e7e7ec51c4b03a67e5dca00c6a8bd80bbd37a051d68ea0c915db0960f40e8f"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 9,
+      "endLine": 66,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "812f95398552614233ded8c29fa9635d680e7d864a5d81fc7390687e7aafcc8e"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 9,
+      "endLine": 66,
+      "endColumn": 52,
+      "mutatorName": "LogicalOperator",
+      "replacement": "cut < count || total(cut + 1) <= this.bytes",
+      "status": "generated",
+      "id": "6d621a29d0b38583c972fea89626681d1ce0c7bc87474a040a882aa412e8cef9"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 9,
+      "endLine": 66,
+      "endColumn": 20,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "791ce3955cd61329400e2a2ce95c4a5f334dba05dd9bb34342dd7df40efeb68a"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 9,
+      "endLine": 66,
+      "endColumn": 20,
+      "mutatorName": "EqualityOperator",
+      "replacement": "cut <= count",
+      "status": "generated",
+      "id": "81d6e786410745e6d2fadef5379ac4ed3b6de1831398b8fa806c29122a7cbaf7"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 9,
+      "endLine": 66,
+      "endColumn": 20,
+      "mutatorName": "EqualityOperator",
+      "replacement": "cut >= count",
+      "status": "generated",
+      "id": "fe25d4372429159f8eca9c77a014ae6058c872a38ec406a51d3ad1505c858647"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 24,
+      "endLine": 66,
+      "endColumn": 52,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8777417374aaab5ff78548adad5e95ba2bb4c9c134b3c6413d0dbc69e67bacc4"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 24,
+      "endLine": 66,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(cut + 1) < this.bytes",
+      "status": "generated",
+      "id": "7237aaa991b49a87a7d21216820bb97c1a4ea6bfe8ced34afc64f5fe29828f4c"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 24,
+      "endLine": 66,
+      "endColumn": 52,
+      "mutatorName": "EqualityOperator",
+      "replacement": "total(cut + 1) > this.bytes",
+      "status": "generated",
+      "id": "28076a5881f9c17aeeb6386b47c85b9e652e383d8f1816012ee8362fd919e0b5"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 30,
+      "endLine": 66,
+      "endColumn": 37,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "cut - 1",
+      "status": "generated",
+      "id": "e4c194a55fea26148671c3b48e9bc35ea38b4888f496f3b65102a59479baf52f"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 66,
+      "column": 54,
+      "endLine": 66,
+      "endColumn": 59,
+      "mutatorName": "UpdateOperator",
+      "replacement": "cut--",
+      "status": "generated",
+      "id": "9d95a43363ffb674c59fac80bae2962629f99d8cd7006b5b7da9401eb3533e27"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 28,
+      "endLine": 68,
+      "endColumn": 46,
+      "mutatorName": "MethodExpression",
+      "replacement": "ordered",
+      "status": "generated",
+      "id": "8ffc5bdae862df7c9c0474507b33a4d564a3639123f264f5aa0b3eb712a74f71"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 51,
+      "endLine": 68,
+      "endColumn": 110,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "e642c699d1a5efab5f2ed3def26afb790d225a4e913a9ffce4263e7bd2dfd8a4"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 68,
+      "column": 64,
+      "endLine": 68,
+      "endColumn": 110,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "843a21ad1b6d2da3d9f75a93645d9040f14a8bc3cc1e1dcefeeceace029298fa"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 69,
+      "column": 22,
+      "endLine": 69,
+      "endColumn": 68,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "21184c6c328ed1791059845821705f67fd866b1d0df58be28afb90e3cdfe8e7d"
+    },
+    {
+      "file": "packages/core/src/sighting-budget.ts",
+      "line": 69,
+      "column": 35,
+      "endLine": 69,
+      "endColumn": 68,
+      "mutatorName": "LogicalOperator",
+      "replacement": "shortened.get(finding) && finding",
+      "status": "generated",
+      "id": "0251bda9d212c7bce4f30fdd2a031baa72f4495b278ded317e8e44130cd1e3c4"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 97,
+      "column": 60,
+      "endLine": 100,
+      "endColumn": 1,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6820684a76024e35e88f76816742f58498b7eb04ab886d19d2de53826dc3aca3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 98,
+      "column": 42,
+      "endLine": 98,
+      "endColumn": 49,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f197cdc36858ae226cfb25efdadab7902434e6cd483b6016941c3281e6052f52"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 98,
+      "column": 58,
+      "endLine": 98,
+      "endColumn": 69,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a664e57644bdb0e1e0ba2782cf6d3e36e36961f99b506fd2f1c46d90d307805e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 98,
+      "column": 65,
+      "endLine": 98,
+      "endColumn": 67,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"Stryker was here!\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8e2d2042b88502a09758bff61cf4ae35b426b285f4e80521523e450775508b3e"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 99,
+      "column": 17,
+      "endLine": 99,
+      "endColumn": 24,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "06a5721dc37869e53f1ab7073980e719e3755f97ad477be0d274080259e54065"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 99,
+      "column": 33,
+      "endLine": 99,
+      "endColumn": 65,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "0c48302ab9f8024a07f1c7071109a323eb218c402b68e2283d4339b008aab542",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 99,
+      "column": 40,
+      "endLine": 99,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3f1e6d0ff5e08257b9ca6567bd1ebcb9c08bc4fa9d3e6b7cf1f77d6901caf382"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 99,
+      "column": 51,
+      "endLine": 99,
+      "endColumn": 62,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "size + bare",
+      "status": "generated",
+      "id": "0ffe0af7a05557283c1acf07fc34e1abae6b3f68308866699e4690847d473c77",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 183,
+      "column": 1,
+      "endLine": 198,
+      "endColumn": 2,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "941d625971b7a3dba8ce691b1f23b5898fd063cfe767471c9713bae0dc293409",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "each conformance case fails against an adapter that breaks its promise",
+            "names a case of the suite for every breakage, and a breakage for every case"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 184,
+      "column": 8,
+      "endLine": 184,
+      "endColumn": 113,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "e9497951623006f4f2fba58ba3e4910a5c2185bf8c8e70dd14abe2f7e590fd93"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 185,
+      "column": 7,
+      "endLine": 197,
+      "endColumn": 5,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "b893b338d9fd65936c1095f6e95b749004a66eeeaff4dc3a499626c0d7af789f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "each conformance case fails against an adapter that breaks its promise",
+            "add refuses a record at the record limit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 186,
+      "column": 37,
+      "endLine": 197,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "a3af191b5e37c89aec1c568b8dc42fd28cc8bb9c92ecf08de88857f57403c092",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "each conformance case fails against an adapter that breaks its promise",
+            "add refuses a record at the record limit"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 188,
+      "column": 27,
+      "endLine": 188,
+      "endColumn": 34,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "36cfba3b11358c46c7e5830843e23067dca690205a4301cb20a6862c298a4701"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 188,
+      "column": 36,
+      "endLine": 188,
+      "endColumn": 48,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8c76b2eee58aec2f2f0a8765b2c5c2b28633ee04b3063a78bccd9f3fc6b04186"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 189,
+      "column": 23,
+      "endLine": 189,
+      "endColumn": 29,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "43074169a9649eccab3514c5e2150739758ac934d77385ec582720224f337f16"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 189,
+      "column": 31,
+      "endLine": 189,
+      "endColumn": 46,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "recordLimit - 1",
+      "status": "generated",
+      "id": "db7be1291e0505e3e97756ba8fdedbf987340ae6d2832efc4685e137b1cc2526",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 190,
+      "column": 82,
+      "endLine": 190,
+      "endColumn": 97,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "recordLimit - 1",
+      "status": "generated",
+      "id": "186421e15dcb2afe276e9184af735002f41ca7da252b401f960cc6df65cb736e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 191,
+      "column": 35,
+      "endLine": 191,
+      "endColumn": 48,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "22199c754ff92225c58b08ba900d5fc03923950df34585d6c2cc86d88db5a1f3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 191,
+      "column": 59,
+      "endLine": 191,
+      "endColumn": 74,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c0852059c994b71b0a6ad0d133f9778d06a5553a1f7a1fd0907290ace4692961"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 192,
+      "column": 50,
+      "endLine": 192,
+      "endColumn": 52,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "7cbadd97f72a9b3b3e4ccca9f2fc7c0016ce278ab5ea78d84866a67e178a62a4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 193,
+      "column": 21,
+      "endLine": 193,
+      "endColumn": 25,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "09d19221e260358862e44669d39a3697ab16a2c75a39780cf9827e99eee7087b"
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 194,
+      "column": 4,
+      "endLine": 194,
+      "endColumn": 93,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "eb5e09bdeba5df54895823912b16d52061498032bf83bf7905269caf4e6651a9",
+      "claim": "suite",
+      "evidence": {
+        "reason": "suite assertion, proved per case: line 194 checks the fixture's own size, not the store; line 196 holds the at-limit promise, proved against the breakage that drops such a record"
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 195,
+      "column": 20,
+      "endLine": 195,
+      "endColumn": 31,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "ba20a5d1347436609ea425a60b3b1b8b142f9b0fce4ec3db554b876c8cfed2c0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "the record store conformance suite on the memory adapter",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/core/src/testing.ts",
+      "line": 196,
+      "column": 4,
+      "endLine": 196,
+      "endColumn": 73,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "fdc6ea7e59d08af2240ca1bf9e43bbdf3292c8cecee74e104eb1ab57b8576024",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "packages/core/test/record-store.test.ts",
+          "path": [
+            "each conformance case fails against an adapter that breaks its promise",
+            "add drops a record at the record limit without refusing it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/checks.ts",
+      "line": 332,
+      "column": 45,
+      "endLine": 332,
+      "endColumn": 93,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "bed79415c992c0bec419f4893d4fcfd2c5dae42058fbe72c839d376f27a87bda",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/checks.test.ts",
+          "path": [
+            "runChecks",
+            "runs again when the policy source differs, rather than returning the earlier run"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 31,
+      "column": 48,
+      "endLine": 31,
+      "endColumn": 114,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ad6013df304030e3d092a538bbedda4bd8d51aeb8f54a60e6f17e6431c03f5bc"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 45,
+      "column": 34,
+      "endLine": 45,
+      "endColumn": 100,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 57,
+      "column": 31,
+      "endLine": 57,
+      "endColumn": 97,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3f1aeeae7853514958e8d483fa95b6be8a5c48dc578599f2d6bb19f020b0f906"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 89,
+      "column": 38,
+      "endLine": 89,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8fc665d63e8f8f50efc6104ab323ca442463afb538a08edf348554be74859a77"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 91,
+      "column": 32,
+      "endLine": 91,
+      "endColumn": 98,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c474c8b4bb49c64b8584eaf4dc43fc914c7b36147723fd572b155a312390aca5"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 105,
+      "column": 41,
+      "endLine": 105,
+      "endColumn": 107,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "ee54953b1774b0fe418df0e6d778f38f88989faa554dd1a7b750ee40535e18e4"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 145,
+      "column": 36,
+      "endLine": 145,
+      "endColumn": 102,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "277dcf970ec079e35710c9dfffee9ba95e4eda283fee3a8d80c2405654724f88"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 339,
+      "column": 2,
+      "endLine": 339,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7730bd9ec704c132d5a1bf7a7ddc2d40fe5401bcde791831bace6bd32681e9e1"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 571,
+      "column": 2,
+      "endLine": 571,
+      "endColumn": 40,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "74a4b4ef4449e23508502e3d20d47d0771437e5629336e76a4cc8ab07c6836d0"
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 157,
+      "column": 29,
+      "endLine": 157,
+      "endColumn": 94,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "bba4b7dcbc3058070e71a746d8870ce642cd1c5f2deb61de1b85594b3268b95b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/conformance.test.ts",
+          "path": [
+            "the git record store",
+            "add: takes a record of the record limit, and refuses one a byte past it before writing any of its batch"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 190,
+      "column": 6,
+      "endLine": 190,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "bf40376216e53abc779624e1d130a22985d73251528d0c1f0e8027d43f919358",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 190,
+      "column": 6,
+      "endLine": 190,
+      "endColumn": 82,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "59c7144d35816e4ea35f23d8eb54c1de475b15aace9f6cb4815e83e3dfaeb27a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 190,
+      "column": 6,
+      "endLine": 190,
+      "endColumn": 82,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(cellBytes({\n  value,\n  version: randomUUID()\n})) >= recordLimit",
+      "status": "generated",
+      "id": "a120667a74e4507f9a174c9c88b0233234f170d11a74d1c634c89bcbbf5f97f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 190,
+      "column": 6,
+      "endLine": 190,
+      "endColumn": 82,
+      "mutatorName": "EqualityOperator",
+      "replacement": "Buffer.byteLength(cellBytes({\n  value,\n  version: randomUUID()\n})) <= recordLimit",
+      "status": "generated",
+      "id": "dffc631235910134851d4b319c52351afe910e8a5562b744caacf7db7dec7e13",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 190,
+      "column": 34,
+      "endLine": 190,
+      "endColumn": 66,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "b4fc8e9badedb0e28d193fb8650c39fd7e8c3382f0a0f04f739af43435cdd6da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 191,
+      "column": 3,
+      "endLine": 191,
+      "endColumn": 82,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "d0ac0f1df306a50bf1b7804dcba84077e7502d24a9fb8b3419e79c1ee5b0e7f7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a cell's size",
+            "takes a cell of the limit, and refuses one a byte past it before reaching the remote"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 191,
+      "column": 25,
+      "endLine": 191,
+      "endColumn": 38,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "f2d990109639128e421b84e8cac67ba33ce9d54c03f27d84345362a1ed957f2e"
+    },
+    {
+      "file": "packages/state-git/src/git-record-store.ts",
+      "line": 191,
+      "column": 40,
+      "endLine": 191,
+      "endColumn": 80,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "17df01a8369d9e97f454bc6c9c39260b0fb0971da3ee6ea922a963dfdd96f548"
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 11,
+      "endLine": 200,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "5ed929c3a16c399b4ea15e544377e831c23e9b368b331ba5cdbad416f197b185",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 11,
+      "endLine": 200,
+      "endColumn": 30,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "032d0d57ea26dffadffe94f12c9c4e2667642979ad1f40a9acd470bc0773f6d6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 11,
+      "endLine": 200,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size < recordLimit",
+      "status": "generated",
+      "id": "86dc598b3ddad69a2f83964c4be881a8666ed23abddcfc1c244824bcdfd80917",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 11,
+      "endLine": 200,
+      "endColumn": 30,
+      "mutatorName": "EqualityOperator",
+      "replacement": "size > recordLimit",
+      "status": "generated",
+      "id": "464d9cdacd6587365586f723df2021d4f3485903b743d896ffc8ccde3524cf05",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 33,
+      "endLine": 200,
+      "endColumn": 55,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "94d95feecb8791bdf5cdade5a10c0447bfca1ee8fd1d4465a37f5c5c22bc9561",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/state-git/src/state-tree.ts",
+      "line": 200,
+      "column": 58,
+      "endLine": 200,
+      "endColumn": 60,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "397c5ccd8c8a44b27b73df545a6cad7c2a34114461ec5040fe6f9f24d3e4966f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/state-git/test/scopes.test.ts",
+          "path": [
+            "a record's size",
+            "reads a file of the limit, and leaves one a byte past it unread as a stray"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 139,
+  "omitted": 0,
+  "unmutated": []
+}

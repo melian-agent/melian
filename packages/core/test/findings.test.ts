@@ -30,6 +30,27 @@ const sarifSchema = JSON.parse(
 
 const evalCall = { file: "src/run.ts", rule: "no-eval", snippet: "eval(input)", occurrence: 0 };
 
+describe("Finding.claimAs", () => {
+	it("gives the claim a finding makes as each check that reported it, a kept copy first", () => {
+		const quick = { check: "lens.tests", version: "quick" };
+		const careful = { check: "lens.tests", version: "careful" };
+		const finding = Finding.create({ ...evalInput, source: quick, failureScenario: "Unchecked input runs." });
+		const own = {
+			id: finding.id,
+			ruleId: finding.ruleId,
+			severity: "P1" as const,
+			failureScenario: "Unchecked input runs.",
+		};
+		expect(finding.claimAs()).toEqual({ ...own, source: quick });
+		expect(finding.claimAs(careful)).toEqual({ ...own, source: careful });
+		const copy = { ...own, source: careful, failureScenario: "Kept by the merge." };
+		const merged = Finding.from({ ...finding.toJSON(), properties: { ...finding.properties, otherClaims: [copy] } });
+		expect(merged.claimAs(careful)).toBe(merged.properties.otherClaims![0]);
+		expect(merged.claimAs()).toEqual({ ...own, source: quick });
+		expect(merged.claims()).toEqual([{ ...own, source: quick }]);
+	});
+});
+
 describe("Finding.decision", () => {
 	it("counts the source check without reportedBy beside a protected display-only claim", () => {
 		const trust = Finding.create({

@@ -1,9 +1,13 @@
-import { checkCellValue, checkChangeset, disposalMark, RecordError, SharedRecord } from "@melian-agent/core";
+import {
+	checkCellValue,
+	checkChangeset,
+	disposalMark,
+	RecordError,
+	recordLimit,
+	SharedRecord,
+} from "@melian-agent/core";
 import type { Deadline } from "./deadline.ts";
 import type { RecordRepository, TreeEntry } from "./repository.ts";
-
-// The largest record or cell the store reads or writes, in bytes.
-export const fileLimit = 4 * 1024 * 1024;
 
 // The most bytes of records and cells a tip may hold, since a call holds them all in memory. Provisional until a read
 // that does not hold the whole tip replaces it.
@@ -193,7 +197,7 @@ export class StateTree {
 		const small = new Map(
 			readable.flatMap((oid) => {
 				const size = sizes.get(oid) ?? Number.POSITIVE_INFINITY;
-				return size <= fileLimit ? [[oid, size] as const] : [];
+				return size <= recordLimit ? [[oid, size] as const] : [];
 			}),
 		);
 		// Each path is judged and held apart, so a blob counts at every path it sits at.

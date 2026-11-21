@@ -1,0 +1,82 @@
+[
+  {
+    "id": "9dc5b8e9df22fc0cc94d02c7b3777ad48915e50e13df8d224a011038514eb7fb",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 226,
+    "column": 8,
+    "endLine": 226,
+    "endColumn": 35,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "adds a writer's check, lens and round records to the store whole",
+      "pattern": "^RelayBatch > adds a writer's check, lens and round records to the store whole$"
+    },
+    "note": ""
+  },
+  {
+    "id": "f055776a37ad7ad939208872de0816a5a6acaf46559d6cb9d0d85466668741da",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 226,
+    "column": 8,
+    "endLine": 226,
+    "endColumn": 35,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "refuses another round's telemetry the round names, which would pass the bound uncounted",
+      "pattern": "^RelayBatch > refuses another round's telemetry the round names, which would pass the bound uncounted$"
+    },
+    "note": ""
+  },
+  {
+    "id": "24169791920d223a68f1c88f73961ad1f1f09c67a2b83bcfd5c5034f27eafdad",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 226,
+    "column": 8,
+    "endLine": 226,
+    "endColumn": 35,
+    "mutatorName": "EqualityOperator",
+    "replacement": "record.kind !== \"telemetry\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "adds a writer's check, lens and round records to the store whole",
+      "pattern": "^RelayBatch > adds a writer's check, lens and round records to the store whole$"
+    },
+    "note": ""
+  },
+  {
+    "id": "1f4cda44627d017285f8f622af35f2f2e4cc3b97a5320ff0e163fce9ed51d382",
+    "file": "packages/pipeline/src/record-relay.ts",
+    "line": 226,
+    "column": 37,
+    "endLine": 226,
+    "endColumn": 91,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "result": "killed",
+    "test": {
+      "file": "packages/pipeline/test/record-relay.test.ts",
+      "ancestorTitles": [
+        "RelayBatch"
+      ],
+      "title": "refuses another round's telemetry the round names, which would pass the bound uncounted",
+      "pattern": "^RelayBatch > refuses another round's telemetry the round names, which would pass the bound uncounted$"
+    },
+    "note": ""
+  }
+]

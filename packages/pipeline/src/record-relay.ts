@@ -11,6 +11,7 @@ import {
 	type RecordStore,
 	type RoundFacts,
 	type RoundManifest,
+	recordLimit,
 	reviewPayloads,
 	SharedRecord,
 	type TierAccount,
@@ -20,13 +21,15 @@ import {
 
 /**
  * The most a relay reads from the head's job: files, bytes in one file, bytes in all, and triage and telemetry records
- * beside the round. Each is a small part of the store's own bounds on the branch, so a few rounds cannot fill it.
+ * beside the round. A file may be as large as the store's record limit itself, so the relay hands over any record a
+ * store keeps. The batch is two such records, one full record and as much again for the rest, which is 1/32 of the git
+ * store's 256 MiB tip, so a few rounds cannot fill the branch.
  */
 export const relayLimits = {
 	entries: 2048,
 	files: 512,
-	fileBytes: 1024 * 1024,
-	bytes: 4 * 1024 * 1024,
+	fileBytes: recordLimit,
+	bytes: 2 * recordLimit,
 	extras: 64,
 } as const;
 
@@ -49,6 +52,8 @@ export type RelayRefusalCode =
 	| "roundShape"
 	| "unnamedRecord"
 	| "tooManyExtras"
+	| "triageCount"
+	| "otherTelemetry"
 	| "accountCount"
 	| "tierAccount"
 	| "otherCheck"
@@ -72,6 +77,8 @@ const says: Record<RelayRefusalCode, string> = {
 	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
 	unnamedRecord: "is a record the batch's round does not name, and no triage, telemetry or early lens copy of it",
 	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage, telemetry and early lens records`,
+	triageCount: "is a second triage decision, and a review decides triage once a round",
+	otherTelemetry: "is another round's telemetry, and a round names no telemetry",
 	accountCount: "is a round that reads no account, or more than one",
 	tierAccount: "is a round whose account differs from what the base's tier and the round's own records give",
 	otherCheck: "names a check the base's tier does not give",
@@ -210,13 +217,25 @@ export class RelayBatch {
 		// A lens run's copy exported as the lens ended, with no check, under the key of the run the round reads.
 		const early = (record: SharedRecord) =>
 			record.kind === "lens" && (record.payload as LensPayload).check === null && lensKeys.has(record.key);
+		// Triage, the round's telemetry and early lens copies count against the bound whether or not the round names them.
+		const extra = (record: SharedRecord) =>
+			record.kind === "triage" || (record.kind === "telemetry" && record.key === round.id) || early(record);
 		let extras = 0;
 		for (const record of records) {
-			if (record === round || read.has(record.id)) continue;
-			if (record.kind !== "triage" && !(record.kind === "telemetry" && record.key === round.id) && !early(record))
-				throw new RelayRefusal("unnamedRecord", record.path);
+			if (record === round) continue;
+			if (!extra(record)) {
+				if (!read.has(record.id)) throw new RelayRefusal("unnamedRecord", record.path);
+				// Telemetry is written after its round, so a round that names some names another round's, uncounted.
+				if (record.kind === "telemetry") throw new RelayRefusal("otherTelemetry", record.path);
+				continue;
+			}
 			if (++extras > relayLimits.extras) throw new RelayRefusal("tooManyExtras", record.path);
 		}
+		// A review decides triage once a round, so a second decision could only choose which one the account's facts read.
+		const decided = records.filter(
+			(record) => record.kind === "triage" && (record.payload as TriagePayload).decision !== null,
+		);
+		if (decided.length > 1) throw new RelayRefusal("triageCount", decided[1]!.path);
 		const accounts = manifest.read.filter((named) => named.kind === "account");
 		const account = accounts.length === 1 ? held.get(accounts[0]!.id) : undefined;
 		if (account === undefined) throw new RelayRefusal("accountCount", round.path);

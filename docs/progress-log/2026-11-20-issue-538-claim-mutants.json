@@ -1,0 +1,182 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "8a19f1f62ca972285197e6c6df8acf3bfeb39cb7",
+		"head": "022548a1d4fce007196c3d631f0dd339aea87a32"
+	},
+	"claimsIn": [
+		"packages/core/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1888,
+			"column": 14,
+			"endLine": 1889,
+			"endColumn": 49,
+			"mutatorName": "MethodExpression",
+			"replacement": "reportedBy",
+			"status": "generated",
+			"id": "9b72793f912ddfc30185b7f9240c8e7ffd08cfb895b1c3ce7908b9c3ffeb29fd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 11,
+			"endLine": 1889,
+			"endColumn": 48,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7d08c70034ab592e31382685de7b7a7880fcb12aa52fdb26d8aa7f5890ef821c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a guardrails sighting of the same notice speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 26,
+			"endLine": 1889,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a83553d0656df7a4ec5a2a7c420f96b5e4f92e94f481941a0f0c77bff08e1b22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 26,
+			"endLine": 1889,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0eac4eea7fae1ba9e377d0133c0efaabba48f82bd9f293f0b48af8148c650618",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a guardrails sighting of the same notice speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 26,
+			"endLine": 1889,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "check === \"guardrails\"",
+			"status": "generated",
+			"id": "fd1b90fce9e40ba3c2cd254995bfcac90a5b8c9cd9863f99324ec498d5b70f03",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a guardrails sighting of the same notice speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 36,
+			"endLine": 1889,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a2dda9801de5aec49de27fd7ac37110e142e2e9a78a8e53a8b4e99ee2c14233f"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1891,
+			"column": 4,
+			"endLine": 1892,
+			"endColumn": 98,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "bfc0433ea9de8caeef61235b40226412f976693990fab730a1a2b99420764613",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"keeps Enola's claim when a guardrails sighting of the same notice speaks for the merged finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 45,
+			"column": 34,
+			"endLine": 45,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}
