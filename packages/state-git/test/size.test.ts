@@ -116,7 +116,13 @@ describe("a tip's size", () => {
 			{ ...counts, listingBytes: "3" },
 			{ ...counts, entries: Number.MAX_SAFE_INTEGER + 1 },
 		])
-			expect(() => TipSize.parse(value), JSON.stringify(value)).toThrow();
+			expect(() => TipSize.parse(value), JSON.stringify(value)).toThrow(
+				new Error(
+					value === null || typeof value !== "object" || Array.isArray(value)
+						? "a tip size is a JSON object"
+						: "a tip size holds entries, recordBytes and listingBytes, each a whole number",
+				),
+			);
 		expect(TipSize.parse({ listingBytes: 0, recordBytes: 0, entries: 0 })).toEqual(sized(0, 0, 0));
 	});
 });
@@ -231,6 +237,6 @@ describe("the store's size", { timeout: 300_000 }, () => {
 	it("refuses once closed", async () => {
 		const store = await remote.open();
 		await store.close();
-		await expect(store.size()).rejects.toMatchObject({ code: "closed" });
+		await expect(store.size()).rejects.toMatchObject({ code: "closed", message: "the record store is closed" });
 	});
 });

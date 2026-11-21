@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { TipSize } from "@melian-agent/state-git";
+import { GitRecordStore, TipSize } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { check, Remote } from "../../state-git/test/fixtures/remote.ts";
@@ -39,6 +39,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	vi.unstubAllEnvs();
+	vi.restoreAllMocks();
 	await remote.close();
 	rmSync(directory, { recursive: true, force: true });
 });
@@ -93,6 +94,31 @@ describe("melian records size", { timeout: 120_000 }, () => {
 	it("passes on an error that is not the store's in its own words", async () => {
 		expect(await main(["records", "size"], io)).toBe(1);
 		expect(err).toMatch(/^melian: git remote failed: /);
+	});
+
+	it("closes the store it opened", async () => {
+		origin(remote.url);
+		const close = vi.spyOn(GitRecordStore.prototype, "close");
+		expect(await main(["records", "size", "--json"], io)).toBe(0);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it("fails in its own words when the store cannot open, and closes nothing", async () => {
+		origin(remote.url);
+		const state = join(directory, "state");
+		writeFileSync(state, "");
+		expect(await main(["records", "size", "--json"], io)).toBe(1);
+		expect([out, err]).toEqual([
+			"",
+			expect.stringMatching(/^melian: melian\/state's size could not be read \(\w+\); melian doctor says why\n$/),
+		]);
+	});
+
+	it("passes on an error that is not the store's from the store's own call", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore.prototype, "size").mockRejectedValue(new Error("a fault of its own"));
+		expect(await main(["records", "size", "--json"], io)).toBe(1);
+		expect(err).toBe("melian: a fault of its own\n");
 	});
 
 	it.each([
