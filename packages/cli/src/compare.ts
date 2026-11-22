@@ -2,13 +2,20 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
+	Changeset,
+	ChangesetError,
 	ComparisonError,
 	ComparisonExport,
 	ComparisonSet,
+	type ExportedMissReason,
 	type ExternalImporter,
 	Lens,
 	LensError,
+	type MissCase,
+	type MissesExport,
 	Revision,
+	RevisionError,
+	readRevisionFile,
 	type StoredComparisonAdjudication,
 	type Verdict,
 	visibleText,
@@ -26,6 +33,7 @@ import {
 } from "@melian-agent/pipeline";
 import { gitAuthor, type Io, StoredReview, shellQuote, short } from "./commands.ts";
 import { ComparisonStores } from "./comparison-stores.ts";
+import { CloneEvidence } from "./evidence.ts";
 import { idleModels, isScripted } from "./models.ts";
 import { PullRequestComparison } from "./pull-request-comparison.ts";
 import { CliError, git, openStorage, roundChangeset, storagePath } from "./repository.ts";
@@ -248,10 +256,39 @@ export async function adjudicateComparison(
 			if (comparison.melianFindings().includes(id))
 				io.stdout("This does not dismiss the Melian finding; melian dismiss records a dismissal.\n");
 		}
+		const missed = comparison.externalFinding(id);
+		if (
+			fields.verdict === "valid" &&
+			missed !== undefined &&
+			!comparison.effectiveMatches().some((match) => match.external === id)
+		) {
+			const evidence = await CloneEvidence.open(io, stored.changeset.repoRoot).catch((error: unknown) => error);
+			if (!(evidence instanceof CloneEvidence)) return CloneEvidence.unkept(io, evidence);
+			return await evidence.keep(harness, stored.changeset.revision, missed);
+		}
 		return 0;
 	} finally {
 		await harness.close(context);
 	}
+}
+
+/** Prints the evidence `melian compare adjudicate` kept for miss `id` of the round `argument` compares. */
+export async function comparisonEvidence(
+	io: Io,
+	argument: string,
+	id: string,
+	options: { readonly json: boolean; readonly round?: string },
+): Promise<number> {
+	const { stored, harness } = await openComparison(io, argument, options.round);
+	let round: string | undefined;
+	try {
+		round = (await harness.round(stored.changeset.revision))?.id;
+	} finally {
+		await harness.close(context);
+	}
+	if (round === undefined)
+		throw new CliError(`an unattributed comparison has no round, so Melian kept no evidence for it`);
+	return (await CloneEvidence.open(io, stored.changeset.repoRoot)).print(stored.changeset.id, round, id, options.json);
 }
 
 export async function comparisonStats(
@@ -284,6 +321,95 @@ export async function exportComparison(
 	const target = parseTarget(argument);
 	if (target.kind === "pullRequest")
 		return (await PullRequestComparison.open(io, target.number, true)).export(options);
+	const { entries, repoRoot } = await rangeComparisons(io, argument);
+	const remote = await git(repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
+	const repository =
+		/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(remote)?.[1];
+	const url =
+		repository !== undefined && /^#\d+$/.test(argument)
+			? `https://github.com/${repository}/pull/${argument.slice(1)}`
+			: undefined;
+	const record = new ComparisonExport(entries, argument, url);
+	await written(io, options.json ? record.renderJson() : record.render(), options.out, "comparison");
+	return 0;
+}
+
+/**
+ * Writes every valid miss of the stored comparisons with one of the reasons asked for as the misses file the measurement tool reads, naming on standard
+ * error, once the file is written, each one it leaves out and why. It refuses to write a file with no miss, which the tool would refuse to read.
+ */
+export async function exportMisses(
+	io: Io,
+	argument: string,
+	options: { readonly reasons: readonly ExportedMissReason[]; readonly out?: string },
+): Promise<number> {
+	const target = parseTarget(argument);
+	let misses: MissesExport;
+	let notice: string | undefined;
+	if (target.kind === "pullRequest") {
+		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
+		({ misses, notice } = (await PullRequestComparison.open(io, target.number, true)).misses(
+			repoRoot,
+			options.reasons,
+		));
+	} else {
+		const { entries, repoRoot } = await rangeComparisons(io, argument);
+		misses = new ComparisonExport(entries, argument).misses(repoRoot, options.reasons);
+	}
+	misses = await placed(misses);
+	const left = () => {
+		for (const { name, reason } of misses.skipped) io.stderr(`${visibleText(`Not exported: ${name} ${reason}.`)}\n`);
+	};
+	if (misses.cases.length === 0) {
+		left();
+		throw new CliError(
+			`no valid miss of ${argument} ruled ${options.reasons.join(" or ")} names its lines at its compared head; adjudicate one valid with melian compare adjudicate`,
+		);
+	}
+	const json = `${JSON.stringify(misses.cases, null, 2).split("\n").map(visibleText).join("\n")}\n`;
+	await written(io, json, options.out, `${misses.cases.length} ${misses.cases.length === 1 ? "miss" : "misses"}`);
+	left();
+	if (notice !== undefined) io.stderr(`${visibleText(notice)}\n`);
+	return 0;
+}
+
+// The measurement tool refuses the whole file for one miss it cannot place, so each is checked here as it checks it.
+async function placed({ cases, skipped }: MissesExport): Promise<MissesExport> {
+	const kept: MissCase[] = [];
+	const refused = [...skipped];
+	for (const each of cases) {
+		const reason = await unplaced(each);
+		if (reason === undefined) kept.push(each);
+		else refused.push({ name: each.name, reason });
+	}
+	return { cases: kept, skipped: refused };
+}
+
+async function unplaced({ repo, base, head, file, lines: [first, last] }: MissCase): Promise<string | undefined> {
+	const range = `${base}...${head}`;
+	const changeset = await Changeset.resolve(repo, range).catch((error: unknown) => {
+		if (error instanceof ChangesetError && error.code === "unknownRef") return error;
+		throw error;
+	});
+	if (changeset instanceof ChangesetError) return `cannot be placed, since ${changeset.message} in this clone`;
+	if (!changeset.revision.files.some(({ path }) => path === file))
+		return `${file} is not among the files ${range} changes`;
+	const read = await readRevisionFile(repo, head, file).catch((error: unknown) => {
+		if (error instanceof RevisionError && ["notFound", "notAFile", "symlink", "binary"].includes(error.code))
+			return error;
+		throw error;
+	});
+	if (read instanceof RevisionError) return `${read.message}${read.code === "notFound" ? "" : ` at ${head}`}`;
+	if (read.content === "") return `${file} is empty at ${head}`;
+	const lines = read.content.split("\n");
+	if (read.truncated || lines.at(-1) === "") lines.pop();
+	if (last <= lines.length) return undefined;
+	return read.truncated
+		? `a lens reads only the first ${lines.length} lines of ${file} at ${head}`
+		: `lines ${first}-${last} run past ${file}, which has ${lines.length} lines at ${head}`;
+}
+
+async function rangeComparisons(io: Io, argument: string) {
 	const stored = await StoredReview.open(io, argument);
 	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path))
@@ -293,25 +419,18 @@ export async function exportComparison(
 		const entries = await ComparisonReader.open(storage).read(stored.changeset.id);
 		if (entries.length === 0)
 			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
-		const remote = await git(stored.changeset.repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
-		const repository =
-			/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(
-				remote,
-			)?.[1];
-		const url =
-			repository !== undefined && /^#\d+$/.test(argument)
-				? `https://github.com/${repository}/pull/${argument.slice(1)}`
-				: undefined;
-		const record = new ComparisonExport(entries, argument, url);
-		const output = options.json ? record.renderJson() : record.render();
-		if (options.out === undefined) io.stdout(output);
-		else {
-			const path = resolve(io.cwd, options.out);
-			await writeFile(path, output, "utf8");
-			io.stdout(`Exported comparison to ${visibleText(path)}.\n`);
-		}
-		return 0;
+		return { entries, repoRoot: stored.changeset.repoRoot };
 	} finally {
 		await storage.close(context);
 	}
+}
+
+async function written(io: Io, output: string, out: string | undefined, what: string): Promise<void> {
+	if (out === undefined) {
+		io.stdout(output);
+		return;
+	}
+	const path = resolve(io.cwd, out);
+	await writeFile(path, output, "utf8");
+	io.stdout(`Exported ${what} to ${visibleText(path)}.\n`);
 }

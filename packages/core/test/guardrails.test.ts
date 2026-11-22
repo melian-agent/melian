@@ -760,13 +760,13 @@ describe("policy-change-review", () => {
 		});
 
 		it("raises none without the glob", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			expect(await workflowNotices(stripped)).toEqual([]);
 		});
 
 		it("keeps the notice when the head strips the glob, because the base's policy decides", async () => {
-			const stripped = own.replace(/^ {2}policy-change-review:\n {4}files: \[".github\/\*\*"\]\n/m, "");
+			const stripped = own.replace(/^( {4}files: \[)".github\/\*\*", /m, "$1");
 			expect(stripped).not.toBe(own);
 			const { findings } = await guardrails(
 				{ "melian.yaml": own, ".github/workflows/check.yml": lines("on: pull_request", "jobs: {}") },
@@ -777,6 +777,33 @@ describe("policy-change-review", () => {
 					.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
 					.map((finding) => [finding.properties.path, finding.properties.severity]),
 			).toContainEqual([".github/workflows/check.yml", "P1"]);
+		});
+	});
+
+	describe("this repository's macOS test list and comparator", () => {
+		const own = readFileSync(new URL("../../../melian.yaml", import.meta.url), "utf8");
+		const scripts = ["scripts/compare-platform-reports.mjs", "scripts/macos-tests.json"];
+		const notices = (findings: readonly Finding[]) =>
+			findings
+				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
+				.map((finding) => [finding.properties.path, finding.properties.severity]);
+		const stripped = scripts.reduce((policy, path) => policy.replace(`, "${path}"`, ""), own);
+
+		it("raises a blocking notice for an edit to either", async () => {
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(scripts.map((path) => [path, "P1"]));
+		});
+
+		it("keeps both notices when the head strips them, because the base's policy decides", async () => {
+			expect(stripped).not.toBe(own);
+			const { findings } = await guardrails(
+				{ "melian.yaml": own, [scripts[0]]: lines("a"), [scripts[1]]: lines("{}") },
+				{ "melian.yaml": stripped, [scripts[0]]: lines("b"), [scripts[1]]: lines('{"suites": []}') },
+			);
+			expect(notices(findings)).toEqual(expect.arrayContaining(scripts.map((path) => [path, "P1"])));
 		});
 	});
 
@@ -947,9 +974,24 @@ describe("policy-change-review", () => {
 				finding.message.text,
 			]),
 		).toEqual([
-			["tsconfig.build.json", "P1", undefined, "Review the change to tsconfig.build.json, which configures tsc."],
-			["tsconfig.json", "P1", undefined, "Review the change to tsconfig.json, which configures tsc."],
-			["web/biome.jsonc", "P1", undefined, "Review the change to web/biome.jsonc, which configures Biome."],
+			[
+				"tsconfig.build.json",
+				"P1",
+				undefined,
+				"Review the change to tsconfig.build.json, which configures tsc. The head deletes the file.",
+			],
+			[
+				"tsconfig.json",
+				"P1",
+				undefined,
+				"Review the change to tsconfig.json, which configures tsc. The head turns on noCheck and turns on skipLibCheck.",
+			],
+			[
+				"web/biome.jsonc",
+				"P1",
+				undefined,
+				"Review the change to web/biome.jsonc, which configures Biome. The head turns Biome's linter off and makes Biome ignore files this change touches.",
+			],
 		]);
 		expect(policy.map((finding) => finding.properties.explanation.what)).toEqual([
 			"This revision changes tsconfig.build.json, which configures tsc. The head deletes tsconfig.build.json.",
@@ -978,13 +1020,45 @@ describe("policy-change-review", () => {
 				"web/package.json": scripts({ scripts: { build: "true", check: "true" } }),
 			},
 		);
-		expect(
-			findings
-				.filter((finding) => finding.ruleId === "guardrail/policy-change-review")
-				.map((finding) => finding.properties.explanation.what),
-		).toEqual([
+		const policy = findings.filter((finding) => finding.ruleId === "guardrail/policy-change-review");
+		expect(policy.map((finding) => finding.properties.explanation.what)).toEqual([
 			'This revision changes package.json, which configures the packages Biome and tsc load. It changes the npm script "check". It removes the npm script "lint".',
 			'This revision changes web/package.json, which configures the packages Biome and tsc load. It changes the npm scripts "build", "check".',
+		]);
+		// A record trimmed to fit the store keeps only the headline, so the headline names the kind of change.
+		expect(policy.map((finding) => finding.message.text)).toEqual([
+			"Review the change to package.json, which configures the packages Biome and tsc load. The head changes npm scripts and removes npm scripts.",
+			"Review the change to web/package.json, which configures the packages Biome and tsc load. The head changes npm scripts.",
+		]);
+	});
+
+	it("names the kind of script change in the headline and no script, however many scripts change", async () => {
+		const manifest = (count: number, value: string) =>
+			lines(
+				JSON.stringify({ scripts: Object.fromEntries(Array.from({ length: count }, (_, i) => [`s${i}`, value])) }),
+			);
+		const headlines = async (count: number) => {
+			const { findings } = await guardrails(
+				{ "package.json": manifest(count, "vitest") },
+				{ "package.json": manifest(count, "true") },
+			);
+			return findings.map((finding) => [finding.message.text, finding.properties.explanation.what]);
+		};
+		const headline =
+			"Review the change to package.json, which configures the packages Biome and tsc load. The head changes npm scripts.";
+		const listed = Array.from({ length: 10 }, (_, i) => `"s${i}"`).join(", ");
+		const what = "This revision changes package.json, which configures the packages Biome and tsc load.";
+		expect(await headlines(10)).toEqual([[headline, `${what} It changes the npm scripts ${listed}.`]]);
+		expect(await headlines(11)).toEqual([[headline, `${what} It changes the npm scripts ${listed}, and 1 more.`]]);
+	});
+
+	it("says in the headline when Melian cannot read the head's npm scripts", async () => {
+		const { findings } = await guardrails(
+			{ "package.json": lines('{ "scripts": { "check": "vitest --run" } }') },
+			{ "package.json": lines("{ not json") },
+		);
+		expect(findings.map((finding) => finding.message.text)).toEqual([
+			"Review the change to package.json, which configures the packages Biome and tsc load. The head has npm scripts Melian cannot read.",
 		]);
 	});
 
@@ -995,8 +1069,11 @@ describe("policy-change-review", () => {
 				"package.json": lines('{ "version": "2.0.0", "scripts": { "check": "vitest --run", "precheck": "true" } }'),
 			},
 		);
-		expect(findings.map((finding) => finding.properties.explanation.what)).toEqual([
-			"This revision changes package.json, which configures the packages Biome and tsc load.",
+		expect(findings.map((finding) => [finding.message.text, finding.properties.explanation.what])).toEqual([
+			[
+				"Review the change to package.json, which configures the packages Biome and tsc load.",
+				"This revision changes package.json, which configures the packages Biome and tsc load.",
+			],
 		]);
 	});
 

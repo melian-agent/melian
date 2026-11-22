@@ -22,6 +22,8 @@ export interface ProbeProcessOptions {
 	readonly cwd: string;
 	readonly env: NodeJS.ProcessEnv;
 	readonly output: (chunk: Buffer) => void;
+	/** What arrives on the command's fd 3, where the probe's runner writes how the probe's own process ended. */
+	readonly record?: (chunk: Buffer) => void;
 	readonly control?: ProcessControl;
 	readonly interval?: number;
 	/** The run's time limit; past it the recorded tree is stopped and, after the grace, the streams are abandoned. */
@@ -32,7 +34,7 @@ export interface ProbeProcessOptions {
 }
 
 function spawned(argv: readonly string[], cwd: string, env: NodeJS.ProcessEnv): ChildProcess {
-	return spawn(argv[0]!, argv.slice(1), { cwd, env, stdio: ["ignore", "pipe", "pipe"] });
+	return spawn(argv[0]!, argv.slice(1), { cwd, env, stdio: ["ignore", "pipe", "pipe", "pipe"] });
 }
 
 export class ProbeProcess {
@@ -60,6 +62,8 @@ export class ProbeProcess {
 		this.#grace = options.graceMs ?? closeGraceMs;
 		child.stdout?.on("data", options.output);
 		child.stderr?.on("data", options.output);
+		// Read even with no reader of the record, so a writer to fd 3 never blocks on a full pipe.
+		child.stdio?.[3]?.on("data", options.record ?? (() => {}));
 		let settle!: (exit: ProbeExit) => void;
 		this.#exit = new Promise<ProbeExit>((resolve) => {
 			settle = resolve;
@@ -129,6 +133,7 @@ export class ProbeProcess {
 		if (closed || this.#done) return;
 		this.#child.stdout?.destroy();
 		this.#child.stderr?.destroy();
+		this.#child.stdio?.[3]?.destroy();
 		this.#finish({ code: this.#child.exitCode, signal: this.#child.signalCode, timedOut: this.#timedOut });
 	}
 

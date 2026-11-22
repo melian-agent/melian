@@ -597,6 +597,43 @@ describe('melian compare "#N"', { timeout: 60_000 }, () => {
 		expect(human.stdout).toContain("Skipped review bodies: 2.");
 	});
 
+	it("writes a pull request's valid miss as a misses file", () => {
+		const { repo, files, env } = pullRequest();
+		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" }],
+			}),
+		);
+		expect(melian(repo, ["compare", "#7", "--from", `file:${path}`], env).status).toBe(0);
+		const [name, stored] = Object.entries(
+			JSON.parse(melian(repo, ["compare", "export", "#7", "--json"], env).stdout).comparisons,
+		)[0] as [string, { base: string; head: string; external: Record<string, { title: string }> }];
+		const missed = Object.keys(stored.external)[0]!;
+		expect(
+			melian(repo, ["compare", "adjudicate", "#7", missed, "--verdict", "valid", "--reason", "owned-missed"], env)
+				.status,
+		).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", "#7", "--out", output, "--reason", "owned-missed"], env);
+
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n`, stderr: "" });
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${name.split(".")[0]}-${missed}`,
+				repo: git(repo, "rev-parse", "--show-toplevel"),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [2, 2],
+			},
+		]);
+	});
+
 	it("passes the repository, pull request and author to the thread importer", async () => {
 		const { repo, env } = pullRequest();
 		expect(melian(repo, ["review", "#7"], env).status).toBe(1);
@@ -883,6 +920,346 @@ describe("melian compare export", { timeout: 60_000 }, () => {
 		expect(melian(repo, ["compare", "export", range], env)).toMatchObject({
 			status: 1,
 			stderr: expect.stringContaining("no comparison recorded"),
+		});
+	});
+});
+
+describe("melian compare misses", { timeout: 60_000 }, () => {
+	it("writes each valid miss as a misses file, and names each one it cannot place at its compared head", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" },
+					{ file: "src/user.ts", line: 400, title: "Past the end", body: "b" },
+					{ file: "src/org-chart.ts", line: 2, title: "Unchanged file", body: "b" },
+					{ title: "No line", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as {
+			base: string;
+			head: string;
+			external: Record<string, { title: string }>;
+		};
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [missed, past, unchanged, unplaced] = ["Unchecked token", "Past the end", "Unchanged file", "No line"].map(
+			idOf,
+		);
+		for (const id of [missed, past, unchanged, unplaced])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${past} lines 400-400 run past src/user.ts, which has 9 lines at ${stored.head}.`,
+				`Not exported: ${changeset}-${unchanged} src/org-chart.ts is not among the files ${stored.base}...${stored.head} changes.`,
+				`Not exported: ${changeset}-${unplaced} names no file and line.`,
+			].sort(),
+		);
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${missed}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [2, 2],
+			},
+		]);
+	});
+
+	it("warns of the misses it left out only once the file is written", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Unchecked token", body: "b" },
+					{ file: "src/user.ts", line: 400, title: "Past the end", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { external: Record<string, unknown> };
+		for (const id of Object.keys(stored.external))
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "absent", "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+
+		expect(result.status).not.toBe(0);
+		expect(result.stderr).not.toContain("Not exported");
+		expect(existsSync(output)).toBe(false);
+	});
+
+	it("writes a miss on a file's last line and names one a line past it, with or without a closing newline", () => {
+		const { repo, files, env } = checkout();
+		writeFileSync(join(repo, "src", "ends.ts"), "export const a = 1;\nexport const b = 2;\nexport const c = 3;\n");
+		writeFileSync(join(repo, "src", "tail.ts"), "export const a = 1;\nexport const b = 2;\nexport const c = 3;");
+		git(repo, "add", "src/ends.ts", "src/tail.ts");
+		git(repo, "commit", "--quiet", "-m", "add a file with a closing newline and one without");
+		expect(melian(repo, ["review", range], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/ends.ts", line: 3, title: "Last line", body: "b" },
+					{ file: "src/ends.ts", line: 4, title: "One past the end", body: "b" },
+					{ file: "src/tail.ts", line: 3, title: "Last line, no newline", body: "b" },
+					{ file: "src/tail.ts", line: 4, title: "One past, no newline", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const exported = () =>
+			Object.values(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0] as {
+				base: string;
+				head: string;
+				external: Record<string, { title: string }>;
+			};
+		const stored = exported();
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [last, past, tail, tailPast] = [
+			"Last line",
+			"One past the end",
+			"Last line, no newline",
+			"One past, no newline",
+		].map(idOf);
+		for (const id of [last, past, tail, tailPast])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 2 misses to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${past} lines 4-4 run past src/ends.ts, which has 3 lines at ${stored.head}.`,
+				`Not exported: ${changeset}-${tailPast} lines 4-4 run past src/tail.ts, which has 3 lines at ${stored.head}.`,
+			].sort(),
+		);
+		const place = (name: string, file: string, line: number) => ({
+			name: `${changeset}-${name}`,
+			repo: realpathSync(repo),
+			base: stored.base,
+			head: stored.head,
+			file,
+			lines: [line, line],
+		});
+		expect(
+			(JSON.parse(readFileSync(output, "utf8")) as { name: string }[]).sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual(
+			[place(last!, "src/ends.ts", 3), place(tail!, "src/tail.ts", 3)].sort((a, b) => a.name.localeCompare(b.name)),
+		);
+	});
+
+	it("writes the miss it can place beside misses on a deleted file, a symlink and a binary file, and names each of those", () => {
+		const { repo, files, env } = checkout();
+		git(repo, "rm", "--quiet", "src/org-chart.ts");
+		symlinkSync("user.ts", join(repo, "src", "link.ts"));
+		writeFileSync(join(repo, "src", "blob.bin"), "a\0b\n");
+		git(repo, "add", "src/link.ts", "src/blob.bin");
+		git(repo, "commit", "--quiet", "-m", "delete a file, add a symlink and a binary file");
+		expect(melian(repo, ["review", range], env).status).toBe(0);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Placed", body: "b" },
+					{ file: "src/org-chart.ts", line: 1, title: "Deleted", body: "b" },
+					{ file: "src/link.ts", line: 1, title: "Symlink", body: "b" },
+					{ file: "src/blob.bin", line: 1, title: "Binary", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { base: string; head: string; external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [placed, deleted, link, binary] = ["Placed", "Deleted", "Symlink", "Binary"].map(idOf);
+		for (const id of [placed, deleted, link, binary])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({ status: 0, stdout: `Exported 1 miss to ${output}.\n` });
+		expect(result.stderr.split("\n").sort()).toEqual(
+			[
+				"",
+				`Not exported: ${changeset}-${deleted} src/org-chart.ts does not exist at ${stored.head}.`,
+				`Not exported: ${changeset}-${link} src/link.ts is a symbolic link at ${stored.head}.`,
+				`Not exported: ${changeset}-${binary} src/blob.bin is binary at ${stored.head}.`,
+			].sort(),
+		);
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${placed}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/user.ts",
+				lines: [2, 2],
+			},
+		]);
+	});
+
+	it("names a miss on the line a lens's read of a long file cuts, and writes the line before it", () => {
+		const { repo, files, env } = checkout();
+		writeFileSync(join(repo, "src", "long.txt"), `x\n${"a".repeat(9 * 1024 * 1024)}`);
+		git(repo, "add", "src/long.txt");
+		git(repo, "commit", "--quiet", "-m", "add a file longer than a lens reads");
+		expect(melian(repo, ["review", range], env).status).toBe(1);
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/long.txt", line: 1, title: "Whole line", body: "b" },
+					{ file: "src/long.txt", line: 2, title: "Cut line", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { base: string; head: string; external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [whole, cut] = ["Whole line", "Cut line"].map(idOf);
+		for (const id of [whole, cut])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", "owned-missed"], env)
+					.status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+
+		const result = melian(repo, ["compare", "misses", range, "--out", output, "--reason", "owned-missed"], env);
+
+		const changeset = /^range-[0-9a-f]{16}/.exec(
+			Object.keys(JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons)[0]!,
+		)![0];
+		expect(result).toMatchObject({
+			status: 0,
+			stdout: `Exported 1 miss to ${output}.\n`,
+			stderr: `Not exported: ${changeset}-${cut} a lens reads only the first 1 lines of src/long.txt at ${stored.head}.\n`,
+		});
+		expect(JSON.parse(readFileSync(output, "utf8"))).toEqual([
+			{
+				name: `${changeset}-${whole}`,
+				repo: realpathSync(repo),
+				base: stored.base,
+				head: stored.head,
+				file: "src/long.txt",
+				lines: [1, 1],
+			},
+		]);
+	});
+
+	it("writes nothing when no valid miss remains", () => {
+		const { repo, files, env } = reviewed();
+		const path = codexFile(files, [codexFinding(400, "Unchecked token")]);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const output = join(files, "misses.json");
+		expect(melian(repo, ["compare", "misses", range, "--out", output], env)).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining(`no valid miss of ${range} ruled needs-execution names its lines`),
+		});
+		expect(existsSync(output)).toBe(false);
+	});
+
+	it("writes the misses of the reasons --reason names, needs-execution by default, and refuses any other", () => {
+		const { repo, files, env } = reviewed();
+		const path = join(files, "claude.json");
+		writeFileSync(
+			path,
+			JSON.stringify({
+				reviewer: { name: "claude-code" },
+				findings: [
+					{ file: "src/user.ts", line: 2, title: "Owned", body: "b" },
+					{ file: "src/user.ts", line: 3, title: "Runs", body: "b" },
+				],
+			}),
+		);
+		expect(melian(repo, ["compare", range, "--from", `file:${path}`], env).status).toBe(0);
+		const stored = Object.values(
+			JSON.parse(melian(repo, ["compare", "export", range, "--json"], env).stdout).comparisons,
+		)[0] as { external: Record<string, { title: string }> };
+		const idOf = (title: string) => Object.entries(stored.external).find(([, each]) => each.title === title)![0];
+		const [owned, runs] = ["Owned", "Runs"].map(idOf);
+		for (const [id, reason] of [
+			[owned, "owned-missed"],
+			[runs, "needs-execution"],
+		])
+			expect(
+				melian(repo, ["compare", "adjudicate", range, id!, "--verdict", "valid", "--reason", reason!], env).status,
+			).toBe(0);
+		const output = join(files, "misses.json");
+		const names = (...reasons: string[]) => {
+			const result = melian(
+				repo,
+				["compare", "misses", range, "--out", output, ...reasons.flatMap((reason) => ["--reason", reason])],
+				env,
+			);
+			expect(result.status).toBe(0);
+			return (JSON.parse(readFileSync(output, "utf8")) as { name: string }[]).map(({ name }) => name.slice(-16));
+		};
+
+		expect(names()).toEqual([runs]);
+		expect(names("owned-missed")).toEqual([owned]);
+		expect(names("owned-missed", "needs-execution").sort()).toEqual([owned, runs].sort());
+		for (const [reason, why] of [
+			["out-of-scope", "no lens owed"],
+			["typo", "owned-missed, no-owner or needs-execution"],
+		])
+			expect(melian(repo, ["compare", "misses", range, "--reason", reason!], env)).toMatchObject({
+				status: 64,
+				stderr: expect.stringContaining(why!),
+			});
+	});
+
+	it("refuses --json", () => {
+		expect(melian(root, ["compare", "misses", range, "--json"])).toMatchObject({
+			status: 64,
+			stderr: expect.stringContaining("compare misses always writes JSON"),
 		});
 	});
 });

@@ -32,7 +32,8 @@
 		"postpack": "npm run clean",
 		"test": "vitest --run --root ../.. --passWithNoTests packages/evals/",
 		"eval:live": "node --conditions=@melian-agent/source src/live.ts",
-		"eval:probing": "node --conditions=@melian-agent/source src/probing-live.ts"
+		"eval:probing": "node --conditions=@melian-agent/source src/probing-live.ts",
+		"eval:parity": "node --conditions=@melian-agent/source src/parity-live.ts"
 	},
 	"engines": {
 		"node": ">=22.19.0"

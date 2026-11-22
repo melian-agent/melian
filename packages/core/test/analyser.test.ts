@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { analyserOf, switchOffs } from "../src/analyser.ts";
+import { analyserOf, switchOffs as found } from "../src/analyser.ts";
 import { CheckError } from "../src/errors.ts";
 import { analyserConfigNames, isAnalyserConfig, isPolicyFile } from "../src/paths.ts";
 import { maxProgram } from "../src/pattern.ts";
+
+const switchOffs = (...args: Parameters<typeof found>) => found(...args).map(({ sentence }) => sentence);
 
 it.each([
 	["web/BIOME.JSONC", "Biome"],
@@ -117,6 +119,10 @@ describe("Biome exclusions", () => {
 		expect(() => switchOffs("biome.json", biome([]), biome([oversized]), [oversized])).toThrowError(
 			expect.objectContaining(refusal),
 		);
+	});
+
+	it("names nothing when the head's new exclusions miss every changed file", () => {
+		expect(switchOffs("biome.json", biome([]), biome(["vendor/**"]), ["src/a.ts"])).toEqual([]);
 	});
 
 	it("accepts the directory form at the compiler limit", () => {
@@ -245,6 +251,9 @@ describe("npm scripts", () => {
 		]);
 		expect(switchOffs("package.json", manifest({ [past]: "x" }), manifest({}), [])).toEqual([
 			"It removes 1 npm script whose name is too long to quote.",
+		]);
+		expect(switchOffs("package.json", manifest({ [past]: "x", [`${past}c`]: "x" }), manifest({}), [])).toEqual([
+			"It removes 2 npm scripts whose names are too long to quote.",
 		]);
 	});
 

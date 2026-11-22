@@ -1,0 +1,661 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6341ecabd78716dfe7d9ec9b5c68235c058c78bd",
+		"head": "4837f70ddc0f4e6413830718b076e6a11de7c920"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/review-records.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 409,
+			"column": 15,
+			"endLine": 411,
+			"endColumn": 3,
+			"mutatorName": "MethodExpression",
+			"replacement": "listing",
+			"status": "generated",
+			"id": "1451e90919201b9c0f520c346c1e5ab1dcd9b17fe511865ac6bdbf323426352a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 3,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c0c6f1bd1179ead5d2b45c3dd5885eb30108b3162dc6f04e4aa69d7fe6b40fd8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3b8a3b9c3319da0918d33908671e4b39ab49be0f6ddbecea1abe230a4ae5b12a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2514c67598905e9c30eb1a5e1482ae6df2db1447d902bf039329b6d0680b9983",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.kind === \"dismissal\" && each.changeset === this.changeset || each.key === facts.finding",
+			"status": "generated",
+			"id": "251601d82aed33dcb41b3bf68d3c930732cfe9fca50c56b82847161eadac53cd",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "81d016863dac79ea8ec509c0b09f6f0c5d9e7fff036d87011d8720a8388b99ac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 75,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.kind === \"dismissal\" || each.changeset === this.changeset",
+			"status": "generated",
+			"id": "8636e9684c846f2ac2384cff16f413cbed2689c80417ef2c59f4f132b84b49c9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 38,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f6811c2032627c5fbd2a178349c25d1be4ba36c5b949b4436bb42cfe71c38f44",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 13,
+			"endLine": 410,
+			"endColumn": 38,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.kind !== \"dismissal\"",
+			"status": "generated",
+			"id": "1ab244ea44e53681af0f52e1e188c8637e491fcbdb7c5dc22c8e79bec0d59247",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 27,
+			"endLine": 410,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a4a83bb386dc4a7b91e0aeb95bc5de0592783e999c6a908767150ca48b9f30b1"
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 42,
+			"endLine": 410,
+			"endColumn": 75,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "dc572d4e7be8d4d80aee23c4acdff3fb1b5c9ed5c8fda195ec5c57ba49f640de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes nothing, and keeps its key, for a listing with no other dismissal of its finding"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 42,
+			"endLine": 410,
+			"endColumn": 75,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.changeset !== this.changeset",
+			"status": "generated",
+			"id": "3479b5d012c78d4026758ba3c17b777c4d6b0f15b2b2c10639f5746afc54dd01",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 79,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9f4a682d0c524a591c79806fe5b8b6abf10a5bf139333ae7ce6adeb71b39bac2",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 410,
+			"column": 79,
+			"endLine": 410,
+			"endColumn": 105,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each.key !== facts.finding",
+			"status": "generated",
+			"id": "efbc8b8ac27a9def29b010d96e8fe496c6e1b56baf2da2a1267b40ad3c651082",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes a standing dismissal that a record of another slot names as superseded"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 40,
+			"endLine": 412,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "bf1e5b3c4aed6c4f8b705777ae91a1f97d165e7aae658ec3628e6b39c6f89bc4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes no dismissal the listing already holds as superseded"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 50,
+			"endLine": 412,
+			"endColumn": 71,
+			"mutatorName": "LogicalOperator",
+			"replacement": "each.supersedes && []",
+			"status": "generated",
+			"id": "24a304fe12671502daf8ed26b8e38157eec1de9fa6bd25a1203a5c826c5e8b9c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records.test.ts",
+					"path": [
+						"ReviewRecords",
+						"what a dismissal supersedes",
+						"supersedes no dismissal the listing already holds as superseded"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review-records.ts",
+			"line": 412,
+			"column": 69,
+			"endLine": 412,
+			"endColumn": 71,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "91dfefa8065a5ad8c37efd9dd4709c2a4c00f4b2dc0cd4b38490dd624c4cdc5a",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The seeded string joins the replaced set, and no record ID equals it, since every ID is 64 hex digits, so no standing dismissal drops."
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2206,
+			"column": 7,
+			"endLine": 2206,
+			"endColumn": 57,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0b7366627c4ac67f37ffba2df3e86b48e4d191c890f4e97d0f1f8dd6c541f12c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2208,
+			"column": 8,
+			"endLine": 2211,
+			"endColumn": 9,
+			"mutatorName": "MethodExpression",
+			"replacement": "rounds.filter(({\n  id,\n  revision\n}) => revision === previous || !named.has(id)).map(({\n  id\n}) => id)",
+			"status": "generated",
+			"id": "38a4abbadecb5acc254c9995ca8a86ae6860597ae6f1a0b7ca6ef89c651ec81f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Only the sort goes, and ReviewRecords.round sorts before itself, so the round record is the same bytes."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2208,
+			"column": 8,
+			"endLine": 2209,
+			"endColumn": 72,
+			"mutatorName": "MethodExpression",
+			"replacement": "rounds",
+			"status": "generated",
+			"id": "1a015de44c51976f876b575bcbd5dc13c0304e474461d648edbec43d4abc30e6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 10,
+			"endLine": 2209,
+			"endColumn": 71,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ec3c4c8be152edcecf72da6ccf43006af2ff52738f82ef5f1225c41d123e9a8e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 32,
+			"endLine": 2209,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "72e349b94e0283fffb6b84381455c67fcb5f9cbc705007959686178ff3d92979",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before, on a host with no history of the changeset, each round of another revision no other names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 32,
+			"endLine": 2209,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8b2577c918383e469ebad6c000c1be97a909c65647b4fc023a533230de2da2f0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 32,
+			"endLine": 2209,
+			"endColumn": 71,
+			"mutatorName": "LogicalOperator",
+			"replacement": "revision === previous && !named.has(id)",
+			"status": "generated",
+			"id": "90c2802e953150ca4f82f2a22b62588f0c000798a30e466b84522184a49f8fd1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 32,
+			"endLine": 2209,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d89231e6efb10594a3f9b76f5cc227f996ba2fe62928b5a62eef15296a8e0c75",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 32,
+			"endLine": 2209,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "revision !== previous",
+			"status": "generated",
+			"id": "c90009f58913f8fae1f98c2dc62f6d42021e3f744f18d8e5f61dba3ed037b811",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2209,
+			"column": 57,
+			"endLine": 2209,
+			"endColumn": 71,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "named.has(id)",
+			"status": "generated",
+			"id": "0e091537c667472d9b79db929fe15f972a2b337ced03ab729677f083d6a217e7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2210,
+			"column": 7,
+			"endLine": 2210,
+			"endColumn": 21,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "45284d48be18f9b1df8fa70ed114b83e92f52e86606893af785e73d2606db852",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store",
+						"names in before another host's round written since its own, on a host with history"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 28,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -50,7 +50,9 @@ export async function storePrune(io: Io, apply: boolean): Promise<number> {
 		lines.push(`  ${entry.kind}  ${size(entry.bytes)}  ${visibleText(entry.paths.join(", "))}\n`);
 	lines.push(summary(listed));
 	const { files, bytes } = prune.changesets;
-	lines.push(`Kept ${files} changeset ${files === 1 ? "file" : "files"}, ${size(bytes)}, and scripted/.\n`);
+	lines.push(
+		`Kept ${files} changeset ${files === 1 ? "file" : "files"}, ${size(bytes)}, the evidence of valid misses, ${size(prune.evidence.bytes)}, and scripted/.\n`,
+	);
 	if (prune.kept.length > 0) lines.push(`Kept, not recognised: ${prune.kept.map(visibleText).join(", ")}\n`);
 	io.stdout(lines.join(""));
 	if (outcome.live.length === 0) return 0;

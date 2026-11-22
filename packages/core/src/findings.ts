@@ -1438,14 +1438,22 @@ export class Finding {
 
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
-		const { id, source, failureScenario, evidence, verification } = this.properties;
+		const claim = this.claimAs();
+		const kept = this.properties.otherClaims?.includes(claim) ?? false;
+		return kept || claim.failureScenario !== undefined || claim.evidence !== undefined ? [claim] : [];
+	}
+
+	/**
+	 * The claim this finding makes as `source`, a check that reported it: the copy a merge kept among its other claims, or
+	 * the finding's own fields.
+	 */
+	claimAs(source: FindingSource = this.properties.source): MemberClaim {
+		const { id, failureScenario, evidence, verification } = this.properties;
 		const original = this.properties.otherClaims?.find(
 			(claim) => claim.id === id && claim.source.check === source.check && claim.source.version === source.version,
 		);
-		if (original !== undefined) return [original];
-		if (failureScenario === undefined && evidence === undefined) return [];
-		return [
-			{
+		return (
+			original ?? {
 				id,
 				ruleId: this.ruleId,
 				source,
@@ -1453,8 +1461,8 @@ export class Finding {
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
 				...(verification === undefined ? {} : { verification }),
-			},
-		];
+			}
+		);
 	}
 
 	/**
@@ -1929,6 +1937,23 @@ export class Finding {
 			...this.toJSON(),
 			properties: { ...properties, resolution, ...(held ? { resolvedAtOriginal: true as const } : {}), decidedBy },
 		}) as ResolvedFinding;
+	}
+
+	/**
+	 * This finding with its detail left out for `note`: What becomes its headline, unless its What is the shorter in
+	 * UTF-8 bytes, `note` stands as Why here, and What to do is kept. Nothing its ID, severity, resolution or place comes
+	 * from changes.
+	 */
+	abridged(note: string): Finding {
+		const { explanation } = this.properties;
+		const what =
+			Buffer.byteLength(explanation.what) < Buffer.byteLength(this.message.text)
+				? explanation.what
+				: this.message.text;
+		return Finding.parse({
+			...this.toJSON(),
+			properties: { ...this.properties, explanation: { ...explanation, what, whyHere: note } },
+		});
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */

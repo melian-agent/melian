@@ -1,0 +1,32 @@
+{
+	"recordedBy": "2fae681a",
+	"root": 1,
+	"revision": "bf388872134058c662a07ae0f5fa747dee6e5226..9cb3f9fe50a0204c7f867f27c07415fe5d1c8536",
+	"dismissed": "695f5aa29b7eebd1",
+	"restatement": [
+		"d694c2e73c180ff3"
+	],
+	"verification": {
+		"task": 89,
+		"input": "c311401c5fa15b7f40ff3be0bed882b4666badf93750e7649c582ead93a9775e"
+	},
+	"taskVersion": 4,
+	"shown": [
+		[
+			{
+				"id": "695f5aa29b7eebd1",
+				"failureScenario": "managerName({ name: \"Ada\" }) throws TypeError: Cannot read properties of undefined.",
+				"evidence": [
+					{
+						"file": "src/user.ts",
+						"startLine": 8,
+						"role": "cause",
+						"revision": "head",
+						"proves": true,
+						"snippet": "\treturn user.manager.name + label;"
+					}
+				]
+			}
+		]
+	]
+}

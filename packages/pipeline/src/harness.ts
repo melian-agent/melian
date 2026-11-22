@@ -85,6 +85,7 @@ export {
 	type Registry,
 	ROOT_CONVERSATION_ID,
 	type Storage,
+	StorageRejected,
 	type SubmissionId,
 	SystemEntry,
 	section,
@@ -114,13 +115,36 @@ const authenticationFailure =
 const providerLimit =
 	/GoUsageLimitError|FreeUsageLimitError|usage[ _]limit|available balance|insufficient_quota|out of budget|quota exceeded|billing[ _](hard[ _])?(limit|quota)|billing[ _]not[ _]active|check your billing|subscription_sharing_usage_limit_exceeded/i;
 
+// A provider's content filter stopping the reply, by the whole message each of pi-ai's adapters builds for one, so a
+// message that only mentions a filter does not match. Codex's text after its prefix is the provider's own. Anthropic's
+// `refusal` with an explanation, and a Bedrock guardrail the account set, are left out, as
+// docs/decisions/2026-11-20-content-filter-refusal-fails-over.md says.
+const contentRefusal =
+	/^(?:Codex error: This content was flagged for possible |(?:Provider stopped with: (?:sensitive|content_filtered|SAFETY|PROHIBITED_CONTENT|BLOCKLIST|SPII)|Provider finish_reason: content_filter|Response incomplete: content_filter|The model refused to complete the request)$)/;
+
+/** Whether a model failure, by its message, is a provider's content filter refusing what the model was sent. */
+export function isContentRefusal(message: string): boolean {
+	return contentRefusal.test(message);
+}
+
+/** Whether a model failure, by its message, is a provider's usage limit, quota or billing limit. */
+export function isProviderLimit(message: string): boolean {
+	return providerLimit.test(message);
+}
+
 /**
  * Whether a model failure, by its message, should move a lens to its tier's next model: a transient provider failure,
- * which pi-ai's own retries have already given up on, a provider's usage limit, or a failed authentication.
+ * which pi-ai's own retries have already given up on, a provider's usage limit, a failed authentication, or a
+ * provider's content filter refusing the request.
  */
 export function isFailoverError(message: string): boolean {
 	const failed = { role: "assistant", stopReason: "error", errorMessage: message } as AssistantMessage;
-	return authenticationFailure.test(message) || providerLimit.test(message) || isRetryableAssistantError(failed);
+	return (
+		authenticationFailure.test(message) ||
+		isProviderLimit(message) ||
+		isContentRefusal(message) ||
+		isRetryableAssistantError(failed)
+	);
 }
 
 /**

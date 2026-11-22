@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { DirectoryRecordStore } from "./directory-record-store.ts";
 import { RecordError, type RecordErrorCode } from "./errors.ts";
 import { findingIdDigits } from "./findings.ts";
-import { type PayloadChecks, type RecordEnvelope, type RecordJson, SharedRecord } from "./record.ts";
+import { type PayloadChecks, type RecordEnvelope, type RecordJson, recordLimit, SharedRecord } from "./record.ts";
 import { disposalMark, MemoryRecordSpace, MemoryRecordStore, type RecordStore } from "./record-store.ts";
 import type { KeyedRequest, UnkeyedInput } from "./request-key.ts";
 
@@ -93,6 +93,12 @@ function envelope(kind: string, key: string, payload: RecordJson, within = chang
 	};
 }
 
+// A check record whose canonical bytes are exactly `size` bytes of UTF-8 long.
+function sized(label: string, size: number): RecordEnvelope {
+	const bare = SharedRecord.parse(envelope("check", label, { pad: "" }), testPayloads).bytes.length;
+	return envelope("check", label, { pad: "x".repeat(size - bare) });
+}
+
 function ids(records: RecordEnvelope[]): string[] {
 	return records.map((record) => SharedRecord.parse(record, testPayloads).id).sort();
 }
@@ -172,6 +178,22 @@ export const recordStoreConformance: readonly RecordStoreCase[] = [
 				}
 				await store.add([valid]);
 				assert.deepEqual(ids(await store.list(changeset)), idsOf(valid));
+			}),
+	},
+	{
+		name: "add: takes a record of the record limit, and refuses one a byte past it, which never lists",
+		run: (fixture) =>
+			using(fixture, async (subject) => {
+				const store = await subject.open();
+				const small = envelope("check", "guardrails", {});
+				const past = sized("past", recordLimit + 1);
+				assert.equal(Buffer.byteLength(SharedRecord.parse(past, testPayloads).bytes), recordLimit + 1);
+				await assert.rejects(store.add([small, past]), refusal("invalidRecord"));
+				assert.ok(!ids(await store.list(changeset)).includes(idsOf(past)[0]!));
+				const at = sized("at", recordLimit);
+				assert.equal(Buffer.byteLength(SharedRecord.parse(at, testPayloads).bytes), recordLimit);
+				await store.add([at, small]);
+				assert.deepEqual(ids(await store.list(changeset)), idsOf(at, small));
 			}),
 	},
 	{

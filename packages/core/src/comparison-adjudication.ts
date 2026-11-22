@@ -6,6 +6,12 @@ import { ComparisonError } from "./errors.ts";
 /** The four actions a valid miss calls for. */
 export const missReasons = ["owned-missed", "no-owner", "needs-execution", "out-of-scope"] as const;
 
+/** The reasons a misses file can hold: every one but `out-of-scope`, since no lens owed such a miss. */
+export const exportedMissReasons = ["owned-missed", "no-owner", "needs-execution"] as const;
+
+/** A reason a misses file can hold. */
+export type ExportedMissReason = (typeof exportedMissReasons)[number];
+
 /** A maintainer's judgement of one comparison finding, with local author identity. */
 export const comparisonAdjudicationSchema = Type.Object(
 	{

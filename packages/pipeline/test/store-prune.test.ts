@@ -367,6 +367,30 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 	expect(await exists("tools/linked")).toBe(true);
 });
 
+it("keeps the evidence directory as durable, however old, and counts its bytes", async () => {
+	const pointer = join("evidence", "pull-1111111111111111", "r1", "misses", `${"a".repeat(16)}.json`);
+	await mkdir(join(state, "evidence", "pull-1111111111111111", "r1", "misses"), { recursive: true });
+	await writeFile(join(state, pointer), "1234567");
+	await age("evidence", 400 * day);
+	const prune = await plan();
+
+	await prune.apply();
+
+	expect(prune).toMatchObject({ entries: [], kept: [], evidence: { bytes: 7 } });
+	expect(await exists(pointer)).toBe(true);
+});
+
+it("lists a linked evidence directory as not recognised and counts none of it", async () => {
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	await writeFile(join(elsewhere, "big"), "123456789");
+	await symlink(elsewhere, join(state, "evidence"));
+
+	const prune = await plan();
+
+	expect(prune).toMatchObject({ entries: [], kept: ["evidence"], evidence: { bytes: 0 } });
+});
+
 it("lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count", async () => {
 	await writeFile(join(state, "pull-1111111111111111.sqlite"), "12345");
 	for (const name of [
