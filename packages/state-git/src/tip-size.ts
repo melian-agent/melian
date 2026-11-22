@@ -15,6 +15,8 @@ const remedy =
 	"Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.";
 
 type Counted = { readonly entries: number; readonly recordBytes: number; readonly listingBytes: number };
+// A tip past the entry limit, which a read refuses before it reads a blob, so its record bytes are not counted.
+type PastEntryLimit = { readonly entries: number; readonly listingBytes: number };
 
 function grouped(value: number): string {
 	return String(value).replace(/\B(?=(\d{3})+$)/g, ",");
@@ -24,16 +26,22 @@ function whole(value: unknown): value is number {
 	return Number.isSafeInteger(value) && (value as number) >= 0;
 }
 
+// Whole MiB rounded down, or "over" the limit past it, so a count past its limit never prints as at it.
+function mibOf(value: number, limit: number): string {
+	return value > limit ? `over ${limit / mib}` : `${Math.floor(value / mib)}`;
+}
+
 /**
  * How much the tip of `melian/state` holds against each of the store's three limits: its entries, the bytes of its
  * records and cells, and the bytes of its `git ls-tree -r -z` listing. A listing that runs past its limit is stopped
- * there, so such a tip counts neither entries nor bytes.
+ * there, so such a tip counts neither entries nor bytes; a tip past its entry limit counts no record bytes, since a read
+ * refuses it before it reads a blob.
  */
 export class TipSize {
-	/** The three counts, or undefined when the listing ran past its limit. */
-	readonly counted: Counted | undefined;
+	/** The counts, without record bytes past the entry limit, or undefined when the listing ran past its limit. */
+	readonly counted: Counted | PastEntryLimit | undefined;
 
-	private constructor(counted: Counted | undefined) {
+	private constructor(counted: Counted | PastEntryLimit | undefined) {
 		this.counted = counted;
 	}
 
@@ -43,6 +51,15 @@ export class TipSize {
 			recordBytes: counted.recordBytes,
 			listingBytes: counted.listingBytes,
 		});
+	}
+
+	/** The size of a tip past its entry limit, whose record bytes a read never reaches and so are not counted. */
+	static pastEntryLimit(counted: PastEntryLimit): TipSize {
+		if (!whole(counted.entries) || counted.entries <= entryLimit || !whole(counted.listingBytes))
+			throw new Error(
+				"a tip past its entry limit holds more than 65,536 entries and a whole number of listing bytes",
+			);
+		return new TipSize({ entries: counted.entries, listingBytes: counted.listingBytes });
 	}
 
 	/** The size of a tip whose listing ran past its limit. */
@@ -57,6 +74,11 @@ export class TipSize {
 		const keys = Object.keys(value).sort().join(",");
 		const fields = value as Record<string, unknown>;
 		if (keys === "listingPastLimit" && fields.listingPastLimit === true) return TipSize.unlisted();
+		if (keys === "entries,listingBytes")
+			return TipSize.pastEntryLimit({
+				entries: fields.entries as number,
+				listingBytes: fields.listingBytes as number,
+			});
 		if (
 			keys !== "entries,listingBytes,recordBytes" ||
 			!whole(fields.entries) ||
@@ -71,7 +93,7 @@ export class TipSize {
 		});
 	}
 
-	toJSON(): Counted | { readonly listingPastLimit: true } {
+	toJSON(): Counted | PastEntryLimit | { readonly listingPastLimit: true } {
 		return this.counted ?? { listingPastLimit: true };
 	}
 
@@ -80,7 +102,11 @@ export class TipSize {
 		const counted = this.counted;
 		if (counted === undefined)
 			return `melian/state: listing more than ${listingLimit / mib} MiB of ${listingLimit / mib} MiB, so its entries and bytes are not counted`;
-		return `melian/state: ${grouped(counted.entries)} of ${grouped(entryLimit)} entries, ${Math.floor(counted.recordBytes / mib)} MiB of ${tipLimit / mib} MiB, listing ${Math.floor(counted.listingBytes / mib)} MiB of ${listingLimit / mib} MiB`;
+		const records =
+			"recordBytes" in counted
+				? `${mibOf(counted.recordBytes, tipLimit)} MiB of ${tipLimit / mib} MiB`
+				: "record bytes not counted past the entry limit";
+		return `melian/state: ${grouped(counted.entries)} of ${grouped(entryLimit)} entries, ${records}, listing ${mibOf(counted.listingBytes, listingLimit)} MiB of ${listingLimit / mib} MiB`;
 	}
 
 	/** A warning naming each count past half its limit, or past the limit itself, or undefined when none is. */
@@ -88,12 +114,15 @@ export class TipSize {
 		const counted = this.counted;
 		if (counted === undefined)
 			return `melian/state's listing was too large to read, past ${grouped(listingLimit)} bytes, so the store is past its listing limit. ${remedy}`;
+		const counts = "recordBytes" in counted;
 		const clauses = [
 			clause("entry", counted.entries, entryLimit, ""),
-			clause("record byte", counted.recordBytes, tipLimit, " bytes"),
+			counts ? clause("record byte", counted.recordBytes, tipLimit, " bytes") : undefined,
 			clause("listing", counted.listingBytes, listingLimit, " bytes"),
 		].filter((each) => each !== undefined);
-		return clauses.length === 0 ? undefined : `melian/state is ${clauses.join("; ")}. ${remedy}`;
+		if (clauses.length === 0) return undefined;
+		const uncounted = counts ? "" : " Its record bytes are not counted past the entry limit.";
+		return `melian/state is ${clauses.join("; ")}.${uncounted} ${remedy}`;
 	}
 }
 

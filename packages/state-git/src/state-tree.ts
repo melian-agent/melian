@@ -325,6 +325,8 @@ export class StateTree {
 	static async size(repository: RecordRepository, commit: string, deadline: Deadline): Promise<TipSize> {
 		const listing = await repository.listing(commit, deadline, listingLimit);
 		if (listing === undefined) return TipSize.unlisted();
+		if (listing.entries.length > entryLimit)
+			return TipSize.pastEntryLimit({ entries: listing.entries.length, listingBytes: listing.bytes });
 		const { total } = await StateTree.#sizes(repository, listing.entries, deadline);
 		return TipSize.of({ entries: listing.entries.length, recordBytes: total, listingBytes: listing.bytes });
 	}

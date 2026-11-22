@@ -45,6 +45,15 @@ describe("a tip's size", () => {
 		);
 	});
 
+	it("prints a count past its limit as over the limit, never as at it", () => {
+		expect(sized(entryLimit, tipLimit, listingLimit).line()).toBe(
+			"melian/state: 65,536 of 65,536 entries, 256 MiB of 256 MiB, listing 64 MiB of 64 MiB",
+		);
+		expect(sized(entryLimit, tipLimit + 1, listingLimit + 1).line()).toBe(
+			"melian/state: 65,536 of 65,536 entries, over 256 MiB of 256 MiB, listing over 64 MiB of 64 MiB",
+		);
+	});
+
 	it("prints a listing past its limit, and counts nothing", () => {
 		expect(TipSize.unlisted().line()).toBe(
 			"melian/state: listing more than 64 MiB of 64 MiB, so its entries and bytes are not counted",
@@ -52,6 +61,27 @@ describe("a tip's size", () => {
 		expect(TipSize.unlisted().warning()).toBe(
 			`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`,
 		);
+	});
+
+	it("counts no record bytes past the entry limit, and still warns of its listing", () => {
+		const size = TipSize.pastEntryLimit({ entries: entryLimit + 1, listingBytes: listingLimit + 1 });
+		expect(size.line()).toBe(
+			"melian/state: 65,537 of 65,536 entries, record bytes not counted past the entry limit, listing over 64 MiB of 64 MiB",
+		);
+		expect(size.warning()).toBe(
+			`melian/state is past its entry limit: 65,537 of 65,536; past its listing limit: 67,108,865 of 67,108,864 bytes. Its record bytes are not counted past the entry limit. ${remedy}`,
+		);
+		expect(TipSize.parse(JSON.parse(JSON.stringify(size)))).toEqual(size);
+	});
+
+	it("reads entries and listing bytes alone only past the entry limit", () => {
+		expect(TipSize.parse({ entries: entryLimit + 1, listingBytes: 0 })).toEqual(
+			TipSize.pastEntryLimit({ entries: entryLimit + 1, listingBytes: 0 }),
+		);
+		expect(() => TipSize.parse({ entries: entryLimit, listingBytes: 0 })).toThrow();
+		expect(() => TipSize.parse({ entries: entryLimit + 1, listingBytes: -1 })).toThrow();
+		expect(() => TipSize.parse({ entries: entryLimit + 1.5, listingBytes: 0 })).toThrow();
+		expect(() => TipSize.pastEntryLimit({ entries: entryLimit, listingBytes: 0 })).toThrow();
 	});
 
 	it("warns of no count at exactly half its limit", () => {
@@ -158,7 +188,7 @@ describe("the store's size", { timeout: 300_000 }, () => {
 		remote.plant({ [filed(check("a")).path]: { bytes }, [filed(check("a", other)).path]: { bytes } });
 		const store = await remote.open();
 		const record = remote.oid(filed(check("a")).path);
-		expect((await store.size()).counted?.recordBytes).toBe(2 * Buffer.byteLength(bytes));
+		expect((await store.size()).toJSON()).toMatchObject({ recordBytes: 2 * Buffer.byteLength(bytes) });
 		const sizes = RecordRepository.prototype.sizes;
 		vi.spyOn(RecordRepository.prototype, "sizes").mockImplementation(async function (
 			this: RecordRepository,
@@ -168,14 +198,31 @@ describe("the store's size", { timeout: 300_000 }, () => {
 			found.set(record, recordLimit + 1);
 			return found;
 		});
-		expect((await store.size()).counted?.recordBytes).toBe(0);
+		expect((await store.size()).toJSON()).toMatchObject({ recordBytes: 0 });
 	});
 
-	it("counts a tip one entry past its limit, which every read refuses", async () => {
+	it("counts a tip one entry past its limit, which every read refuses, and reads no sizes, as a read reads none", async () => {
 		const store = await remote.open();
 		remote.plant(strays(entryLimit + 1));
 		await expect(store.strays()).rejects.toMatchObject({ code: "unreachable" });
-		expect(await store.size()).toEqual(sized(entryLimit + 1, 0, listingBytes()));
+		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
+		const size = await store.size();
+		expect(sizes).not.toHaveBeenCalled();
+		expect(JSON.parse(JSON.stringify(size))).toEqual({ entries: entryLimit + 1, listingBytes: listingBytes() });
+		expect(size.line()).toBe(
+			`melian/state: 65,537 of 65,536 entries, record bytes not counted past the entry limit, listing ${Math.floor(listingBytes() / 1024 / 1024)} MiB of 64 MiB`,
+		);
+		expect(size.warning()).toBe(
+			`melian/state is past its entry limit: 65,537 of 65,536. Its record bytes are not counted past the entry limit. ${remedy}`,
+		);
+	});
+
+	it("reads the sizes of a tip at exactly its entry limit", async () => {
+		const store = await remote.open();
+		remote.plant(strays(entryLimit));
+		const sizes = vi.spyOn(RecordRepository.prototype, "sizes");
+		expect(await store.size()).toEqual(sized(entryLimit, 0, listingBytes()));
+		expect(sizes).toHaveBeenCalledOnce();
 	});
 
 	it("counts a tip one byte past its byte limit, which every read refuses", async () => {
@@ -187,7 +234,7 @@ describe("the store's size", { timeout: 300_000 }, () => {
 			return found;
 		});
 		await expect(store.list(changeset)).rejects.toMatchObject({ code: "unreachable" });
-		expect((await store.size()).counted?.recordBytes).toBe(tipLimit + 1);
+		expect((await store.size()).toJSON()).toMatchObject({ recordBytes: tipLimit + 1 });
 	});
 
 	it("answers a listing past its limit as unlisted, which every read refuses, and reads no sizes", async () => {
