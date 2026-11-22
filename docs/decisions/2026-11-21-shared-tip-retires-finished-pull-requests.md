@@ -4,11 +4,13 @@ Amends: [the shared record decision](2026-11-13-shared-record-behind-a-store-por
 Amends: [the git record store decision](2026-11-14-git-record-store-refuses-by-location.md), what a tip past a limit refuses: a retirement is the one call that still works there
 Amends: [the git record store decision](2026-11-14-git-record-store-refuses-by-location.md#what-one-call-uses-and-what-bounds-it), its table of what one call uses: the rows a retirement adds
 
-The maintainer ruled on 2026-11-21, in the coordinator's session, on [issue #617](https://github.com/melian-agent/melian/issues/617). The tip keeps the records of open pull requests and of pull requests merged in the last 30 days ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7040616681)). A scheduled job that runs no pull request's code removes older ones. A warning shows when the store passes half of either limit. He agreed, on the same day and in the same session, to the plan's three further points ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7052775102)):
+The maintainer ruled on 2026-11-21, in the coordinator's session, on [issue #617](https://github.com/melian-agent/melian/issues/617). The tip keeps the records of open pull requests and of pull requests merged in the last 30 days ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7040616681)). A scheduled job that runs no pull request's code removes older ones. A warning shows when the store passes half of any of its three limits: entries, record bytes and listing bytes. He agreed, on the same day and in the same session, to the plan's three further points ([comment](https://github.com/melian-agent/melian/issues/617#issuecomment-7052775102)):
 
 - A pull request closed without merging keeps its records for 30 days from `closed_at`.
 - A reader asked about records that have left the tip answers "archived" and names the commit that removed them.
 - Removal by age amends rule 13.
+
+He agreed on 2026-11-22, in the coordinator's session, to two more ([comment](https://github.com/melian-agent/melian/pull/639#issuecomment-7071348428)). A retirement keeps any changeset folder that is disposed or holds a cell, and reports it as kept; rule 3 of the shared record decision stands as written. He also agreed to the warning's wording above.
 
 The removal-only rule, the tree-ID check and the operation's name are the builder's, from [the plan](https://github.com/melian-agent/melian/issues/617#issuecomment-7049657837) and [its addendum](https://github.com/melian-agent/melian/issues/617#issuecomment-7049676449), which the coordinator read.
 
@@ -30,9 +32,11 @@ Closing a pull request still disposes nothing, and `dispose` keeps its meaning: 
 
 ### Retirement
 
-`GitRecordStore.retire(seen)` takes changeset names, each with the tree ID its folder had when the caller decided. In one commit it removes each folder whole, cell included, with no mark. A retired changeset is the same as one never written, so a reopened pull request records again from nothing. Retiring a disposed changeset takes its mark too, so a retirement undoes a disposal. That is wanted: a retirement leaves the tip as if the pull request never recorded, and a disposal's purpose, removing a changeset's records from the tip for good, holds once the job has retired it.
+`GitRecordStore.retire(seen)` takes changeset names, each with the tree ID its folder had when the caller decided. In one commit it removes each folder that holds records alone, with no mark. A retired changeset is the same as one never written, so a reopened pull request records again from nothing.
 
-A folder is kept, and reported, when any of these hold:
+A folder that holds a cell is kept, and reported as kept. A cell holds a lease or a disposal mark. Rule 3 of the shared record decision never recreates a changeset, since that would need an incarnation every record and writer carries, and removing a cell would recreate it. Today no production code writes a cell or disposes, so this keeps nothing yet. [Issue #641](https://github.com/melian-agent/melian/issues/641) designs the mark that would carry a lease and a disposal across a retirement, and blocks the work that first writes either to the shared store.
+
+A folder is also kept, and reported, when any of these hold:
 
 - Its tree ID at the fresh tip differs from the one the caller saw. A round wrote to it since, so the caller judges it again next time.
 - It holds a stray. No call removes a stray.
@@ -42,6 +46,8 @@ A folder is kept, and reported, when any of these hold:
 A retirement judges folders in the order it was given them, and keeps a running total of the entries and readable bytes it has judged. A folder that would take that total past the entry limit or the byte limit is kept unjudged, and so is every folder after it. All of them are reported as deferred, for the next run to retire. So a tip far past the byte limit sheds what one call may hold, and the next run takes the rest.
 
 Every lost race fetches the tip and decides again. So a round's `add` that lands first keeps its folder, and an `add` after a retirement starts the folder afresh.
+
+That has one limit. A retired folder leaves no mark, so nothing refuses a stale host that relays the changeset's ordinary records after the retirement, such as a re-run of an old round's records job. It writes the folder again with those records, and they stay on the tip until the next run retires them. If the pull request has reopened in the meantime, they join its new records. Ordinary records carry no lease, so this touches no publication slot.
 
 ### The removal-only rule
 

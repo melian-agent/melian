@@ -1,0 +1,9 @@
+# Issue 617, pull request A: retire keeps a folder with a cell
+
+Builder agent: the second fix pass on [pull request #639](https://github.com/melian-agent/melian/pull/639). It answers Melian's finding `d1084d3ff31ad382`: a retirement recreated a changeset, which rule 3 of [the shared record decision](../decisions/2026-11-13-shared-record-behind-a-store-port.md) forbids. The maintainer agreed on 2026-11-22, in the coordinator's session, to the answer ([comment](https://github.com/melian-agent/melian/pull/639#issuecomment-7071348428)).
+
+`retire` now removes only a folder that holds records alone. A folder with a cell, which holds a lease or a disposal mark, is kept, and `Retirement.kept` names it. A folder that holds a cell and a stray is reported as holding a stray, since a writer must remove the stray by hand. The first pass's entry said that retiring a disposed changeset takes its mark too. That no longer holds.
+
+The tests came first. `seeded()` now writes records alone, and four tests replace the two that encoded the old rule. On d82d2c6d0's parent, the tests for a folder with a cell and for a disposed folder failed for the reported reason: each folder was removed. The other two, for a record-only folder and for a cell beside a stray, failed only on the missing `kept` field. They hold the rule's other edges.
+
+[The retention decision](../decisions/2026-11-21-shared-tip-retires-finished-pull-requests.md) drops the sentences that let a retirement take a disposal mark. It claims no amendment to rule 3. It now states the limit that a stale host's relay of ordinary records can write a retired folder again, until the next run. Its warning covers half of any of the store's three limits: entries, record bytes and listing bytes. [Issue #641](https://github.com/melian-agent/melian/issues/641) designs the mark that would carry a lease and a disposal across a retirement. It blocks the work that first writes a cell or a disposal to the shared store.
