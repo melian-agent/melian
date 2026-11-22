@@ -59,7 +59,14 @@ export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable
  * One model of a tier's route, and where its credentials come from, or `none`. `thinking` is the level its fallback entry
  * names in place of the route's; absent, it runs at the route's level, as every model of an older plan does.
  */
-export type PlannedModel = { model: string; credential: string; family?: string; thinking?: ModelRoute["thinking"] };
+export type PlannedModel = {
+	model: string;
+	credential: string;
+	family?: string;
+	thinking?: ModelRoute["thinking"];
+	/** Where a fallback entry on either side names a level, the level it runs at when that is not its committed entry's. */
+	thinkingOverride?: CheckLineage["thinking"];
+};
 
 /** One route of a {@link ReviewPlan}, a tier's or a lens's, as stored. */
 export type PlannedRoute = {
@@ -355,8 +362,18 @@ export class ReviewPlan {
 					credential: credentials[parse(model).provider] ?? "none",
 					...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
 					...(own(model) === undefined ? {} : { thinking: own(model) }),
+					...(relevelled(model) === undefined ? {} : { thinkingOverride: relevelled(model) }),
 				}),
 			);
+		// A committed fallback entry's level is policy too, so a preference file that drops or changes it is recorded.
+		const relevelled = (model: string): CheckLineage["thinking"] => {
+			const committedOwn = ReviewPlan.ownLevel(policy, model);
+			if ((own(model) ?? committedOwn) === undefined || !committed(model)) return undefined;
+			const level = own(model) ?? effective?.thinking ?? "unset";
+			const wanted = committedOwn ?? policy?.thinking ?? "unset";
+			if (level === wanted) return undefined;
+			return { level, wanted, by: (own(model) === committedOwn ? source.thinkingBy : by) ?? "melian.yaml" };
+		};
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>
 			name === policy?.model ||
@@ -649,20 +666,22 @@ export class ReviewPlan {
 		const outside = accept.length > 0 && !accept.includes(model);
 		const wantedThinking = policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset";
 		const level = planned.thinking ?? "unset";
+		const answering = planned.models.find((each) => each.model === model);
 		const thinking: CheckLineage["thinking"] =
-			level === wantedThinking
+			answering?.thinkingOverride ??
+			(level === wantedThinking
 				? undefined
 				: {
 						level,
 						wanted: wantedThinking,
 						by: planned.thinkingOverride?.by ?? planned.thinkingBy ?? "melian.yaml",
-					};
+					});
 		if (
 			thinking === undefined &&
 			(model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside))
 		)
 			return undefined;
-		const answeredAt = planned.models.find((each) => each.model === model)?.thinking;
+		const answeredAt = answering?.thinking;
 		return {
 			model,
 			...(wanted === undefined ? {} : { wanted }),

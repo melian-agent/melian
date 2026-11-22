@@ -135,7 +135,14 @@ describe("a fallback's own thinking level", () => {
 			{ heavy: { model: "faux/first", thinking: "low", fallbacks: [{ model: "faux/second", thinking: "medium" }] } },
 			"faux/second",
 		);
-		expect(plan.tier("heavy").models).toEqual([{ model: "faux/second", credential: "test", family: "second" }]);
+		expect(plan.tier("heavy").models).toEqual([
+			{
+				model: "faux/second",
+				credential: "test",
+				family: "second",
+				thinkingOverride: { level: "low", wanted: "medium", by: "--model" },
+			},
+		]);
 	});
 
 	it("runs a verifier on its own route's fallback levels", () => {
@@ -310,6 +317,7 @@ describe("a preference that changes a fallback's level", () => {
 			credential: "test",
 			family: "second",
 			thinking: "high",
+			thinkingOverride: { level: "high", wanted: "medium", by: "melian.local.yaml" },
 		});
 	});
 
@@ -406,6 +414,53 @@ describe("a preference that changes a fallback's level", () => {
 			status: "refused",
 			reason:
 				"models.heavy.acceptOverridden is false, and melian.local.yaml runs faux/second at thinking low; committed policy wants medium",
+		});
+	});
+});
+
+describe("the lineage of a fallback a preference file relevelled", () => {
+	const committed: ModelRoute = {
+		model: "gone/sol",
+		thinking: "low",
+		fallbacks: [{ model: "faux/second", thinking: "medium" }],
+	};
+	const planWith = (effective: ModelRoute) =>
+		ReviewPlan.resolve({
+			config: { ...defaultConfig, models: { heavy: effective } },
+			routes: {
+				committed: { heavy: committed },
+				overridden: { heavy: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+			catalog: [...catalog, { ...catalog[0]!, provider: "gone", id: "sol", name: "sol" }],
+			credentials: { faux: "test" },
+			lenses: [],
+			checks: [],
+		});
+
+	it("records the level the fallback runs at, the level its committed entry names, and the file", () => {
+		const plan = planWith({ model: "gone/sol", thinking: "low", fallbacks: ["faux/second"] });
+		expect(plan.lineage("heavy")).toEqual({
+			model: "faux/second",
+			wanted: "gone/sol",
+			by: "melian.local.yaml",
+			outside: false,
+			thinking: { level: "low", wanted: "medium", by: "melian.local.yaml" },
+		});
+		expect(plan.lines().map(({ text }) => text)).toContain(
+			"heavy runs faux/second, set by melian.local.yaml; the committed route wants gone/sol; thinking low set by melian.local.yaml; committed policy wants medium",
+		);
+	});
+
+	it("records no level when the fallback keeps its committed one", () => {
+		const plan = planWith({ ...committed, fallbacks: [{ model: "faux/second", thinking: "medium" }] });
+		expect(plan.lineage("heavy")).toEqual({
+			model: "faux/second",
+			wanted: "gone/sol",
+			by: "melian.local.yaml",
+			outside: false,
+			answeredAt: "medium",
 		});
 	});
 });
