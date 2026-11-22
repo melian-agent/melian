@@ -20,6 +20,12 @@ import {
 import { type EndedDismissal, RecordedRound, type UnjudgedDismissal } from "./recorded-round.ts";
 import { roundFacts } from "./review-records.ts";
 
+/** A round of another revision of the head that holds a finding live, which no dismissal at the merge's revision answers. */
+export type HeldElsewhere = { readonly round: string; readonly revision: string };
+
+/** A dismissal the gate asks for again, and the round of another revision that holds its finding live, if one does. */
+export type AskedAgain<T> = T & { readonly heldBy?: HeldElsewhere };
+
 /** What the merge gate judges a head against, all read from the base tip, never from the records. */
 export type RecordGateContext = {
 	/** The checkout git answers ancestry and diffs in. */
@@ -47,6 +53,9 @@ export type GateRound = {
 	readonly sound: boolean;
 };
 
+// One counted round's verdict, and whether it reviewed the merge's own revision.
+type Pooled = { verdict: Verdict; own: boolean; round: string; revision: string };
+
 const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
 
 /**
@@ -64,17 +73,17 @@ export class RecordGate {
 	/** The rounds counted, in record ID order. */
 	readonly rounds: readonly GateRound[];
 	/** Each dismissal a counted round reads as ended by a round at another revision. */
-	readonly ended: readonly EndedDismissal[];
+	readonly ended: readonly AskedAgain<EndedDismissal>[];
 	/** Each dismissal a counted round cannot judge, since a round of its changeset names what the store does not hold. */
-	readonly unjudged: readonly UnjudgedDismissal[];
+	readonly unjudged: readonly AskedAgain<UnjudgedDismissal>[];
 	/** Why the records cannot decide the gate, each naming the record or round. */
 	readonly failures: readonly string[];
 
 	private constructor(fields: {
 		verdict: Verdict;
 		rounds: GateRound[];
-		ended: EndedDismissal[];
-		unjudged: UnjudgedDismissal[];
+		ended: AskedAgain<EndedDismissal>[];
+		unjudged: AskedAgain<UnjudgedDismissal>[];
 		failures: string[];
 	}) {
 		this.verdict = fields.verdict;
@@ -123,7 +132,7 @@ export class RecordGate {
 		const rounds: GateRound[] = [];
 		const ended: EndedDismissal[] = [];
 		const unjudged: UnjudgedDismissal[] = [];
-		const verdicts: { verdict: Verdict; own: boolean }[] = [];
+		const verdicts: Pooled[] = [];
 		const covered = new Set<string>();
 		// Why a round of the merge that ran a check still leaves it uncovered, by the check's name, the first round's.
 		const short = new Map<string, string>();
@@ -147,7 +156,7 @@ export class RecordGate {
 				failures.push(`round ${round.id} ${findings.refused}`);
 				continue;
 			}
-			verdicts.push({ verdict: findings, own: round.revision === gate });
+			verdicts.push({ verdict: findings, own: round.revision === gate, round: round.id, revision: round.revision! });
 			const contents = read.contents(own);
 			if (!("refused" in contents)) {
 				ended.push(...contents.ended);
@@ -182,14 +191,19 @@ export class RecordGate {
 				status: "skipped",
 				reason: short.get(name) ?? `no round of ${gate} that stands as reviewed ran it`,
 			}));
-		const verdict = RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]);
+		const { verdict, heldBy } = RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]);
 		// Only a finding the gate holds live needs dismissing again, and two rounds can read one dismissal as ended alike.
 		const live = new Set(
 			Object.values(verdict.findings).flatMap((found) => found.map(({ properties }) => properties.id)),
 		);
-		const once = <T extends { finding: string }>(entries: readonly T[]): T[] => [
+		const once = <T extends { finding: string }>(entries: readonly T[]): AskedAgain<T>[] => [
 			...new Map(
-				entries.filter(({ finding }) => live.has(finding)).map((each) => [JSON.stringify(each), each]),
+				entries
+					.filter(({ finding }) => live.has(finding))
+					.map((each) => {
+						const held = heldBy.get(each.finding);
+						return [JSON.stringify(each), held === undefined ? each : { ...each, heldBy: held }];
+					}),
 			).values(),
 		];
 		return new RecordGate({ verdict, rounds, ended: once(ended), unjudged: once(unjudged), failures });
@@ -197,7 +211,7 @@ export class RecordGate {
 
 	static #failed(failures: string[]): RecordGate {
 		return new RecordGate({
-			verdict: RecordGate.#merged([], [], failures.map(asFailure)),
+			verdict: RecordGate.#merged([], [], failures.map(asFailure)).verdict,
 			rounds: [],
 			ended: [],
 			unjudged: [],
@@ -215,12 +229,13 @@ export class RecordGate {
 
 	// One verdict of every round's findings: a finding counts at its strictest resolution in any round, and is dismissed
 	// only when no round holds it live and some round dismissed it. A round of another revision, such as a stacked
-	// parent's, hands over only its findings on `paths`; the merge's own round hands over every finding.
+	// parent's, hands over only its findings on `paths`; the merge's own round hands over every finding. `heldBy` names,
+	// for each finding a round of another revision holds live, the first such round.
 	static #merged(
-		verdicts: readonly { verdict: Verdict; own: boolean }[],
+		verdicts: readonly Pooled[],
 		paths: readonly string[],
 		notRun: CheckRecord[],
-	): Verdict {
+	): { verdict: Verdict; heldBy: Map<string, HeldElsewhere> } {
 		const onDiff = new Set(paths);
 		const proves = ({ properties: { path, trigger } }: ResolvedFinding) =>
 			[
@@ -229,11 +244,13 @@ export class RecordGate {
 			].some((file) => onDiff.has(file));
 		const live = new Map<string, ResolvedFinding>();
 		const dismissed = new Map<string, ResolvedFinding>();
-		for (const { verdict, own } of verdicts) {
+		const heldBy = new Map<string, HeldElsewhere>();
+		for (const { verdict, own, round, revision } of verdicts) {
 			const counts = (finding: ResolvedFinding) => own || proves(finding);
 			for (const finding of Object.values(verdict.findings).flat().filter(counts)) {
 				const held = live.get(finding.id);
 				if (held === undefined || RecordGate.#stricter(finding, held)) live.set(finding.id, finding);
+				if (!own && !heldBy.has(finding.id)) heldBy.set(finding.id, { round, revision });
 			}
 			for (const finding of verdict.dismissed.filter(counts))
 				if (!dismissed.has(finding.id)) dismissed.set(finding.id, finding);
@@ -248,13 +265,14 @@ export class RecordGate {
 			]),
 		) as Record<Resolution, ResolvedFinding[]>;
 		const attention = findings.block.length + findings.acknowledge.length + findings.advisory.length;
-		return new Verdict({
+		const verdict = new Verdict({
 			status: notRun.length > 0 ? "not-reviewed" : attention > 0 ? "findings" : "passed",
 			blocking: findings.block.length > 0,
 			findings,
 			dismissed: [...dismissed.values()].sort(RecordGate.#byPlace),
 			notRun,
 		});
+		return { verdict, heldBy };
 	}
 
 	static #stricter(finding: ResolvedFinding, than: ResolvedFinding): boolean {

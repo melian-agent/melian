@@ -42,9 +42,19 @@ What bounds it:
 
 ## A dismissal a pooled round ends
 
-The maintainer chose on 2026-11-20 that a shared dismissal holds only at the revision it was made at, and ends once any round is written at another revision. A revision is a base and a head. So a round of the same head at another base, a stacked parent's included, ends a dismissal made on the merge's own round when it is written later, even if it found nothing. The finding is then live, and the gate asks for the dismissal again. That fails closed. The gate's message names the round that ended the dismissal and the revision it reviewed, so a maintainer can see why a dismissed finding came back.
+The maintainer chose on 2026-11-20 that a shared dismissal holds only at the revision it was made at, and ends once any round is written at another revision. A revision is a base and a head. Each pooled round reads the dismissal as itself, so the order matters only to the merge's own round:
 
-The gate asks again only for a finding its verdict holds live, and names each such dismissal once.
+- The merge's own round reads a dismissal made at its revision as ended only when a round of another revision of the head, a stacked parent's included, was written after it, outside the rounds the dismissal names as its frontier. That holds even if the later round found nothing.
+- A round of another revision reads every dismissal of its own copy of a finding as ended, whether the dismissal came before or after it, since the dismissal was not made at the revision it reviewed.
+
+The finding is then live, and the gate fails closed. Its message names the round that ended the dismissal and the revision it reviewed, so a maintainer can see why a dismissed finding came back. The gate names each such dismissal once, and only for a finding its verdict holds live.
+
+What answers such a finding depends on which round holds it:
+
+- When only the merge's own rounds hold it, a new dismissal at this head answers it: its frontier names the later round. It needs a reason other than the one it was dismissed with, since the same dismissal made again records nothing new, so the gate's command says so.
+- When a round of another revision holds it live, no dismissal at this head answers it, since that round reads every dismissal as ended. The gate prints no dismiss command there. It names that round and its revision, and says that today only a push, which starts a new head, clears it. The same holds for a round that is not sound, of another revision.
+
+Whether a dismissal at the merge's own revision should answer such a finding in every pooled round of the same head is the maintainer's to decide; the coordinator put it to him on 2026-11-22. Nothing is built for it.
 
 ## A round that is not sound lowers nothing
 

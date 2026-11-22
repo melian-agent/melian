@@ -193,6 +193,29 @@ const blocker = (): StoredFinding =>
 	}).toJSON();
 
 describe("melian gate", { timeout: 60_000 }, () => {
+	it("prints no dismiss command for a finding a pooled round of another revision holds live, and says only a push clears it", async () => {
+		const { check, account, round, relay, gate, err } = await pullRequest();
+		await relay(check, account, round);
+		const decide = RecordGate.decide.bind(RecordGate);
+		const heldBy = { round: "r9", revision: "older..head" };
+		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) =>
+			Object.assign(Object.create(RecordGate.prototype), await decide(...args), {
+				ended: [
+					{ finding: "0123456789abcdef", record: "r1", madeAt: "base..one", round: "r2", at: "base..two", heldBy },
+				],
+				unjudged: [{ finding: "fedcba9876543210", record: "r3", round: "r4", heldBy }],
+			}),
+		);
+		await gate();
+		vi.restoreAllMocks();
+		const held =
+			"Round r9 holds it live, and reviewed older..head, another revision of this head; a dismissal holds only at the revision it was made at, so no dismissal at this head clears it: today only a push, which starts a new head, clears it";
+		expect(err().split("\n").slice(1, 3)).toEqual([
+			`melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. ${held}`,
+			`melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. ${held}`,
+		]);
+	});
+
 	it("lets a head merge that a round on melian/state reviewed whole", async () => {
 		const { check, account, round, relay, gate, out, err } = await pullRequest();
 		await relay(check, account, round);
@@ -215,8 +238,8 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		expect(err()).toBe(
 			[
 				`melian: round ${round.id} counts, and covers 1 checks`,
-				`melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. To dismiss it at this head: melian dismiss "#7" 0123456789abcdef --reason "<text>" --records git:melian/state`,
-				'melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it again: melian dismiss "#7" fedcba9876543210 --reason "<text>" --records git:melian/state',
+				`melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. To dismiss it at this head, with a reason other than the one it was dismissed with, since the same dismissal made again records nothing new: melian dismiss "#7" 0123456789abcdef --reason "<text>" --records git:melian/state`,
+				'melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it at this head, with a reason other than the one it was dismissed with, since the same dismissal made again records nothing new: melian dismiss "#7" fedcba9876543210 --reason "<text>" --records git:melian/state',
 				"",
 			].join("\n"),
 		);
@@ -228,8 +251,8 @@ describe("melian gate", { timeout: 60_000 }, () => {
 				.split("\n")
 				.slice(0, -1);
 		const commands = (text: string) =>
-			[...text.matchAll(/(?:To dismiss it at this head|To dismiss it again|To review it again): (.*)$/gm)].map(
-				([, command]) => shell(command!),
+			[...text.matchAll(/(?:records nothing new|To review it again): (.*)$/gm)].map(([, command]) =>
+				shell(command!),
 			);
 		const dismissed = await pullRequest({ number: 12 });
 		await dismissed.relay(dismissed.check, dismissed.account, dismissed.round);
@@ -306,7 +329,7 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		vi.restoreAllMocks();
 		expect(err().split("\n").slice(0, 2)).toEqual([
 			"melian: round r1 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Its verifier's verdicts stand",
-			"melian: round r2 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it",
+			"melian: round r2 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one. It reviewed another revision of this head, and a dismissal holds only at the revision it was made at, so no dismissal at this head clears one: today only a push, which starts a new head, clears it",
 		]);
 	});
 

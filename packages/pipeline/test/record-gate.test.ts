@@ -375,6 +375,59 @@ describe("the merge gate over a changeset's records", () => {
 		expect(outcome.ended.map(({ finding, madeAt, round, at }) => [finding, madeAt, round, at])).toEqual([
 			[id, Revision.key(changeset.revision), parent.id, parent.revision],
 		]);
+		expect(outcome.ended.map(({ heldBy }) => heldBy)).toEqual([undefined]);
+	});
+
+	it("clears a finding by a dismissal again at this head, when no pooled round of another revision holds it", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks("src/b.ts"));
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		const dismiss = (reason: string, at: string) =>
+			recordDismissal({
+				harness,
+				revision: changeset.revision,
+				id,
+				dismissal: { by: "maintainer", reason, at },
+				repoRoot: repo,
+				records: { store, changeset: changeset.id },
+			});
+		await dismiss("b is fine", "2026-11-20T00:00:00.000Z");
+		await at("main", older, () => review(store, "main...feature"));
+		await dismiss("b is fine at this base too", "2026-11-21T00:00:00.000Z");
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.passes(), rule(outcome), outcome.verdict.dismissed.map(({ id }) => id), outcome.ended]).toEqual([
+			true,
+			[],
+			[id],
+			[],
+		]);
+	});
+
+	it("keeps a finding live when it is dismissed again with the same reason, which records nothing new", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks("src/b.ts"));
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		const dismiss = (at: string) =>
+			recordDismissal({
+				harness,
+				revision: changeset.revision,
+				id,
+				dismissal: { by: "maintainer", reason: "b is fine", at },
+				repoRoot: repo,
+				records: { store, changeset: changeset.id },
+			});
+		await dismiss("2026-11-20T00:00:00.000Z");
+		await at("main", older, () => review(store, "main...feature"));
+		await dismiss("2026-11-21T00:00:00.000Z");
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.passes(), outcome.ended.map(({ finding, heldBy }) => [finding, heldBy])]).toEqual([
+			false,
+			[[id, undefined]],
+		]);
 	});
 
 	it("counts no round of an earlier head", async () => {
@@ -503,7 +556,12 @@ describe("the merge gate over a changeset's records", () => {
 			[["src/a.ts", "block"]],
 			[],
 		]);
-		expect(outcome.ended.map(({ finding }) => finding)).toEqual([id]);
+		const parent = (await listed(store))
+			.map((each) => SharedRecord.parseEnvelope(each))
+			.find(({ kind, revision }) => kind === "round" && revision !== Revision.key(changeset.revision))!;
+		expect(outcome.ended.map(({ finding, heldBy }) => [finding, heldBy])).toEqual([
+			[id, { round: parent.id, revision: parent.revision }],
+		]);
 	});
 });
 

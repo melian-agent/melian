@@ -4,11 +4,12 @@ import {
 	loadConfig,
 	RecordError,
 	Rendering,
+	Revision,
 	reviewPayloads,
 	TierAccount,
 	visibleText,
 } from "@melian-agent/core";
-import { ChangeLenses, RecordGate } from "@melian-agent/pipeline";
+import { ChangeLenses, type HeldElsewhere, RecordGate } from "@melian-agent/pipeline";
 import { GitRecordStore } from "@melian-agent/state-git";
 import { type Io, ReviewSource, reviewExitCodes, shellQuote, terminalEmoji, writerTrust } from "./commands.ts";
 import { CliError, fromCheckout, git, stateDirectory } from "./repository.ts";
@@ -71,25 +72,36 @@ export async function gate(io: Io, argument: string): Promise<number> {
 		tier: TierAccount.of(config, tier, selection.tierLenses()),
 		counts: everyRecordCounts,
 	});
+	// A dismissal holds only at the revision it was made at, so a finding a round of another revision holds live stays
+	// live whatever is dismissed at this head.
+	const pushOnly = (what: string) =>
+		`a dismissal holds only at the revision it was made at, so no dismissal at this head clears ${what}: today only a push, which starts a new head, clears it`;
+	const unsound = (round: { revision: string }) =>
+		round.revision === Revision.key(revision)
+			? ": to answer one, push a fix or dismiss it"
+			: `. It reviewed another revision of this head, and ${pushOnly("one")}`;
 	for (const round of outcome.rounds)
 		io.stderr(
 			!("refused" in round.covers)
 				? `melian: round ${visibleText(round.id)} counts, and covers ${round.covers.length} checks\n`
 				: round.sound
 					? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Its verifier's verdicts stand\n`
-					: `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n`,
+					: `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one${unsound(round)}\n`,
 		);
 	for (const reason of outcome.failures)
 		io.stderr(`melian: the records cannot decide the merge: ${visibleText(reason)}\n`);
-	const dismiss = (finding: string) =>
-		command("melian", "dismiss", argument, finding, "--reason", "<text>", "--records", "git:melian/state");
+	// The same dismissal made again changes nothing, so it would write no record whose frontier holds the later rounds.
+	const dismiss = (finding: string, heldBy: HeldElsewhere | undefined) =>
+		heldBy === undefined
+			? `To dismiss it at this head, with a reason other than the one it was dismissed with, since the same dismissal made again records nothing new: ${command("melian", "dismiss", argument, finding, "--reason", "<text>", "--records", "git:melian/state")}`
+			: `Round ${visibleText(heldBy.round)} holds it live, and reviewed ${visibleText(heldBy.revision)}, another revision of this head; ${pushOnly("it")}`;
 	for (const ended of outcome.ended)
 		io.stderr(
-			`melian: finding ${visibleText(ended.finding)} is live: it was dismissed at revision ${visibleText(ended.madeAt)}, and round ${visibleText(ended.round)} reviewed ${visibleText(ended.at)} since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. To dismiss it at this head: ${dismiss(ended.finding)}\n`,
+			`melian: finding ${visibleText(ended.finding)} is live: it was dismissed at revision ${visibleText(ended.madeAt)}, and round ${visibleText(ended.round)} reviewed ${visibleText(ended.at)} since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. ${dismiss(ended.finding, ended.heldBy)}\n`,
 		);
 	for (const unjudged of outcome.unjudged)
 		io.stderr(
-			`melian: finding ${visibleText(unjudged.finding)} is live: dismissal ${visibleText(unjudged.record)} cannot be judged, since round ${visibleText(unjudged.round)} names a record or round the store does not hold. To dismiss it again: ${dismiss(unjudged.finding)}\n`,
+			`melian: finding ${visibleText(unjudged.finding)} is live: dismissal ${visibleText(unjudged.record)} cannot be judged, since round ${visibleText(unjudged.round)} names a record or round the store does not hold. ${dismiss(unjudged.finding, unjudged.heldBy)}\n`,
 		);
 	if (outcome.verdict.status === "not-reviewed") {
 		const stale = outcome.rounds.every(({ covers }) => "refused" in covers);
