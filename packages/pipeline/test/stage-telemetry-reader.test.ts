@@ -13,6 +13,7 @@ import {
 	type Harness,
 	type JsonObject,
 	openHarness,
+	Round,
 	type Stage,
 	TelemetryReader,
 	TokenUsage,
@@ -560,3 +561,33 @@ it.each(["done", "unanswered"] as const)(
 	},
 	15000,
 );
+
+it("reads a round's stages only while it decided and its task still owns the review index entry", async () => {
+	const storage = createMemoryStorage();
+	harness = await openHarness(storage, { models: createFakeModels().models, registry: createRegistry() });
+	const root = await harness.root(context);
+	const stored = {
+		base: "a".repeat(40),
+		head: "b".repeat(40),
+		tasks: [3, 7],
+		verdict: {},
+	} as unknown as ConstructorParameters<typeof Round>[1];
+	const decided = new Round("round", stored);
+	const owns = async (task: number) =>
+		root.commit(async (tx) => {
+			(await tx.doc(ReviewIndex, root.id)).reviews[decided.revisionKey()] = {
+				lenses: [],
+				adjudication: { task, input: "{}" },
+			};
+		}, context);
+	const reader = TelemetryReader.open(storage);
+	const stages = await reader.read("unrelated");
+	const read = vi.spyOn(reader, "read").mockResolvedValue(stages);
+	await owns(7);
+	expect(await reader.round(decided)).toBe(stages);
+	expect(read.mock.calls).toEqual([[decided.revisionKey(), undefined, context]]);
+	expect(await reader.round(new Round("undecided", { ...stored, verdict: undefined }))).toBeUndefined();
+	await owns(9);
+	expect(await reader.round(decided)).toBeUndefined();
+	expect(read).toHaveBeenCalledTimes(1);
+});
