@@ -43,7 +43,7 @@ import type { ConversationId, Tx } from "../src/harness.ts";
 import { RelayBatch } from "../src/record-relay.ts";
 import { ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
-import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
+import { baseAndHead, commit, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
 const correctness = "You are the correctness reviewer";
@@ -66,6 +66,8 @@ const checks = [
 
 let repo: string;
 let harness: Harness | undefined;
+// One fake per harness, since a harness asks the models it opened with.
+let models: ReturnType<typeof createFakeModels> | undefined;
 
 beforeEach(() => {
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
@@ -102,9 +104,11 @@ async function review(
 	given: typeof checks = checks,
 	walkthrough?: Walkthrough,
 	named: readonly string[] = ["correctness", "contracts"],
-	run: { readonly checkRun?: CheckRun; readonly proven?: true } = {},
+	run: { readonly checkRun?: CheckRun; readonly proven?: true; readonly unverified?: true } = {},
 ) {
-	const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
+	if (harness === undefined)
+		models = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
+	const fake = models!;
 	const heavy = fake.ref("heavy");
 	const light = fake.ref("light");
 	const config: MelianConfig = {
@@ -113,6 +117,9 @@ async function review(
 		models: {
 			heavy: { model: `${heavy.provider}/${heavy.modelId}` },
 			light: { model: `${light.provider}/${light.modelId}` },
+			...(run.unverified
+				? { verifier: { model: `${heavy.provider}/${fake.withoutCredentials("judge").modelId}` } }
+				: {}),
 		},
 	};
 	harness ??= await openHarness(createMemoryStorage(), {
@@ -317,6 +324,34 @@ describe("a review that names a record store", () => {
 		const first = (await review(store)).stored;
 		const second = (await review(store)).stored;
 		expect(second).toEqual(first);
+	});
+
+	it("names, in a later head's round, the round it exported for the head before, read from the store", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const first = (await review(store)).stored.find(({ kind }) => kind === "round")!;
+		commit(repo, { "src/b.ts": lines("export const b = 1;") });
+		const { changeset, stored } = await review(store);
+		const rounds = stored.filter(({ kind }) => kind === "round");
+		expect(rounds).toHaveLength(2);
+		const later = rounds.find(({ revision }) => revision === Revision.key(changeset.revision))!;
+		expect(later.revision).not.toBe(first.revision);
+		expect((later.payload as { before: string[] }).before).toEqual([SharedRecord.parseEnvelope(first).id]);
+	});
+	it("exports the round of a review whose verifier was refused, which names no verification", async () => {
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		await expect(review(store, checks, undefined, undefined, { unverified: true })).rejects.toMatchObject({
+			code: "verifierFailed",
+		});
+		const stored = await store.list((await Changeset.resolve(repo, "main...feature")).id);
+		expect(stored.map(({ kind }) => kind).sort()).toEqual([
+			"account",
+			"check",
+			"check",
+			"check",
+			"lens",
+			"lens",
+			"round",
+		]);
 	});
 });
 

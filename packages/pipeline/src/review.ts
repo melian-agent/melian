@@ -2124,10 +2124,12 @@ export async function startAdjudication<Built = undefined>(
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
-		const measured = measure?.(await tx.doc(FindingsDocument, input.root));
+		const findings = await tx.doc(FindingsDocument, input.root);
+		const measured = measure?.(findings);
 		if (measured?.failure !== undefined)
 			deciding.checks = [...deciding.checks, { ...measured.failure } as AdjudicationTaskInput["checks"][number]];
-		const built = measured?.built;
+		// A set measured from findings other than the version adjudication decides from stands for no verdict.
+		const built = (findings.versions[revision] ?? 0) === deciding.findingsVersion ? measured?.built : undefined;
 		// The details ride with the verdict but are not part of what it was decided from.
 		const key = adjudicationKey({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
@@ -3843,20 +3845,26 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			})),
 		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
-	const exported = request.records === undefined ? undefined : await request.records.list(changeset.id);
 	// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
 	// under a stored request that asks for check code that stores no tool text, so the proof is read before the commit.
-	const proof = exported === undefined ? undefined : await StaticProof.read(harness, root, context, run?.identity);
+	const recording =
+		request.records === undefined
+			? undefined
+			: {
+					store: request.records,
+					stored: await request.records.list(changeset.id),
+					proof: await StaticProof.read(harness, root, context, run?.identity),
+				};
 	const adjudicatedChecks = verificationCheck === undefined ? checks : [...checks, verificationCheck];
 	const recorder = ReviewRecords.of(changeset.id, { base, head });
 	// The round's records, measured in the adjudication commit from the findings it decides from, so a round that cannot
 	// be recorded reads not reviewed here as on every other host, and what is exported is what was measured.
 	const measure =
-		exported === undefined || proof === undefined
+		recording === undefined
 			? undefined
 			: (
 					state: FindingsState,
-				): Measured<{ read: SharedRecord[]; before: string[]; version: number } | undefined> => {
+				): Measured<{ read: SharedRecord[]; before: string[]; store: RecordStore } | undefined> => {
 					const verification =
 						verified === undefined || verificationCheck === undefined
 							? undefined
@@ -3870,8 +3878,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									check: verificationCheck,
 								});
 					const { read, before } = roundRecords(
-						proof,
-						exported,
+						recording.proof,
+						recording.stored,
 						run,
 						options.checks ?? [],
 						adjudicatedChecks,
@@ -3882,9 +3890,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						state,
 						input.resolutionPolicy ?? null,
 					);
-					const reason = recorder.unrecordable([...read, recorder.round(read, undefined, [], before)]);
+					const reason = recorder.unrecordable(recorder.batch(read, undefined, before));
 					return reason === undefined
-						? { built: { read, before, version: state.versions[reviewed] ?? 0 } }
+						? { built: { read, before, store: recording.store } }
 						: { built: undefined, failure: { name: "records", status: "failed", reason } };
 				};
 	spans.end();
@@ -3935,7 +3943,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
 	// The export is the set the adjudication commit measured, from the findings version adjudication then decided from.
-	if (request.records !== undefined && owned && built !== undefined && decision.findingsVersion === built.version) {
+	if (owned && built !== undefined) {
 		// The round waits for the walkthrough for what is left of the wait, and a walkthrough that has not settled by then,
 		// or that failed or is not the one publication posts, leaves it with none.
 		const written =
@@ -3954,15 +3962,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
 		const told =
 			summary === undefined ? undefined : recorder.walkthrough(summary.key, summary.route, summary.walkthrough);
-		const { read, before } = built;
-		// The walkthrough joins only a round that still fits with it, and the relay takes none, so one that does not fit
-		// leaves the round measured without it.
-		const shown = told === undefined ? undefined : [...read, told, recorder.round(read, told, [], before)];
-		const batch =
-			shown !== undefined && recorder.unrecordable(shown) === undefined
-				? shown
-				: [...read, recorder.round(read, undefined, [], before)];
-		await request.records.add(batch.map((record) => record.toJSON()));
+		const batch = recorder.batch(built.read, told, built.before);
+		await built.store.add(batch.map((record) => record.toJSON()));
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],

@@ -290,6 +290,35 @@ describe("the adjudication commit's measure", () => {
 		expect(decided).not.toBe(read.versions[revision] ?? 0);
 	});
 
+	it("builds nothing from findings other than the version adjudication decides from", async () => {
+		const { input, read } = await verified();
+		const measure = () => ({ built: "measured" });
+		const stale = await startAdjudication(
+			harness,
+			{ ...input, findingsVersion: (read.versions[revision] ?? 0) - 1 },
+			[],
+			undefined,
+			undefined,
+			false,
+			undefined,
+			context,
+			measure,
+		);
+		expect(stale!.built).toBeUndefined();
+		const current = await startAdjudication(
+			harness,
+			input,
+			[],
+			undefined,
+			undefined,
+			false,
+			undefined,
+			context,
+			measure,
+		);
+		expect(current!.built).toBe("measured");
+	});
+
 	it("leaves the commit unmade when the measure throws, the cleared verifications and the index with it", async () => {
 		const { root, input, confirmed } = await verified();
 		await expect(

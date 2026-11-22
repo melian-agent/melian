@@ -342,6 +342,22 @@ export class ReviewRecords {
 	}
 
 	/**
+	 * The records a round exports: `read`, and the round that names them. A walkthrough joins only a round that still
+	 * fits with it, since the relay takes none, so one that does not fit leaves the round as it was measured without it.
+	 */
+	batch(
+		read: readonly SharedRecord[],
+		walkthrough: SharedRecord | undefined,
+		before: readonly string[],
+	): SharedRecord[] {
+		const shown =
+			walkthrough === undefined ? undefined : [...read, walkthrough, this.round(read, walkthrough, [], before)];
+		return shown !== undefined && this.unrecordable(shown) === undefined
+			? shown
+			: [...read, this.round(read, undefined, [], before)];
+	}
+
+	/**
 	 * Why a round of `made` cannot be recorded, or `undefined` when each record fits the store and all of them fit one
 	 * relay batch. Each is measured by its canonical bytes, which every store writes and the relay sums.
 	 */
