@@ -1104,6 +1104,28 @@ describe("the merge gate's forged rounds", () => {
 			.map((each) => [each.lines()[0], each.properties.resolution])
 			.sort(([left], [right]) => Number(left) - Number(right));
 
+	it("takes the refutation of a round that covers, on the gate as on the host", async () => {
+		const store = exported();
+		const refuted = judges("refuted");
+		const { changeset } = await review(store, "main...feature", blocks(), checks, config, [
+			refuted,
+			refuted,
+			refuted,
+			refuted,
+		]);
+		const records = await listed(store);
+		const { id } = SharedRecord.parseEnvelope(records.find(({ kind }) => kind === "round")!);
+		const under = { revision: changeset.revision, config, repoRoot: repo, policy: worktree };
+		const host = await RecordedRound.of(records, id, everyRecordCounts).verdict(under);
+		const outcome = await gate(records);
+		expect([byLine({ verdict: host }), byLine(outcome), outcome.verdict.notRun, outcome.passes()]).toEqual([
+			[],
+			[],
+			[],
+			true,
+		]);
+	});
+
 	it("takes no refutation from a round that covers nothing, beside a clean round that covers every check", async () => {
 		const store = exported();
 		const { verdict } = await judgedThenFailed(store, judges("refuted"));
