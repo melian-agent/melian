@@ -74,7 +74,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/pattern.ts": "71f8a503d7ee9b25beed602d7c832a0fc26dcc0ca4159d1173a2008422d6f122",
 
-	"packages/core/src/plan.ts": "32fa8e53b8d388fad2f7af809194cac1542952ca2d1912248be47498e2adf33b",
+	"packages/core/src/plan.ts": "7e966c4a4f2360ac2cfe5fc59e68ba15fcc3a377b81394500dd2f3f85de005d6",
 
 	"packages/core/src/probing-wording.ts": "8b8c5cd3f990a1a0000817e8c4562572c6964e7eb049295bed89d28decf540ea",
 
