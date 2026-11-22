@@ -8,6 +8,7 @@ import {
 	type StoredComparison,
 	type StoredComparisonAdjudication,
 	type StoredVerdict,
+	type Verdict,
 } from "@melian-agent/core";
 import { VerdictDocument } from "./adjudication.ts";
 import { FindingsDocument } from "./findings.ts";
@@ -177,6 +178,34 @@ export class CompareHarness {
 				if (error instanceof CompareError && error.code === "notReviewed") return false;
 				throw error;
 			}
+		}, context);
+	}
+
+	/** The decided round a comparison of `revision` selects, or undefined for an unattributed comparison. */
+	async round(revision: ComparedRevision, context: Context = backgroundContext): Promise<Round | undefined> {
+		if (revision.round === "unattributed") return undefined;
+		const root = await this.harness.root(context);
+		return root.commit((tx) => this.selected(tx, root.id, revision), context);
+	}
+
+	/**
+	 * The round `revision` selects and its verdict, with the storage that holds its run, or undefined when this storage
+	 * holds none of that round's run: an unattributed comparison, a round that ran elsewhere, or one a later review of
+	 * its revision has replaced in the review index. `MissEvidence.gather` reads a miss's evidence from it.
+	 */
+	async ownedRun(
+		revision: ComparedRevision,
+		context: Context = backgroundContext,
+	): Promise<{ readonly storage: Storage; readonly round: Round; readonly verdict: Verdict } | undefined> {
+		if (revision.round === "unattributed") return undefined;
+		const root = await this.harness.root(context);
+		return root.commit(async (tx) => {
+			const round = await this.selected(tx, root.id, revision);
+			const verdict = round.verdict();
+			const owner = (await tx.doc(ReviewIndex, root.id)).reviews[round.revisionKey()]?.adjudication?.task;
+			return verdict !== undefined && round.stored.tasks.some((task) => task === owner)
+				? { storage: this.storage, round, verdict }
+				: undefined;
 		}, context);
 	}
 

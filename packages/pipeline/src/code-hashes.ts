@@ -20,7 +20,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/comparison.ts": "e86847d78aa8dd6df21dd9dfa4147074b391afaad89b6a1aef806fdae48d74f0",
 
-	"packages/core/src/config.ts": "7bdeeb890b93c90f520e2bb603b6965bf0188f69c94dabd315258fe276a77dde",
+	"packages/core/src/config.ts": "59a6c568ec0c5e5ef9b71eaa908315e7e6dce4e717a6e94feb25b81d26a3bc15",
 
 	"packages/core/src/coverage-artifacts.ts": "e917782d458832146c703ef0e8c35ce8b9eb3fb17d033721fdc28a5ab512aa4a",
 
@@ -146,7 +146,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
 
-	"packages/pipeline/src/compare.ts": "92259fab884ae2da5cefd8a990dc534f2b6d16bbb41fe1ce9c48b2046998ef51",
+	"packages/pipeline/src/compare.ts": "99e347ec6633b9f161c160176402fbe9478b42878188cd9bb5b961a510195e97",
 
 	"packages/pipeline/src/configurations.ts": "7b4ac90ce8d882b91050c1f49f391bf27cb99d9f1a354e91b0ef77eb35d495c6",
 
