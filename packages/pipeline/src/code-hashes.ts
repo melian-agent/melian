@@ -214,7 +214,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/static.ts": "7ed2b5c656e5932ad7308b5e42e0ef732b7ce3a8abc2cb9ad59942fc20de8864",
 
-	"packages/pipeline/src/summarize.ts": "a2efff4992c69a6f4dea9441aaa4393aac05a4171a98fc6001b944b6b6f70936",
+	"packages/pipeline/src/summarize.ts": "c98831283fa4d732c30fe7a744b245c739c5bd3e0549b6fd7ed0f84bb8740aa7",
 
 	"packages/pipeline/src/supersession.ts": "5bc57a9f8c1d31f62eac8bf85d80eac78f47c885062de6255c052a346e4db321",
 

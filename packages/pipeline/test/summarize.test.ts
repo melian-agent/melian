@@ -23,12 +23,13 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
-import type { TaskId } from "../src/harness.ts";
+import type { ConversationId, TaskId } from "../src/harness.ts";
 import {
 	exportedWalkthrough,
 	publishedWalkthrough,
 	publishedWalkthroughNote,
 	SummaryIndex,
+	SummaryResult,
 	SummaryTask,
 	summarizeExtension,
 	WalkthroughPrompt,
@@ -410,6 +411,102 @@ describe("walkthrough summaries", () => {
 				model: fallback,
 			});
 		}, context);
+	});
+	describe("on a light route whose first model refuses", () => {
+		const limit = "You have hit your ChatGPT usage limit (plus plan). Try again in ~5 min.";
+		const filtered = "The model refused to complete the request";
+		const failed = (errorMessage: string) => fauxAssistantMessage("", { stopReason: "error", errorMessage });
+		// Each reply records the model it reached, so a test asserts the request reached the fallback. The first also reads
+		// the walkthrough's own conversation from its running task, since a terminal task keeps no checkpoint.
+		let child: Promise<ConversationId> | undefined;
+		const routed = (replies: ReturnType<typeof fauxAssistantMessage>[]) => {
+			const used: string[] = [];
+			child = undefined;
+			scriptConversations(models, [
+				{
+					match: "You write Melian's walkthrough",
+					replies: replies.map((reply) => (_messages: unknown, model: string) => {
+						used.push(model);
+						child ??= running();
+						return reply;
+					}),
+				},
+			]);
+			return used;
+		};
+		async function running(): Promise<ConversationId> {
+			const root = await harness.root(context);
+			const task = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[
+				Revision.key(changeset.revision)
+			]!;
+			const record = await harness.getTask(task as TaskId, context);
+			return (record!.state.checkpoint as { child: ConversationId }).child;
+		}
+		const onRoute = (): MelianConfig => {
+			const [head, fallback] = [models.ref("scripted"), models.ref("other")];
+			return {
+				...config,
+				models: {
+					light: {
+						model: `${head.provider}/${head.modelId}`,
+						fallbacks: [`${fallback.provider}/${fallback.modelId}`],
+					},
+				},
+			};
+		};
+		// The models the walkthrough's own conversation records: the one that answered and those that refused before it.
+		async function answered() {
+			const { model, refused } = (await harness.snapshot(SummaryResult, await child!, context)) ?? {};
+			return { model, refused };
+		}
+		const name = (id: string) => `${models.ref(id).provider}/${id}`;
+		it.each([
+			["a usage limit", limit],
+			["a content filter's refusal", filtered],
+		])("moves to the next model on %s, and records which refused and which answered", async (_label, message) => {
+			const used = routed([failed(message), success()]);
+			const unlock = vi.fn(async () => {});
+			const revision = Revision.key(changeset.revision);
+			const doc = await summarize({ config: onRoute(), unlockModels: unlock });
+			expect(used).toEqual(["scripted", "other"]);
+			expect(written(doc, revision)?.summary).toBe("Changes a value.");
+			expect(writtenRoute(doc, revision)).toBe(`${name("scripted")}@`);
+			expect(doc?.walkthroughNotes?.[revision]).toBeUndefined();
+			expect(unlock.mock.calls).toEqual([[[models.ref("scripted").provider]]]);
+			expect(await answered()).toEqual({ model: name("other"), refused: [name("scripted")] });
+			expect(JSON.stringify(doc)).not.toContain(message);
+		});
+		it("records only the answering model when the first model answers", async () => {
+			const used = routed([success()]);
+			await summarize({ config: onRoute() });
+			expect(used).toEqual(["scripted"]);
+			expect(await answered()).toEqual({
+				model: name("scripted"),
+				refused: undefined,
+			});
+		});
+		it("stops at the first model on a failure that is not the route's to move past", async () => {
+			const used = routed([failed("400 invalid_request_error"), success()]);
+			const revision = Revision.key(changeset.revision);
+			const doc = await summarize({ config: onRoute() });
+			expect(used).toEqual(["scripted"]);
+			expect(written(doc, revision)).toBeUndefined();
+			expect(doc?.walkthroughNotes?.[revision]).toBe(
+				"No walkthrough available. The summariser returned no summary.",
+			);
+		});
+		it("leaves the fixed note when every model of the route refuses", async () => {
+			const used = routed([failed(limit), failed(filtered)]);
+			const revision = Revision.key(changeset.revision);
+			const doc = await summarize({ config: onRoute() });
+			expect(used).toEqual(["scripted", "other"]);
+			expect(written(doc, revision)).toBeUndefined();
+			expect(doc?.walkthroughNotes?.[revision]).toBe(
+				"No walkthrough available. The summariser returned no summary.",
+			);
+			expect(JSON.stringify(doc)).not.toContain(limit);
+			expect(await answered()).toEqual({ model: undefined, refused: [name("scripted"), name("other")] });
+		});
 	});
 	it("stores fixed notes for provider errors and no tool call, then stops after two attempts", async () => {
 		const revision = Revision.key(changeset.revision);
