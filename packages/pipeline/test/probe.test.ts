@@ -1755,7 +1755,7 @@ describe("a probe's git and Node conditions", () => {
 
 	async function seen(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}) {
 		const script =
-			'import { readlinkSync } from "node:fs";\nconst entry = process.env.PATH.split(":")[1];\nconsole.log(process.env.PATH);\ntry { console.log(readlinkSync(`${entry}/git`)); } catch {}\n';
+			'import { readlinkSync } from "node:fs";\nconst entry = process.env.PATH.split(":")[1];\nconsole.log(process.env.PATH);\ntry { console.log(readlinkSync(entry + "/git")); } catch {}\n';
 		const probe = await Probe.open({ script }, options(sandbox, more));
 		try {
 			return { policy: probe.policy, result: await probe.run() };
