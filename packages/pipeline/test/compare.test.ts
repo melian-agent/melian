@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Adjudication,
+	Changeset,
 	Comparison,
 	ComparisonError,
 	ComparisonSet,
@@ -25,6 +26,7 @@ import {
 	maxReviewerFileBytes,
 	openSqliteStorage,
 	type TaskId,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1268,6 +1270,34 @@ describe("ComparisonCauses", () => {
 			"change",
 		);
 		expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
+	});
+
+	it("reads `no record` for a round whose run it holds when the clone lacks its commits, and rethrows another failure", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "needs-execution",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const entries = await ComparisonReader.open(storage).read("change");
+		const telemetry = await TelemetryReader.open(storage).read("unrelated");
+		const round = vi.spyOn(TelemetryReader.prototype, "round").mockResolvedValue(telemetry);
+		const resolve = vi.spyOn(Changeset, "resolve");
+		try {
+			// The directory holds no repository, so neither of the round's commits resolves.
+			const [entry] = await ComparisonCauses.open(storage, directory).read(entries, "change");
+			expect(round).toHaveBeenCalledTimes(1);
+			expect(resolve).toHaveBeenCalledTimes(1);
+			await expect(resolve.mock.results[0]!.value).rejects.toMatchObject({ name: "ChangesetError" });
+			expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
+			const failure = new Error("git could not start");
+			resolve.mockRejectedValueOnce(failure);
+			await expect(ComparisonCauses.open(storage, directory).read(entries, "change")).rejects.toBe(failure);
+		} finally {
+			round.mockRestore();
+			resolve.mockRestore();
+		}
 	});
 
 	it("reads a valid miss judged out of scope too, though recall leaves it out", async () => {
