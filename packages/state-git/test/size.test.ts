@@ -81,7 +81,9 @@ describe("a tip's size", () => {
 		expect(() => TipSize.parse({ entries: entryLimit, listingBytes: 0 })).toThrow();
 		expect(() => TipSize.parse({ entries: entryLimit + 1, listingBytes: -1 })).toThrow();
 		expect(() => TipSize.parse({ entries: entryLimit + 1.5, listingBytes: 0 })).toThrow();
-		expect(() => TipSize.pastEntryLimit({ entries: entryLimit, listingBytes: 0 })).toThrow();
+		expect(() => TipSize.pastEntryLimit({ entries: entryLimit, listingBytes: 0 })).toThrow(
+			"a tip past its entry limit holds more than 65,536 entries and a whole number of listing bytes",
+		);
 	});
 
 	it("warns of no count at exactly half its limit", () => {
