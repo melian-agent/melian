@@ -39,12 +39,14 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { VerdictDocument } from "../src/adjudication.ts";
+import { adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import type { CheckRunRecord } from "../src/checks.ts";
-import { clearVerifications, FindingsDocument, upsertFinding, upsertVerification } from "../src/findings.ts";
+import { FindingsDocument, type FindingsState, upsertFinding, upsertVerification } from "../src/findings.ts";
 import { defineDoc, type JsonObject, openJsonlStorage, openSqliteStorage } from "../src/harness.ts";
 import { RelayBatch, RelayRefusal, relayLimits } from "../src/record-relay.ts";
-import { ReviewRecords } from "../src/review-records.ts";
+import { startAdjudication } from "../src/review.ts";
+import { ReviewIndex } from "../src/review-index.ts";
+import { ReviewRecords, recordTooLarge } from "../src/review-records.ts";
 import { baseAndHead, isolatedGitEnv, lines } from "./fixtures/repo.ts";
 import { twoLensTiers } from "./fixtures/review-scenario.ts";
 
@@ -198,61 +200,143 @@ describe("the room measured from a record with no sightings", () => {
 });
 
 describe("a check the measure fails keeps its local findings", () => {
-	it("gives the local verdict the groups and blocking the shared record, which holds none of them, gives", () => {
+	it("reads not reviewed locally, as the shared record, which holds none of them, does", () => {
 		const findings = Array.from({ length: 3 }, (_, index) => guardrail(index, "pad"));
-		// The design fails the check in the adjudication input and exports its record with no sightings, but nothing
-		// removes its sightings from the findings document, which adjudication reads.
+		const checks = [{ name: "guardrails", status: "failed", reason: "recordTooLarge" }] as const;
 		const local = new Adjudication({
 			findings,
 			manifest: ["guardrails"],
-			checks: [{ name: "guardrails", status: "failed", reason: "recordTooLarge" }],
+			checks: [...checks],
 			config: defaultConfig,
-		}).adjudicate();
+		});
 		const shared = new Adjudication({
 			findings: [],
 			manifest: ["guardrails"],
-			checks: [{ name: "guardrails", status: "failed", reason: "recordTooLarge" }],
+			checks: [...checks],
 			config: defaultConfig,
-		}).adjudicate();
-		expect(local.status).toBe("not-reviewed");
-		expect({ blocking: local.blocking, all: local.all().length }).toEqual({
-			blocking: shared.blocking,
-			all: shared.all().length,
 		});
+		expect([local.adjudicate().status, shared.adjudicate().status]).toEqual(["not-reviewed", "not-reviewed"]);
 	});
 });
 
-describe("the findings version the builder reads", () => {
-	it("is the version adjudication decides from, even when the verifier was refused", async () => {
-		const harness = await openHarness(createMemoryStorage(), {
+describe("the adjudication commit's measure", () => {
+	const revision = `${base}..${head}`;
+	let harness: Harness;
+	beforeEach(async () => {
+		harness = await openHarness(createMemoryStorage(), {
 			models: createFakeModels().models,
 			registry: createReviewRegistry(),
 		});
-		try {
-			const root = await harness.root(context);
-			const revision = `${base}..${head}`;
-			const finding = guardrail(0, "pad");
-			await root.commit(async (tx) => {
-				await upsertFinding(tx, root.id, finding, revision);
-				await upsertVerification(tx, root.id, revision, finding.id, finding.properties.source, {
-					verdict: "confirmed",
-					reason: "Seen.",
-					executor: "llm",
-					model: "fake/light",
-					version: "1",
-				} as never);
-			}, context);
-			// The builder reads here, before adjudicationInput.
-			const read = (await harness.snapshot(FindingsDocument, root.id, context))!.versions[revision] ?? 0;
-			// startAdjudication with verificationRefused clears verifications in its own commit (review.ts:2115).
-			await root.commit(async (tx) => {
-				await clearVerifications(tx, root.id, revision);
-			}, context);
-			const decided = (await harness.snapshot(FindingsDocument, root.id, context))!.versions[revision] ?? 0;
-			expect(decided).toBe(read);
-		} finally {
-			await harness.close(context);
-		}
+	});
+	afterEach(async () => {
+		await harness.close(context);
+	});
+
+	// A guardrails finding with the verifier's confirmation, and the input a review builds from the version it read.
+	async function verified() {
+		const root = await harness.root(context);
+		const finding = guardrail(0, "pad");
+		await root.commit(async (tx) => {
+			await upsertFinding(tx, root.id, finding, revision);
+			await upsertVerification(tx, root.id, revision, finding.id, finding.properties.source, {
+				verdict: "confirmed",
+				reason: "Seen.",
+				executor: "llm",
+				model: "fake/light",
+				version: "1",
+			} as never);
+		}, context);
+		const read = (await harness.snapshot(FindingsDocument, root.id, context))!;
+		const input = adjudicationInput({
+			root: root.id,
+			repoRoot: "/nonexistent",
+			base,
+			head,
+			policy: undefined,
+			config: defaultConfig,
+			manifest: ["guardrails"],
+			checks: [{ name: "guardrails", status: "ran" }],
+			findingsVersion: read.versions[revision] ?? 0,
+			allowSkip: [],
+			producers: [{ check: "guardrails" }],
+			origin: { kind: "range" },
+			lenses: [],
+		});
+		const confirmed = (state: FindingsState) => Object.keys(state.items[finding.id]?.verifications ?? {}).length > 0;
+		return { root, input, read, confirmed };
+	}
+
+	it("measures, when the verifier was refused, the findings version adjudication then decides from", async () => {
+		const { input, read, confirmed } = await verified();
+		const seen: { version: number; confirmed: boolean }[] = [];
+		const started = await startAdjudication(
+			harness,
+			input,
+			[],
+			undefined,
+			undefined,
+			true,
+			undefined,
+			context,
+			(state) => {
+				seen.push({ version: state.versions[revision] ?? 0, confirmed: confirmed(state) });
+				return { built: state.versions[revision] ?? 0 };
+			},
+		);
+		const task = await harness.getTask(started!.task, context);
+		const decided = (task!.input as unknown as { findingsVersion: number }).findingsVersion;
+		expect(seen).toEqual([{ version: decided, confirmed: false }]);
+		expect(started!.built).toBe(decided);
+		expect(decided).not.toBe(read.versions[revision] ?? 0);
+	});
+
+	it("leaves the commit unmade when the measure throws, the cleared verifications and the index with it", async () => {
+		const { root, input, confirmed } = await verified();
+		await expect(
+			startAdjudication(harness, input, [], undefined, undefined, true, undefined, context, () => {
+				throw new Error("measure failed");
+			}),
+		).rejects.toThrow("measure failed");
+		expect(confirmed((await harness.snapshot(FindingsDocument, root.id, context))!)).toBe(true);
+		expect((await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision]).toBeUndefined();
+	});
+
+	it("adds the round's failure to the checks adjudication decides from, and attaches no task the measure has not seen", async () => {
+		const { input } = await verified();
+		const failure = { name: "records", status: "failed", reason: "too large" } as const;
+		const started = await startAdjudication(
+			harness,
+			input,
+			[],
+			undefined,
+			undefined,
+			false,
+			undefined,
+			context,
+			() => ({
+				built: undefined,
+				failure,
+			}),
+		);
+		const task = await harness.getTask(started!.task, context);
+		expect((task!.input as unknown as { checks: unknown[] }).checks).toEqual([
+			{ name: "guardrails", status: "ran" },
+			failure,
+		]);
+		const again = await startAdjudication(
+			harness,
+			input,
+			[],
+			undefined,
+			undefined,
+			false,
+			undefined,
+			context,
+			() => ({
+				built: undefined,
+			}),
+		);
+		expect(again!.task).not.toBe(started!.task);
 	});
 });
 
@@ -318,6 +402,19 @@ describe("the relay's sum and the record bytes", () => {
 		await expect(RelayBatch.read(await written(past), writer)).rejects.toSatisfy(
 			(error: unknown) => error instanceof RelayRefusal && error.code === "batchTooLarge",
 		);
+		expect(records().unrecordable(at)).toBeUndefined();
+		expect(records().unrecordable(past)).toBe(
+			`The round's records come to ${relayLimits.bytes + 1} bytes, past the relay's 8 MiB batch of ${relayLimits.bytes} bytes, so Melian records no round.`,
+		);
+	}, 60_000);
+
+	it("records a record of exactly the store's limit and refuses one a byte past", () => {
+		const step = bytes(guardrailsOf(2)) - bytes(guardrailsOf(1));
+		const pad = 1 + (recordLimit - bytes(guardrailsOf(1))) / step;
+		expect(bytes(guardrailsOf(pad))).toBe(recordLimit);
+		expect(records().unrecordable([guardrailsOf(pad)])).toBeUndefined();
+		expect(bytes(guardrailsOf(pad + 1))).toBe(recordLimit + step);
+		expect(records().unrecordable([guardrailsOf(pad + 1)])).toBe(recordTooLarge);
 	});
 });
 
@@ -394,7 +491,13 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 	});
 
 	// Each named lens reports `count` findings, one a turn, each with `size` bytes of text.
-	async function review(store: RecordStore, size: number, count: number, named: readonly string[]) {
+	async function review(
+		store: RecordStore,
+		size: number,
+		count: number,
+		named: readonly string[],
+		reporters: readonly string[] = ["contracts"],
+	) {
 		const fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "light" }] });
 		const heavy = fake.ref("heavy");
 		const light = fake.ref("light");
@@ -412,26 +515,31 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 			registry: createReviewRegistry(),
 			settings: { retry: { enabled: false } },
 		});
-		const report = (line: number) => ({
+		const report = (line: number, rule: string) => ({
 			file: "src/a.ts",
 			line,
-			rule: "changed-return",
+			rule,
 			severity: "P2",
 			explanation: { what: `It is 2 now. ${"w".repeat(size)}`, why: "This change rewrote it.", fix: "Restore 1." },
 			failureScenario: "A caller that reads it expects 1 and gets 2.",
 			evidence: [{ file: "src/a.ts", line, role: "cause" }],
 		});
-		const answer = (messages: readonly Message[]) => {
+		const answer = (rule: string) => (messages: readonly Message[]) => {
 			const done = messages.filter((message) => message.role === "toolResult").length;
 			return done < count
-				? fauxAssistantMessage(fauxToolCall("report_finding", report(done + 1)), { stopReason: "toolUse" })
+				? fauxAssistantMessage(fauxToolCall("report_finding", report(done + 1, rule)), { stopReason: "toolUse" })
 				: fauxAssistantMessage("No findings.");
 		};
-		const replies = Array.from({ length: count + 3 }, () => answer);
-		scriptConversations(fake, [
-			{ match: "You are the correctness reviewer", replies: [() => fauxAssistantMessage("No findings.")] },
-			{ match: "You are the contracts reviewer", replies },
-		]);
+		const rules: Record<string, string> = { correctness: "wrong-result", contracts: "changed-return" };
+		scriptConversations(
+			fake,
+			Object.entries(rules).map(([lens, rule]) => ({
+				match: `You are the ${lens} reviewer`,
+				replies: reporters.includes(lens)
+					? Array.from({ length: count + 3 }, () => answer(rule))
+					: [() => fauxAssistantMessage("No findings.")],
+			})),
+		);
 		const resolved = await Changeset.resolve(repo, "main...feature");
 		let thrown: unknown;
 		let verdict: { status: string; notRun?: readonly { name: string; reason?: string }[] } | undefined;
@@ -531,16 +639,18 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 	}, 60_000);
 
 	it("whose batch passes 8 MiB, each record under 4 MiB, fails the round naming the bound and the batch's size", async () => {
-		const { thrown, verdict, sizes, relay } = await relayed(1_047_600);
-		const total = sizes.reduce((a, b) => a + b, 0);
-		// Today the review stands with findings, and the relay then refuses the batch.
-		void relay;
-		expect(Math.max(...sizes)).toBeLessThanOrEqual(recordLimit);
-		expect(total).toBeGreaterThan(relayLimits.bytes);
+		const store = new MemoryRecordStore({ payloads: reviewPayloads });
+		const both = ["correctness", "contracts"];
+		const { thrown, verdict, stored, listed } = await review(store, 698_300, 4, both, both);
 		expect(thrown).toBeUndefined();
 		expect(verdict?.status).toBe("not-reviewed");
+		expect(stored.map(({ status }) => status)).toEqual(["not-reviewed"]);
 		const reason = verdict?.notRun?.find(({ name }) => name === "records")?.reason ?? "";
-		expect(reason).toContain("8 MiB");
-		expect(reason).toContain(String(total));
+		expect(reason).toContain(`past the relay's 8 MiB batch of ${relayLimits.bytes} bytes`);
+		const total = Number(/come to (\d+) bytes/.exec(reason)?.[1]);
+		expect(total).toBeGreaterThan(relayLimits.bytes);
+		// Every record fit the store, so it is the batch alone that fails the round.
+		expect(total).toBeLessThanOrEqual(2 * recordLimit + 64 * 1024);
+		expect(listed).toEqual([]);
 	});
 });

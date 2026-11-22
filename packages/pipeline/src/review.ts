@@ -33,6 +33,7 @@ import {
 	type ModelRoute,
 	ModelRoutingError,
 	parseModelReference,
+	type RecordEnvelope,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -2085,10 +2086,15 @@ async function callersFor(
 	}, context);
 }
 
+// What a round's export measures from the findings adjudication will decide from: what it built, and the failed check
+// adjudication reads in its place when the round cannot be recorded.
+export type Measured<Built> = { readonly built: Built; readonly failure?: CheckRecord };
+
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
 // to the task the first call created. A call with other input, such as a static check that has since run, creates a
-// task and records it as the head's, and a task an earlier call created then records no verdict.
-async function startAdjudication(
+// task and records it as the head's, and a task an earlier call created then records no verdict. `measure` reads the
+// findings in the same commit, after any clear, so what it builds is what adjudication decides from.
+export async function startAdjudication<Built = undefined>(
 	harness: Harness,
 	input: AdjudicationTaskInput,
 	selection: readonly string[],
@@ -2098,7 +2104,8 @@ async function startAdjudication(
 	verificationRefused: boolean,
 	checkRun: string | undefined,
 	context: Context,
-): Promise<TaskId<AdjudicationResult> | undefined> {
+	measure?: (findings: FindingsState) => Measured<Built>,
+): Promise<{ task: TaskId<AdjudicationResult>; built: Built | undefined } | undefined> {
 	const root = await harness.root(context);
 	return root.commit(async (tx) => {
 		const index = await tx.doc(ReviewIndex, root.id);
@@ -2117,6 +2124,10 @@ async function startAdjudication(
 			deciding.findingsVersion = (await tx.doc(FindingsDocument, input.root)).versions[revision] ?? 0;
 			if (known?.verification !== undefined) known = omit(omit(known, "verification"), "adjudication");
 		}
+		const measured = measure?.(await tx.doc(FindingsDocument, input.root));
+		if (measured?.failure !== undefined)
+			deciding.checks = [...deciding.checks, { ...measured.failure } as AdjudicationTaskInput["checks"][number]];
+		const built = measured?.built;
 		// The details ride with the verdict but are not part of what it was decided from.
 		const key = adjudicationKey({ ...deciding, details: undefined });
 		// A failed adjudication is always rerun: it is cheap, and its failure, such as a base commit a shallow clone had
@@ -2129,14 +2140,14 @@ async function startAdjudication(
 			(await attachable(tx, known.adjudication.task, retry))
 		) {
 			await rounds.keep(revision, known.adjudication.task, checkRun);
-			return known.adjudication.task as TaskId<AdjudicationResult>;
+			return { task: known.adjudication.task as TaskId<AdjudicationResult>, built };
 		}
 		const created = await tx.createTask(AdjudicationTask, deciding, { ownership: { kind: "conversation" } });
 		await rounds.mint(revision, created, new Date().toISOString(), checkRun);
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const entry = same ? known : { lenses: [...selection] };
 		index.reviews[revision] = { ...entry, adjudication: { task: created, input: key } };
-		return created;
+		return { task: created, built };
 	}, context);
 }
 
@@ -3261,13 +3272,12 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// The record of each run with an outcome and a request key, with the findings it reported at this revision and the
 	// check `decided` holds for it once adjudication has decided. A run an older Melian created has no request key, and so
 	// no record.
-	const lensRecords = async (
+	const lensRecords = (
 		runs: readonly LensRun[],
 		outcomes: LensResult,
-		decided: ReadonlyMap<string, CheckRecord> = new Map(),
-		read?: FindingsState,
-	): Promise<{ name: string; record: SharedRecord; check?: CheckRecord }[]> => {
-		const state = read ?? (await harness.snapshot(FindingsDocument, root, context));
+		decided: ReadonlyMap<string, CheckRecord>,
+		state: FindingsState,
+	): { name: string; record: SharedRecord; check?: CheckRecord }[] => {
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		return runsOf(runs).flatMap((run) => {
 			const outcome = outcomes[run.key];
@@ -3281,7 +3291,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					record: records.lens(
 						{ ...identity, probe: run.probe !== undefined },
 						outcome,
-						state === undefined ? [] : producerSightings(state, reviewed, source),
+						producerSightings(state, reviewed, source),
 						check,
 					),
 					...(check === undefined ? {} : { check }),
@@ -3289,12 +3299,13 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			];
 		});
 	};
-	// Exports the round's records once adjudication has decided: each check's, each lens run's with the check `decided`
-	// holds for it, the verification's, the account, and the round that names them. `adjudicated` is every check record
-	// adjudication read, so the account fills each skip or failure no record carries. A repeat review writes the same
-	// bytes, so its round names no round of its own key as replaced.
-	const exportRound = async (
-		store: RecordStore,
+	// The round's records, from the findings adjudication decides from: each check's, each lens run's with the check
+	// `decided` holds for it, the verification's, the account, and the round that names them. `adjudicated` is every
+	// check record adjudication reads, so the account fills each skip or failure no record carries. A repeat review
+	// writes the same bytes, so its round names no round of its own key as replaced. `stored` is what the store held.
+	const roundRecords = (
+		proof: StaticProof,
+		stored: readonly RecordEnvelope[],
 		run: CheckRun | undefined,
 		checks: readonly CheckRecord[],
 		adjudicated: readonly CheckRecord[],
@@ -3302,19 +3313,16 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		verification: SharedRecord | undefined,
 		accounted: Manifest,
 		producers: readonly Producer[],
-		walkthrough: SharedRecord | undefined,
-		state: FindingsState | undefined,
+		state: FindingsState,
 		resolutionPolicy: string | null,
-	) => {
+	): { read: SharedRecord[]; before: string[] } => {
 		const records = ReviewRecords.of(changeset.id, { base, head });
-		const sighted = (source: FindingSource) =>
-			state === undefined ? [] : producerSightings(state, reviewed, source);
+		const sighted = (source: FindingSource) => producerSightings(state, reviewed, source);
 		const request = run?.request ?? null;
 		// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
 		// under a stored request that asks for check code that stores no tool text. A run handed in proves nothing alone.
 		// The stamp names the check task that wrote them, which must be the one the run's own task recorded. A request that did
 		// not key everything its run read vouches for no result to another host, whatever its task.
-		const proof = await StaticProof.read(harness, root, context, run?.identity);
 		const unshared = (check: string): "withheld" | "unkeyed" | undefined =>
 			run === undefined || !proof.proves(state, reviewed, check, run.request)
 				? "withheld"
@@ -3353,7 +3361,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			} as unknown as CheckRunRecord;
 			return [{ name: check.name, record: records.check(request, result, sightings) }];
 		});
-		const lenses = await lensRecords(ran.lenses, lensResult ?? {}, decided, state);
+		const lenses = lensRecords(ran.lenses, lensResult ?? {}, decided, state);
 		const counted = [
 			...exported,
 			...lenses,
@@ -3393,23 +3401,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			resolutionPolicy,
 		});
 		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
-		const stored = await store.list(changeset.id);
-		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
-		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
-		// issue #395 data it had to distrust.
-		const round = records.round(
-			read,
-			walkthrough,
-			[],
+		const previous = state.revisions.filter((each) => each !== reviewed).at(-1);
+		const before =
 			previous === undefined
 				? []
 				: stored
 						.filter((each) => each.kind === "round" && each.revision === previous)
-						.map((each) => SharedRecord.parseEnvelope(each).id),
-		);
-		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
-		);
+						.map((each) => SharedRecord.parseEnvelope(each).id);
+		return { read, before };
 	};
 	// What the host's `lensesStarted` returned, which settles once its walkthrough has, and when the host was called.
 	let walkthrough: { at: number; done: Promise<unknown> } | undefined;
@@ -3844,8 +3843,52 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			})),
 		standards: [...new Set(settled.flatMap(({ run }) => run.standards ?? []))],
 	};
+	const exported = request.records === undefined ? undefined : await request.records.list(changeset.id);
+	// A static check's result is shared only when the store shows the run's own terminal commit wrote its sightings,
+	// under a stored request that asks for check code that stores no tool text, so the proof is read before the commit.
+	const proof = exported === undefined ? undefined : await StaticProof.read(harness, root, context, run?.identity);
+	const adjudicatedChecks = verificationCheck === undefined ? checks : [...checks, verificationCheck];
+	const recorder = ReviewRecords.of(changeset.id, { base, head });
+	// The round's records, measured in the adjudication commit from the findings it decides from, so a round that cannot
+	// be recorded reads not reviewed here as on every other host, and what is exported is what was measured.
+	const measure =
+		exported === undefined || proof === undefined
+			? undefined
+			: (
+					state: FindingsState,
+				): Measured<{ read: SharedRecord[]; before: string[]; version: number } | undefined> => {
+					const verification =
+						verified === undefined || verificationCheck === undefined
+							? undefined
+							: recorder.verification(verified.key, {
+									claims: verificationClaims(state, reviewed, producers),
+									dismissals: [],
+									outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
+										candidate,
+										outcome: verificationOutcome(outcome),
+									})),
+									check: verificationCheck,
+								});
+					const { read, before } = roundRecords(
+						proof,
+						exported,
+						run,
+						options.checks ?? [],
+						adjudicatedChecks,
+						decided,
+						verification,
+						accounted,
+						producers,
+						state,
+						input.resolutionPolicy ?? null,
+					);
+					const reason = recorder.unrecordable([...read, recorder.round(read, undefined, [], before)]);
+					return reason === undefined
+						? { built: { read, before, version: state.versions[reviewed] ?? 0 } }
+						: { built: undefined, failure: { name: "records", status: "failed", reason } };
+				};
 	spans.end();
-	const adjudication = await startAdjudication(
+	const started = await startAdjudication(
 		harness,
 		input,
 		selectionOf(lenses),
@@ -3854,8 +3897,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		verificationRefused,
 		JSON.stringify(run?.identity),
 		context,
+		measure,
 	);
-	if (adjudication === undefined) throw replaced();
+	if (started === undefined) throw replaced();
+	const { task: adjudication, built } = started;
 	const rounds = (await harness.snapshot(RoundsDocument, root, context))!;
 	spans.bindRound(Object.entries(rounds.items).find(([, round]) => round.tasks.includes(adjudication))![0]);
 	if (verificationRefused) await abortReplacedRuns(harness, context);
@@ -3889,21 +3934,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
-	if (request.records !== undefined && owned) {
-		const findings = findingsDecided;
-		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
-		const verification =
-			verified === undefined || verificationCheck === undefined
-				? undefined
-				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
-						claims,
-						dismissals: [],
-						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
-							candidate,
-							outcome: verificationOutcome(outcome),
-						})),
-						check: verificationCheck,
-					});
+	// The export is the set the adjudication commit measured, from the findings version adjudication then decided from.
+	if (request.records !== undefined && owned && built !== undefined && decision.findingsVersion === built.version) {
 		// The round waits for the walkthrough for what is left of the wait, and a walkthrough that has not settled by then,
 		// or that failed or is not the one publication posts, leaves it with none.
 		const written =
@@ -3920,25 +3952,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						});
 					});
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
-		await exportRound(
-			request.records,
-			run,
-			options.checks ?? [],
-			verificationCheck === undefined ? checks : [...checks, verificationCheck],
-			decided,
-			verification,
-			accounted,
-			producers,
-			summary === undefined
-				? undefined
-				: ReviewRecords.of(changeset.id, { base, head }).walkthrough(
-						summary.key,
-						summary.route,
-						summary.walkthrough,
-					),
-			findings,
-			input.resolutionPolicy ?? null,
-		);
+		const told =
+			summary === undefined ? undefined : recorder.walkthrough(summary.key, summary.route, summary.walkthrough);
+		const { read, before } = built;
+		// The walkthrough joins only a round that still fits with it, and the relay takes none, so one that does not fit
+		// leaves the round measured without it.
+		const shown = told === undefined ? undefined : [...read, told, recorder.round(read, told, [], before)];
+		const batch =
+			shown !== undefined && recorder.unrecordable(shown) === undefined
+				? shown
+				: [...read, recorder.round(read, undefined, [], before)];
+		await request.records.add(batch.map((record) => record.toJSON()));
 	}
 	const exhausted = settled.flatMap(({ run, outcome }) =>
 		outcome?.status === "exhausted" ? [{ lens: run.name, ...outcome }] : [],

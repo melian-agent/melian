@@ -17,6 +17,7 @@ import {
 	Revision,
 	type RunStage,
 	recordCodes,
+	recordLimit,
 	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
@@ -38,6 +39,7 @@ import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
+import { relayLimits } from "./record-relay.ts";
 import type { StaticProof } from "./static-proof.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
@@ -104,6 +106,10 @@ const micros = (dollars: number): number => Math.round(dollars * 1_000_000);
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 
 export { withheld };
+
+/** Why a round is not recorded when one of its records passes the store's limit, which names no record's text. */
+export const recordTooLarge =
+	"A record of the round passes the store's 4 MiB limit even with its findings' detail left out, so Melian records no round.";
 
 const codes: ReadonlySet<string> = new Set(recordCodes);
 const outcomes: ReadonlySet<string> = new Set(telemetryOutcomes);
@@ -333,6 +339,19 @@ export class ReviewRecords {
 		};
 		const key = KeyedRequest.of("round", { revision: this.revision, read: named.map((each) => each.id) }).key;
 		return this.#record("round", key, manifest);
+	}
+
+	/**
+	 * Why a round of `made` cannot be recorded, or `undefined` when each record fits the store and all of them fit one
+	 * relay batch. Each is measured by its canonical bytes, which every store writes and the relay sums.
+	 */
+	unrecordable(made: readonly SharedRecord[]): string | undefined {
+		const sizes = made.map((record) => Buffer.byteLength(record.bytes));
+		if (sizes.some((size) => size > recordLimit)) return recordTooLarge;
+		const total = sizes.reduce((sum, size) => sum + size, 0);
+		if (total > relayLimits.bytes)
+			return `The round's records come to ${total} bytes, past the relay's 8 MiB batch of ${relayLimits.bytes} bytes, so Melian records no round.`;
+		return undefined;
 	}
 
 	/**
