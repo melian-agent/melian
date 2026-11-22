@@ -21,6 +21,7 @@ import {
 } from "typescript/unstable/ast";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeadProgram } from "../src/compiler-graph.ts";
+import { runProbe } from "../src/lens-tools.ts";
 import { Probe, probeLimits } from "../src/probe.ts";
 import {
 	type Attack,
@@ -356,6 +357,10 @@ describe("probeFailed", () => {
 		expect(probeFailed(result({ timedOut: true }))).toBe(false);
 		expect(probeFailed(result({ truncated: true }))).toBe(false);
 	});
+
+	it("reads only 125 as a probe that could not test, beside 124 and 126", () => {
+		expect([124, 125, 126].map((exitCode) => probeFailed(result({ exitCode })))).toEqual([true, false, true]);
+	});
 });
 
 describe("probeConclusive", () => {
@@ -365,6 +370,19 @@ describe("probeConclusive", () => {
 		expect(probeConclusive(result({ exitCode: null, signal: "SIGTERM" }))).toBe(false);
 		expect(probeConclusive(result({ exitCode: 0, timedOut: true }))).toBe(false);
 		expect(probeConclusive(result({ exitCode: 0, truncated: true }))).toBe(false);
+	});
+
+	it("reads only 125 as inconclusive, beside 124 and 126", () => {
+		expect([124, 125, 126].map((exitCode) => probeConclusive(result({ exitCode })))).toEqual([true, false, true]);
+	});
+});
+
+// Exit 125 means inconclusive only if the prober knows to use it, and the tool's description is where it learns that.
+describe("run_probe's description", () => {
+	it("tells the prober to exit 125 when its probe cannot test the attack", () => {
+		expect(runProbe.description).toContain(
+			"Exit 0 for the attack's passing outcome, 125 when the probe cannot test its attack, and any other non-zero code when it shows the defect.",
+		);
 	});
 });
 
@@ -381,8 +399,12 @@ describe("the plan as a prober and a verifier read it", () => {
 	});
 
 	it("names the attacks a prober left unanswered", () => {
-		expect(answerPrompt([2])).toMatch(/^Attack 2 has neither/);
-		expect(answerPrompt([1, 3])).toMatch(/^Attacks 1, 3 have neither/);
+		expect(answerPrompt([2])).toMatch(
+			/^Attack 2 has no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
+		expect(answerPrompt([1, 3])).toMatch(
+			/^Attacks 1, 3 have no finding on a probe that failed, nor a probe that passed or a skip\./,
+		);
 	});
 
 	it("keys a claim by its finding and its producer, an absent version as empty", () => {
@@ -430,6 +452,8 @@ describe("the plan as a prober and a verifier read it", () => {
 			[result({ timedOut: true }), "timed out"],
 			[result({ truncated: true }), "printed past its output limit and was ended"],
 			[result({ exitCode: null, signal: "SIGKILL" }), "was ended by SIGKILL"],
+			[result({ exitCode: null, signal: null }), "ended with no record of how"],
+			[result({ exitCode: 125 }), "exited 125 to say it could not test its attack, which shows nothing"],
 		] as const)
 			expect(
 				renderProbeEvidence(

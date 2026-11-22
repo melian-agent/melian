@@ -461,7 +461,7 @@ describe("the arms through a real review", { timeout: 120_000 }, () => {
 
 	it("runs every lens of the parity arm at high thinking, its share, the tool ceiling and probes, and never at quick", async () => {
 		const arm = new ParityArm(1_000_000);
-		const { given, stages } = await reviewThrough(arm, ["correctness", "trust-boundary"]);
+		const { given, stages } = await reviewThrough(arm, ["correctness", "tests", "trust-boundary"]);
 		const shares = arm.shares(given.config, given.lenses, given.files);
 		const design = given.lenses.find((lens) => lens.name === "design" && lens.scope === "")!;
 		const ceiling = (design.levels.deep ?? design.levels.careful).budget.tools;
@@ -476,7 +476,7 @@ describe("the arms through a real review", { timeout: 120_000 }, () => {
 		}
 		// A planner that plans no attacks spawns no prober, so a planner stage is what shows a lens's level probes.
 		const probing = given.lenses.filter((lens) => lens.probeRefusal() === undefined).map((lens) => lens.name);
-		expect(probing.sort()).toEqual(["correctness", "trust-boundary"]);
+		expect(probing.sort()).toEqual(["correctness", "tests", "trust-boundary"]);
 		expect(
 			stages.map((stage) => [nameOf(stage.subject), stage.role ?? "lens"]).sort(([a], [b]) => a!.localeCompare(b!)),
 		).toEqual([...shares.keys()].sort().map((name) => [name, probing.includes(name) ? "planner" : "lens"]));
