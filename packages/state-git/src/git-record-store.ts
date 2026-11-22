@@ -45,9 +45,10 @@ type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
 
 /**
  * What {@link GitRecordStore.retire} did with each changeset it was given: removed its folder, kept it because the
- * folder holds a cell, a lease or a disposal mark, kept it because the folder's tree changed since it was seen, kept it
- * because the folder holds a stray, found no folder there, or kept it unjudged because judging it would take the call
- * past the store's entry or byte limit, for a later call to retire.
+ * folder holds a cell, a lease or a disposal mark, or because its pull request is not known to be merged, kept it
+ * because the folder's tree changed since it was seen, kept it because the folder holds a stray, found no folder
+ * there, or kept it unjudged because judging it would take the call past the store's entry or byte limit, for a later
+ * call to retire.
  */
 export type Retirement = {
 	readonly removed: readonly string[];
@@ -253,15 +254,17 @@ export class GitRecordStore implements RecordStore {
 	}
 
 	/**
-	 * Removes in one commit each changeset in `seen` whose folder at the fresh tip still has the tree ID `seen` gives it
-	 * and holds records alone, so a later `add` starts the changeset afresh. A folder with a cell, a lease or a disposal
-	 * mark, is kept, since rule 3 of the shared record decision never recreates such a changeset. It
+	 * Removes in one commit each changeset in `seen` whose folder at the fresh tip still has the tree ID `seen` gives it,
+	 * whose name `merged` holds, and which holds records alone, so a later `add` starts the changeset afresh. `merged`
+	 * names the changesets whose pull requests GitHub says are merged; any other is kept unread, since a pull request
+	 * that can reopen would read a late relay's old round as standing. A folder with a cell, a lease or a disposal mark,
+	 * is kept, since rule 3 of the shared record decision never recreates such a changeset. It
 	 * pushes only a commit that removes whole changeset folders and changes nothing else, and pushes that whatever the
 	 * tip's totals, so it can bring a tip past the store's limits back under. It judges folders, in `seen`'s order, only
 	 * while their entries and readable bytes together stay within those limits, and defers the rest unread. Every lost
 	 * race re-decides on the new tip.
 	 */
-	async retire(seen: ReadonlyMap<string, string>): Promise<Retirement> {
+	async retire(seen: ReadonlyMap<string, string>, merged: ReadonlySet<string>): Promise<Retirement> {
 		if (this.#closed) throw new RecordError("closed", "the record store is closed");
 		for (const changeset of seen.keys()) checkChangeset(changeset);
 		return this.#land(async (tip, deadline) => {
@@ -282,6 +285,7 @@ export class GitRecordStore implements RecordStore {
 				const now = folders.get(changeset);
 				if (now === undefined) value.absent.push(changeset);
 				else if (now !== oid) value.changed.push(changeset);
+				else if (!merged.has(changeset)) value.kept.push(changeset);
 				else if (value.deferred.length > 0) value.deferred.push(changeset);
 				else {
 					const verdict = await StateTree.judgeFolder(this.#repository, changeset, now, judged, spent, deadline);

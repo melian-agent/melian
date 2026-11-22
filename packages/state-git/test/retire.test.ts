@@ -52,6 +52,11 @@ function roots(count: number): Record<string, Planted> {
 	return Object.fromEntries(Array.from({ length: count }, (_, n) => [`noise/${n}`, { bytes: "" }] as const));
 }
 
+// Retires as a caller does once GitHub has said each nominee's pull request is merged.
+function retireMerged(store: GitRecordStore, seen: ReadonlyMap<string, string>): Promise<Retirement> {
+	return store.retire(seen, new Set(seen.keys()));
+}
+
 // A store holding two records in `changeset` and one in `other`, and no cell, so a retire may remove either folder.
 async function seeded(): Promise<GitRecordStore> {
 	const store = await remote.open();
@@ -113,14 +118,16 @@ async function refuses(craft: Craft): Promise<void> {
 	const { crafted } = crafting(craft);
 	const rule = vi.spyOn(StateTree, "removesOnly");
 	const push = vi.spyOn(RecordRepository.prototype, "push");
-	await expect(store.retire(new Map([[changeset, seen.get(changeset)!]]))).rejects.toSatisfy((error: unknown) => {
-		expect(error).toBeInstanceOf(RecordError);
-		expect((error as RecordError).code).toBe("unreachable");
-		expect((error as RecordError).message).toBe(
-			`the commit retiring ${changeset} changes more of ${remote.branch} than it removes; nothing was pushed`,
-		);
-		return true;
-	});
+	await expect(retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).rejects.toSatisfy(
+		(error: unknown) => {
+			expect(error).toBeInstanceOf(RecordError);
+			expect((error as RecordError).code).toBe("unreachable");
+			expect((error as RecordError).message).toBe(
+				`the commit retiring ${changeset} changes more of ${remote.branch} than it removes; nothing was pushed`,
+			);
+			return true;
+		},
+	);
 	expect(crafted).toHaveLength(1);
 	expect(rule).toHaveBeenCalledWith(expect.any(RecordRepository), tip, crafted[0], expect.anything());
 	await expect(rule.mock.results[0]!.value).resolves.toBe(false);
@@ -134,7 +141,7 @@ describe("the removal-only rule", { timeout: 60_000 }, () => {
 		const seen = await store.folders();
 		const gone = removals(changeset);
 		crafting((repository, parent, deadline) => repository.commit(parent, gone, deadline));
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(under(changeset)).toEqual([]);
@@ -276,7 +283,7 @@ describe("the removal-only rule", { timeout: 60_000 }, () => {
 		const store = await seeded();
 		remote.plant({ "notes.txt": { bytes: "root" } });
 		const seen = await store.folders();
-		expect(sorted(await store.retire(seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
+		expect(sorted(await retireMerged(store, seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
 		expect(remote.files()).toEqual(["notes.txt"]);
 		expect(remote.git(["ls-tree", "--full-tree", remote.tip()!])).not.toContain("changesets");
 		expect(remote.git(["log", "-1", "--format=%s", remote.tip()!])).toBe("melian: retire");
@@ -289,7 +296,7 @@ describe("a retire past the store's limits", { timeout: 300_000 }, () => {
 		remote.plant(roots(limit + 1));
 		await expect(store.strays()).rejects.toMatchObject({ code: "unreachable" });
 		const seen = await store.folders();
-		expect(sorted(await store.retire(seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
+		expect(sorted(await retireMerged(store, seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
 		const files = remote.files();
 		expect(files).toHaveLength(limit + 1);
 		expect(files.every((path) => path.startsWith("noise/"))).toBe(true);
@@ -298,7 +305,7 @@ describe("a retire past the store's limits", { timeout: 300_000 }, () => {
 	it("leaves every other write to the limits after it retires", async () => {
 		const store = await seeded();
 		remote.plant(roots(limit + 1));
-		await store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
+		await retireMerged(store, new Map([[changeset, (await store.folders()).get(changeset)!]]));
 		const tip = remote.tip();
 		await expect(store.add([check("late", other)])).rejects.toMatchObject({ code: "unreachable" });
 		await expect(store.dispose(other)).rejects.toMatchObject({ code: "unreachable" });
@@ -310,7 +317,7 @@ describe("a retire past the store's limits", { timeout: 300_000 }, () => {
 		remote.plant(roots(limit - remote.files().length));
 		expect(remote.files()).toHaveLength(limit);
 		const seen = await store.folders();
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(under(changeset)).toEqual([]);
@@ -325,7 +332,7 @@ describe("a retire past the store's limits", { timeout: 300_000 }, () => {
 			async (oids) => new Map(oids.map((oid) => [oid, recordLimit])),
 		);
 		await expect(store.list(other)).rejects.toMatchObject({ code: "unreachable" });
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(under(changeset)).toEqual([]);
@@ -345,7 +352,7 @@ describe("a retire that races", { timeout: 120_000 }, () => {
 			await rival.add([check("late")]);
 			return push.apply(this, args);
 		});
-		expect(await store.retire(seen)).toEqual(retirement({ removed: [other], changed: [changeset] }));
+		expect(await retireMerged(store, seen)).toEqual(retirement({ removed: [other], changed: [changeset] }));
 		// The store's first push, the rival's inside it, and the store's push on the fresh tip.
 		expect(spy).toHaveBeenCalledTimes(3);
 		expect(keys(await store.list(changeset))).toEqual(["a", "b", "late"]);
@@ -364,7 +371,7 @@ describe("a retire that races", { timeout: 120_000 }, () => {
 			await rival.add([check("late")]);
 			return push.apply(this, args);
 		});
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ changed: [changeset] }),
 		);
 		expect(spy).toHaveBeenCalledTimes(2);
@@ -374,7 +381,7 @@ describe("a retire that races", { timeout: 120_000 }, () => {
 	it("lets an add after the retire start the changeset afresh", async () => {
 		const store = await seeded();
 		const rival = await remote.open();
-		await store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
+		await retireMerged(store, new Map([[changeset, (await store.folders()).get(changeset)!]]));
 		expect(await rival.readCell(changeset)).toEqual({});
 		expect(await rival.list(changeset)).toEqual([]);
 		await rival.add([check("fresh")]);
@@ -392,10 +399,10 @@ describe("a retire that races", { timeout: 120_000 }, () => {
 			this: RecordRepository,
 			...args
 		) {
-			theirs = await second.retire(new Map([other, third].map((name) => [name, seen.get(name)!])));
+			theirs = await retireMerged(second, new Map([other, third].map((name) => [name, seen.get(name)!])));
 			return push.apply(this, args);
 		});
-		const ours = await first.retire(new Map([changeset, other].map((name) => [name, seen.get(name)!])));
+		const ours = await retireMerged(first, new Map([changeset, other].map((name) => [name, seen.get(name)!])));
 		expect(sorted(theirs!)).toEqual(retirement({ removed: [other, third].sort() }));
 		expect(ours).toEqual(retirement({ removed: [changeset], absent: [other] }));
 		expect(remote.files()).toEqual([]);
@@ -407,7 +414,10 @@ describe("a retire that races", { timeout: 120_000 }, () => {
 		const second = await remote.open();
 		const seen = await first.folders();
 		const pick = (names: string[]) => new Map(names.map((name) => [name, seen.get(name)!]));
-		const [a, b] = await Promise.all([first.retire(pick([changeset, other])), second.retire(pick([other, third]))]);
+		const [a, b] = await Promise.all([
+			retireMerged(first, pick([changeset, other])),
+			retireMerged(second, pick([other, third])),
+		]);
 		expect([...a.removed, ...b.removed].sort()).toEqual([changeset, other, third].sort());
 		expect([...a.changed, ...b.changed, ...a.strays, ...b.strays]).toEqual([]);
 		expect([...a.absent, ...b.absent]).toEqual([other]);
@@ -436,7 +446,7 @@ describe("a retire and strays", { timeout: 60_000 }, () => {
 			remote.plant(inFolder[name]!(filed(check("a")).path));
 			const files = under(changeset);
 			const seen = await store.folders();
-			expect(await store.retire(seen)).toEqual(retirement({ removed: [other], strays: [changeset] }));
+			expect(await retireMerged(store, seen)).toEqual(retirement({ removed: [other], strays: [changeset] }));
 			expect(under(changeset)).toEqual(files);
 			expect(remote.git(["rev-parse", `refs/heads/${remote.branch}:changesets/${changeset}`])).toBe(
 				seen.get(changeset),
@@ -451,7 +461,7 @@ describe("a retire and strays", { timeout: 60_000 }, () => {
 		const seen = await store.folders();
 		const tip = remote.tip();
 		const push = vi.spyOn(RecordRepository.prototype, "push");
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ strays: [changeset] }),
 		);
 		expect(push).not.toHaveBeenCalled();
@@ -462,7 +472,7 @@ describe("a retire and strays", { timeout: 60_000 }, () => {
 		const store = await seeded();
 		remote.plant({ [`changesets/${changeset}/notes.txt`]: { bytes: "notes" } });
 		const without = vi.spyOn(RecordRepository.prototype, "withoutFolders");
-		await store.retire(await store.folders());
+		await retireMerged(store, await store.folders());
 		expect(without).toHaveBeenCalledTimes(1);
 		expect(without.mock.calls[0]![1]).toEqual([other]);
 	});
@@ -471,7 +481,7 @@ describe("a retire and strays", { timeout: 60_000 }, () => {
 		const store = await seeded();
 		remote.plant({ "notes.txt": { bytes: "root" } });
 		const seen = await store.folders();
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(remote.files().sort()).toEqual(["notes.txt", ...under(other)].sort());
@@ -483,7 +493,7 @@ describe("a retire and strays", { timeout: 60_000 }, () => {
 		remote.plant({ "changesets/README": { bytes: "readme" } });
 		const seen = await store.folders();
 		expect(seen.has("README")).toBe(false);
-		expect(await store.retire(new Map([[changeset, seen.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(remote.files()).toContain("changesets/README");
@@ -496,7 +506,7 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 		const before = await store.folders();
 		await store.add([check("c")]);
 		const tip = remote.tip();
-		expect(await store.retire(new Map([[changeset, before.get(changeset)!]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, before.get(changeset)!]]))).toEqual(
 			retirement({ changed: [changeset] }),
 		);
 		expect(remote.tip()).toBe(tip);
@@ -505,13 +515,13 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 	it("reports a changeset with no folder at the tip as absent, and pushes nothing", async () => {
 		const store = await seeded();
 		const tip = remote.tip();
-		expect(await store.retire(new Map([[third, treeOf(changeset)]]))).toEqual(retirement({ absent: [third] }));
+		expect(await retireMerged(store, new Map([[third, treeOf(changeset)]]))).toEqual(retirement({ absent: [third] }));
 		expect(remote.tip()).toBe(tip);
 	});
 
 	it("reports every changeset absent on a branch that does not exist, and creates none", async () => {
 		const store = await remote.open();
-		expect(await store.retire(new Map([[changeset, emptyTree]]))).toEqual(retirement({ absent: [changeset] }));
+		expect(await retireMerged(store, new Map([[changeset, emptyTree]]))).toEqual(retirement({ absent: [changeset] }));
 		expect(remote.tip()).toBeUndefined();
 	});
 
@@ -519,7 +529,7 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 		const store = await seeded();
 		const tip = remote.tip();
 		const without = vi.spyOn(RecordRepository.prototype, "withoutFolders");
-		expect(await store.retire(new Map())).toEqual(retirement({}));
+		expect(await retireMerged(store, new Map())).toEqual(retirement({}));
 		expect(without).not.toHaveBeenCalled();
 		expect(remote.tip()).toBe(tip);
 	});
@@ -529,7 +539,7 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 		await store.close();
 		const closed = { code: "closed", message: "the record store is closed" };
 		await expect(store.folders()).rejects.toMatchObject(closed);
-		await expect(store.retire(new Map([[changeset, treeOf(changeset)]]))).rejects.toMatchObject(closed);
+		await expect(retireMerged(store, new Map([[changeset, treeOf(changeset)]]))).rejects.toMatchObject(closed);
 	});
 });
 
@@ -582,7 +592,9 @@ describe("what a retire keeps", { timeout: 60_000 }, () => {
 		await store.writeCell(changeset, undefined, '"lease"');
 		const paths = under(changeset);
 		expect(paths).toContain(cellPath(changeset));
-		expect(await store.retire(await store.folders())).toEqual(retirement({ removed: [other], kept: [changeset] }));
+		expect(await retireMerged(store, await store.folders())).toEqual(
+			retirement({ removed: [other], kept: [changeset] }),
+		);
 		expect(under(changeset)).toEqual(paths);
 		expect(under(other)).toEqual([]);
 		expect((await store.readCell(changeset)).value).toBe('"lease"');
@@ -592,14 +604,16 @@ describe("what a retire keeps", { timeout: 60_000 }, () => {
 		const store = await seeded();
 		await store.dispose(changeset);
 		const paths = under(changeset);
-		expect(await store.retire(await store.folders())).toEqual(retirement({ removed: [other], kept: [changeset] }));
+		expect(await retireMerged(store, await store.folders())).toEqual(
+			retirement({ removed: [other], kept: [changeset] }),
+		);
 		expect(under(changeset)).toEqual(paths);
 		await expect(store.add([check("late")])).rejects.toMatchObject({ code: "disposed" });
 	});
 
 	it("retires a record-only folder whole, so a later add starts it afresh", async () => {
 		const store = await seeded();
-		expect(await store.retire(new Map([[changeset, treeOf(changeset)]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, treeOf(changeset)]]))).toEqual(
 			retirement({ removed: [changeset] }),
 		);
 		expect(under(changeset)).toEqual([]);
@@ -607,11 +621,40 @@ describe("what a retire keeps", { timeout: 60_000 }, () => {
 		expect(keys(await store.list(changeset))).toEqual(["late"]);
 	});
 
+	// A reopened pull request at the same head would read a late relay's old round as standing; a merged one cannot reopen.
+	it("keeps a folder whose pull request closed unmerged, reports it as kept, and retires a merged one beside it", async () => {
+		const store = await seeded();
+		const paths = under(changeset);
+		expect(await store.retire(await store.folders(), new Set([other]))).toEqual(
+			retirement({ removed: [other], kept: [changeset] }),
+		);
+		expect(under(changeset)).toEqual(paths);
+		expect(under(other)).toEqual([]);
+	});
+
+	it("keeps every folder its caller cannot say is merged, and pushes nothing", async () => {
+		const store = await seeded();
+		const tip = remote.tip();
+		expect(sorted(await store.retire(await store.folders(), new Set()))).toEqual(
+			retirement({ kept: [changeset, other].sort() }),
+		);
+		expect(remote.tip()).toBe(tip);
+	});
+
+	it("keeps an unmerged folder without reading its records, so it spends nothing of the call's limits", async () => {
+		const store = await seeded();
+		const judge = vi.spyOn(StateTree, "judgeFolder");
+		expect(await store.retire(await store.folders(), new Set([other]))).toEqual(
+			retirement({ removed: [other], kept: [changeset] }),
+		);
+		expect(judge.mock.calls.map((call) => call[1])).toEqual([other]);
+	});
+
 	it("reports a folder that holds a cell and a stray as holding a stray", async () => {
 		const store = await seeded();
 		await store.writeCell(changeset, undefined, '"lease"');
 		remote.plant({ [`changesets/${changeset}/notes.txt`]: { bytes: "notes" } });
-		expect(await store.retire(new Map([[changeset, treeOf(changeset)]]))).toEqual(
+		expect(await retireMerged(store, new Map([[changeset, treeOf(changeset)]]))).toEqual(
 			retirement({ strays: [changeset] }),
 		);
 	});
@@ -645,7 +688,7 @@ describe("what a retire is given", { timeout: 60_000 }, () => {
 	it("refuses a name that is no changeset's before it reads the branch", async () => {
 		const store = await seeded();
 		const fetch = vi.spyOn(RecordRepository.prototype, "fetch");
-		await expect(store.retire(new Map([["../changesets", emptyTree]]))).rejects.toMatchObject({
+		await expect(retireMerged(store, new Map([["../changesets", emptyTree]]))).rejects.toMatchObject({
 			code: "invalidChangeset",
 		});
 		expect(fetch).not.toHaveBeenCalled();
@@ -663,7 +706,7 @@ describe("the folders a retire reads", { timeout: 60_000 }, () => {
 		});
 		const seen = await store.folders();
 		expect([...seen.keys()].sort()).toEqual([changeset, other].sort());
-		expect(sorted(await store.retire(seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
+		expect(sorted(await retireMerged(store, seen))).toEqual(retirement({ removed: [changeset, other].sort() }));
 		expect(remote.files()).toEqual(["README", "a/x.json", "changesets/Not_A_Name/x.json", `changesets/${third}`]);
 	});
 
@@ -690,7 +733,8 @@ describe("the commit a retire builds", { timeout: 60_000 }, () => {
 		const seen = await store.folders();
 		vi.spyOn(StateTree, "removesOnly").mockResolvedValueOnce(false);
 		await expect(
-			store.retire(
+			retireMerged(
+				store,
 				new Map([
 					[changeset, seen.get(changeset)!],
 					[other, seen.get(other)!],
@@ -825,7 +869,7 @@ describe("a folder too large to judge", { timeout: 120_000 }, () => {
 	}
 
 	async function retiring(store: GitRecordStore): Promise<Retirement> {
-		return store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
+		return retireMerged(store, new Map([[changeset, (await store.folders()).get(changeset)!]]));
 	}
 
 	it("keeps a folder whose listing runs past its bytes", async () => {
@@ -862,7 +906,7 @@ describe("a folder too large to judge", { timeout: 120_000 }, () => {
 		]);
 		expect([under(changeset).length, under(other).length]).toEqual([whole, whole + 1]);
 		sized(recordLimit);
-		expect(sorted(await store.retire(await store.folders()))).toEqual(
+		expect(sorted(await retireMerged(store, await store.folders()))).toEqual(
 			retirement({ removed: [changeset], strays: [other] }),
 		);
 	});
@@ -902,7 +946,7 @@ describe("a `changesets` level that lists a name twice", { timeout: 60_000 }, ()
 			const { clean, tip } = twice(first);
 			const seen = await store.folders();
 			expect([...seen.keys()]).toEqual([other]);
-			expect(await store.retire(new Map([[changeset, clean]]))).toEqual(retirement({ absent: [changeset] }));
+			expect(await retireMerged(store, new Map([[changeset, clean]]))).toEqual(retirement({ absent: [changeset] }));
 			expect(remote.tip()).toBe(tip);
 		});
 	}
@@ -982,12 +1026,12 @@ describe("what one retire may judge", { timeout: 300_000 }, () => {
 		const store = await seeded();
 		const seen = await store.folders();
 		const spy = padded(treeOf(changeset), entryLimit - under(other).length);
-		expect(await store.retire(both(seen))).toEqual(retirement({ removed: [changeset, other] }));
+		expect(await retireMerged(store, both(seen))).toEqual(retirement({ removed: [changeset, other] }));
 		spy.mockRestore();
 		await seeded();
 		const again = await store.folders();
 		padded(treeOf(changeset), entryLimit - under(other).length + 1);
-		const found = await store.retire(both(again));
+		const found = await retireMerged(store, both(again));
 		expect(under(other)).toHaveLength(1);
 		expect(found).toEqual(retirement({ removed: [changeset], deferred: [other] }));
 	});
@@ -997,11 +1041,13 @@ describe("what one retire may judge", { timeout: 300_000 }, () => {
 		const half = tipLimit / recordLimit / 2;
 		await fill(store, { [changeset]: half, [other]: half });
 		const weighed = heavy();
-		expect(await store.retire(both(await store.folders()))).toEqual(retirement({ removed: [changeset, other] }));
+		expect(await retireMerged(store, both(await store.folders()))).toEqual(
+			retirement({ removed: [changeset, other] }),
+		);
 		weighed.mockRestore();
 		await fill(store, { [changeset]: half, [other]: half + 1 });
 		heavy();
-		const found = await store.retire(both(await store.folders()));
+		const found = await retireMerged(store, both(await store.folders()));
 		expect(under(other)).toHaveLength(half + 1);
 		expect(found).toEqual(retirement({ removed: [changeset], deferred: [other] }));
 	});
@@ -1015,14 +1061,15 @@ describe("what one retire may judge", { timeout: 300_000 }, () => {
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		const entries = vi.spyOn(RecordRepository.prototype, "entries");
 		const kept = new Set([...under(other), ...under(third)].map((path) => remote.oid(path)));
-		const found = await store.retire(seen);
+		const found = await retireMerged(store, seen);
 		const read = blobs.mock.calls.flatMap(([wanted]) => [...wanted.keys()]);
 		expect(read.filter((oid) => kept.has(oid))).toEqual([]);
 		expect(entries.mock.calls.map(([oid]) => oid)).not.toContain(treeOf(other));
 		expect(under(changeset)).toEqual([]);
 		expect(found).toEqual(retirement({ removed: [changeset], deferred: [third, other] }));
 		expect(
-			await store.retire(
+			await retireMerged(
+				store,
 				new Map([
 					[other, treeOf(other)],
 					[third, treeOf(third)],
@@ -1036,7 +1083,7 @@ describe("what one retire may judge", { timeout: 300_000 }, () => {
 		remote.plant({ [`changesets/${changeset}/junk.txt`]: { bytes: "junk" } });
 		const store = await remote.open();
 		const seen = await store.folders();
-		const found = await store.retire(new Map([[changeset, seen.get(changeset)!]]));
+		const found = await retireMerged(store, new Map([[changeset, seen.get(changeset)!]]));
 		const blobs = vi.spyOn(RecordRepository.prototype, "blobs");
 		await store.strays();
 		const read = blobs.mock.calls.flatMap(([wanted]) => [...wanted.keys()]);
