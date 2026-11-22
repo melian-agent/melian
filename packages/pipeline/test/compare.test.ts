@@ -1269,4 +1269,19 @@ describe("ComparisonCauses", () => {
 		);
 		expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
 	});
+
+	it("reads a valid miss judged out of scope too, though recall leaves it out", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "out-of-scope",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const [entry] = await ComparisonCauses.open(storage, directory).read(
+			await ComparisonReader.open(storage).read("change"),
+			"change",
+		);
+		expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
+	});
 });
