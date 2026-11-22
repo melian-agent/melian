@@ -225,6 +225,7 @@ const runnerName = "run.mjs";
 const startedName = "started";
 // The probe's folder links the tree's install here, so a bare import from probe.mjs resolves as one from the tree does.
 const installName = "node_modules";
+const gitName = "git";
 // Creates a repository in the probe's temporary directory with the git on its PATH, as a probe's own git call would.
 const gitScript = [
 	`import { spawnSync } from "node:child_process";`,
@@ -685,8 +686,8 @@ function environmentFor({
 	lang: string | undefined;
 }) {
 	const run = join(scratch, "run");
-	const bin = git !== undefined && "bin" in git ? git.bin : undefined;
-	const path = [dirname(node), ...(bin === undefined ? [] : [bin]), "/usr/bin", "/bin"].join(":");
+	const linked = git !== undefined && "program" in git && git.program !== undefined;
+	const path = [dirname(node), ...(linked ? [join(scratch, gitName)] : []), "/usr/bin", "/bin"].join(":");
 	const noSystem = git !== undefined && "reads" in git && git.noSystem === true;
 	return {
 		PATH: path,
@@ -892,6 +893,11 @@ export class Probe {
 			git = (await sandbox.git?.()) ?? git;
 			for (const path of ["probe", "run/home", "run/tmp", "tree"])
 				await mkdir(join(scratch, path), { recursive: true });
+			// The probe's PATH reaches git through this one link, so no neighbour of git's program is on it.
+			if ("program" in git && git.program !== undefined) {
+				await mkdir(join(scratch, gitName));
+				await symlink(git.program, join(scratch, gitName, "git"));
+			}
 			if (head !== undefined) installs = await writeHead(head, join(scratch, "tree"));
 			await writeFile(join(scratch, "probe", scriptName), input.script);
 			// A watchdog inside the probe's Node process exits the probe at its own limit even if the Melian process dies
@@ -992,7 +998,8 @@ export class Probe {
 	}
 
 	get #gitReads(): readonly string[] {
-		return "reads" in this.#git ? this.#git.reads : [];
+		if (!("reads" in this.#git)) return [];
+		return this.#git.program === undefined ? this.#git.reads : [join(this.#scratch, gitName), ...this.#git.reads];
 	}
 
 	/** Runs the probe once, within its time and output limits, and ends every process it started. */

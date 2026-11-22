@@ -27,14 +27,9 @@ beforeEach(() => {
 		dirname(config),
 	])
 		mkdirSync(path, { recursive: true });
-	writeFileSync(git, "");
-	writeFileSync(join(exec(), "git"), "", { mode: 0o755 });
+	writeFileSync(git, "", { mode: 0o755 });
 	writeFileSync(config, "");
 });
-
-function exec(): string {
-	return join(developer, "usr", "libexec", "git-core");
-}
 
 afterEach(() => {
 	rmSync(root, { recursive: true, force: true });
@@ -68,10 +63,15 @@ function host(answers: Partial<Record<"developer" | "git" | "exec" | "config", s
 }
 
 describe("probeGit", () => {
-	it("grants git's exec path, its own files and its system configuration, and nothing else", async () => {
+	it("grants git's one program, its exec path, its own files and its system configuration, and nothing else", async () => {
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
-			bin: exec(),
-			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core"), config],
+			program: git,
+			reads: [
+				git,
+				join(developer, "usr", "libexec", "git-core"),
+				join(developer, "usr", "share", "git-core"),
+				config,
+			],
 		});
 	});
 
@@ -96,8 +96,9 @@ describe("probeGit", () => {
 		symlinkSync(real, join(root, "etc-link"));
 		const found = await probeGit("darwin", host({ config: join(root, "etc-link", "gitconfig") }).ask, home);
 		expect(found).toEqual({
-			bin: exec(),
+			program: git,
 			reads: [
+				git,
 				join(developer, "usr", "libexec", "git-core"),
 				join(developer, "usr", "share", "git-core"),
 				join(root, "etc-link", "gitconfig"),
@@ -110,8 +111,8 @@ describe("probeGit", () => {
 		rmSync(config);
 		// The sandbox refuses an open of the absent file as not permitted, which git treats as fatal, as no such file is not.
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
-			bin: exec(),
-			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
+			program: git,
+			reads: [git, join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
 			noSystem: true,
 		});
 	});
@@ -120,7 +121,7 @@ describe("probeGit", () => {
 		rmSync(config);
 		symlinkSync(join(root, "etc", "absent"), config);
 		expect(await probeGit("darwin", host().ask, home)).toMatchObject({
-			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
+			reads: [git, join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
 			noSystem: true,
 		});
 	});
@@ -201,26 +202,21 @@ describe("probeGit", () => {
 			expect(await probeGit("darwin", host({ exec: link }).ask, home)).toEqual(refused);
 		});
 
-		it("an exec path with no git of its own", async () => {
-			rmSync(join(exec(), "git"));
+		it("a git program that is not executable", async () => {
+			chmodSync(git, 0o644);
 			expect(await probeGit("darwin", host().ask, home)).toEqual({
-				unavailable: expect.stringContaining("holds no git program of its own"),
+				unavailable: expect.stringContaining("is not an executable file inside the developer directory"),
 			});
 		});
 
-		it("an exec path whose git links to the developer tools' bin, which holds compilers", async () => {
-			rmSync(join(exec(), "git"));
-			symlinkSync(git, join(exec(), "git"));
-			chmodSync(git, 0o755);
+		it("a git program that is a directory", async () => {
+			rmSync(git);
+			mkdirSync(git);
 			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
 		});
 
-		it("an exec path whose git is not a program", async () => {
-			chmodSync(join(exec(), "git"), 0o644);
-			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
-			rmSync(join(exec(), "git"));
-			mkdirSync(join(exec(), "git"));
-			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+		it("a git program at the developer directory itself", async () => {
+			expect(await probeGit("darwin", host({ git: developer }).ask, home)).toEqual(refused);
 		});
 
 		it("an exec path at the developer directory itself", async () => {

@@ -1744,12 +1744,19 @@ describe("RuntimeSandbox", () => {
 describe("a probe's git and Node conditions", () => {
 	const developer = "/Library/Developer/CommandLineTools";
 	const found: ProbeGit = {
-		bin: `${developer}/usr/libexec/git-core`,
-		reads: [`${developer}/usr/libexec/git-core`, `${developer}/usr/share/git-core`, "/etc/gitconfig"],
+		program: `${developer}/usr/bin/git`,
+		reads: [
+			`${developer}/usr/bin/git`,
+			`${developer}/usr/libexec/git-core`,
+			`${developer}/usr/share/git-core`,
+			"/etc/gitconfig",
+		],
 	};
 
 	async function seen(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}) {
-		const probe = await Probe.open({ script: "console.log(process.env.PATH);" }, options(sandbox, more));
+		const script =
+			'import { readlinkSync } from "node:fs";\nconst entry = process.env.PATH.split(":")[1];\nconsole.log(process.env.PATH);\ntry { console.log(readlinkSync(`${entry}/git`)); } catch {}\n';
+		const probe = await Probe.open({ script }, options(sandbox, more));
 		try {
 			return { policy: probe.policy, result: await probe.run() };
 		} finally {
@@ -1757,16 +1764,33 @@ describe("a probe's git and Node conditions", () => {
 		}
 	}
 
-	it("reads git's own paths after the system's, and puts git's directory on PATH after Node's", async () => {
+	const own = (text: string) => text.replaceAll(/\/melian-probe-[A-Za-z0-9]{6}\//g, "/scratch/");
+
+	it("puts a link to git's one program on PATH after Node's, and reads it and git's own paths after the system's", async () => {
 		const plain = await seen(passthrough().sandbox);
 		const { sandbox } = passthrough({ git: async () => found });
 		const { policy, result } = await seen(sandbox);
 		expect(sandbox.git).toHaveBeenCalledOnce();
-		const own = (read: readonly string[]) =>
-			read.map((path) => path.replace(/\/melian-probe-[A-Za-z0-9]{6}\//, "/scratch/"));
-		expect(own(policy.read)).toEqual([...own(plain.policy.read), ...found.reads]);
-		expect(result.output).toBe(`${dirname(process.execPath)}:${developer}/usr/libexec/git-core:/usr/bin:/bin\n`);
+		const scratch = own(policy.read[0] ?? "").replace(/\/tree$/, "");
+		expect(policy.read.map(own)).toEqual([...plain.policy.read.map(own), `${scratch}/git`, ...found.reads]);
+		expect(own(result.output)).toBe(
+			`${dirname(process.execPath)}:${scratch}/git:/usr/bin:/bin\n${developer}/usr/bin/git\n`,
+		);
 		expect(plain.result.output).toBe(`${dirname(process.execPath)}:/usr/bin:/bin\n`);
+	});
+
+	it("reads nothing more, and keeps the plain PATH, where git cannot run in a probe", async () => {
+		const plain = await seen(passthrough().sandbox);
+		const { policy, result } = await seen(passthrough({ git: async () => ({ unavailable: "no git" }) }).sandbox);
+		expect(policy.read.map(own)).toEqual(plain.policy.read.map(own));
+		expect(result.output).toBe(plain.result.output);
+	});
+
+	it("links no git, and keeps the plain PATH, where git needs no grant, as on Linux", async () => {
+		const plain = await seen(passthrough().sandbox);
+		const { policy, result } = await seen(passthrough({ git: async () => ({ reads: [] }) }).sandbox);
+		expect(policy.read.map(own)).toEqual(plain.policy.read.map(own));
+		expect(result.output).toBe(plain.result.output);
 	});
 
 	it("tells the probe's git to skip the system configuration only when the host has none", async () => {
@@ -1792,7 +1816,7 @@ describe("a probe's git and Node conditions", () => {
 			writeFileSync(join(bin, "git"), "#!/bin/sh\necho 'fatal: unable to access x' >&2\nexit 128\n", {
 				mode: 0o755,
 			});
-			const { sandbox } = passthrough({ git: async () => ({ bin, reads: [] }) });
+			const { sandbox } = passthrough({ git: async () => ({ program: join(bin, "git"), reads: [] }) });
 			expect(await Probe.gitAvailability(sandbox)).toEqual({
 				available: false,
 				reason: "a probe's git init exited 128: fatal: unable to access x",
@@ -1800,15 +1824,6 @@ describe("a probe's git and Node conditions", () => {
 		} finally {
 			rmSync(bin, { recursive: true, force: true });
 		}
-	});
-
-	it("reads nothing more, and keeps the plain PATH, where git cannot run in a probe", async () => {
-		const plain = await seen(passthrough().sandbox);
-		const { policy, result } = await seen(passthrough({ git: async () => ({ unavailable: "no git" }) }).sandbox);
-		const own = (read: readonly string[]) =>
-			read.map((path) => path.replace(/\/melian-probe-[A-Za-z0-9]{6}\//, "/scratch/"));
-		expect(own(policy.read)).toEqual(own(plain.policy.read));
-		expect(result.output).toBe(plain.result.output);
 	});
 
 	it("refuses a probe whose git lookup fails, and removes its scratch", async () => {
