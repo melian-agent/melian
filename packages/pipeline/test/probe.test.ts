@@ -1548,6 +1548,19 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(fake, "linux", "/usr/bin/unshare").platform).toBe("linux");
 	});
 
+	it("finds git for its own platform, through the host it was given", async () => {
+		const asked: string[] = [];
+		const ask = async (file: string, args: readonly string[]) => {
+			asked.push([file, ...args].join(" "));
+			throw new Error("no developer tools");
+		};
+		expect(await new RuntimeSandbox(runtime().fake, "linux", "/usr/bin/unshare", ask).git()).toEqual({ reads: [] });
+		expect(await new RuntimeSandbox(runtime().fake, "darwin", null, ask).git()).toEqual({
+			unavailable: "git cannot be found for a probe: no developer tools",
+		});
+		expect(asked).toEqual(["xcode-select -p"]);
+	});
+
 	it("refuses Linux without unshare, before asking sandbox-runtime, and never needs it on macOS", () => {
 		const linux = runtime();
 		expect(new RuntimeSandbox(linux.fake, "linux", null).unavailable()).toBe(
