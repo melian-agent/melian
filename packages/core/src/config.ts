@@ -139,11 +139,30 @@ const ruleAliasSchema = Type.Union([
 	Type.Object({ rules: Type.Array(name), distinct: Type.Optional(Type.Boolean()) }, strict),
 ]);
 
+/**
+ * The Node conditions a probe's process may resolve under: at most `count`, each at most `length` characters that
+ * `pattern` takes, so a condition never starts a flag of its own.
+ */
+export const probeConditions = { count: 16, length: 100, pattern: /^[A-Za-z0-9@_][A-Za-z0-9@_./:+-]*$/ } as const;
+
 /** The JSON Schema of one `melian.yaml`. Every key is optional, and unknown keys are rejected. */
 export const melianYamlSchema = Type.Object(
 	{
 		trust: Type.Optional(Type.Object({ writers: Type.Optional(Type.Boolean()) }, strict)),
-		probe: Type.Optional(Type.Object({ read: Type.Optional(Type.Array(Type.String())) }, strict)),
+		probe: Type.Optional(
+			Type.Object(
+				{
+					read: Type.Optional(Type.Array(Type.String())),
+					conditions: Type.Optional(
+						Type.Array(
+							Type.String({ maxLength: probeConditions.length, pattern: probeConditions.pattern.source }),
+							{ maxItems: probeConditions.count },
+						),
+					),
+				},
+				strict,
+			),
+		),
 		comparison: Type.Optional(
 			Type.Object(
 				{
@@ -473,8 +492,11 @@ export interface PolicyChangeReview {
 /** The effective configuration for one path: built-in defaults with every applicable `melian.yaml` merged on top. */
 export interface MelianConfig {
 	readonly trust: { readonly writers: boolean };
-	/** `read`: paths relative to the checkout a probe reads beyond the head's tracked tree; `node_modules` is the install. */
-	readonly probe: { readonly read: readonly string[] };
+	/**
+	 * `read`: paths relative to the checkout a probe reads beyond the head's tracked tree; `node_modules` is the install.
+	 * `conditions`: the Node conditions a probe's process resolves packages under, such as a workspace's source condition.
+	 */
+	readonly probe: { readonly read: readonly string[]; readonly conditions: readonly string[] };
 	readonly comparison: { readonly retirement: { readonly pullRequests: number; readonly recall: number } };
 	/** `emoji`: whether the terminal shows emojis, `auto` when standard output is a UTF-8 terminal. */
 	readonly output: { readonly emoji: "auto" | "on" | "off" };
@@ -523,7 +545,7 @@ const forgedMutationKill: ForbiddenPatternRule = {
 /** The built-in defaults every `melian.yaml` layers onto. */
 export const defaultConfig: MelianConfig = {
 	trust: { writers: true },
-	probe: { read: ["node_modules"] },
+	probe: { read: ["node_modules"], conditions: [] },
 	comparison: { retirement: { pullRequests: 10, recall: 0.75 } },
 	output: { emoji: "auto" },
 	publish: { emoji: "on", walkthrough: { enabled: true, collapsed: true, diagrams: true } },

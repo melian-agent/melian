@@ -97,6 +97,7 @@ export {
 	type PreExistingCap,
 	parseResolution,
 	preExistingCapSchema,
+	probeConditions,
 	type RequiredFileRule,
 	type Resolution,
 	type ResolutionEntry,

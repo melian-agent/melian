@@ -18,6 +18,7 @@ let home: string;
 beforeEach(() => {
 	// A real empty probe takes seconds on a loaded runner; the probes line has tests of its own below.
 	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+	vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({ available: true });
 	// The origin below is GitHub's; the record store line has tests of its own against a local remote.
 	vi.spyOn(GitRecordStore.prototype, "strays").mockResolvedValue([]);
 	const fallback = github();
@@ -608,22 +609,39 @@ describe("doctor clone check", () => {
 describe("doctor probes", () => {
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}probes\s+/.test(each));
 
-	it("says probes run when an empty one ran", async () => {
+	it("says probes run, git included, when an empty one and one running git ran", async () => {
 		const availability = vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+		const git = vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({ available: true });
 		const { status, stdout } = await run(github());
 		expect(availability).toHaveBeenCalledOnce();
-		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime$/);
+		expect(git).toHaveBeenCalledOnce();
+		expect(line(stdout)).toMatch(/^ok {4}probes\s+run under sandbox-runtime, git included$/);
 		expect(status).toBe(0);
 	});
 
-	it("warns, without failing, that every probe is refused where none can run", async () => {
+	it("warns, without failing, that every probe is refused where none can run, and asks nothing of git", async () => {
 		vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({
 			available: false,
 			reason: "sandbox-runtime cannot run here: bubblewrap\u001b[2J not found",
 		});
+		const git = vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({ available: true });
 		const { status, stdout } = await run(github());
 		expect(line(stdout)).toMatch(
 			/^warn {2}probes\s+cannot run here, so every probe is refused: sandbox-runtime cannot run here: bubblewrap\\u001b\[2J not found$/,
+		);
+		expect(git).not.toHaveBeenCalled();
+		expect(status).toBe(0);
+	});
+
+	it("warns, without failing, when probes run and git cannot run in one", async () => {
+		vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+		vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({
+			available: false,
+			reason: "a probe's git init exited 1: fatal: unable to access '/etc/gitconfig'\u001b[2J",
+		});
+		const { status, stdout } = await run(github());
+		expect(line(stdout)).toMatch(
+			/^warn {2}probes\s+run under sandbox-runtime, but git cannot run in one, so a probe that calls it fails: a probe's git init exited 1: fatal: unable to access '\/etc\/gitconfig'\\u001b\[2J$/,
 		);
 		expect(status).toBe(0);
 	});

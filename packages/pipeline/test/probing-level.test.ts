@@ -3959,6 +3959,43 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(lastResults(requests[prober]![1]!)).toContain("BUILT");
 	});
 
+	it.each([
+		[
+			"runs a probe under the base policy's probe.conditions, and keys them",
+			"probe:\n  conditions: [dev, '@scope/source']\n",
+			["dev", "@scope/source"],
+		],
+		[
+			"keys no conditions where the base policy names none, as before they could be set",
+			"probe:\n  conditions: []\n",
+			undefined,
+		],
+	])("%s", async (_, policy, conditions) => {
+		withBasePolicy(policy);
+		const flags = 'console.log(JSON.stringify(process.execArgv.filter((arg) => arg.startsWith("--conditions="))));\n';
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [call("run_probe", { attack: 1, script: flags }), fauxAssistantMessage("Reported 0 findings.")],
+			},
+			{},
+		);
+		await run;
+		const given = (conditions ?? []).map((condition) => `--conditions=${condition}`);
+		expect(lastResults(requests[prober]![1]!)).toContain(JSON.stringify(given));
+		const reviewer = harness!.harness;
+		const root = await reviewer.root(backgroundContext);
+		const index = (await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews;
+		const lensTask = await reviewer.getTask(Object.values(index)[0]!.task as TaskId, backgroundContext);
+		const { lenses } = lensTask!.input as unknown as {
+			lenses: readonly { probe?: { environment: Probing.ProbingEnvironment } }[];
+		};
+		const environment = lenses.find((each) => each.probe !== undefined)!.probe!.environment;
+		expect(environment.read).toEqual(["node_modules"]);
+		expect("conditions" in environment).toBe(conditions !== undefined);
+		expect(environment.conditions).toEqual(conditions);
+	});
+
 	it("keeps only the reruns the revision's current claims rest on, however often a failed prober is run again", async () => {
 		const fake = createFakeModels();
 		const reported = () => probing(failing).slice(0, 2);

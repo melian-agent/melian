@@ -25,6 +25,7 @@ function directory(prefix: string): string {
 // melian.local.yaml did on pull request #532, whose review read the base and ran the committed model.
 beforeEach(() => {
 	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+	vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({ available: true });
 	vi.spyOn(GitRecordStore.prototype, "strays").mockResolvedValue([]);
 	const fake = createFakeModels({ models: [{ id: "finder" }, { id: "claude" }] });
 	vi.spyOn(pipeline, "createReviewModels").mockReturnValue(fake.review);

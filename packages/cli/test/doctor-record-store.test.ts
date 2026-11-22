@@ -21,6 +21,7 @@ let trusted: string;
 
 beforeEach(async () => {
 	vi.spyOn(pipeline.Probe, "availability").mockResolvedValue({ available: true });
+	vi.spyOn(pipeline.Probe, "gitAvailability").mockResolvedValue({ available: true });
 	for (const [key, value] of Object.entries(isolatedGitEnv)) vi.stubEnv(key, value);
 	directory = mkdtempSync(join(tmpdir(), "melian-doctor-records-"));
 	repo = join(directory, "repo");

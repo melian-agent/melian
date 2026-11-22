@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { lstat, open, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { defaultConfig, loadConfig, visibleText } from "@melian-agent/core";
+import { defaultConfig, loadConfig, type MelianConfig, visibleText } from "@melian-agent/core";
 import {
 	type CleanupOutcome,
 	Probe,
@@ -79,22 +79,21 @@ function status(result: ProbeResult, timeout: number): string {
 	return result.error === undefined ? line : `${line}; stopping its processes failed: ${visibleText(result.error)}`;
 }
 
-// The base policy's `probe.read`, from the first of the base branches that resolves, as doctor reads `trust.writers`.
-// With none, the default, the dependency install alone; never the checked-out head's own policy.
-async function allowlist(checkout: string): Promise<readonly string[]> {
+// The base policy's `probe`, from the first of the base branches that resolves, as doctor reads `trust.writers`.
+// With none, the default, the dependency install alone and no conditions; never the checked-out head's own policy.
+async function basePolicy(checkout: string): Promise<MelianConfig["probe"]> {
 	for (const ref of ["origin/HEAD", "origin/main", "main"]) {
 		const commit = await git(checkout, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]).catch(
 			() => undefined,
 		);
-		if (commit !== undefined)
-			return (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe.read;
+		if (commit !== undefined) return (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe;
 	}
-	return defaultConfig.probe.read;
+	return defaultConfig.probe;
 }
 
 /**
  * Runs `<directory>/probe.mjs`, with the directory's other files beside it, under the sandbox, in the tracked tree of
- * the checkout's `HEAD`, with what the base policy's `probe.read` allows. The head's code runs only on the reviewer's
+ * the checkout's `HEAD`, with what the base policy's `probe.read` allows, under its `probe.conditions`. The head's code runs only on the reviewer's
  * word, `--trust-head`, as `static.mutation`'s does for a range.
  */
 export async function probe(
@@ -110,8 +109,10 @@ export async function probe(
 		const input = { script: (await regularFile(root, script)).toString("utf8"), files };
 		const checkout = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		const commit = await git(checkout, ["rev-parse", "--verify", "HEAD^{commit}"]);
+		const policy = await basePolicy(checkout);
 		const opened = await Probe.open(input, {
-			head: { checkout, commit, read: await allowlist(checkout) },
+			head: { checkout, commit, read: policy.read },
+			conditions: policy.conditions,
 			writer: options.trustHead
 				? { trusted: true, by: "reviewer" }
 				: {

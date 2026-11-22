@@ -1600,6 +1600,11 @@ function unsettled(settled: { readonly detail?: unknown; readonly reason?: strin
 }
 
 // The sandbox a review's probes run under: its harness's, or the one a probe uses when none is named.
+// The base policy's probe conditions, absent when it names none, so the probing environment keeps its earlier key.
+function probeConditionsOf(config: MelianConfig): { conditions?: string[] } {
+	return config.probe.conditions.length === 0 ? {} : { conditions: [...config.probe.conditions] };
+}
+
 function probeSandboxOf(request: ReviewOptions): ProbeSandbox {
 	return (request.harness instanceof ReviewHarness ? request.harness.probeSandbox : undefined) ?? Probe.sandbox;
 }
@@ -1625,6 +1630,7 @@ async function probeRefusal(
 			writer,
 			trustWriters: config.trust.writers,
 			read: [...config.probe.read],
+			...probeConditionsOf(config),
 			host: probingHost(sandbox),
 		},
 		sandbox,
@@ -2961,6 +2967,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						trustWriters: (await baseConfig()).trust.writers,
 						timeout,
 						read: [...(await baseConfig()).probe.read],
+						...probeConditionsOf(await baseConfig()),
 						host: probingHost(probeSandboxOf(options)),
 					},
 					...(lens.probesAs === undefined ? {} : { probesAs: lens.probesAs }),

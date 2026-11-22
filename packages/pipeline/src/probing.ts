@@ -294,12 +294,14 @@ export const probingLimits = {
 } as const;
 
 /** What a probe may run under, as the review's host decided it: whose head this is, and the base policy's word. */
-// `read` is the base policy's `probe.read`.
+// `read` is the base policy's `probe.read`, and `conditions` its `probe.conditions`, absent when it names none, so a
+// policy without them keeps the key it had before they could be set.
 export type ProbingEnvironment = {
 	writer: WriterTrust;
 	trustWriters: boolean;
 	timeout?: number;
 	read: string[];
+	conditions?: string[];
 	host: ProbingHost;
 };
 
@@ -413,6 +415,7 @@ async function openHeadProbe(
 		trustWriters: environment.trustWriters,
 		timeout: environment.timeout ?? probeLimits.timeout.default,
 		outputLimit: probingLimits.output,
+		...(environment.conditions === undefined ? {} : { conditions: environment.conditions }),
 		...(sandbox === undefined ? {} : { sandbox }),
 	});
 }
