@@ -133,13 +133,7 @@ export class RecordGate {
 			const own = (await Changeset.resolve(repoRoot, { base: sides.base, head: sides.head, mode: "twoDot" }))
 				.revision;
 			const under = { revision: own, config: context.config, repoRoot, policy: context.policy };
-			const judged = await coverage(
-				set,
-				round,
-				read,
-				round.revision === gate ? { ...under, revision } : under,
-				context.tier,
-			);
+			const judged = await coverage(set, round, read, under, context.tier);
 			const sound = !("refused" in judged) || judged.sound;
 			const covers =
 				round.revision !== gate

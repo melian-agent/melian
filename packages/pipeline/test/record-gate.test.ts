@@ -896,6 +896,21 @@ describe("the merge gate's forged rounds", () => {
 		]);
 	});
 
+	it("fails closed on a round that names no account", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		const { records, round } = await reround(store, {
+			read: (read) => read.filter(({ kind }) => kind !== "account"),
+		});
+		const outcome = await gate(records);
+
+		expect([outcome.passes(), outcome.rounds, outcome.failures]).toEqual([
+			false,
+			[],
+			[`round ${round.id} names no account, or more than one`],
+		]);
+	});
+
 	it("covers nothing for a round that names a record of another revision", async () => {
 		const store = exported();
 		const { harness, changeset, verdict } = await review(store, "main...feature", blocks());
