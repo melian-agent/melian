@@ -61,3 +61,13 @@ Round 12's findings, and the coordinator's answers on approach of 2026-11-22, wh
 The fake model cannot run a verifier outside its accepted route, since `review()` takes no plan, so a verifier that judged one claim and then failed stands in for it.
 
 Their mutants are in `2026-11-22-issue-395-merge-gate-unjudged-mutants.json`, over `2357f8b66...694c82292`, and `2026-11-22-issue-395-merge-gate-covers-nothing-mutants.json`, over `7474c8f44...530f1b44a`. Each ran against its named test alone, after that test passed unmutated. Of 22 for the unjudged cap, 20 were killed at 694c82292 and 2 at 7474c8f44, one by the test that commit adds. Of 14 for a round that covers nothing, 11 were killed at 530f1b44a, 2 by the test the next commit adds, and 1 is equivalent, with its reason in the inventory.
+
+## A sound round of another revision keeps its verifier's verdicts
+
+The coordinator narrowed the rule on 2026-11-22, as an answer on approach that it told the maintainer: only a round that is not sound lowers nothing. A round is sound when the host would read it as reviewed, its verifier having run. A sound round of another revision, a stacked parent's included, still covers nothing, but a finding its verifier refuted stays refuted. Counting a sound parent's refutations as live would have blocked stacked pull requests on findings a verifier already threw out.
+
+- The stacked parent's test is turned around. It failed first at cff85c2d9 with `expected [ [], [ [ 1, 'block' ] ], false ] to deeply equal [ [], [], true ]`, and passes at 00c82325d. Its pair holds that a parent round whose verifier did not finish still lowers nothing.
+- The gate's message now says a sound round's verifier's verdicts stand, and that a round that is not sound lowers nothing, like a round whose verifier did not finish.
+- A round of the merge's revision resolves to that revision, so e8814b286 reads every round's coverage under its own revision and drops the branch.
+
+Their mutants are in `2026-11-22-issue-395-merge-gate-sound-parent-mutants.json`, over `cff85c2d9...e8814b286`, run at e8814b286. Each ran against its named test alone, after that test passed unmutated. Of 50, 47 were killed, 36 of them by the tests these commits add, and 3 are equivalent, each with its reason in the inventory.
