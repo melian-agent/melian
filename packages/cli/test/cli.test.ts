@@ -26,6 +26,7 @@ import {
 	standardsLimits,
 	Verdict,
 } from "@melian-agent/core";
+import { recordKey } from "@melian-agent/core/testing";
 import { buildGoldenRepository, type Golden, loadGoldens } from "@melian-agent/evals";
 import {
 	type PrepareRecord,
@@ -636,7 +637,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const exported = await records.list(changeset!);
 		const round = exported.find(({ kind }) => kind === "round")!;
 		await records.add([
-			{ ...round, key: `${round.key}-elsewhere`, revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
+			{ ...round, key: recordKey(`${round.key}-elsewhere`), revision: `${"0".repeat(40)}..${"1".repeat(40)}` },
 		]);
 		// The store lists in no order, so add rounds until it lists them in neither ID order nor its reverse, which a
 		// sort that ignores the IDs could produce.
@@ -647,7 +648,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		let ids: string[] = [];
 		let mixed = false;
 		for (let n = 0; n < 20 && !mixed; n++) {
-			await records.add([{ ...round, key: `${round.key}-again-${n}` }]);
+			await records.add([{ ...round, key: recordKey(`${round.key}-again-${n}`) }]);
 			const order = await listed();
 			ids = [...order].sort();
 			mixed = order.join() !== ids.join() && order.join() !== [...ids].reverse().join();
@@ -788,7 +789,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 	it("refuses --records outside review, and a store that is not a directory", () => {
 		expect(melian(root, ["telemetry", "main", "--records", "dir:x"])).toMatchObject({
 			status: 64,
-			stderr: expect.stringContaining("--records is only available for review and findings"),
+			stderr: expect.stringContaining("--records is only available for review, findings and dismiss"),
 		});
 		for (const extra of [["--open"], ["--rounds"]])
 			expect(melian(root, ["findings", "main", "--records", "dir:x", ...extra])).toMatchObject({
@@ -1202,6 +1203,8 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 
 describe("melian dismiss", { timeout: 60_000 }, () => {
 	const reason = "The manager is always set for users in this report.";
+	const unshared =
+		"The dismissal is not shared: no record names the rounds the store held as it was made, so no review exports it. Dismiss it again with --records to share it.";
 
 	// A reviewed golden whose one blocking finding is the null dereference, and that finding's ID. The range names its
 	// branch, so another worktree, where HEAD names something else, names the same changeset.
@@ -1213,6 +1216,152 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 		const id = stored.findings.block[0]!.properties.id;
 		return { repo, env, id };
 	}
+
+	it("writes the dismissal's record to the store at once, and says nothing of sharing, under a base that trusts writers", async () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting"], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+
+		const dismissed = melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", `dir:${store}`], env);
+
+		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
+		expect(dismissed.stdout).toContain("Verdict now: passed.\n");
+		expect(dismissed.stdout).not.toContain(unshared);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		const records = await DirectoryRecordStore.open(store, reviewPayloads);
+		const written = (await records.list(changeset!)).filter(({ kind }) => kind === "dismissal");
+		await records.close();
+		expect(written.map(({ key, payload }) => [key, (payload as { reason: string }).reason])).toEqual([[id, reason]]);
+	});
+
+	it("reads a round whose records cannot stand as not reviewed, and names no dismissal ended", () => {
+		const { repo, env } = goldenCheckout(goldens["clean-rename"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+		const [changeset] = readdirSync(join(store, "changesets"));
+		rmSync(join(store, "changesets", changeset!, "lens"), { recursive: true });
+
+		const read = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+
+		expect(read.stdout).toContain("Verdict: not reviewed");
+		expect(read.stderr).not.toMatch(/live again|TypeError/);
+	});
+
+	it("says a push ended a shared dismissal, and to dismiss it again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "trusting", "--records", `dir:${store}`], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(
+			melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", `dir:${store}`], env).status,
+		).toBe(0);
+		const dismissedAt = `${git(repo, "merge-base", "trusting", "HEAD")}..${git(repo, "rev-parse", "HEAD")}`;
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", "trusting", "--records", `dir:${store}`], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).toContain(`it was dismissed at revision ${dismissedAt}`);
+		expect(notices[0]).toContain("as after a push");
+		expect(notices[0]).toContain(
+			`To share it at this one, dismiss it again: melian dismiss trusting ${id} --reason "<text>" --records dir:${store}`,
+		);
+		expect(read.stdout).toContain(id);
+	});
+
+	it("quotes the target and the store in the command that dismisses a finding again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "#12", trustingPolicy);
+		const target = "#12...HEAD";
+		const store = `dir:${join(scratch, "shared records")}`;
+		melian(repo, ["review", target, "--records", store], env);
+		const stored = JSON.parse(melian(repo, ["findings", target, "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(melian(repo, ["dismiss", target, id, "--reason", reason, "--records", store], env).status).toBe(0);
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", target, "--records", store], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", target, "--records", store], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		const command = notices[0]!.slice(notices[0]!.indexOf("melian dismiss "));
+		const words = spawnSync(
+			"bash",
+			["--noprofile", "--norc", "-c", `words() { printf '%s\\0' "$@"; }; words ${command}`],
+			{
+				cwd: scratch,
+				encoding: "utf8",
+			},
+		);
+		expect(words).toMatchObject({ status: 0, stderr: "" });
+		expect(words.stdout.split("\0").slice(0, -1)).toEqual([
+			"melian",
+			"dismiss",
+			target,
+			id,
+			"--reason",
+			"<text>",
+			"--records",
+			store,
+		]);
+	});
+
+	it("writes a control character in the store's path as visible text in the command that dismisses again", () => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "trusting", trustingPolicy);
+		const store = `dir:${join(scratch, "records\u001b[2Jcleared")}`;
+		melian(repo, ["review", "trusting", "--records", store], env);
+		const stored = JSON.parse(melian(repo, ["findings", "trusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+		expect(melian(repo, ["dismiss", "trusting", id, "--reason", reason, "--records", store], env).status).toBe(0);
+		writeFileSync(join(repo, "notes.md"), "A push after the dismissal.\n");
+		git(repo, "add", "notes.md");
+		git(repo, "commit", "--quiet", "-m", "push");
+		expect(melian(repo, ["review", "trusting", "--records", store], env).status).toBe(0);
+
+		const read = melian(repo, ["findings", "trusting", "--records", store], env);
+
+		const notices = read.stderr.split("\n").filter((line) => line.includes(`finding ${id} is live again`));
+		expect(notices).toHaveLength(1);
+		expect(notices[0]).not.toContain("\u001b");
+		expect(notices[0]).toContain(`--records 'dir:${join(scratch, "records\\u001b[2Jcleared")}'`);
+	});
+
+	it.each([
+		["sets trust.writers: false", "trust:\n  writers: false\n"],
+		["leaves trust.writers at its default", ""],
+	])("refuses --records, and dismisses nothing, when the base %s", (_, trust) => {
+		const { repo, env } = goldenCheckout(goldens["correctness-null-deref"]!, undefined, null);
+		policyBase(repo, "untrusting", `${guardrailsOnly}${trust}`);
+		const store = join(scratch, "records");
+		melian(repo, ["review", "untrusting"], env);
+		const stored = JSON.parse(melian(repo, ["findings", "untrusting", "--json"], env).stdout) as StoredVerdict;
+		const id = stored.findings.block[0]!.properties.id;
+
+		expect(
+			melian(repo, ["dismiss", "untrusting", id, "--reason", reason, "--records", `dir:${store}`], env),
+		).toMatchObject({
+			status: 1,
+			stderr:
+				"melian: the base's melian.yaml does not set trust.writers: true, so no reader would count the dismissal's record\n",
+		});
+		expect(existsSync(store)).toBe(false);
+		const after = JSON.parse(melian(repo, ["findings", "untrusting", "--json"], env).stdout) as StoredVerdict;
+		expect(after.dismissed).toEqual([]);
+	});
 
 	it("records a dismissal from any worktree of the clone, and the verdict, findings, and a rerun count it out", () => {
 		const { repo, env, id } = reviewedNullDeref();
@@ -1226,7 +1375,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 
 		expect(dismissed).toMatchObject({ status: 0, stderr: "" });
 		expect(dismissed.stdout).toBe(
-			`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.\nVerdict now: passed.\n`,
+			`Dismissed null-dereference in src/user.ts line 7 (${id}) as Melian Test <test@melian.invalid>.\nVerdict now: passed.\n${unshared}\n`,
 		);
 		const findings = melian(repo, ["findings", range], env);
 		expect(findings.stdout).toMatch(/^Verdict: passed\n/);
@@ -1308,6 +1457,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 				`  changed-return from lens.contracts (${member})`,
 				"To dismiss one report alone, run melian dismiss with --only.",
 				"Verdict now: passed.",
+				unshared,
 				"",
 			].join("\n"),
 		);
@@ -1344,6 +1494,7 @@ describe("melian dismiss", { timeout: 60_000 }, () => {
 				"Still live, merged with it before:",
 				`  null-dereference from lens.correctness (${id})`,
 				"Verdict now: findings, blocking.",
+				unshared,
 				"",
 			].join("\n"),
 		);

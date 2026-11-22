@@ -117,7 +117,7 @@ export class MemoryRecordStore implements RecordStore {
 	}
 
 	async add(records: RecordEnvelope[]): Promise<void> {
-		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads));
+		const parsed = records.map((record) => SharedRecord.parse(record, this.#payloads).storable());
 		for (const record of parsed) {
 			const changeset = this.#changeset(record.changeset);
 			if (changeset.cell?.value === disposalMark) throw disposedError(record.changeset);

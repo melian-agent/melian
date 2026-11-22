@@ -5,6 +5,8 @@ import {
 	EnolaImpact,
 	EnolaPolicy,
 	type EnolaSnapshot,
+	enolaPolicyDirectories,
+	enolaPolicyFiles,
 	type GraphFiles,
 	GraphSnapshot,
 	graphFiles,
@@ -105,8 +107,9 @@ export class EnolaRun {
 	async #prepare(root: string, output: string): Promise<void> {
 		const { env } = this.#run.input;
 		const policy = this.#policy.toJSON();
+		// `.enola` goes first, so a head's link there is gone before `rm` takes a policy path through it.
 		await this.#required(
-			`if [ -L ${quote(posix.join(root, "enola"))} ]; then rm -f ${quote(posix.join(root, "enola"))}; fi; mkdir -p ${quote(output)} ${quote(posix.join(this.#scratch, "home"))}; rm -rf ${quote(posix.join(root, ".enola"))} ${quote(posix.join(root, "enola", "constraints"))}; rm -f ${quote(posix.join(root, "enola.yaml"))} ${quote(posix.join(root, "mcp-arch.yaml"))} ${quote(posix.join(root, "enola-intent.yaml"))}; ln -s ${quote(output)} ${quote(posix.join(root, ".enola"))}`,
+			`if [ -L ${quote(posix.join(root, "enola"))} ]; then rm -f ${quote(posix.join(root, "enola"))}; fi; mkdir -p ${quote(output)} ${quote(posix.join(this.#scratch, "home"))}; rm -rf ${[".enola", ...enolaPolicyDirectories, ...enolaPolicyFiles].map((path) => quote(posix.join(root, path))).join(" ")}; ln -s ${quote(output)} ${quote(posix.join(root, ".enola"))}`,
 			"policy setup",
 		);
 		for (const file of policy.files) {
@@ -193,6 +196,16 @@ export class EnolaRun {
 			cacheKey: snapshot.key,
 			coverage: await this.#coverage(snapshot),
 		};
+	}
+
+	async #packwerk(output: string): Promise<string[]> {
+		const text = await this.#run.readOutput(posix.join(output, "facts.jsonl"));
+		if (text === undefined) throw this.#run.fail("invalidOutput", "Enola generated no facts.jsonl");
+		try {
+			return EnolaFacts.parse(text).packwerkFiles();
+		} catch (cause) {
+			throw this.#run.fail("invalidOutput", "Enola facts are unreadable", cause);
+		}
 	}
 
 	async #sarif(root: string, output: string, baseline: string): Promise<ToolLog> {
@@ -372,7 +385,15 @@ export class EnolaRun {
 					? "Enola configuration differs at head; the base's copies judged both revisions."
 					: "Enola configuration differs at head; the trusted policy commit's copies judged both revisions.",
 			);
-		return { status: "ran", log, baseLog, notes, snapshots: [before, after] };
+		const packwerk = [...(await this.#packwerk(baseOutput)), ...(await this.#packwerk(headOutput))];
+		return {
+			status: "ran",
+			log,
+			baseLog,
+			notes,
+			snapshots: [before, after],
+			packwerk: [...new Set(packwerk)].sort(),
+		};
 	}
 }
 

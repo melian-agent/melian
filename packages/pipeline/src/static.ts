@@ -5,6 +5,7 @@ import { dirname, posix } from "node:path";
 import {
 	CheckError,
 	type EnolaSnapshot,
+	gitEnvironment,
 	type MutationSettings,
 	type MutationSkipCause,
 	mutationSkips,
@@ -83,6 +84,8 @@ export type StaticRun =
 			readonly notes: readonly string[];
 			readonly baseLog?: ToolLog;
 			readonly snapshots?: EnolaSnapshot[];
+			/** The Packwerk files Enola read at the base or the head, whose change draws a policy notice. */
+			readonly packwerk?: readonly string[];
 	  }
 	| {
 			readonly status: "skipped";
@@ -134,9 +137,10 @@ function quote(value: string): string {
 }
 
 // Hooks and fsmonitor would run the revision's own programs during checkout, outside any tool's timeout. A ref under
-// refs/replace would check out another commit's tree under the ID.
+// refs/replace would check out another commit's tree under the ID, and git 2.40 and 2.41 let core.useReplaceRefs outrank
+// the variable.
 function git(repoRoot: string, args: string): string {
-	return `unset ${gitVariables.join(" ")}; GIT_NO_REPLACE_OBJECTS=1 git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false ${args}`;
+	return `unset ${gitVariables.join(" ")}; GIT_NO_REPLACE_OBJECTS=1 git -C ${quote(repoRoot)} -c core.hooksPath=/dev/null -c core.fsmonitor=false -c core.useReplaceRefs=false ${args}`;
 }
 
 // Stryker has no Melian copy: it and its Vitest runner are 161 packages that the reviewed repository installs, as it does
@@ -492,7 +496,10 @@ export function staticToolSource(repoRoot: string, tool: StaticTool): StaticTool
 	if (tool === "enola") return { from: "missing" };
 	const { bin, melian } = toolBinaries[tool];
 	const own = posix.join(repoRoot, "node_modules", ".bin", bin);
-	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], { encoding: "utf8" });
+	const tracked = spawnSync("git", ["-C", repoRoot, "ls-files", "--", "node_modules"], {
+		encoding: "utf8",
+		env: gitEnvironment(),
+	});
 	if (tracked.status === 0 && tracked.stdout === "" && existsSync(own)) return { from: "checkout", path: own };
 	try {
 		// Absent for Stryker, which Melian carries no copy of: calling it fails into the catch, as a missing install does.

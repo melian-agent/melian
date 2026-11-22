@@ -97,30 +97,43 @@ function compileExclusions(globs: readonly string[], configuration: string): Lin
 }
 
 /**
- * What a head's change to an analyser's configuration switches off, a sentence each: the file deleted, tsc's `noCheck`
- * or `skipLibCheck` turned on, Biome's linter disabled, or changed files Biome newly ignores. Best effort: it reads the
- * file itself, not what it extends.
+ * One thing a head's change to an analyser's configuration switches off: a sentence that names what, and a fixed clause
+ * that names only its kind, which fits a headline a trimmed record keeps.
+ */
+export type SwitchOff = { sentence: string; kind: string };
+
+/**
+ * What a head's change to an analyser's configuration switches off: the file deleted, tsc's `noCheck` or
+ * `skipLibCheck` turned on, Biome's linter disabled, changed files Biome newly ignores, or an npm script the base had
+ * changed or removed. Best effort: it reads the file itself, not what it extends.
  */
 export function switchOffs(
 	path: string,
 	base: string | undefined,
 	head: string | undefined,
 	changed: readonly string[],
-): string[] {
+): SwitchOff[] {
 	const analyser = analyserOf(path);
-	if (head === undefined) return base === undefined ? [] : [`The head deletes ${path}.`];
+	const manifest = posix.basename(path.toLowerCase()) === "package.json";
+	if (head === undefined) {
+		if (base === undefined) return [];
+		return [
+			{ sentence: `The head deletes ${path}.`, kind: "deletes the file" },
+			...(manifest ? scriptChanges(strictJson(base), {}) : []),
+		];
+	}
 	const [before, after] = [base === undefined ? undefined : parseJsonc(base), parseJsonc(head)];
-	const found: string[] = [];
+	const found: SwitchOff[] = [];
 	if (analyser === "tsc") {
 		for (const option of ["noCheck", "skipLibCheck"]) {
 			if (field(after, "compilerOptions", option) === true && field(before, "compilerOptions", option) !== true) {
-				found.push(`It turns on ${option}.`);
+				found.push({ sentence: `It turns on ${option}.`, kind: `turns on ${option}` });
 			}
 		}
 	}
 	if (analyser === "Biome") {
 		if (field(after, "linter", "enabled") === false && field(before, "linter", "enabled") !== false) {
-			found.push("It turns Biome's linter off.");
+			found.push({ sentence: "It turns Biome's linter off.", kind: "turns Biome's linter off" });
 		}
 		const directory = posix.dirname(path);
 		const relative = changed
@@ -131,7 +144,66 @@ export function switchOffs(
 		const ignored = relative.filter(
 			(each) => is.some((pattern) => pattern.test(each)) && !was.some((pattern) => pattern.test(each)),
 		);
-		if (ignored.length > 0) found.push(`It makes Biome ignore ${ignored.join(", ")}, which this change touches.`);
+		if (ignored.length > 0)
+			found.push({
+				sentence: `It makes Biome ignore ${ignored.join(", ")}, which this change touches.`,
+				kind: "makes Biome ignore files this change touches",
+			});
 	}
+	if (manifest) found.push(...scriptChanges(strictJson(base), strictJson(head)));
 	return found;
+}
+
+// npm's json-parse-even-better-errors strips one leading byte order mark, then calls JSON.parse. `parseJsonc` would
+// also drop a comma before a bracket inside a string.
+function strictJson(text: string | undefined): unknown {
+	try {
+		return text === undefined ? undefined : JSON.parse(text.replace(/^\uFEFF/, ""));
+	} catch {
+		return undefined;
+	}
+}
+
+// Every script counts: npm runs `pre` and `post` scripts and lifecycle scripts no caller names, so no reading of the
+// workflows says which ones a gate runs. Names come from the base alone, so no head text reaches the notice.
+function scriptChanges(before: unknown, after: unknown): SwitchOff[] {
+	const was = field(before, "scripts");
+	if (typeof was !== "object" || was === null) return [];
+	// A link's blob is its target's path and an oversized file reads as empty, though npm follows the one and runs the other.
+	if (typeof after !== "object" || after === null || Array.isArray(after))
+		return Object.keys(was).length > 0
+			? [
+					{
+						sentence: "Melian cannot read the npm scripts in the head's package.json.",
+						kind: "has npm scripts Melian cannot read",
+					},
+				]
+			: [];
+	const is = field(after, "scripts");
+	const now = typeof is === "object" && is !== null ? (is as Json) : {};
+	const names = Object.keys(was);
+	const removed = names.filter((name) => !Object.hasOwn(now, name));
+	const changed = names.filter(
+		(name) => Object.hasOwn(now, name) && JSON.stringify(now[name]) !== JSON.stringify((was as Json)[name]),
+	);
+	// A guardrails record holds every changed manifest's notice and the store takes at most 4 MiB, so quote few names.
+	const sentence = (verb: string, list: string[]): SwitchOff => {
+		const kind = `${verb} npm scripts`;
+		const quoted = list.filter((name) => name.length <= 100).slice(0, 10);
+		const more = list.length - quoted.length;
+		if (quoted.length === 0)
+			return {
+				sentence: `It ${verb} ${more} npm script${more > 1 ? "s whose names are" : " whose name is"} too long to quote.`,
+				kind,
+			};
+		const rest = more > 0 ? `, and ${more} more` : "";
+		return {
+			sentence: `It ${verb} the npm script${list.length > 1 ? "s" : ""} ${quoted.map((name) => JSON.stringify(name)).join(", ")}${rest}.`,
+			kind,
+		};
+	};
+	return [
+		...(changed.length > 0 ? [sentence("changes", changed)] : []),
+		...(removed.length > 0 ? [sentence("removes", removed)] : []),
+	];
 }

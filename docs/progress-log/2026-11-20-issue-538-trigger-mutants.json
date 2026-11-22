@@ -1,0 +1,314 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "08dcf2a2450ac2b4690604b07f4e063c0c9314b6",
+		"head": "7825d8dc47542208b0b915ba208939e7e4ae2ff7"
+	},
+	"claimsIn": [
+		"packages/core/src/guardrails.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 310,
+			"column": 37,
+			"endLine": 310,
+			"endColumn": 85,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f1d22890e9b3a36424b3aa31e30fca7649bc30fe70dccb42c52369cc25a0306b"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 310,
+			"column": 88,
+			"endLine": 310,
+			"endColumn": 90,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "40c550f10ceb74c16d77a8564afccd04dec0f00d7aae9695610a67c4af89b674"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 311,
+			"column": 19,
+			"endLine": 311,
+			"endColumn": 111,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "8460bc20edf09319e8b756465f87ec85be59705d796f630f57e769ef58796932",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"gives a notice behind a directory link a new trigger when only the link's target changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 311,
+			"column": 61,
+			"endLine": 311,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "42ff5556400b35556ce02086d8ff9188f438d007decf97f32d225ed556ce517c"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 598,
+			"column": 73,
+			"endLine": 602,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "45bf1301efff17f146da7a50d321ac96c15483f78f43d2f86d39d0d8d822e838",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"gives a notice behind a directory link a new trigger when only the link's target changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 599,
+			"column": 34,
+			"endLine": 599,
+			"endColumn": 99,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "bcb9b4278597bd95a6b98b852538b242c80f8e8ec30083ab5377ebbf69ee37e7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"gives a notice behind a directory link a new trigger when only the link's target changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 599,
+			"column": 35,
+			"endLine": 599,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6a2acbd221b4f01645a3744a9587d06f98f660e76092972af6fa633166e3b374"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 599,
+			"column": 48,
+			"endLine": 599,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cf250ab88eaa26830947e22abf990210b404948ac7e987567bce1a5fcd66e02e"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 599,
+			"column": 60,
+			"endLine": 599,
+			"endColumn": 78,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0aa5ea55d07dafd6f6a53389986470147d0f1d2d4dd3968f92abdbde6ec51a8e"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 599,
+			"column": 80,
+			"endLine": 599,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fc933be955d2a8bd12f21dc40260423ac1e9ddbccd8fb65784917798bcb7feaf"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 5,
+			"endLine": 600,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d6ade17e4a2ece0074763249afb4d1b02c8cf0a543231e89c34f335ded06fbb3",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"gives a notice behind a directory link a new trigger when only the link's target changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 5,
+			"endLine": 600,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9bda283697e418839819ecafee589a4a7643927e3cf86f50340045a19e6f5c8d",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Unreachable: linkedPaths has already listed this commit's tree, so rev-parse of the same commit's tree cannot fail; the guard fails closed only if the repository changes between the two calls."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 5,
+			"endLine": 600,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tree.code === 0",
+			"status": "generated",
+			"id": "0120bcfc3c32b7fc6eeab701d24b44444d7c9be4caf2575c6b258764c16e58ba",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"gives a notice behind a directory link a new trigger when only the link's target changes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 43,
+			"endLine": 600,
+			"endColumn": 55,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "39f47b6929d703a8f2796febc5064847a4bbf0e4ee7566eaf544be183839a952"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 64,
+			"endLine": 600,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fddcc0bd15f6a8b8e015975889872aad384986673edf1f84594a9dc627cdae3d"
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 600,
+			"column": 78,
+			"endLine": 600,
+			"endColumn": 96,
+			"mutatorName": "MethodExpression",
+			"replacement": "tree.stderr",
+			"status": "generated",
+			"id": "c4096e00188e27e9c7c1ea50da37a235b0fbf1ffb6cffffd88ce656449da56b2",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Unreachable for the same reason as the forced-false guard on this line, and the untrimmed stderr changes only the message text."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/guardrails.ts",
+			"line": 601,
+			"column": 8,
+			"endLine": 601,
+			"endColumn": 26,
+			"mutatorName": "MethodExpression",
+			"replacement": "tree.stdout",
+			"status": "generated",
+			"id": "6596d4a0c8693401269caab96437c74231d27a80023539e477effb314e5def05",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Every trigger behind a link carries the same trailing newline, so triggers still differ exactly when the head tree differs; the trigger is new in this commit, so no stored trigger used the trimmed form."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 53,
+			"column": 36,
+			"endLine": 53,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b2f9533f3e4d399b57cc6a9f13afb67f49b99ac39553987886c1b3d84fbf149"
+		}
+	],
+	"total": 18,
+	"omitted": 0,
+	"unmutated": []
+}

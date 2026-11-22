@@ -48,8 +48,10 @@ import {
 	clearVerifications,
 	FindingsDocument,
 	findingsVersion,
+	mergeSightings,
 	replaceCheckFindings,
 	seenBefore,
+	sharedDismissalHolds,
 	upsertVerification,
 } from "../src/findings.ts";
 import { PublishedDocument, PublisherDocument } from "../src/publish.ts";
@@ -455,6 +457,110 @@ describe("the findings document", () => {
 			});
 		});
 
+		it("keeps live a dismissal reopened at a revision that lacked an accepted hunk, though a later revision holds it", async () => {
+			const affected = (proof: { file: string; hash: string }[]) =>
+				Finding.create({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof },
+				});
+			const h = { file: "src/lib.ts", hash: snippetHash("+export const run = eval;") };
+			const g = { file: "src/util.ts", hash: snippetHash("+export const parse = JSON.parse;") };
+			const atX = affected([h, g]);
+			await root.commit((tx) => upsertFinding(tx, root.id, atX, "x", [h, g]), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, atX.properties.id, dismissal), context);
+			expect((await lifecycle(harness, atX.properties.id))?.dismissedTrigger?.proof).toEqual([h, g]);
+			await root.commit((tx) => upsertFinding(tx, root.id, affected([g]), "y", [g]), context);
+			expect((await lifecycle(harness, atX.properties.id))?.status).toBe("new");
+			await root.commit((tx) => upsertFinding(tx, root.id, affected([h, g]), "z", [h, g]), context);
+			expect((await lifecycle(harness, atX.properties.id))?.status).toBe("new");
+		});
+
+		it("reopens a dismissal the host's accumulated proof no longer holds", async () => {
+			const lib = snippetHash("+export const run = eval;");
+			const util = snippetHash("+export const parse = JSON.parse;");
+			const affected = (proof: { file: string; hash: string }[]) =>
+				Finding.create({
+					...input,
+					cause: "affected",
+					evidence: [
+						{
+							file: "src/lib.ts",
+							startLine: 1,
+							role: "cause",
+							revision: "head",
+							proves: true,
+							snippet: "export const run = eval;",
+						},
+					],
+					trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof },
+				});
+			const a = { file: "src/lib.ts", hash: lib };
+			const b = { file: "src/util.ts", hash: util };
+			const first = affected([a]);
+			await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1", [a]), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, first.properties.id, dismissal), context);
+			const trigger = (await lifecycle(harness, first.properties.id))?.dismissedTrigger;
+			expect(trigger?.proof).toEqual([a]);
+			const second = affected([a, b]);
+			await root.commit((tx) => upsertFinding(tx, root.id, second, "rev2", [a, b]), context);
+			const changed = [a, { file: "src/util.ts", hash: snippetHash("+export const parse = eval;") }];
+			const last = affected([a]);
+			await root.commit((tx) => upsertFinding(tx, root.id, last, "rev3", changed), context);
+			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
+		});
+
+		it("reopens, as the host does, a dismissal of an introduced finding sighted later as affected with a new trigger", async () => {
+			const a = { file: "src/lib.ts", hash: snippetHash("+export const run = eval;") };
+			const first = Finding.create({
+				...input,
+				cause: "introduced",
+				trigger: { file: "src/run.ts", index: 0, snippet: "eval(input)" },
+			});
+			await root.commit((tx) => upsertFinding(tx, root.id, first, "rev1", []), context);
+			await root.commit((tx) => dismissFinding(tx, root.id, first.properties.id, dismissal), context);
+			const trigger = (await lifecycle(harness, first.properties.id))?.dismissedTrigger;
+			expect(trigger?.proof).toEqual([]);
+			const second = Finding.create({
+				...input,
+				cause: "affected",
+				evidence: [
+					{
+						file: "src/lib.ts",
+						startLine: 1,
+						role: "cause",
+						revision: "head",
+						proves: true,
+						snippet: "export const run = eval;",
+					},
+				],
+				trigger: { file: "src/lib.ts", index: 0, snippet: "export const run = eval;", proof: [a] },
+			});
+			expect(second.properties.id).toBe(first.properties.id);
+			await root.commit((tx) => upsertFinding(tx, root.id, second, "rev2", [a]), context);
+			expect((await lifecycle(harness, first.properties.id))?.status).toBe("new");
+
+			const { status: _, ...properties } = second.properties;
+			const read = mergeSightings(
+				[{ ...second.toJSON(), properties } as StoredFinding],
+				[],
+				[input.source],
+				new Map([[first.properties.id, [{ ...dismissal, trigger: trigger! }]]]),
+				[a],
+			);
+			expect(read.map((each) => each.properties.status)).toEqual(["new"]);
+		});
+
 		it("carries the dismissal on the finding it reads", async () => {
 			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 			await root.commit((tx) => dismissFinding(tx, root.id, evalFinding.properties.id, dismissal), context);
@@ -479,6 +585,36 @@ describe("the findings document", () => {
 			const [read] = await readFindings(harness, root.id, "rev1", context);
 			expect(read!.properties.dismissal).toEqual({ ...again, reason: "the input is a literal" });
 			expect(read!.properties.pastDismissals).toEqual([{ ...dismissal, replacedAt: again.at }]);
+		});
+
+		it("takes a static finding's dismissal made again under a new run, with the new run", async () => {
+			const linted = Finding.create({ ...input, source: { check: "static.example", version: "1" } });
+			const id = linted.properties.id;
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "a", task: 1 }),
+				context,
+			);
+			await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1", "P1"), context);
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "b", task: 2 }),
+				context,
+			);
+			const replaced = await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1", "P1"), context);
+			expect(replaced).toEqual(dismissal);
+			expect((await lifecycle(harness, id))?.dismissedSighting?.run).toBe("b");
+		});
+
+		it("changes nothing when a dismissal shown at no severity is made again", async () => {
+			const linted = Finding.create({ ...input, source: { check: "static.example", version: "1" } });
+			const id = linted.properties.id;
+			await root.commit(
+				(tx) => replaceCheckFindings(tx, root.id, "static.example", "rev1", [linted], { request: "a", task: 1 }),
+				context,
+			);
+			await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1"), context);
+			const again = await root.commit((tx) => dismissFinding(tx, root.id, id, dismissal, "rev1"), context);
+			expect(again).toBeUndefined();
+			expect((await lifecycle(harness, id))?.history).toEqual([]);
 		});
 
 		it("refuses a blank or overlong reason and commits nothing", async () => {
@@ -655,6 +791,35 @@ type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 type Legacy = { [key: string]: Json };
 const json = (value: unknown) => value as Json;
 
+describe("a shared dismissal at the revision it was made at", () => {
+	const a = { file: "src/a.ts", hash: "1".repeat(64) };
+	const b = { file: "src/b.ts", hash: "2".repeat(64) };
+	const shared = {
+		by: "ana",
+		reason: "accepted",
+		at: "2026-11-20T00:00:00.000Z",
+		trigger: { hash: "f".repeat(64), proof: [a] },
+	};
+	const citing = (proof: readonly { file: string; hash: string }[]) => ({
+		properties: {
+			cause: "affected" as const,
+			trigger: {
+				file: "src/a.ts",
+				index: 0,
+				snippet: "export const a = 2;",
+				hash: "f".repeat(64),
+				proof: [...proof],
+			},
+		},
+	});
+
+	it("holds while each sighting cites only hunks the revision holds, matched by file and hash together", () => {
+		expect(sharedDismissalHolds(shared, [citing([a])], [a, b])).toBe(true);
+		expect(sharedDismissalHolds(shared, [citing([{ file: a.file, hash: b.hash }])], [a, b])).toBe(false);
+		expect(sharedDismissalHolds(shared, [citing([{ file: b.file, hash: a.hash }])], [a, b])).toBe(false);
+	});
+});
+
 describe("version 5 findings", () => {
 	it("reads through version 6 after an SQLite reopen", async () => {
 		const legacy = defineDoc<Legacy>({
@@ -818,7 +983,7 @@ describe("version 7 findings and verdicts", () => {
 		const { harness, root } = await open(createMemoryStorage());
 		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
 		await expect(harness.snapshot(legacy("melian.findings"), root.id, context)).rejects.toThrow(
-			/newer version 11 than 7/,
+			/newer version 12 than 7/,
 		);
 	});
 

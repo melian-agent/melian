@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from "node:fs";
 import type * as fs from "node:fs/promises";
 import { join } from "node:path";
 import { DirectoryRecordStore, type RecordEnvelope, RecordError, SharedRecord } from "@melian-agent/core";
-import { testPayloads } from "@melian-agent/core/testing";
+import { recordKey, testPayloads } from "@melian-agent/core/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
@@ -53,7 +53,7 @@ vi.mock("node:fs/promises", async (original) => {
 describe("DirectoryRecordStore with an add in flight", () => {
 	let root: string;
 	const changeset = "pull-0123456789abcdef";
-	const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: "static.biome", payload: {} };
+	const envelope: RecordEnvelope = { v: 1, changeset, kind: "check", key: recordKey("static.biome"), payload: {} };
 
 	beforeEach(() => {
 		root = temporaryDirectory();

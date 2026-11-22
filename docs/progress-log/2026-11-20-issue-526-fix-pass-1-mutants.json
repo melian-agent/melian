@@ -1,0 +1,48 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "142db9fabab88073bfee03503820c94eda6fccf4",
+    "head": "e190c2387b373302915b577a988a1f2358fa7f4e"
+  },
+  "claimsIn": [
+    "packages/github/src/provider.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/github/src/provider.ts",
+      "line": 319,
+      "column": 21,
+      "endLine": 319,
+      "endColumn": 74,
+      "mutatorName": "OptionalChaining",
+      "replacement": "(body as {\n  permission?: unknown;\n} | null).permission",
+      "status": "generated",
+      "id": "c094081ac1670f42661d35d73e157bb3881c52ad0c3a3bdd8f667a0726596569",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/github/test/viewer-permission.test.ts",
+          "path": [
+            "the collaborator endpoint is the authority when it answers",
+            "reads a null body as unknown and never falls back"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "optional-chain"
+      ]
+    }
+  ],
+  "total": 1,
+  "omitted": 0,
+  "unmutated": []
+}

@@ -9,6 +9,7 @@ import {
 	defaultConfig,
 	ExternalFinding,
 	type ExternalFindingInput,
+	exportedMissReasons,
 	externalFindingSchema,
 	externalFindingsFileSchema,
 	Finding,
@@ -25,6 +26,10 @@ const revision = { base: "a".repeat(40), head: "b".repeat(40) };
 // A Melian finding at `src/run.ts:12`, or wherever `input` puts it.
 const melian = (input: Partial<FindingInput> = {}) =>
 	Finding.create({ ...evalInput, trigger: undefined, resolution: undefined, ...input });
+
+// A review thread's finding, by its node ID.
+const thread = (node: string, input: Partial<ExternalFindingInput> = {}) =>
+	external({ source: { kind: "thread", thread: node, url: `https://github.com/o/r/pull/7#${node}` }, ...input });
 
 let position = 0;
 function external(input: Partial<ExternalFindingInput> = {}): ExternalFinding {
@@ -1798,5 +1803,251 @@ describe("Comparison export", () => {
 		expect(record.render()).not.toContain("\u001b");
 		expect(record.render()).toContain("\\| &lt;img&gt;");
 		expect(JSON.parse(record.renderJson()).comparisons["pull-7.r1"]).toEqual(comparison.toJSON());
+	});
+});
+
+describe("Comparison misses", () => {
+	const by = { by: "M", at: "2026-10-05T00:00:00Z" };
+
+	it("lists each valid external finding Melian did not match, with its lines at the compared head", () => {
+		const matched = external();
+		const missed = external({ line: 90, endLine: 94 });
+		const oneLine = external({ line: 130 });
+		const noise = external({ line: 170 });
+		const unjudged = external({ line: 210 });
+		const outside = external({ line: 250 });
+		const comparison = compared({
+			externals: [matched, missed, oneLine, noise, unjudged, outside],
+			findings: [melian()],
+		});
+		comparison.adjudicate(matched.id, { ...by, verdict: "valid" });
+		comparison.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(oneLine.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		expect(comparison.misses(exportedMissReasons)).toEqual([
+			{ id: missed.id, file: "src/run.ts", lines: [90, 94] },
+			{ id: oneLine.id, file: "src/run.ts", lines: [130, 130] },
+		]);
+		expect(comparison.misses(["needs-execution"])).toEqual([
+			{ id: oneLine.id, file: "src/run.ts", lines: [130, 130] },
+		]);
+		expect(comparison.misses(["owned-missed", "no-owner"])).toEqual([
+			{ id: missed.id, file: "src/run.ts", lines: [90, 94] },
+		]);
+	});
+
+	it("lists one miss for each defect, from the first valid report in site order", () => {
+		const later = external({ reviewer: { name: "human" }, line: 13 });
+		const first = external({ line: 12, endLine: 14 });
+		const noise = external({ line: 90 });
+		const valid = external({ reviewer: { name: "human" }, line: 91 });
+		const comparison = compared({ externals: [later, first, valid, noise], findings: [] });
+		for (const report of [later, first, valid])
+			comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(noise.id, { ...by, verdict: "noise" });
+		expect(comparison.externalOnly().map((group) => group.external.map(({ id }) => id))).toEqual([
+			[first.id, later.id],
+			[noise.id, valid.id],
+		]);
+		expect(comparison.misses(exportedMissReasons)).toEqual([
+			{ id: first.id, file: "src/run.ts", lines: [12, 14] },
+			{ id: valid.id, file: "src/run.ts", lines: [91, 91] },
+		]);
+	});
+
+	it("files each defect under its first report's reason, as the comparison's statistics count it", () => {
+		const first = external({ line: 12, endLine: 14 });
+		const second = external({ reviewer: { name: "human" }, line: 13 });
+		const outside = external({ line: 90, endLine: 94 });
+		const probing = external({ reviewer: { name: "human" }, line: 91 });
+		const comparison = compared({ externals: [first, second, outside, probing], findings: [] });
+		comparison.adjudicate(first.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		comparison.adjudicate(second.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		comparison.adjudicate(outside.id, { ...by, verdict: "valid", reason: "out-of-scope" });
+		comparison.adjudicate(probing.id, { ...by, verdict: "valid", reason: "needs-execution" });
+		expect(comparison.stats().misses).toMatchObject({ "owned-missed": 1, "needs-execution": 1 });
+		expect(comparison.misses(["needs-execution"])).toEqual([{ id: probing.id, file: "src/run.ts", lines: [91, 91] }]);
+		expect(comparison.misses(["owned-missed"])).toEqual([{ id: first.id, file: "src/run.ts", lines: [12, 14] }]);
+	});
+
+	it("leaves out a valid finding that became a miss after its match was undone, until a reason is recorded", () => {
+		const finding = melian();
+		const report = external();
+		const comparison = compared({ externals: [report], findings: [finding] });
+		comparison.adjudicate(report.id, { ...by, verdict: "valid" });
+		comparison.unmatch(report.id, finding.id, "M", "2026-10-05T00:00:00Z");
+		expect(comparison.misses(exportedMissReasons)).toEqual([]);
+		comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		expect(comparison.misses(exportedMissReasons)).toEqual([{ id: report.id, file: "src/run.ts", lines: [12, 12] }]);
+	});
+
+	it("says why a valid miss names no lines at the compared head", () => {
+		const unplaced = external({ file: undefined, line: undefined });
+		const lineless = external({ file: "src/other.ts", line: undefined });
+		const base = external({ line: 90, revision: "base" });
+		const outdated = external({ line: 130, outdated: true });
+		const earlier = external({ line: 170, commit: "c".repeat(40) });
+		const atHead = external({ line: 210, commit: revision.head });
+		const reports = [unplaced, lineless, base, outdated, earlier, atHead];
+		const comparison = compared({ externals: reports, findings: [] });
+		for (const report of reports) comparison.adjudicate(report.id, { ...by, verdict: "valid", reason: "no-owner" });
+		expect(comparison.misses(exportedMissReasons)).toEqual([
+			{ id: unplaced.id, skipped: "names no file and line" },
+			{ id: lineless.id, skipped: "names no file and line" },
+			{ id: base.id, skipped: "sits on the base side of the diff" },
+			{ id: outdated.id, skipped: "is outdated" },
+			{ id: earlier.id, skipped: `was read at ${"c".repeat(40)}, not the compared head` },
+			{ id: atHead.id, file: "src/run.ts", lines: [210, 210] },
+		]);
+	});
+
+	it("exports no miss a later round matched through the same review thread", () => {
+		const missed = thread("T1", { line: 12 });
+		const first = compared({ externals: [missed], findings: [] });
+		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [missed], findings: [melian()] });
+		second.adjudicate(missed.id, { ...by, verdict: "valid" });
+		expect(second.misses(exportedMissReasons)).toEqual([]);
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone", exportedMissReasons);
+		expect(exported).toEqual({ cases: [], skipped: [] });
+	});
+
+	it("keeps each round's miss on a file's reused ref, since a file reviewer may reuse a ref for another defect", () => {
+		const one = external({ line: 12, source: { kind: "file", path: "codex.json", position: 0, ref: "A1" } });
+		const other = external({
+			line: 90,
+			title: "another defect",
+			source: { kind: "file", path: "codex.json", position: 0, ref: "A1" },
+		});
+		expect(other.id).toBe(one.id);
+		const first = compared({ externals: [one], findings: [] });
+		first.adjudicate(one.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [other], findings: [] });
+		second.adjudicate(other.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone", exportedMissReasons);
+		const at = (name: string, line: number) => ({
+			name,
+			repo: "/clone",
+			base: revision.base,
+			head: revision.head,
+			file: "src/run.ts",
+			lines: [line, line],
+		});
+		expect(exported).toEqual({
+			cases: [at(`pull-7.r1-${one.id}`, 12), at(`pull-7.r2-${one.id}`, 90)],
+			skipped: [],
+		});
+	});
+
+	it("exports one miss for a defect two threads reported once a later round compares one of them alone", () => {
+		const a = thread("A", { line: 12, endLine: 14 });
+		const b = thread("B", { reviewer: { name: "human" }, line: 13 });
+		const first = compared({ externals: [a, b], findings: [] });
+		first.adjudicate(a.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		first.adjudicate(b.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const second = compared({ externals: [b], findings: [] });
+		second.adjudicate(b.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const third = compared({ externals: [b], findings: [] });
+		third.adjudicate(b.id, { ...by, verdict: "noise" });
+		const rounds = [
+			{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+			{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			{ changeset: "pull-7", round: "pull-7.r3", comparison: third },
+		];
+		expect(new ComparisonExport(rounds.slice(0, 2), "#7").misses("/clone", exportedMissReasons)).toEqual({
+			cases: [
+				{
+					name: `pull-7-${b.id}`,
+					repo: "/clone",
+					base: revision.base,
+					head: revision.head,
+					file: "src/run.ts",
+					lines: [13, 13],
+				},
+			],
+			skipped: [],
+		});
+		expect(new ComparisonExport(rounds, "#7").misses("/clone", exportedMissReasons)).toEqual({
+			cases: [],
+			skipped: [],
+		});
+	});
+
+	it("exports the same misses whichever side of the rounds an unattributed comparison sits, and names each thread it cannot order", () => {
+		const conflicted = thread("T1");
+		const alone = external({ line: 130 });
+		const attributed = compared({ externals: [conflicted], findings: [melian()] });
+		attributed.adjudicate(conflicted.id, { ...by, verdict: "valid" });
+		const unattributed = compared({ externals: [conflicted, alone], findings: [] });
+		unattributed.adjudicate(conflicted.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		unattributed.adjudicate(alone.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const round = { changeset: "pull-7", round: "pull-7.r1", comparison: attributed };
+		const legacy = { changeset: "pull-7", unattributed: revision.head, comparison: unattributed };
+		const expected = {
+			cases: [
+				{
+					name: `pull-7-${alone.id}`,
+					repo: "/clone",
+					base: revision.base,
+					head: revision.head,
+					file: "src/run.ts",
+					lines: [130, 130],
+				},
+			],
+			skipped: [
+				{
+					name: `pull-7-${conflicted.id}`,
+					reason: "was compared in an unattributed comparison and in another, so which came last is unknown",
+				},
+			],
+		};
+		expect(new ComparisonExport([round, legacy], "#7").misses("/clone", exportedMissReasons)).toEqual(expected);
+		expect(new ComparisonExport([legacy, round], "#7").misses("/clone", exportedMissReasons)).toEqual(expected);
+	});
+
+	it("exports each miss as a case of the measurement tool, keeping a thread compared again from its last round", () => {
+		const missed = thread("T1", { line: 90 });
+		const skipped = external({ file: undefined, line: undefined });
+		const first = compared({ externals: [missed, skipped], findings: [] });
+		first.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		first.adjudicate(skipped.id, { ...by, verdict: "valid", reason: "no-owner" });
+		const later = { base: "d".repeat(40), head: "e".repeat(40) };
+		const second = Comparison.of(later);
+		second.import("file:codex.json", { findings: [missed], skippedBodies: 0 }, "2026-10-06T00:00:00.000Z");
+		second.compare(verdictOf({ findings: [] }));
+		second.adjudicate(missed.id, { ...by, verdict: "valid", reason: "owned-missed" });
+		const exported = new ComparisonExport(
+			[
+				{ changeset: "pull-7", round: "pull-7.r1", comparison: first },
+				{ changeset: "pull-7", round: "pull-7.r2", comparison: second },
+			],
+			"#7",
+		).misses("/clone", exportedMissReasons);
+		expect(exported).toEqual({
+			cases: [
+				{
+					name: `pull-7-${missed.id}`,
+					repo: "/clone",
+					base: later.base,
+					head: later.head,
+					file: "src/run.ts",
+					lines: [90, 90],
+				},
+			],
+			skipped: [{ name: `pull-7-${skipped.id}`, reason: "names no file and line" }],
+		});
 	});
 });

@@ -284,6 +284,19 @@ export const melianYamlSchema = Type.Object(
 		ruleAliases: Type.Optional(Type.Record(Type.String(), ruleAliasSchema)),
 		checks: Type.Optional(Type.Object({ allowSkip: Type.Optional(Type.Array(name)) }, strict)),
 		triage: Type.Optional(Type.Object({ escalateAt: Type.Optional(severitySchema) }, strict)),
+		evidence: Type.Optional(
+			Type.Object(
+				{
+					budget: Type.Optional(
+						Type.Union([
+							Type.Integer({ minimum: 0 }),
+							Type.String({ pattern: "^(0|[1-9][0-9]{0,15})(B|KiB|MiB|GiB|TiB)$" }),
+						]),
+					),
+				},
+				strict,
+			),
+		),
 	},
 	strict,
 );
@@ -498,6 +511,8 @@ export interface MelianConfig {
 	readonly checks: { readonly allowSkip: readonly string[] };
 	/** `escalateAt`: a lens at `quick` that reports a finding this severe or worse runs again at the next level. */
 	readonly triage: { readonly escalateAt: Severity };
+	/** `budget`: the bytes the clone's evidence directory may hold before a write is refused. */
+	readonly evidence: { readonly budget: number };
 }
 
 // Stryker’s runtime marker lets a test fake kills by throwing only during a mutant.
@@ -556,6 +571,7 @@ export const defaultConfig: MelianConfig = {
 	ruleAliases: {},
 	checks: { allowSkip: [] },
 	triage: { escalateAt: "P1" },
+	evidence: { budget: 1024 ** 3 },
 };
 
 /**
@@ -789,6 +805,12 @@ function parseLayer(text: string, site: Site, directory: string): MelianYaml {
 	checkRequire(site, value as MelianYaml);
 	checkResolutionKeys(site, value as MelianYaml);
 	checkRootOnly(site, value as MelianYaml);
+	const evidence = (value as MelianYaml).evidence;
+	if (typeof evidence?.budget === "string") {
+		const [, count, unit] = /^(\d+)(\w+)$/.exec(evidence.budget)!;
+		const scale = { B: 1, KiB: 1024, MiB: 1024 ** 2, GiB: 1024 ** 3, TiB: 1024 ** 4 }[unit!]!;
+		evidence.budget = Number(count) * scale;
+	}
 	if (site.preference === true) checkPreference(site, value as MelianYaml);
 	else if (site.file !== melianPaths.config) checkNested(site, value as MelianYaml);
 	return anchorPaths(site, directory, value as MelianYaml);
@@ -881,16 +903,23 @@ function checkPublishEmoji(site: Site, layer: MelianYaml): void {
 	);
 }
 
-// A review reads `triage` and `output` from the root's configuration alone, so a nested file setting either would be
-// silently ignored. A preference file layers over the root's, so it may.
+// A review reads `triage`, `output` and `evidence` from the root's configuration alone, so a nested file setting one
+// would be silently ignored. A preference file layers over the root's, so it may.
 function checkRootOnly(site: Site, layer: MelianYaml): void {
 	if (site.preference === true || site.file === melianPaths.config) return;
-	const key = layer.triage !== undefined ? "triage" : layer.output !== undefined ? "output" : undefined;
+	const key =
+		layer.triage !== undefined
+			? "triage"
+			: layer.output !== undefined
+				? "output"
+				: layer.evidence !== undefined
+					? "evidence"
+					: undefined;
 	if (key === undefined) return;
 	throw configError(
 		"invalidValue",
 		site,
-		`"${key}" applies to the whole review, so only the root melian.yaml may set it; move it there`,
+		`"${key}" applies to the whole ${key === "evidence" ? "clone" : "review"}, so only the root melian.yaml may set it; move it there`,
 		{ key },
 	);
 }

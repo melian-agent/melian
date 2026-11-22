@@ -29,6 +29,7 @@ import {
 	openSqliteStorage,
 } from "../src/harness.ts";
 import { createFakeModels } from "../src/testing.ts";
+import { replaceRefsProbe } from "./fixtures/replace-refs.ts";
 import { commit, createRepository, gitIn, removeRepository } from "./fixtures/repo.ts";
 
 const day = 86_400_000;
@@ -162,6 +163,20 @@ it("keeps an old graph whose tree is a branch tip, a remote-tracking ref, or a d
 	const worktreeGraph = await graph(tree(detached), 30 * day);
 	expect((await plan()).entries).toEqual([]);
 	for (const key of [branch, remoteGraph, worktreeGraph]) expect(await exists(`graphs/${key}`)).toBe(true);
+});
+
+it("reads live trees with core.useReplaceRefs as false though the repository's configuration turns it on", async () => {
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	const probe = replaceRefsProbe();
+	try {
+		await plan({ env: { ...process.env, PATH: `${probe.bin}:${process.env.PATH}` } });
+		const answers = probe.answers();
+
+		expect(answers.length).toBeGreaterThan(0);
+		expect(new Set(answers)).toEqual(new Set(["false"]));
+	} finally {
+		await rm(probe.bin, { recursive: true, force: true });
+	}
 });
 
 it("keeps an old graph whose tree a live commit holds though refs/replace puts another commit behind it", async () => {
@@ -350,6 +365,30 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 	expect(await exists("scripted/pull-3333333333333333.sqlite")).toBe(true);
 	expect(await exists("tools/stray")).toBe(true);
 	expect(await exists("tools/linked")).toBe(true);
+});
+
+it("keeps the evidence directory as durable, however old, and counts its bytes", async () => {
+	const pointer = join("evidence", "pull-1111111111111111", "r1", "misses", `${"a".repeat(16)}.json`);
+	await mkdir(join(state, "evidence", "pull-1111111111111111", "r1", "misses"), { recursive: true });
+	await writeFile(join(state, pointer), "1234567");
+	await age("evidence", 400 * day);
+	const prune = await plan();
+
+	await prune.apply();
+
+	expect(prune).toMatchObject({ entries: [], kept: [], evidence: { bytes: 7 } });
+	expect(await exists(pointer)).toBe(true);
+});
+
+it("lists a linked evidence directory as not recognised and counts none of it", async () => {
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	await writeFile(join(elsewhere, "big"), "123456789");
+	await symlink(elsewhere, join(state, "evidence"));
+
+	const prune = await plan();
+
+	expect(prune).toMatchObject({ entries: [], kept: ["evidence"], evidence: { bytes: 0 } });
 });
 
 it("lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count", async () => {

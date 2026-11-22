@@ -1,0 +1,11 @@
+# Issue 561: an accept-only route, a lens with some graph tools, and the results file's temporary file
+
+Round 44661254755 on [pull request #582](https://github.com/melian-agent/melian/pull/582)'s head 8a0176bc raised three acknowledge findings. The coordinator directed one small pass for all three, each test first.
+
+`pinned()` removed a route's fallbacks and left its `accept`. Core runs a route that names no model as its first accepted model, with the rest of `accept` as fallbacks. So with the first model uncredentialed, a later accepted model answered, and no credential error stopped the run. No route in this repository's `melian.yaml` lacks a model, but a miss's policy commit may hold one. `pinned()` now gives such a route its first accepted model, keeping `accept`. On 8a0176bc the routing test got a heavy route with no model. The real-review test, with the first accepted model uncredentialed and the second credentialed, ran to the end with no credential error. Both pass now, and the review fails on the first model's missing credential.
+
+No test covered a lens holding some of the graph tools but not all. The new test gives a lens `read_file` and `graph_definitions`, and asserts it gains the rest and the guidance. It passed on 8a0176bc, as a test for an untested line does. With the line's `every` turned to `some`, the mutant the round named, it fails.
+
+The results save wrote `${out}.${pid}.tmp` and followed a file or link already at that path. A planted link sent the results into its target. The temporary file is now created exclusively, so the save fails instead. On 8a0176bc the new test's run finished with exit 1, and the link's target held the results. Now the run fails on `EEXIST` and the target keeps its text.
+
+Mutants: the enumerator listed 13 over 8a0176bc...HEAD, none omitted, and configuration ignores 2. Each of the other 11, and the round's `every` to `some` mutant, was run by hand against its named test. Eight were killed at first. Three survived because `toEqual` ignores a key whose value is `undefined`. A strict assertion added to the routing test killed them: a tier routed by thinking alone stays so, and the verifier gains no thinking key. All 12 are killed. The inventory is `2026-11-20-issue-561-route-graph-save-mutants.json`.

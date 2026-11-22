@@ -1439,11 +1439,21 @@ export const skipAttack = defineLensTool(
 	{
 		name: "skip_attack",
 		description:
-			"Record that an attack of the plan cannot be probed, by its number, with the reason: what a probe would need that a probe here cannot have.",
+			"Record that an attack of the plan cannot be probed, by its number, with the reason: what a probe would need that a probe here cannot have. Or, naming as probe a probe of the attack that failed only because you wrote it wrongly, such as a syntax error in its script, record why it never exercised the attack; that probe then answers nothing.",
 		parameters: Type.Object(
 			{
 				attack: Type.Integer({ minimum: 1, description: "The attack's number in the plan" }),
-				reason: Type.String({ ...bounded(probingLimits.skipReason), description: "Why no probe can show it" }),
+				probe: Type.Optional(
+					Type.String({
+						pattern: "^p[0-9]+$",
+						maxLength: 32,
+						description: "The ID run_probe returned for a probe of this attack that failed without exercising it",
+					}),
+				),
+				reason: Type.String({
+					...bounded(probingLimits.skipReason),
+					description: "Why no probe can show it, or why the named probe never exercised it",
+				}),
 			},
 			{ additionalProperties: false },
 		),
@@ -1456,11 +1466,27 @@ export const skipAttack = defineLensTool(
 				const plan = (await probingOf(api, context)).plan ?? [];
 				if (args.attack > plan.length)
 					throw new Error(`attack ${args.attack} is not in the plan, which has ${plan.length}`);
+				if (args.probe === undefined) {
+					await api.commit(async (tx) => {
+						const document = await tx.doc(ProbingDocument, api.conversationId);
+						document.skips = { ...document.skips, [String(args.attack)]: args.reason };
+					}, context);
+					return text(`recorded attack ${args.attack} as skipped`);
+				}
+				const id = args.probe;
 				await api.commit(async (tx) => {
 					const document = await tx.doc(ProbingDocument, api.conversationId);
-					document.skips = { ...document.skips, [String(args.attack)]: args.reason };
+					const probe = document.probes?.[id];
+					if (probe === undefined) throw new Error(`no probe ${id} ran in this conversation`);
+					if (probe.attack !== args.attack)
+						throw new Error(`probe ${id} probed attack ${probe.attack}, not attack ${args.attack}`);
+					if (!probeFailed(probe.result))
+						throw new Error(
+							`probe ${id} did not fail, so it needs no closing: skip the attack without naming a probe, or probe it again`,
+						);
+					document.closed = { ...document.closed, [id]: args.reason };
 				}, context);
-				return text(`recorded attack ${args.attack} as skipped`);
+				return text(`recorded attack ${args.attack} as closed: probe ${id} never exercised it`);
 			}),
 	},
 	probingLimits.arguments,
@@ -1630,11 +1656,14 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			document.spend.capped = lens.budget;
 			return "capped";
 		}
-		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped.
+		// Each report reads the code at every location it cites, and quotes it back, so corrections are capped. A report
+		// that answers an attack no finding has is no correction: the plan bounds those, and without it the attack ends
+		// the lens unanswered.
+		const answers = probe !== undefined && refuted === undefined && !probing!.answered?.includes(probe.attack);
 		document.spend.reports ??= {};
 		const calls = document.spend.reports[id] ?? [];
 		if (!calls.includes(api.taskId)) {
-			if (calls.length > maxCorrections) return false;
+			if (calls.length > maxCorrections && !answers) return false;
 			document.spend.reports[id] = [...calls, api.taskId];
 		}
 		// A refutation stores no sighting: the lens says the finding an earlier run reported, by the ID it was given, is
@@ -1652,7 +1681,8 @@ async function recordFinding(args: ReportFindingInput, api: ToolExecutionApi, le
 			review.files.flatMap((file) => file.hunks.map(provingHunk)),
 		);
 		if (probe !== undefined) {
-			probing!.findings = { ...probing!.findings, [id]: args.probe! };
+			// A finding rests on the probe that first showed it; issue #545 would keep every one.
+			if (probing!.findings?.[id] === undefined) probing!.findings = { ...probing!.findings, [id]: args.probe! };
 			const answered = probing!.answered ?? [];
 			if (!answered.includes(probe.attack)) probing!.answered = [...answered, probe.attack];
 		}

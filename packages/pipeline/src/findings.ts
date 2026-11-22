@@ -49,7 +49,8 @@ type FindingLifecycle = {
 	dismissedSeverity?: Severity;
 	// The finding as the dismissed revision showed it, kept beside the severity. Inheritance reads the root's claim and
 	// region from it alone, so neither a later sighting nor a rerun that replaces this one moves what was dismissed.
-	dismissedSighting?: { revision: string; sighting: ProducerFinding };
+	// `run` is the request key the check run that wrote the sighting stamped on its check, when one stood then.
+	dismissedSighting?: { revision: string; sighting: ProducerFinding; run?: string };
 	firstSeenRevision: string;
 	lastSeenRevision: string;
 	history: StoredPastDismissal[];
@@ -81,13 +82,23 @@ type FindingRecord = {
 type StoredInheritance = { from: string; kind: "inherited" | "proposed"; dismissal: string };
 
 // `inherited` holds, per revision, each restatement's link, which every review round replaces whole.
+// `checkRuns` holds, per revision and check, the stamp of the check task whose terminal commit wrote every sighting the
+// check has there. Any write that changes those sightings deletes it in the same commit, and only that commit writes it,
+// so a stamp never outlives the sightings it vouches for.
+/** The check task whose terminal commit wrote a check's sightings, and the full key of the request its run answered. */
+export type CheckStamp = { request: string; task: number };
+
 export type FindingsState = {
 	revisions: string[];
 	items: Record<string, FindingRecord>;
 	versions: Record<string, number>;
 	inherited?: Record<string, Record<string, StoredInheritance>>;
+	checkRuns?: Record<string, Record<string, CheckStamp>>;
 };
 
+// Version 12 lets a revision hold, per check, the check task that wrote its sightings and its request key, and a dismissal
+// hold the key that stood for its sighting. A version 11 document holds neither and reads unchanged; an older Melian
+// refuses version 12, so it never writes a sighting under a stamp it would leave standing.
 // Version 11 lets a dismissal record the severity and sighting it was made at. It lets a revision hold its
 // restatements' links, each inheriting a dismissal or naming one as a likely match. A version 10 document holds
 // neither and reads unchanged.
@@ -100,7 +111,7 @@ export type FindingsState = {
 // records. Version 5 made evidence a list of locations; a sighting stored before reads with its one location as a cause.
 export const FindingsDocument = defineDoc<FindingsState>({
 	kind: "melian.findings",
-	version: 11,
+	version: 12,
 	scope: "conversation",
 	history: "rewindable",
 	fork: "asOf",
@@ -129,6 +140,19 @@ export const FindingsDocument = defineDoc<FindingsState>({
 
 function producerKey(source: FindingSource): string {
 	return `${source.check}@${source.version ?? ""}`;
+}
+
+// Deletes the stamp `check` holds at `revision`, in the commit of any write that changes its sightings there.
+function unstamp(state: FindingsState, revision: string, check: string): void {
+	const stamps = state.checkRuns?.[revision];
+	if (stamps?.[check] === undefined) return;
+	delete stamps[check];
+	if (Object.keys(stamps).length === 0) delete state.checkRuns![revision];
+}
+
+/** The stamp of the check task whose terminal commit wrote every sighting `check` has at `revision`, if one stands. */
+export function stampOf(state: FindingsState | undefined, revision: string, check: string): CheckStamp | undefined {
+	return state?.checkRuns?.[revision]?.[check];
 }
 
 // Whether `source` has sighted finding `id` at `revision`.
@@ -415,6 +439,7 @@ export async function upsertFinding(
 	const state = await tx.doc(FindingsDocument, rootConversationId);
 	if (!state.revisions.includes(revision)) state.revisions.push(revision);
 	bump(state, [revision]);
+	unstamp(state, revision, properties.source.check);
 	const key = producerKey(properties.source);
 	const previous = state.items[properties.id];
 	if (previous === undefined) {
@@ -476,7 +501,8 @@ export async function upsertFinding(
  * Makes `findings` the whole of what `check` sights at `revision`, a {@link Revision.key}: removes the check's earlier sightings there, of any
  * version, then upserts each. A finding left with no sighting at any revision is removed too, unless it was dismissed,
  * so its dismissal survives if it returns. Call it in the commit that records the check's outcome, with no findings for
- * a check that failed, so a failed rerun leaves nothing of an earlier run behind.
+ * a check that failed, so a failed rerun leaves nothing of an earlier run behind. `stamp`, the check task and its run's
+ * request key, stamps the check at `revision` last; without it the check's stamp there is deleted.
  */
 export async function replaceCheckFindings(
 	tx: Tx,
@@ -484,8 +510,10 @@ export async function replaceCheckFindings(
 	check: string,
 	revision: string,
 	findings: readonly Finding[],
+	stamp?: CheckStamp,
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	unstamp(state, revision, check);
 	const reported = new Set(findings.map((finding) => `${finding.id}\0${producerKey(finding.properties.source)}`));
 	for (const finding of findings) await upsertFinding(tx, rootConversationId, finding, revision);
 	const { items } = state;
@@ -506,6 +534,13 @@ export async function replaceCheckFindings(
 		else items[id] = { ...record, sightings };
 	}
 	if (removed) bump(state, [revision]);
+	if (stamp !== undefined) {
+		state.checkRuns ??= {};
+		state.checkRuns[revision] = {
+			...state.checkRuns[revision],
+			[check]: { request: stamp.request, task: stamp.task },
+		};
+	}
 }
 
 /**
@@ -550,6 +585,9 @@ export async function dismissFinding(
 	const atRevision = judgedAt(record, accepting, selected(producers));
 	const { winner } = adjudicate(atRevision, true);
 	const trigger = winner.properties.trigger;
+	// Only a static check's dismissal is shared by its stamp, so no other check's run is part of the dismissal.
+	const { check } = winner.properties.source;
+	const run = check.startsWith("static.") ? stampOf(state, accepting, check)?.request : undefined;
 	const shown =
 		severity === undefined
 			? {}
@@ -559,6 +597,7 @@ export async function dismissFinding(
 						revision: accepting,
 						// A commit's document view refuses structuredClone, so the copy goes through JSON.
 						sighting: JSON.parse(JSON.stringify(winner)) as ProducerFinding,
+						...(run === undefined ? {} : { run }),
 					},
 				};
 	const proof = unionOf([
@@ -566,12 +605,17 @@ export async function dismissFinding(
 		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
 	]);
 	const dismissedTrigger = { hash: triggerCode(trigger), proof };
-	// Repeating the same dismissal of the same content changes nothing, so the severity it was made at stands.
+	// Repeating the same dismissal of the same content at the same revision under the same run changes nothing, so the
+	// severity it was made at stands. A new run is taken, since the run is what proves a static sighting, and so is a new
+	// revision, since a shared dismissal holds only at the revision its sighting names.
 	if (
 		status === "dismissed" &&
 		dismissedBy === by &&
 		dismissedReason === why &&
-		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger)
+		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger) &&
+		(severity === undefined ||
+			(record.lifecycle.dismissedSighting?.run === run &&
+				(record.lifecycle.dismissedSighting?.revision ?? accepting) === accepting))
 	)
 		return undefined;
 	const replaced =
@@ -615,6 +659,7 @@ export async function clearSightings(
 	sources: readonly FindingSource[],
 ): Promise<void> {
 	const state = await tx.doc(FindingsDocument, rootConversationId);
+	for (const { check } of sources) unstamp(state, revision, check);
 	const keys = new Set(sources.map(producerKey));
 	let cleared = false;
 	for (const [id, record] of Object.entries(state.items)) {
@@ -781,16 +826,37 @@ export type SharedDismissal = Readonly<Pick<FindingDismissal, "by" | "reason" | 
 };
 
 /**
+ * Whether `shared` still holds for a finding sighted as `sightings` at the revision it was made at, of `hunks`, by the
+ * rule that reopens a dismissal on the host, tested against the trigger it accepted alone. A host also remembers each
+ * sighting's hunks and tests later sightings against them, so a sighting citing a hunk the revision lacks reopens it
+ * here at once; any other hunk it remembers is the revision's own, which reopens nothing.
+ */
+export function sharedDismissalHolds(
+	shared: SharedDismissal,
+	sightings: Iterable<{ readonly properties: Pick<StoredFinding["properties"], "cause" | "trigger"> }>,
+	hunks: readonly ProvingHunk[],
+): boolean {
+	return [...sightings].every(
+		({ properties: { cause, trigger } }) =>
+			!reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks) &&
+			proofOf(cause, trigger).every((each) =>
+				hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash),
+			),
+	);
+}
+
+/**
  * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
  * the sightings `producers` select. A finding reads `dismissed` when `dismissals` holds one for its ID that every one
  * of its sightings still meets at a revision of `hunks`, by the rule that reopens a dismissal on the host, and `new`
- * otherwise: the sightings carry no lifecycle of their own.
+ * otherwise: the sightings carry no lifecycle of their own. Of several that hold, the finding carries the latest, and
+ * of two made at one time the one listed last.
  */
 export function mergeSightings(
 	sightings: readonly StoredFinding[],
 	claims: readonly VerificationClaim[],
 	producers: readonly Producer[],
-	dismissals: ReadonlyMap<string, SharedDismissal>,
+	dismissals: ReadonlyMap<string, readonly SharedDismissal[]>,
 	hunks: readonly ProvingHunk[],
 ): Finding[] {
 	const at = "revision";
@@ -815,22 +881,15 @@ export function mergeSightings(
 			const atHead = judgedAt(items[id]!, at, counts);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead, true);
-			const shared = dismissals.get(id);
-			const stands =
-				shared !== undefined &&
-				Object.values(items[id]!.sightings[at]!).every(
-					({ properties: { cause, trigger } }) =>
-						!reopens(
-							shared.trigger.hash,
-							unionOf([...shared.trigger.proof, ...proofOf(cause, trigger)]),
-							cause,
-							triggerCode(trigger),
-							hunks,
-						),
-				);
-			const status = stands
-				? { status: "dismissed" as const, dismissal: { by: shared.by, reason: shared.reason, at: shared.at } }
-				: { status: "new" as const };
+			const sighted = Object.values(items[id]!.sightings[at]!);
+			let shared: SharedDismissal | undefined;
+			for (const each of dismissals.get(id) ?? [])
+				if (sharedDismissalHolds(each, sighted, hunks) && (shared === undefined || shared.at <= each.at))
+					shared = each;
+			const status =
+				shared === undefined
+					? { status: "new" as const }
+					: { status: "dismissed" as const, dismissal: { by: shared.by, reason: shared.reason, at: shared.at } };
 			return [Finding.from({ ...winner, properties: { ...winner.properties, ...status, reportedBy } })];
 		});
 }
@@ -1069,7 +1128,8 @@ export type DismissedRoot = {
 };
 
 // Every finding a maintainer dismissed with a recorded severity and accepted content, in ID order. An inherited
-// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one.
+// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one. A static check's finding is
+// never one: its dismissal may be unshareable (`unprovenRun`), and a restatement's record must name a shared one.
 export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 	return Object.keys(state.items)
 		.sort()
@@ -1081,6 +1141,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 			if (dismissedSighting === undefined) return [];
 			const { revision, sighting } = dismissedSighting;
 			const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
+			if (finding.properties.source.check.startsWith("static.")) return [];
 			const [line, endLine] = finding.lines();
 			const { failureScenario, evidence } = finding.properties;
 			return [

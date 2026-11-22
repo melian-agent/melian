@@ -678,6 +678,11 @@ export function snippetHash(snippet: string): string {
 	return createHash("sha256").update(normaliseSnippet(snippet)).digest("hex");
 }
 
+/** How many hex digits of its hash a finding's ID keeps. */
+export const findingIdDigits = 16;
+/** A finding's ID, which keys its dismissal. */
+export const findingIdPattern = `^[0-9a-f]{${findingIdDigits}}$`;
+
 /**
  * The stable ID of a finding: the first 16 hex characters of a sha256 over the length-prefixed file, rule,
  * {@link normaliseSnippet} of the snippet, and the occurrence or discriminator.
@@ -710,7 +715,7 @@ export function findingId({ file, rule, snippet, occurrence, discriminator }: Fi
 	}
 	// Length-prefixed, so no character inside a field, NUL included, can move text from one field to the next.
 	const input = [file, rule, normalised, distinguisher].map((field) => `${field.length}:${field}`).join("");
-	return createHash("sha256").update(input).digest("hex").slice(0, 16);
+	return createHash("sha256").update(input).digest("hex").slice(0, findingIdDigits);
 }
 
 /** Where a snippet sits in a file: its first line and, optionally, its first column and last line. 1-based. */
@@ -1433,14 +1438,22 @@ export class Finding {
 
 	/** The finding's own failure scenario and evidence, as a finding it merges into keeps them; none without either. */
 	claims(): MemberClaim[] {
-		const { id, source, failureScenario, evidence, verification } = this.properties;
+		const claim = this.claimAs();
+		const kept = this.properties.otherClaims?.includes(claim) ?? false;
+		return kept || claim.failureScenario !== undefined || claim.evidence !== undefined ? [claim] : [];
+	}
+
+	/**
+	 * The claim this finding makes as `source`, a check that reported it: the copy a merge kept among its other claims, or
+	 * the finding's own fields.
+	 */
+	claimAs(source: FindingSource = this.properties.source): MemberClaim {
+		const { id, failureScenario, evidence, verification } = this.properties;
 		const original = this.properties.otherClaims?.find(
 			(claim) => claim.id === id && claim.source.check === source.check && claim.source.version === source.version,
 		);
-		if (original !== undefined) return [original];
-		if (failureScenario === undefined && evidence === undefined) return [];
-		return [
-			{
+		return (
+			original ?? {
 				id,
 				ruleId: this.ruleId,
 				source,
@@ -1448,8 +1461,8 @@ export class Finding {
 				...(failureScenario === undefined ? {} : { failureScenario }),
 				...(evidence === undefined ? {} : { evidence }),
 				...(verification === undefined ? {} : { verification }),
-			},
-		];
+			}
+		);
 	}
 
 	/**
@@ -1879,19 +1892,26 @@ export class Finding {
 	// The reports the finding holds, as the walk reads them.
 	#claims(): ResolutionClaim[] {
 		const { severity, source, reportedBy = [source], guardrail } = this.properties;
-		if (source.check !== "guardrails") {
-			return reportedBy.map(
+		// Every other reporter keeps its claim whichever sighting speaks, so the answer does not depend on which won.
+		const own = reportedBy
+			.filter(({ check }) => check !== "guardrails")
+			.map(
 				({ check, version }) =>
 					withoutUndefined({ check, rule: this.ruleId, severity, variant: version }) as ResolutionClaim,
 			);
-		}
-		const whole = { check: source.check, group: this.ruleId, severity };
-		if (guardrail === undefined) return [whole];
-		if ("rules" in guardrail) return guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }));
+		// A guardrail notice another check raised, as Enola's Packwerk notice is, resolves under both, the stricter standing.
+		if (guardrail === undefined)
+			return source.check === "guardrails" ? [...own, { check: "guardrails", group: this.ruleId, severity }] : own;
+		const whole = { check: "guardrails", group: this.ruleId, severity };
+		if ("rules" in guardrail)
+			return [...own, ...guardrail.rules.map((rule) => ({ ...whole, rule: `${this.ruleId}/${rule}` }))];
 		const classed = { ...whole, rule: `${this.ruleId}/${guardrail.notice}` };
 		// A notice of a changed resolution also resolves through the tables alone, and the stricter result stands: no
 		// entry under `guardrails` lowers it, and one the base wrote to ask more of a policy notice still applies.
-		return this.#resolutionNotice() ? [{ check: source.check, severity, tableOnly: true }, classed] : [classed];
+		return [
+			...own,
+			...(this.#resolutionNotice() ? [{ check: "guardrails", severity, tableOnly: true }, classed] : [classed]),
+		];
 	}
 
 	// Whether the finding is a notice of a changed `resolution` key, or of a lens's changed declared resolution.
@@ -1917,6 +1937,23 @@ export class Finding {
 			...this.toJSON(),
 			properties: { ...properties, resolution, ...(held ? { resolvedAtOriginal: true as const } : {}), decidedBy },
 		}) as ResolvedFinding;
+	}
+
+	/**
+	 * This finding with its detail left out for `note`: What becomes its headline, unless its What is the shorter in
+	 * UTF-8 bytes, `note` stands as Why here, and What to do is kept. Nothing its ID, severity, resolution or place comes
+	 * from changes.
+	 */
+	abridged(note: string): Finding {
+		const { explanation } = this.properties;
+		const what =
+			Buffer.byteLength(explanation.what) < Buffer.byteLength(this.message.text)
+				? explanation.what
+				: this.message.text;
+		return Finding.parse({
+			...this.toJSON(),
+			properties: { ...this.properties, explanation: { ...explanation, what, whyHere: note } },
+		});
 	}
 
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */

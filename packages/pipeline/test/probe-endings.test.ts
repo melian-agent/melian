@@ -80,15 +80,15 @@ describe.skipIf(!availability.available && !required)(
 			expect([probeConclusive(result), probeFailed(result)]).toEqual([false, false]);
 		});
 
-		// Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0.
-		it.skipIf(process.platform !== "linux").each([34, 64])(
-			"reads a probe that signal %s ended as an ending with no record of how",
-			async (signal) => {
+		// Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0. Defined on
+		// Linux alone, since the macOS job fails on any test in this file that does not pass, a skipped one included.
+		if (process.platform === "linux") {
+			it.each([34, 64])("reads a probe that signal %s ended as an ending with no record of how", async (signal) => {
 				const result = await probed(`process.kill(process.pid, ${signal});\nsetInterval(() => {}, 1000);\n`);
 				expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
 				expect([probeConclusive(result), probeFailed(result)]).toEqual([false, false]);
-			},
-		);
+			});
+		}
 
 		// The child inherits the probe's fd 4, so the runner sees no end of it until the child exits.
 		it("records an unknown ending without waiting for a child the probe left holding its exit pipe", async () => {
@@ -108,6 +108,28 @@ describe.skipIf(!availability.available && !required)(
 
 		it("reads a probe that leaves exit 0 without its exit handler as an ending with no record of how", async () => {
 			const result = await probed("process.reallyExit(0);\n");
+			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
+		});
+
+		// The runner keeps only what tells `0\n` apart, so a probe that floods its exit pipe cannot grow the runner's memory.
+		it("reads the ending of a probe that floods its exit pipe past what a string can hold", async () => {
+			const result = await probed(
+				[
+					'import { writeSync } from "node:fs";',
+					"const block = Buffer.alloc(1 << 20, 48);",
+					"try { for (let i = 0; i < 640; i++) writeSync(4, block); } catch {}",
+					"process.exit(3);",
+					"",
+				].join("\n"),
+				{ timeout: 30_000 },
+			);
+			expect(ending(result)).toEqual({ exitCode: 3, signal: null, timedOut: false, truncated: false });
+		});
+
+		it("reads a probe whose exit pipe holds more than 0 as an ending with no record of how", async () => {
+			const result = await probed(
+				['import { writeSync } from "node:fs";', 'writeSync(4, "0\\nx");', "process.reallyExit(0);", ""].join("\n"),
+			);
 			expect(ending(result)).toEqual({ exitCode: null, signal: null, timedOut: false, truncated: false });
 		});
 

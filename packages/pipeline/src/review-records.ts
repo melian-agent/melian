@@ -1,18 +1,23 @@
 import {
 	type AccountPayload,
-	type CheckErrorCode,
 	type CheckPayload,
 	type CheckRecord,
 	canonicalJson,
 	type DismissalPayload,
 	type EnolaSnapshot,
 	type FindingSource,
+	hashPattern,
+	isReceipt,
+	isToolVersion,
 	KeyedRequest,
 	type LensPayload,
 	type NamedRecord,
+	objectIdPattern,
+	type RecordEnvelope,
 	type RecordJson,
 	Revision,
 	type RunStage,
+	recordCodes,
 	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
@@ -20,18 +25,22 @@ import {
 	type StoredDecision,
 	type StoredFinding,
 	type StoredRunDetails,
+	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
+	telemetryOutcomes,
 	type Verification,
 	type VerificationPayload,
 	type Walkthrough,
 	type WalkthroughPayload,
+	withheld,
 } from "@melian-agent/core";
 import { blindCallers, lightTriage } from "./caveats.ts";
 import type { CheckRunRecord } from "./checks.ts";
 import { DismissError } from "./errors.ts";
 import type { FindingsState } from "./findings.ts";
 import type { StoredBudgetEnd } from "./lens-tools.ts";
+import type { StaticProof } from "./static-proof.ts";
 
 type DecidedCheck = NonNullable<LensPayload["check"]>;
 
@@ -63,11 +72,19 @@ export type LensRunIdentity = {
 	readonly probe: boolean;
 };
 
+type Outcome = VerificationPayload["outcomes"][number]["outcome"];
+/** A candidate's outcome as the verifier ended it, its reason not yet withheld. */
+export type VerificationOutcome = Outcome extends infer Each
+	? Each extends { reason: unknown }
+		? Omit<Each, "reason"> & { reason: string }
+		: Each
+	: never;
+
 /** A verification's claims, the dismissals its verifier was shown, and each candidate's outcome, as its record holds them. */
 export type VerificationFacts = {
 	readonly claims: readonly { id: string; source: FindingSource; verification: Verification }[];
 	readonly dismissals: readonly { finding: string; record: string }[];
-	readonly outcomes: VerificationPayload["outcomes"];
+	readonly outcomes: readonly { candidate: string; outcome: VerificationOutcome }[];
 	// The verifier's check as the review decided it, or none while its run has not ended.
 	readonly check?: CheckRecord;
 };
@@ -79,47 +96,32 @@ export type DismissalFacts = {
 	readonly reason: string;
 	readonly at: string;
 	readonly severity: Severity;
-	readonly sighting: { readonly revision: string; readonly finding: StoredFinding };
+	// `run` is the request key the sighting's check run stamped when it was dismissed, which no payload carries.
+	readonly sighting: { readonly revision: string; readonly finding: StoredFinding; readonly run?: string };
 	readonly rounds: readonly string[];
+	// The rounds of the changeset the writer's store held as the dismissal was made, which only `made` knows.
+	readonly frontier?: readonly string[];
 	readonly trigger: { readonly hash: string; readonly proof: readonly { file: string; hash: string }[] };
 };
 
 const micros = (dollars: number): number => Math.round(dollars * 1_000_000);
 const orNull = <T>(value: T | undefined): T | null => value ?? null;
 
-/** What an exported record says in place of text a tool, a provider or the head's code may have written. */
-export const withheld = "Melian shares none of this text, which the reviewing host's store and terminal hold";
+export { withheld };
 
-// The codes a record may carry as they are: a check error's, a task outcome's, and the account's own.
-const codes: ReadonlySet<string> = new Set([
-	...([
-		"unknownCheck",
-		"unknownTier",
-		"tierCycle",
-		"unknownConversation",
-		"notCompleted",
-		"noEnvironment",
-		"worktreeFailed",
-		"toolMissing",
-		"toolFailed",
-		"timeout",
-		"aborted",
-		"nothingToCheck",
-		"outputTooLarge",
-		"invalidOutput",
-		"unreadable",
-		"tooLarge",
-	] satisfies CheckErrorCode[]),
-	"failed",
-	"orphaned",
-	"faulted",
-	"no record",
-	"unexpected",
-	"withheld",
-]);
-const shared = (text: string): string => (codes.has(text) ? text : withheld);
-const caveat = (text: string): string =>
-	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? text : withheld;
+const codes: ReadonlySet<string> = new Set(recordCodes);
+const outcomes: ReadonlySet<string> = new Set(telemetryOutcomes);
+const shared = <T extends string>(text: string): T => (codes.has(text) ? text : withheld) as T;
+// A tool's version comes from its installed manifest, which the head can write, so only one core's `isToolVersion`
+// takes leaves the machine. A lens's version and the verifier's are Melian's own.
+const toolVersion = (version: string | undefined): string | null =>
+	version === undefined ? null : isToolVersion(version) ? version : withheld;
+const sharedVersion = ({ check, version }: FindingSource): string | null =>
+	check.startsWith("lens.") || check === "verifier" ? orNull(version) : toolVersion(version);
+const hashed = new RegExp(hashPattern);
+const coverageId = (id: string | undefined): string | null => (id !== undefined && hashed.test(id) ? id : null);
+const caveat = (text: string): typeof blindCallers | typeof lightTriage | typeof withheld =>
+	text.startsWith(blindCallers) ? blindCallers : text === lightTriage ? lightTriage : withheld;
 const byId = (a: StoredFinding, b: StoredFinding): number =>
 	a.properties.id < b.properties.id ? -1 : a.properties.id > b.properties.id ? 1 : 0;
 
@@ -152,7 +154,7 @@ export class ReviewRecords {
 	 */
 	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
 		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
-		if (result.status === "ran" && result.snapshots?.some((each) => !hashed(each))) {
+		if (result.status === "ran" && result.snapshots?.some((each) => !minted(each))) {
 			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
 			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
 		}
@@ -192,7 +194,7 @@ export class ReviewRecords {
 				.sort((a, b) => compare(claimOrder(a), claimOrder(b)))
 				.map(({ id, source, verification }) => ({
 					id,
-					source: { check: source.check, version: source.version ?? null },
+					source: { check: source.check, version: sharedVersion(source) },
 					verification,
 				})),
 			dismissals: [...facts.dismissals].sort((a, b) => compare(a.finding, b.finding)),
@@ -200,7 +202,7 @@ export class ReviewRecords {
 				.sort((a, b) => compare(a.candidate, b.candidate))
 				.map(({ candidate, outcome }) => ({
 					candidate,
-					outcome: "reason" in outcome ? { ...outcome, reason: shared(outcome.reason) } : outcome,
+					outcome: ("reason" in outcome ? { ...outcome, reason: shared(outcome.reason) } : outcome) as Outcome,
 				})),
 			check: facts.check === undefined ? null : (decided(facts.check) as DecidedCheck),
 		};
@@ -275,20 +277,24 @@ export class ReviewRecords {
 		readonly resolutionPolicy: string | null;
 	}): SharedRecord {
 		const records = [...new Set(facts.records.map((record) => record.id))].sort(compare);
-		const producers = [
-			...new Map(
-				facts.producers.map((producer) => {
-					const version = orNull(producer.version);
-					const ids = producer.ids === undefined ? null : [...new Set(producer.ids)].sort(compare);
-					return [`${producer.check}@${version ?? ""}`, { check: producer.check, version, ids }] as const;
-				}),
-			).values(),
-		].sort(
+		// Two versions withheld alike name one producer, whose findings are both producers' findings.
+		const united = new Map<string, { check: string; version: string | null; ids: string[] | null }>();
+		for (const producer of facts.producers) {
+			const version = sharedVersion(producer);
+			const key = `${producer.check}@${version ?? ""}`;
+			const earlier = united.get(key);
+			const ids =
+				producer.ids === undefined || earlier?.ids === null
+					? null
+					: [...new Set([...(earlier?.ids ?? []), ...producer.ids])].sort(compare);
+			united.set(key, { check: producer.check, version, ids });
+		}
+		const producers = [...united.values()].sort(
 			(a, b) =>
 				compare(a.check, b.check) || compare(`${a.check}@${a.version ?? ""}`, `${b.check}@${b.version ?? ""}`),
 		);
 		const payload: AccountPayload = {
-			v: 1,
+			v: 2,
 			checks: [...new Set(facts.checks)],
 			records,
 			// Two records alike in every field fill one entry, since an account names each once.
@@ -312,7 +318,7 @@ export class ReviewRecords {
 
 	/**
 	 * A round's record: every record it read, its walkthrough, the rounds of this revision it replaces, and the rounds
-	 * of the revision before, each read once in ID order, as core requires. Its key is a request of the revision and
+	 * it follows, each read once in ID order, as core requires. Its key is a request of the revision and
 	 * the IDs it read, so a round that read the same records is the same record.
 	 */
 	round(
@@ -334,15 +340,61 @@ export class ReviewRecords {
 	}
 
 	/**
-	 * The record of the dismissal of `id`, a finding `state` holds, as `melian dismiss` stored it, so every round builds the same
-	 * bytes; `undefined` for a finding with no frozen sighting, which a dismissal stored before findings document
-	 * version 11 lacks and every reopen drops.
+	 * The record of the dismissal of `id`, a finding `state` holds, that `melian dismiss` wrote to the store and `held`
+	 * holds, so every round shares the same bytes; `undefined` for a finding with no frozen sighting, which a dismissal
+	 * stored before findings document version 11 lacks and every reopen drops. It throws `DismissError`
+	 * `madeWithoutStore` when `held` holds no such record: only the writer, as it dismissed, could name the rounds its
+	 * store held then.
 	 */
-	dismissalOf(state: FindingsState, id: string): SharedRecord | undefined {
+	dismissalOf(
+		state: FindingsState,
+		id: string,
+		held: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.dismissal(facts, held, proof);
+	}
+
+	/** The record `held` holds of the dismissal `facts` describe, as for `dismissalOf`. */
+	dismissal(facts: DismissalFacts, held: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
+		const copy = this.#heldCopy(this.#dismissalEnvelope(facts, proof), held);
+		if (copy !== undefined) return copy;
+		throw new DismissError(
+			"madeWithoutStore",
+			`The dismissal of ${facts.finding} was made with no record store, so no record names the rounds its host held then, and it is not shared.`,
+			{ revision: facts.sighting.revision, finding: facts.finding },
+		);
+	}
+
+	/**
+	 * What tells the dismissal of `id`, a finding `state` holds, from any other: the ID of the record `held` holds of
+	 * it, or for a dismissal made with no store, the ID its record would have with no frontier and no supersedes.
+	 * `undefined` as for `dismissalOf`.
+	 */
+	dismissalIdentity(state: FindingsState, id: string, held: readonly RecordEnvelope[]): string | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		if (facts === undefined) return undefined;
+		const envelope = this.#dismissalEnvelope(facts);
+		return this.#heldCopy(envelope, held)?.id ?? ReviewRecords.#bare(envelope);
+	}
+
+	/** The record `made` writes for the dismissal of `id` that `state` holds, or `undefined` as for `dismissalOf`. */
+	madeOf(
+		state: FindingsState,
+		id: string,
+		listing: readonly RecordEnvelope[],
+		proof?: StaticProof,
+	): SharedRecord | undefined {
+		const facts = ReviewRecords.#dismissalFacts(state, id);
+		return facts === undefined ? undefined : this.made(facts, listing, proof);
+	}
+
+	static #dismissalFacts(state: FindingsState, id: string): DismissalFacts | undefined {
 		const { lifecycle } = state.items[id]!;
 		const sighting = lifecycle.dismissedSighting;
 		if (sighting === undefined) return undefined;
-		return this.dismissal({
+		return {
 			finding: id,
 			by: lifecycle.dismissedBy!,
 			reason: lifecycle.dismissedReason!,
@@ -352,20 +404,69 @@ export class ReviewRecords {
 			sighting: {
 				revision: sighting.revision,
 				finding: { ...sighting.sighting, properties: { ...sighting.sighting.properties, status: "new" } },
+				...(sighting.run === undefined ? {} : { run: sighting.run }),
 			},
 			rounds: [],
 			trigger: lifecycle.dismissedTrigger!,
-		});
+		};
 	}
 
 	/**
-	 * A dismissal's record, keyed by the finding's ID; it carries no revision, by rule 5, and names the head of its own
-	 * sighting, since a later round exports a dismissal made at an earlier head.
+	 * The record of a dismissal `melian dismiss` has just made, written once, keyed by the finding's ID; it carries no
+	 * revision, by rule 5, and names the head of its own sighting. `listing` holds the records the writer's store holds
+	 * as the dismissal is made: the record names every round of the changeset there as its frontier, and supersedes each
+	 * dismissal of its finding that stands there. The record `listing` already holds for this dismissal is returned as
+	 * it is, so a dismissal made again writes nothing new.
 	 */
-	dismissal(facts: DismissalFacts): SharedRecord {
-		const { check } = facts.sighting.finding.properties.source;
-		// No sighting carries the run that wrote it yet, so none proves an earlier build did not store its tool's text.
-		if (check.startsWith("static."))
+	made(facts: DismissalFacts, listing: readonly RecordEnvelope[], proof?: StaticProof): SharedRecord {
+		const frontier = listing
+			.filter((each) => each.kind === "round" && each.changeset === this.changeset)
+			.map((each) => SharedRecord.parseEnvelope(each).id);
+		const envelope = this.#dismissalEnvelope({ ...facts, frontier }, proof);
+		const copy = this.#heldCopy(envelope, listing);
+		if (copy !== undefined) return copy;
+		const own = SharedRecord.parse(envelope, reviewPayloads).id;
+		// Only a record in the same slot supersedes, as `RecordSet` rules, so an edge from any other is no replacement.
+		const slot = listing.filter(
+			(each) => each.kind === "dismissal" && each.changeset === this.changeset && each.key === facts.finding,
+		);
+		const replaced = new Set(slot.flatMap((each) => each.supersedes ?? []));
+		const standing = slot.flatMap((each) => {
+			const { id } = SharedRecord.parseEnvelope(each);
+			return id === own || replaced.has(id) ? [] : [id];
+		});
+		if (standing.length === 0) return SharedRecord.parse(envelope, reviewPayloads);
+		return SharedRecord.parse({ ...envelope, supersedes: [...new Set(standing)].sort() }, reviewPayloads);
+	}
+
+	// A record in `held` that is this dismissal, whatever its writer's listing let it supersede or name as its frontier.
+	#heldCopy(envelope: RecordEnvelope, held: readonly RecordEnvelope[]): SharedRecord | undefined {
+		const own = ReviewRecords.#bare(envelope);
+		const copy = held.find(
+			(each) =>
+				each.kind === "dismissal" &&
+				each.changeset === this.changeset &&
+				each.key === envelope.key &&
+				ReviewRecords.#bare(each) === own,
+		);
+		return copy === undefined ? undefined : SharedRecord.parse(copy, reviewPayloads);
+	}
+
+	// The ID of a dismissal record with no `supersedes` and no frontier: what two records of one dismissal share.
+	static #bare(envelope: RecordEnvelope): string {
+		const { supersedes: _, payload, ...rest } = envelope;
+		const { frontier: __, ...kept } = payload as { frontier?: unknown };
+		return SharedRecord.parseEnvelope({ ...rest, payload: kept as RecordJson }).id;
+	}
+
+	// A static finding's dismissal is shared only when `proof` shows the run its sighting was stamped with stored none of
+	// its tool's text.
+	#dismissalEnvelope(facts: DismissalFacts, proof?: StaticProof): RecordEnvelope {
+		const { id, source } = facts.sighting.finding.properties;
+		// A reader refuses a set holding such a record, so writing one would cost every round that reads it.
+		if (id !== facts.finding) throw new Error(`a dismissal of ${facts.finding} holds a sighting of ${id}`);
+		const { check } = source;
+		if (check.startsWith("static.") && proof?.asks(check, facts.sighting.run) !== true)
 			throw new DismissError(
 				"unprovenRun",
 				`The dismissed ${check} finding carries no proof that the run which sighted it stored none of its tool's text, so its dismissal is not shared.`,
@@ -379,16 +480,20 @@ export class ReviewRecords {
 			severity: facts.severity,
 			sighting: {
 				revision: facts.sighting.revision,
-				finding: sighting(facts.sighting.finding) as unknown as RecordJson,
+				finding: shareable(sighting(facts.sighting.finding)) as unknown as RecordJson,
 			},
 			head: Revision.parseKey(facts.sighting.revision)!.head,
 			rounds: [...new Set(facts.rounds)].sort(),
+			...(facts.frontier === undefined ? {} : { frontier: [...new Set(facts.frontier)].sort() }),
 			trigger: { hash: facts.trigger.hash, proof: facts.trigger.proof.map(({ file, hash }) => ({ file, hash })) },
 		};
-		return SharedRecord.parse(
-			{ v: 1, changeset: this.changeset, kind: "dismissal", key: facts.finding, payload },
-			reviewPayloads,
-		);
+		return {
+			v: 1,
+			changeset: this.changeset,
+			kind: "dismissal",
+			key: facts.finding,
+			payload: payload as unknown as RecordJson,
+		};
 	}
 
 	#record(kind: string, key: string, payload: unknown): SharedRecord {
@@ -400,11 +505,6 @@ export class ReviewRecords {
 }
 
 /**
- * `records` in one order a round's records can rebuild: by the check's place in the tier's `checks`, then by name for a
- * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
- * records order checks alike, so both write the same verdict.
- */
-/**
  * An account's key: a request of its revision, the IDs of the records it counts, and the fingerprint of the policy it
  * decided under. The rest of its payload follows from those records and that policy.
  */
@@ -415,6 +515,11 @@ export function accountKey(
 	return KeyedRequest.of("account", { revision, records, resolutionPolicy }).key;
 }
 
+/**
+ * `records` in one order a round's records can rebuild: by the check's place in the tier's `checks`, then by name for a
+ * check the tier does not name, then by the record's canonical form. The host's verdict and a reader of the round's
+ * records order checks alike, so both write the same verdict.
+ */
 export function inManifestOrder(checks: readonly string[], records: readonly CheckRecord[]): CheckRecord[] {
 	const at = (name: string) => {
 		const index = checks.indexOf(name);
@@ -447,7 +552,7 @@ function claimOrder(claim: { id: string; source: FindingSource }): string {
 }
 
 function sorted(sightings: readonly StoredFinding[]): RecordJson[] {
-	return [...sightings].map(sighting).sort(byId) as unknown as RecordJson[];
+	return [...sightings].map((finding) => shareable(sighting(finding))).sort(byId) as unknown as RecordJson[];
 }
 
 // A static finding keeps its rule, place, snippet and trigger, which are the head's own, and none of its tool's text. Biome
@@ -463,7 +568,7 @@ function sighting(finding: StoredFinding): StoredFinding {
 	};
 }
 
-// Melian checks only these three fields of Enola's receipt; the rest is Enola's text.
+// Melian checks only these three fields of Enola's receipt, in the form core's schema takes; the rest is Enola's text.
 function receipt(text: string): string {
 	let parsed: { format_version?: unknown; snapshot_id?: unknown; enola_version?: unknown };
 	try {
@@ -472,21 +577,30 @@ function receipt(text: string): string {
 		return withheld;
 	}
 	const { format_version, snapshot_id, enola_version } = parsed ?? {};
-	if (
-		format_version !== 1 ||
-		typeof snapshot_id !== "string" ||
-		!/^sha256:[a-f0-9]{64}$/.test(snapshot_id) ||
-		typeof enola_version !== "string" ||
-		!/^[0-9][0-9A-Za-z.+-]{0,63}$/.test(enola_version)
-	)
-		return withheld;
-	return JSON.stringify({ format_version, snapshot_id, enola_version });
+	const kept = JSON.stringify({ format_version, snapshot_id, enola_version });
+	return isReceipt(kept) ? kept : withheld;
 }
 
-// Melian computes each of a snapshot's identities as a SHA-256 hash, so anything else in one is text it did not write.
-function hashed({ snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
+// Melian computes each of a snapshot's identities as a SHA-256 hash, and its commit is a git object ID, so anything else
+// in one is text Melian did not write.
+function minted({ commit, snapshotId, cacheKey, coverage }: EnolaSnapshot): boolean {
 	const ids = [cacheKey, coverage?.graph, coverage?.review, coverage?.test].filter((id) => id !== undefined);
-	return /^sha256:[a-f0-9]{64}$/.test(snapshotId) && ids.every((id) => /^[a-f0-9]{64}$/.test(id));
+	return (
+		new RegExp(objectIdPattern).test(commit) &&
+		new RegExp(snapshotIdPattern).test(snapshotId) &&
+		ids.every((id) => hashed.test(id))
+	);
+}
+
+function shareable(finding: StoredFinding): StoredFinding {
+	const { source } = finding.properties;
+	const version = sharedVersion(source);
+	return version === orNull(source.version)
+		? finding
+		: {
+				...finding,
+				properties: { ...finding.properties, source: { check: source.check, version: version ?? undefined } },
+			};
 }
 
 function snapshot(each: EnolaSnapshot): RecordJson {
@@ -512,7 +626,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "ran",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				snapshots: result.snapshots === undefined ? null : (result.snapshots.map(snapshot) as never),
@@ -521,7 +635,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "provisional",
-				version: orNull(result.version),
+				version: toolVersion(result.version),
 				findings: result.findings,
 				notes: [],
 				reason: shared(result.reason),
@@ -532,7 +646,7 @@ function checkResult(result: CheckRunRecord): CheckPayload["result"] {
 			return {
 				name: result.name,
 				status: "failed",
-				reason: codes.has(result.reason) ? result.reason : "unexpected",
+				reason: codes.has(result.reason) ? (result.reason as (typeof recordCodes)[number]) : "unexpected",
 				error: withheld,
 			};
 	}
@@ -545,7 +659,7 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 		status: record.status,
 		reason: record.reason === undefined ? null : shared(record.reason),
 		error: record.error === undefined ? null : shared(record.error),
-		version: orNull(record.version),
+		version: sharedVersion({ check: record.name, version: record.version }),
 		level: orNull(record.level),
 		budgetEnded:
 			budgetEnded === undefined
@@ -560,7 +674,11 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 		coverage:
 			coverage === undefined
 				? null
-				: { graph: orNull(coverage.graph), review: orNull(coverage.review), test: orNull(coverage.test) },
+				: {
+						graph: coverageId(coverage.graph),
+						review: coverageId(coverage.review),
+						test: coverageId(coverage.test),
+					},
 		lineage:
 			lineage === undefined
 				? null
@@ -576,7 +694,7 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 	};
 }
 
-// An account is still version 1, whose lineage has no `answeredAt`, so one that names a level cannot be written there.
+// An account's filled check keeps the lineage without `answeredAt`, so one that names a level cannot be written there.
 function legacy<T extends { name: string; lineage: DecidedCheck["lineage"] }>(check: T) {
 	if (check.lineage === null) return { ...check, lineage: null };
 	const { answeredAt, ...lineage } = check.lineage;
@@ -629,7 +747,7 @@ function stage(each: RunStage): TelemetryPayload["stages"][number] {
 		tokens: orNull(each.tokens),
 		cacheRead: orNull(each.cacheRead),
 		costMicros: each.cost === undefined ? null : micros(each.cost),
-		outcome: each.outcome,
+		outcome: outcomes.has(each.outcome) ? (each.outcome as (typeof telemetryOutcomes)[number]) : withheld,
 		tools: orNull(each.tools),
 		limits:
 			each.limits === undefined ? null : { tokens: orNull(each.limits.tokens), tools: orNull(each.limits.tools) },

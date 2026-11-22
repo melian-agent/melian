@@ -318,6 +318,22 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 		expect(error.message).toContain("only the root melian.yaml may set it");
 	});
 
+	it("reads the evidence budget as bytes, from a count or a size with a binary unit, defaulting to 1 GiB", async () => {
+		expect(defaultConfig.evidence).toEqual({ budget: 1024 ** 3 });
+		writeFiles(repo, { "melian.yaml": lines("evidence:", "  budget: 512MiB") });
+		expect((await load("src/a.ts")).config.evidence).toEqual({ budget: 512 * 1024 ** 2 });
+		writeFiles(repo, { "melian.yaml": lines("evidence:", "  budget: 2048") });
+		expect((await load("src/a.ts")).config.evidence).toEqual({ budget: 2048 });
+		writeFiles(repo, { "melian.yaml": lines("evidence:", "  budget: 2GB") });
+		expect(await rejection(load("src/a.ts"))).toMatchObject({ code: "invalidValue" });
+	});
+
+	it("refuses an evidence budget in a nested melian.yaml, since evidence is the clone's", async () => {
+		writeFiles(repo, { "services/melian.yaml": lines("evidence:", "  budget: 1KiB") });
+		const error = await rejection(load("services/a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", key: "evidence", file: "services/melian.yaml" });
+	});
+
 	it("reads the emoji switches from the root, defaulting to auto in the terminal and on in pull requests", async () => {
 		expect(defaultConfig.output).toEqual({ emoji: "auto" });
 		expect(defaultConfig.publish.emoji).toBe("on");

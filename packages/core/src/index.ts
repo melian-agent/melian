@@ -45,6 +45,7 @@ export {
 	type ComparisonGroup,
 	type ComparisonImport,
 	type ComparisonMatch,
+	type ComparisonMiss,
 	type ComparisonUnmatch,
 	codexReviewSchema,
 	comparisonSchema,
@@ -204,6 +205,8 @@ export {
 	findingEvidenceSchema,
 	findingExplanationSchema,
 	findingId,
+	findingIdDigits,
+	findingIdPattern,
 	findingLocationSchema,
 	findingPropertiesSchema,
 	findingSchema,
@@ -247,6 +250,7 @@ export {
 	type GuardrailInput,
 	type GuardrailName,
 	guardrailLimits,
+	packwerkNotices,
 } from "./guardrails.ts";
 export {
 	defaultScrutinyLevel,
@@ -272,6 +276,7 @@ export {
 	lensReadScopes,
 	lensRuleSchema,
 	lensToolNames,
+	lensVersionDigits,
 	parseLensFile,
 	type ScrutinyLevel,
 	scrutinyLevels,
@@ -397,6 +402,13 @@ export {
 	toolResultSchema,
 } from "./static.ts";
 export {
+	type AccountClaim,
+	type RoundFacts,
+	TierAccount,
+	type TierAccountRefusal,
+	type TierLenses,
+} from "./tier-account.ts";
+export {
 	type EscalationEvidence,
 	EscalationRule,
 	type EscalationTrigger,
@@ -412,10 +424,12 @@ export {
 	Adjudication as ComparisonAdjudication,
 	type ComparisonAdjudicationRecord,
 	comparisonAdjudicationSchema,
+	type ExportedMissReason,
+	exportedMissReasons,
 	missReasons,
 	type StoredComparisonAdjudication,
 } from "./comparison-adjudication.ts";
-export { ComparisonExport } from "./comparison-export.ts";
+export { ComparisonExport, type MissCase, type MissesExport } from "./comparison-export.ts";
 export {
 	type ComparisonEntry,
 	ComparisonSet,
@@ -443,8 +457,18 @@ export {
 	type EnolaReach,
 	type EnolaReference,
 } from "./enola-graph.ts";
-export { enolaPolicyPattern } from "./enola-paths.ts";
-export { type GitOptions, type GitResult, git, gitFailure, gitOutput, gitOutputBytes, stderrLimit } from "./git.ts";
+export { enolaPolicyDirectories, enolaPolicyFiles, enolaPolicyPattern } from "./enola-paths.ts";
+export {
+	type GitOptions,
+	type GitResult,
+	git,
+	gitEnvironment,
+	gitFailure,
+	gitOutput,
+	gitOutputBytes,
+	stderrLimit,
+	withoutReplacements,
+} from "./git.ts";
 export {
 	type GraphEntryState,
 	GraphError,
@@ -516,6 +540,7 @@ export {
 export {
 	canonicalJson,
 	everyRecordCounts,
+	hashPattern,
 	type NamedRecord,
 	type PayloadCheck,
 	type PayloadChecks,
@@ -523,32 +548,45 @@ export {
 	type RecordJson,
 	RecordSet,
 	type RoundManifest,
+	recordLimit,
 	SharedRecord,
 } from "./record.ts";
 export {
 	type AccountPayload,
 	accountPayloadSchema,
+	blindCallers,
 	type CheckPayload,
 	checkPayloadSchema,
 	checkResultSchema,
 	type DismissalPayload,
 	dismissalPayloadSchema,
+	isReceipt,
+	isToolVersion,
+	type LegacyAccountPayload,
 	type LegacyLensPayload,
 	type LegacyVerificationPayload,
 	type LensPayload,
+	legacyAccountPayloadSchema,
 	legacyLensPayloadSchema,
 	legacyVerificationPayloadSchema,
 	lensOutcomeSchema,
 	lensPayloadSchema,
+	lightTriage,
+	objectIdPattern,
+	recordCodes,
 	reviewPayloads,
+	snapshotIdPattern,
 	type TelemetryPayload,
 	type TriagePayload,
+	telemetryOutcomes,
 	telemetryPayloadSchema,
 	triagePayloadSchema,
 	type VerificationPayload,
 	verificationPayloadSchema,
+	verifierVersionDigits,
 	type WalkthroughPayload,
 	walkthroughPayloadSchema,
+	withheld,
 } from "./record-payloads.ts";
 export {
 	checkCellValue,
@@ -576,6 +614,7 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
+export { envelopeAllowance, SightingBudget } from "./sighting-budget.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

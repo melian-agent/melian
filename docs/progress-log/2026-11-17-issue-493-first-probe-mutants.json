@@ -1,0 +1,134 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "92078b989ddb7e6aa3d35536b17ff10271d8459b",
+		"head": "8fe41818f6aaf242b48388ba059d690b49a4deb4"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/lens-tools.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "012231a2e7a8aeb82d2852ea84f1c9b5b556025d00523c819ab002a2e9acb1fe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts two failed attacks answered by one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7feddff8d6cd61cbf92a13ad6c1ee66532f9f575cc7497ad0a9adb67e18a5ede",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts two failed attacks answered by one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 44,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probing!.findings?.[id] !== undefined",
+			"status": "generated",
+			"id": "cc8011e22a35b7a2a8eeaea12d60747372b5295bceb2004bbf3841adaa74966c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts two failed attacks answered by one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 7,
+			"endLine": 1656,
+			"endColumn": 30,
+			"mutatorName": "OptionalChaining",
+			"replacement": "probing!.findings[id]",
+			"status": "generated",
+			"id": "5d8007ad99553db8a1686a519b3abd62688d4f58153e21a8b88f095243e218fa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts two failed attacks answered by one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1656,
+			"column": 66,
+			"endLine": 1656,
+			"endColumn": 109,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dfd769a02d4ead506caf913091772d857745c5333fcc94b706c23539ae114a48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts two failed attacks answered by one finding reported on each of their probes"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -1,0 +1,127 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6f9cd2f061549235954923f9ba1bea7e9e7bb74c",
+		"head": "0997d15b3ce59d53eb9e592aa6db97f4da5f5595"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1085,
+			"column": 7,
+			"endLine": 1085,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d908a94d1a964b3b77d70deec847ed0ddf994ec318cd35b0432f0f1ea345f4e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"shares a verification's match only against a dismissal the verifier was shown"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1085,
+			"column": 7,
+			"endLine": 1085,
+			"endColumn": 60,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5cd50973d7f015e090e81449ce34484330fa12331416bdb5a8e6ea7f0cdd562b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"never treats a dismissed static finding as a root, so a lens claim of its rule is verified on its own"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1085,
+			"column": 7,
+			"endLine": 1085,
+			"endColumn": 60,
+			"mutatorName": "MethodExpression",
+			"replacement": "finding.properties.source.check.endsWith(\"static.\")",
+			"status": "generated",
+			"id": "25e3f878801b278a1407946f458db255c4e6b750f7c02150fe5613d7420e9fd6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"never treats a dismissed static finding as a root, so a lens claim of its rule is verified on its own"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1085,
+			"column": 50,
+			"endLine": 1085,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3950d2fe6955477200d0e07d91ca5bf34afb4f18e9784b7d097a5856bdd106b0"
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1085,
+			"column": 69,
+			"endLine": 1085,
+			"endColumn": 71,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "2d324c36d16c3293ba88c8962e91751c2aa432ebb9344d31e653fb900304c526",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/restatement.test.ts",
+					"path": [
+						"a dismissal carrying to a restatement",
+						"never treats a dismissed static finding as a root, so a lens claim of its rule is verified on its own"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Changeset,
@@ -72,6 +73,10 @@ ${
 [ "$(cat enola-intent.yaml)" = 'rules: [] # base intent' ] || exit 9
 [ "$(cat .enola/suppressions.yaml)" = 'suppressions: [] # base suppression' ] || exit 9
 [ ! -e enola/constraints/head-only.yaml ] || exit 9
+[ "$(cat enola/recipes/ports.yaml)" = 'recipe: ports # base recipe' ] || exit 9
+[ ! -e enola/recipes/layered.yaml ] || exit 9
+[ "$(cat "$(printf 'enola/constraints/lay\\nx.yaml')")" = 'rules: [] # base newline constraint' ] || exit 9
+[ "$(cat "$(printf 'enola/recipes/lay\\nered.yaml')")" = 'recipe: layered # base newline recipe' ] || exit 9
 [ ! -e mcp-arch.yaml ] || exit 9
 `
 		: ""
@@ -82,6 +87,7 @@ case "$1" in
   if grep BROKEN src/a.ts > /dev/null; then marker=head; fi
   printf '%s' '{"id":"alpha","kind":"symbol","name":"Alpha","file":"src/a.ts","line":1,"generation":"'"$marker"'"}' > .enola/facts.jsonl
   i=1; while [ "$i" -le ${documentSymbols} ]; do printf '\\n{"id":"d%s","kind":"symbol","name":"Doc%s","file":"docs/a.md","line":%s}' "$i" "$i" "$i" >> .enola/facts.jsonl; i=$((i+1)); done
+  for p in packs/*/package.yml; do [ -f "$p" ] && printf '\\n{"id":"m-%s","kind":"module","name":"%s","file":"%s","props":{"packwerk":true}}' "$p" "$p" "$p" >> .enola/facts.jsonl; done
   printf '%s' '[]' > .enola/insights.json
   printf '%s' '{"format_version":1,"snapshot_id":"sha256:${"a".repeat(64)}","enola_version":"0.0.1"}' > .enola/receipt.json
   grep -F 'providers: []' "$config" > /dev/null || exit 9
@@ -615,6 +621,31 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			await harness.close(context);
 		}
 	});
+	it("removes a head's link at .enola before any policy path through it", async () => {
+		const outside = mkdtempSync(join(tmpdir(), "melian-enola-outside-"));
+		try {
+			writeFileSync(join(outside, "suppressions.yaml"), "outside\n");
+			const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });
+			symlinkSync(outside, join(repo, ".enola"));
+			const head = commit(repo, { "src/a.ts": "export const BROKEN = 1;\n" });
+			const result = await runStaticTool(
+				{
+					env: createNodeExecutionEnv(repo),
+					repoRoot: repo,
+					base,
+					commit: head,
+					tool: "enola",
+					settings: defaultConfig.static.enola,
+					tools: await fake(0),
+				},
+				context,
+			);
+			expect(result.status).toBe("ran");
+			expect(readFileSync(join(outside, "suppressions.yaml"), "utf8")).toBe("outside\n");
+		} finally {
+			rmSync(outside, { recursive: true, force: true });
+		}
+	});
 	it("compares head against a generated base, applies base policy, and leaves no worktree", async () => {
 		const base = commit(repo, {
 			"src/a.ts": "export const a = 1;\n",
@@ -623,6 +654,9 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			"enola-intent.yaml": "rules: [] # base intent\n",
 			".enola/suppressions.yaml": "suppressions: [] # base suppression\n",
 			".enola/baseline/facts.jsonl": "do not reuse\n",
+			"enola/recipes/ports.yaml": "recipe: ports # base recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # base newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # base newline recipe\n",
 		});
 		const head = commit(repo, {
 			"src/a.ts": "export const BROKEN = 1;\n",
@@ -632,6 +666,10 @@ describe("static.enola", { timeout: 60_000 }, () => {
 			".enola/suppressions.yaml": "suppressions: [] # head suppression\n",
 			"enola/constraints/head-only.yaml": "rules: []\n",
 			"mcp-arch.yaml": "providers: [{ command: [evil] }]\n",
+			"enola/recipes/ports.yaml": "recipe: ports # head recipe\n",
+			"enola/recipes/layered.yaml": "recipe: layered\nrules: [] # replaces the shipped recipe\n",
+			"enola/constraints/lay\nx.yaml": "rules: [] # head newline constraint\n",
+			"enola/recipes/lay\nered.yaml": "recipe: layered # head newline recipe\n",
 		});
 		const result = await runStaticTool(
 			{
@@ -679,6 +717,66 @@ describe("static.enola", { timeout: 60_000 }, () => {
 		expect(repeated.snapshots).toEqual(result.snapshots);
 		expect(readFileSync(join(repo, "enola.yaml"), "utf8")).toContain("evil");
 		expect(gitIn(repo, "worktree", "list", "--porcelain").match(/^worktree /gm)).toHaveLength(1);
+	});
+	it("names the Packwerk files Enola's facts list at base or head, and only packwerk.yml where it found no package", async () => {
+		const base = commit(repo, {
+			"src/a.ts": "export const a = 1;\n",
+			"packwerk.yml": 'package_paths: ["packs/*"]\n',
+			"packs/a/package.yml": "enforce_dependencies: true\n",
+		});
+		const head = commit(
+			repo,
+			{ "src/a.ts": "export const a = 2;\n", "packs/b/package.yml": "enforce_dependencies: false\n" },
+			["packs/a/package.yml"],
+		);
+		const tools = await fake(0);
+		const input = (from: string, to: string) => ({
+			env: createNodeExecutionEnv(repo),
+			repoRoot: repo,
+			base: from,
+			commit: to,
+			tool: "enola" as const,
+			settings: defaultConfig.static.enola,
+			tools,
+		});
+		const result = await runStaticTool(input(base, head), context);
+		if (result.status !== "ran") throw new Error("Enola did not run");
+		expect(result.packwerk).toEqual([
+			"packs/a/package.yml",
+			"packs/a/package_todo.yml",
+			"packs/b/package.yml",
+			"packs/b/package_todo.yml",
+			"packwerk.yml",
+		]);
+		const plain = commit(repo, { "src/a.ts": "export const a = 3;\n" }, ["packs/b/package.yml", "packwerk.yml"]);
+		const after = await runStaticTool(input(plain, commit(repo, { "src/a.ts": "export const a = 4;\n" })), context);
+		if (after.status !== "ran") throw new Error("Enola did not run");
+		expect(after.packwerk).toEqual(["packwerk.yml"]);
+	});
+	it("names packwerk.yml when a head's configuration selects no package on either side", async () => {
+		const base = commit(repo, {
+			"src/a.ts": "export const a = 1;\n",
+			"packwerk.yml": 'package_paths: ["packs/*"]\n',
+		});
+		const head = commit(repo, {
+			"src/a.ts": "export const a = 2;\n",
+			"packwerk.yml": "cache: false\n",
+			"components/a/package.yml": "enforce_dependencies: true\n",
+		});
+		const result = await runStaticTool(
+			{
+				env: createNodeExecutionEnv(repo),
+				repoRoot: repo,
+				base,
+				commit: head,
+				tool: "enola",
+				settings: defaultConfig.static.enola,
+				tools: await fake(0),
+			},
+			context,
+		);
+		if (result.status !== "ran") throw new Error("Enola did not run");
+		expect(result.packwerk).toEqual(["packwerk.yml"]);
 	});
 	it("records exit one with empty SARIF as clean with an explicit note", async () => {
 		const base = commit(repo, { "src/a.ts": "export const a = 1;\n" });

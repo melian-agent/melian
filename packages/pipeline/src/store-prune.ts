@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { isChangesetId } from "@melian-agent/core";
+import { isChangesetId, withoutReplacements } from "@melian-agent/core";
 import { running, scratchName } from "./cache-scratch.ts";
 import { GraphCache } from "./graph-cache.ts";
 
@@ -122,13 +122,15 @@ export class StorePrune {
 	readonly kept: readonly string[];
 	/** The changeset files prune always keeps: each `pull-` or `range-` ID's `.sqlite` file, with its `-wal` and `-shm`. */
 	readonly changesets: { files: number; bytes: number };
+	/** The evidence directory, `evidence/`, which prune keeps whole as durable: the conversations behind valid misses. */
+	readonly evidence: { bytes: number };
 	/** Live static runs; while any holds a lock, apply removes nothing. */
 	readonly live: readonly LiveRun[];
 	readonly #repoRoot: string;
 	readonly #env: NodeJS.ProcessEnv;
 	readonly #now: number;
 	private constructor(
-		fields: Pick<StorePrune, "root" | "entries" | "kept" | "changesets" | "live">,
+		fields: Pick<StorePrune, "root" | "entries" | "kept" | "changesets" | "evidence" | "live">,
 		repoRoot: string,
 		env: NodeJS.ProcessEnv,
 		now: number,
@@ -137,6 +139,7 @@ export class StorePrune {
 		this.entries = fields.entries;
 		this.kept = fields.kept;
 		this.changesets = fields.changesets;
+		this.evidence = fields.evidence;
 		this.live = fields.live;
 		this.#repoRoot = repoRoot;
 		this.#env = env;
@@ -157,15 +160,15 @@ export class StorePrune {
 			);
 		const now = options.now ?? Date.now();
 		// A ref under refs/replace would resolve a live commit to another tree, and prune would remove the live tree's graph.
-		const env = {
-			...Object.fromEntries(Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_"))),
-			GIT_NO_REPLACE_OBJECTS: "1",
-		};
+		const env = withoutReplacements(
+			Object.fromEntries(Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_"))),
+		);
 		const { heads, live } = await worktrees(repoRoot, env);
 		const trees = await liveTrees(repoRoot, env, heads);
 		const entries: PruneEntry[] = [];
 		const kept: string[] = [];
 		const changesets = { files: 0, bytes: 0 };
+		const evidence = { bytes: 0 };
 		const relative = (path: string) => path.slice(root.length + 1);
 		const add = async (kind: PruneKind, paths: string[]) => {
 			let bytes = 0;
@@ -180,6 +183,8 @@ export class StorePrune {
 				if (store !== null && isChangesetId(store[1]!) && node.file) {
 					changesets.files += node.name.endsWith(".sqlite") ? 1 : 0;
 					changesets.bytes += (await measure(node.path)).bytes;
+				} else if (node.name === "evidence" && node.directory && !node.link) {
+					evidence.bytes = (await measure(node.path)).bytes;
 				} else if (
 					node.link ||
 					!node.directory ||
@@ -238,7 +243,7 @@ export class StorePrune {
 				},
 			);
 		}
-		return new StorePrune({ root, entries, kept, changesets, live }, repoRoot, env, now);
+		return new StorePrune({ root, entries, kept, changesets, evidence, live }, repoRoot, env, now);
 	}
 
 	/**

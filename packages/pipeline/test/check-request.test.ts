@@ -1,7 +1,8 @@
-import { defaultConfig, deterministicChecks, KeyedRequest, type RecordJson } from "@melian-agent/core";
+import { defaultConfig, KeyedRequest, type RecordJson } from "@melian-agent/core";
 import { keyCoverage } from "@melian-agent/core/testing";
 import { describe, expect, it } from "vitest";
 import { type CheckRequestInput, checkRequest, checkReusable, writesFixedText } from "../src/check-request.ts";
+import { codeVersion } from "../src/code-version.ts";
 
 const sample: CheckRequestInput = {
 	config: defaultConfig,
@@ -74,16 +75,10 @@ describe("checkRequest", () => {
 		expect(checkRequest(plain).request).not.toHaveProperty("lang");
 	});
 
-	it("keys the version of Melian's own code for every check it runs", () => {
-		const { checks } = checkRequest(sample).request as { checks: Record<string, unknown> };
-		expect(Object.keys(checks).sort()).toEqual([...deterministicChecks].sort());
-		for (const version of Object.values(checks)) expect(version).toEqual(expect.any(Number));
-	});
-
-	it("keys Enola and the mutation check past the build whose findings held their tools' text", () => {
-		const { checks } = checkRequest(sample).request as { checks: Record<string, number> };
-		expect(checks["static.enola"]).toBeGreaterThanOrEqual(2);
-		expect(checks["static.mutation"]).toBeGreaterThanOrEqual(2);
+	it("keys the checks' code by the version their recorded module hashes give, and by no hand-raised number", () => {
+		const request = checkRequest(sample).request as Record<string, unknown>;
+		expect(request.code).toBe(codeVersion("checks"));
+		expect(request).not.toHaveProperty("checks");
 	});
 
 	it("marks a run not reusable under an unread policy or an unidentified install, and leaves a request with no policy unchanged", () => {
@@ -128,5 +123,29 @@ describe("writesFixedText", () => {
 
 	it("proves nothing for a check that has no fixed-text version", () => {
 		expect(writesFixedText(asked({ checks: { guardrails: 9 } }), "guardrails")).toBe(false);
+		expect(writesFixedText(asked({ code: codeVersion("checks") }), "guardrails")).toBe(false);
+	});
+
+	it.each(["static.biome", "static.tsc", "static.enola", "static.mutation"])(
+		"proves %s from a request that keys the checks' code by hash, which came after every fixed-text version",
+		(check) => {
+			expect(writesFixedText(checkRequest(sample), check)).toBe(true);
+			expect(writesFixedText(asked({ code: "0".repeat(64) }), check)).toBe(true);
+		},
+	);
+
+	it.each<[string, RecordJson]>([
+		["a code that is a number", { code: 2 }],
+		["a code in a list, which a pattern reads as its text", { code: ["0".repeat(64)] }],
+		["a code one digit short", { code: "0".repeat(63) }],
+		["a code one digit long", { code: "0".repeat(65) }],
+		["a code in capitals", { code: "A".repeat(64) }],
+		["a code that is not a hash beside a fixed-text version", { code: "2", checks: { "static.biome": 2 } }],
+	])("proves nothing from %s", (_, request) => {
+		expect(writesFixedText(asked(request), "static.biome")).toBe(false);
+	});
+
+	it("proves nothing from another producer's request that keys a code", () => {
+		expect(writesFixedText(asked({ code: "0".repeat(64) }, "lens"), "static.biome")).toBe(false);
 	});
 });

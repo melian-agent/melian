@@ -147,7 +147,7 @@ export class DirectoryRecordStore implements RecordStore {
 	}
 
 	async add(records: RecordEnvelope[]): Promise<void> {
-		for (const record of records.map((envelope) => SharedRecord.parse(envelope, this.#payloads))) {
+		for (const record of records.map((envelope) => SharedRecord.parse(envelope, this.#payloads).storable())) {
 			const directory = await this.#reach(record.changeset);
 			if ((await this.#cell(directory))?.value === disposalMark) throw disposedError(record.changeset);
 			const path = join(this.#root, record.path);

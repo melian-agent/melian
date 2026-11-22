@@ -27,9 +27,11 @@ import {
 	RecordedRound,
 	ReviewError,
 	type ReviewHarness,
+	ROOT_CONVERSATION_ID,
 	recordDismissal,
 	reviewChangeset,
 	type Storage,
+	type SubmissionId,
 	TelemetryReader,
 } from "@melian-agent/pipeline";
 import {
@@ -48,7 +50,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { FindingsDocument } from "../src/findings.ts";
 import type { ConversationId, TaskId } from "../src/harness.ts";
-import { continuePrompt } from "../src/lens-request.ts";
+import { handoverWording } from "../src/lens-request.ts";
 import { injectionPolicySection, type ReviewState, recordPlan } from "../src/lens-tools.ts";
 import { planInputs } from "../src/models.ts";
 import type * as Probing from "../src/probing.ts";
@@ -117,6 +119,11 @@ afterEach(async () => {
 	harness = undefined;
 	rmSync(repo, { recursive: true, force: true });
 });
+
+// The probe's command with its script emptied, so it starts and the probe passes.
+// Empties the probe's script, so the real runner runs a probe that passes. The command ends with the runner's path.
+const passingRun = (command: string) =>
+	`printf '' > ${command.slice(command.lastIndexOf(" ") + 1).replace(/run\.mjs'$/, "probe.mjs'")} && ${command}`;
 
 // Whether a probe is running in a tree of the head, asked while it runs: Probe starts every probe in its tree, and only
 // the head's holds files, the empty probe's that checks the sandbox none.
@@ -215,6 +222,8 @@ async function review(
 		unlockModels?: ReviewOptions["unlockModels"];
 		rerun?: boolean;
 		policy?: ReviewOptions["policy"];
+		requireProbes?: boolean;
+		probeGap?: ReviewOptions["probeGap"];
 		records?: ReviewOptions["records"];
 	} = {},
 ) {
@@ -267,6 +276,8 @@ async function review(
 		...(options.unlockModels === undefined ? {} : { unlockModels: options.unlockModels }),
 		...(options.rerun === undefined ? {} : { rerun: options.rerun }),
 		...(options.policy === undefined ? {} : { policy: options.policy }),
+		...(options.requireProbes === undefined ? {} : { requireProbes: options.requireProbes }),
+		...(options.probeGap === undefined ? {} : { probeGap: options.probeGap }),
 		...(options.records === undefined ? {} : { records: options.records }),
 	});
 	return { run, requests, sandbox, heads, changeset, config };
@@ -543,12 +554,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		let heads = 0;
 		const { run, requests } = await review(
 			{ planner: plan, prober: probing(failing) },
-			{
-				rewrite: (command) =>
-					inHeadTree(command) && ++heads > 1
-						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
-						: command,
-			},
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const error = await run.then(
 			() => undefined,
@@ -588,7 +594,11 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 	});
 
 	it("reads back from its records the verdict of a review whose prober left an attack untried", async () => {
+		// A reader decides a round only under the policy the review read, so the band moves into the base's melian.yaml.
+		withBasePolicy("lenses:\n  trust-boundary:\n    level:\n      floor: deep\n");
 		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		const base = gitIn(repo, "rev-parse", "main");
+		const policy = { kind: "revision", commit: base } as const;
 		const { run, changeset, config } = await review(
 			{
 				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
@@ -598,15 +608,18 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					fauxAssistantMessage("Still done."),
 				],
 			},
-			{ records },
+			{ records, policy },
 		);
 		const { verdict } = await run;
 		expect(verdict.status).toBe("not-reviewed");
+		expect(
+			[...(verdict.ran ?? []), ...verdict.notRun].find(({ name }) => name === "lens.trust-boundary")?.level,
+		).toBe("deep");
 		const stored = await records.list(changeset.id);
 		const round = SharedRecord.parseEnvelope(stored.filter(({ kind }) => kind === "round").at(-1)!).id;
 		const recorded = RecordedRound.of(stored, round, () => true);
 		expect(recorded.refusal()).toBeUndefined();
-		const read = await recorded.verdict({ revision: changeset.revision, config });
+		const read = await recorded.verdict({ revision: changeset.revision, config, repoRoot: repo, policy });
 		expectSharedVerdict(read.toJSON(), verdict.toJSON());
 	});
 
@@ -731,6 +744,133 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(verdict.status).toBe("not-reviewed");
 	});
 
+	// The maintainer's ruling of 2026-11-18: a probe that failed because the prober wrote it wrongly showed no defect, so
+	// the prober may close its attack by naming that probe and saying why it never exercised the attack.
+	const broken = "const = ;\n";
+	const probeOf = (messages: Parameters<typeof lastResults>[0]) => /probe (p[0-9]+)/.exec(lastResults(messages))![1]!;
+
+	it("closes an attack whose probe failed on its own syntax error with a skip naming that probe, and shows why", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: broken }),
+				(messages) =>
+					call("skip_attack", {
+						attack: 1,
+						probe: probeOf(messages),
+						reason: "its script had a syntax error, so load() never ran",
+					}),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		const closed = record(verdict);
+		expect(requests[prober]).toHaveLength(3);
+		expect(lastResults(requests[prober]![2]!)).toMatch(
+			/recorded attack 1 as closed: probe p[0-9]+ never exercised it/,
+		);
+		expect(closed).toMatchObject({ status: "ran", level: "deep" });
+		expect(closed.reason).toMatch(
+			/, and closed attack 1 with no finding, since probe p[0-9]+ never exercised it: "its script had a syntax error, so load\(\) never ran"$/,
+		);
+		expect(verdict.counted()).toEqual([]);
+		expect(verdict.status).toBe("passed");
+	});
+
+	it("leaves an attack unanswered when it closes one failed probe and another failed probe of it stands", async () => {
+		let first = "";
+		const { run } = await review({
+			planner: plan,
+			prober: [
+				call("run_probe", { attack: 1, script: broken }),
+				(messages) => {
+					first = probeOf(messages);
+					return call("run_probe", { attack: 1, script: failing });
+				},
+				() => call("skip_attack", { attack: 1, probe: first, reason: "its script had a syntax error" }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict)).toMatchObject({ status: "ended" });
+		expect(record(verdict).reason).toMatch(/^its prober left attack 1 with no finding on a probe that failed/);
+		expect(verdict.status).toBe("not-reviewed");
+	});
+
+	it("refuses a skip that names a probe before any probe ran", async () => {
+		const { run, requests } = await review({
+			planner: plan,
+			prober: [
+				call("skip_attack", { attack: 1, probe: "p1", reason: "it was wrong" }),
+				call("skip_attack", { attack: 1, reason: "no probe can reach it" }),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		expect(lastResults(requests[prober]![1]!)).toContain("no probe p1 ran in this conversation");
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+	});
+
+	it("refuses a skip that names a probe that passed, one of another attack, or one with no reason", async () => {
+		let passed = "";
+		let failed = "";
+		const { run, requests } = await review({
+			planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				(messages) => {
+					passed = probeOf(messages);
+					return call("run_probe", { attack: 2, script: broken });
+				},
+				(messages) => {
+					failed = probeOf(messages);
+					return call("skip_attack", { attack: 1, probe: passed, reason: "it was wrong" });
+				},
+				() => call("skip_attack", { attack: 1, probe: failed, reason: "it was wrong" }),
+				() => call("skip_attack", { attack: 2, probe: failed, reason: " \n " }),
+				() => call("skip_attack", { attack: 2, probe: "p999", reason: "it was wrong" }),
+				fauxAssistantMessage("Reported 0 findings."),
+				fauxAssistantMessage("Reported 0 findings."),
+			],
+		});
+		const { verdict } = await run;
+		const asked = requests[prober]!.map(lastResults);
+		expect(asked[3]).toMatch(/probe p[0-9]+ did not fail, so it needs no closing/);
+		expect(asked[4]).toMatch(/probe p[0-9]+ probed attack 2, not attack 1/);
+		expect(asked[5]).toMatch(/Validation failed[\s\S]*reason/);
+		expect(asked[6]).toContain("no probe p999 ran in this conversation");
+		expect(record(verdict)).toMatchObject({ status: "ended" });
+		expect(record(verdict).reason).toContain("its prober left attack 2 with no finding");
+		expect(record(verdict).reason).not.toContain("closed");
+	});
+
+	it("says both that its findings budget ran out and which failed attack it left with no finding", async () => {
+		const { run } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, attack] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: failing }),
+					(messages) => call("report_finding", finding(probeOf(messages))),
+					() => call("run_probe", { attack: 2, script: failing }),
+					(messages) =>
+						call("report_finding", {
+							...finding(probeOf(messages)),
+							line: 2,
+							evidence: [{ file: "src/load.ts", line: 2, role: "cause" }],
+						}),
+					fauxAssistantMessage("Reported 1 finding."),
+					fauxAssistantMessage("Reported 1 finding."),
+				],
+			},
+			{ lens: probingWith({}, { findings: 1 }) },
+		);
+		const ended = record((await run).verdict);
+		expect(ended.status).toBe("ended");
+		expect(ended.reason).toContain("its findings budget of 1 ran out");
+		expect(ended.reason).toContain("its prober left attack 2 with no finding on a probe that failed");
+	});
+
 	it("counts an attack whose probe failed as answered once the reminded prober reports a finding on it", async () => {
 		const { run, requests } = await review({
 			planner: plan,
@@ -795,7 +935,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				call("run_probe", { attack: 2, script: failing }),
 				(messages) => call("report_finding", finding(ids(messages)[0]!)),
 				(messages) => call("report_finding", finding(ids(messages)[1]!)),
-				(messages) => call("report_finding", finding(ids(messages)[0]!)),
+				(messages) => call("report_finding", finding(ids(messages)[1]!)),
 				fauxAssistantMessage("Reported 1 finding."),
 				fauxAssistantMessage("Reported 1 finding."),
 			],
@@ -804,7 +944,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record(verdict).reason ?? "").not.toContain("left attack");
 		expect(record(verdict)).toMatchObject({ status: "ran" });
 		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
-		// Each attack once, in the order a finding first answered it, though attack 1's was reported twice.
+		// Each attack once, in the order a finding first answered it, though attack 2's was reported twice.
 		const reviewer = harness!.harness;
 		const root = await reviewer.root(backgroundContext);
 		const at = Revision.key(changeset.revision);
@@ -819,6 +959,46 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			backgroundContext,
 		);
 		expect(stored?.answered).toEqual([1, 2]);
+		// The finding rests on the probe that first showed the defect, which its verifier runs again.
+		const [first] = Object.keys(stored?.probes ?? {});
+		expect(stored?.findings).toEqual({ [verdict.counted()[0]!.id]: first });
+	});
+
+	// One finding reported again is a correction, and corrections are capped; one that answers a new attack is not.
+	it("answers five failed attacks with one finding reported on each of their probes", async () => {
+		const ids = (messages: Parameters<Extract<ScriptedReply, (...args: never[]) => unknown>>[0]) => [
+			...new Set(
+				[
+					...messages
+						.map(textOf)
+						.join("\n")
+						.matchAll(/probe (p[0-9]+)/g),
+				].map((match) => match[1]!),
+			),
+		];
+		const attacks = [1, 2, 3, 4, 5];
+		const { run, requests } = await review({
+			planner: [
+				call("record_plan", { attacks: attacks.map(() => attack) }),
+				fauxAssistantMessage("Planned 5 attacks."),
+			],
+			prober: [
+				...attacks.map((each) => call("run_probe", { attack: each, script: failing })),
+				...attacks.map(
+					(each) => (messages: Parameters<typeof ids>[0]) =>
+						call("report_finding", finding(ids(messages)[each - 1]!)),
+				),
+				// Attack 1 is answered, so this report is a correction, the fifth, and refused.
+				(messages) => call("report_finding", finding(ids(messages)[0]!)),
+				fauxAssistantMessage("Reported 1 finding."),
+				fauxAssistantMessage("Reported 1 finding."),
+			],
+		});
+		const { verdict } = await run;
+		expect(record(verdict).reason ?? "").not.toContain("left attack");
+		expect(record(verdict)).toMatchObject({ status: "ran" });
+		expect(verdict.counted().map((each) => each.ruleId)).toEqual(["path-traversal"]);
+		expect(textOf(requests[prober]![11]!.at(-1)!)).toMatch(/^\[not recorded: this lens has corrected finding/);
 	});
 
 	it("reads an attack skipped after a probe that showed nothing as skipped, and names it", async () => {
@@ -848,7 +1028,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record((await run).verdict).reason).toMatch(/, and skipped attacks 1, 3$/);
 	});
 
-	it("runs a round's probes one at a time, so each writes its head's tree alone", async () => {
+	it("runs a round's probes one at a time, so each writes its head's tree alone", { tags: ["macos"] }, async () => {
 		// Each probe logs when it starts, and takes long enough that two at once would start together. Its command ends in
 		// exec, so nothing after it runs.
 		const log = join(mkdtempSync(join(tmpdir(), "melian-probe-order-")), "log");
@@ -909,6 +1089,24 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(record.error).toBe("the planner recorded no attack plan");
 	});
 
+	it("fails a lens whose planner's budget ended before it recorded a plan, and names the budget", async () => {
+		const reads = round([
+			["read_file", { path: "src/load.ts" }],
+			["read_file", { path: "src/load.ts" }],
+		]);
+		const { run } = await review(
+			{ planner: [reads, fauxAssistantMessage("Out of reads.")], prober: [] },
+			{ lens: probingWith({}, { tools: 1 }) },
+		);
+		const error = await failure(run);
+		expect(error.code).toBe("lensFailed");
+		const failed = error.verdict!.notRun.find(({ name }) => name === "lens.trust-boundary")!;
+		expect(failed.status).toBe("failed");
+		expect(failed.error).toMatch(
+			/^its tool call budget of 1 ran out after 1 tool call and [0-9,]+ tokens?, before the planner recorded an attack plan$/,
+		);
+	});
+
 	it("runs a level that cannot probe here without probes, as it ran before, and says why", async () => {
 		const { run, requests } = await withoutProbes({
 			writer: { trusted: false, detail: "octocat has read permission" },
@@ -921,7 +1119,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(requests[planner]).toEqual([]);
 	});
 
-	it("runs the prober on its own tier, model and time limit, and the planner on the level's", async () => {
+	it("runs the prober on its own tier, model and time limit, and the planner on the level's", {
+		tags: ["macos"],
+	}, async () => {
 		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "probing" }] });
 		const seen: { role: string; model: string }[] = [];
 		const on =
@@ -1379,24 +1579,28 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(prober).not.toHaveProperty("shown");
 	});
 
-	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry", async () => {
+	it("shows the prober's plan size, its skips, and how each probe ended in the stage telemetry, and its text in its record alone", async () => {
+		const spread = (n: number) => ({ ...attack, target: `${attack.target} ${n}` });
+		const long = 'console.log("x".repeat(20_000));\nprocess.exit(1);\n';
+		const note = { path: "note.txt", text: "beside the probe" };
 		const { run, changeset } = await review({
-			planner: [call("record_plan", { attacks: [attack, attack, attack, attack] }), plan[1]!],
+			planner: [call("record_plan", { attacks: [1, 2, 3, 4].map(spread) }), plan[1]!],
 			prober: [
 				// An attack skipped and then probed was probed, as the run's own record counts it.
 				call("skip_attack", { attack: 2, reason: "it needs the network" }),
 				call("run_probe", { attack: 2, script: passing }),
-				call("run_probe", { attack: 1, script: failing }),
+				call("run_probe", { attack: 1, script: failing, files: [note] }),
 				(messages) => call("report_finding", finding(/probe (p[0-9]+) failed/.exec(lastResults(messages))![1]!)),
-				call("run_probe", { attack: 3, script: 'console.log("x".repeat(20_000));\nprocess.exit(1);\n' }),
+				call("run_probe", { attack: 3, script: long }),
 				// A probe cut at its output limit showed nothing, so a skip after it counts.
 				call("skip_attack", { attack: 3, reason: "its output passes the limit" }),
-				call("skip_attack", { attack: 4, reason: "it needs the network" }),
+				call("skip_attack", { attack: 4, reason: "it needs another machine" }),
 				fauxAssistantMessage("Done."),
 			],
 		});
 		await run;
-		const telemetry = await TelemetryReader.open(storage).read(Revision.key(changeset.revision));
+		const reader = TelemetryReader.open(storage);
+		const telemetry = await reader.read(Revision.key(changeset.revision));
 		const prober = telemetry.stages.find((stage) => stage.role === "prober");
 		const ran = (attack: number, ended: string, exitCode: number, truncated = false) => ({
 			id: expect.stringMatching(/^p[0-9]+$/),
@@ -1416,6 +1620,36 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			skipped: [3, 4],
 			runs: [ran(2, "passed", 0), ran(1, "failed", 1), ran(3, "inconclusive", 1, true)],
 		});
+		const { runs, milliseconds } = prober!.probes!;
+		expect(runs.every((probe) => probe.milliseconds > 0)).toBe(true);
+		expect(milliseconds).toBe(runs.reduce((sum, probe) => sum + probe.milliseconds, 0));
+		const text = (id: string, attack: number, script: string, files: (typeof note)[], output: string) => ({
+			id,
+			attack,
+			script,
+			files,
+			output,
+		});
+		expect(await reader.proberRecord(prober!)).toEqual({
+			plan: [1, 2, 3, 4].map(spread),
+			// The record is the audit trail, so it keeps a skip whose attack was later probed, which the stage counts as probed.
+			skips: [
+				{ attack: 2, reason: "it needs the network" },
+				{ attack: 3, reason: "its output passes the limit" },
+				{ attack: 4, reason: "it needs another machine" },
+			],
+			probes: [
+				text(runs[0]!.id, 2, passing, [], "held\n"),
+				text(runs[1]!.id, 1, failing, [note], "LEAK\n"),
+				text(runs[2]!.id, 3, long, [], "x".repeat(16 * 1024)),
+			],
+		});
+		const planner = telemetry.stages.find((stage) => stage.role === "planner");
+		expect(planner).toBeDefined();
+		expect(await reader.proberRecord(planner!)).toBeUndefined();
+		expect(await reader.proberRecord({ ...prober!, conversation: undefined })).toBeUndefined();
+		// A prober that ended before its plan was copied in has no probing record at all.
+		expect(await reader.proberRecord({ ...prober!, conversation: ROOT_CONVERSATION_ID })).toBeUndefined();
 	});
 
 	it("runs a claim's probe again once, a repeat review reuses both, and one under another writer probes afresh", async () => {
@@ -1461,7 +1695,9 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(heads).toHaveLength(2);
 	});
 
-	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", async () => {
+	it("runs a probe again once in a review though its rerun shows nothing and two findings cite it", {
+		tags: ["macos"],
+	}, async () => {
 		let id = "p0";
 		let heads = 0;
 		const { run } = await review(
@@ -2344,12 +2580,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 				prober: probing(failing),
 				others: [{ match: "Melian adversarial verifier", replies: [plausible, plausible] }],
 			},
-			{
-				rewrite: (command) =>
-					inHeadTree(command) && ++heads > 1
-						? `printf '\\n%s\\n' '{"code":0,"signal":null}' >&3; exit 0`
-						: command,
-			},
+			{ rewrite: (command) => (inHeadTree(command) && ++heads > 1 ? passingRun(command) : command) },
 		);
 		const { verdict } = await run;
 		expect(verdict.counted().map((each) => each.properties.verification?.verdict)).toEqual(["plausible"]);
@@ -2430,7 +2661,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ran.status).toBe("ran");
 	});
 
-	it("says a probe whose runner wrote no record of how it ended shows nothing", async () => {
+	it("says a probe whose runner wrote no record of how it ended shows nothing", { tags: ["macos"] }, async () => {
 		const { run, requests } = await review(
 			{
 				planner: plan,
@@ -2440,14 +2671,17 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 					fauxAssistantMessage("Done."),
 				],
 			},
-			{ rewrite: (command) => (inHeadTree(command) ? "exit 1" : command) },
+			{
+				rewrite: (command) =>
+					inHeadTree(command) ? `: > ${/TMPDIR='([^']+)\/tmp'/.exec(command)![1]}/started && exit 1` : command,
+			},
 		);
 		await run;
 		const [unrecorded] = resultsOf(requests[prober]![1]!);
 		expect(unrecorded).toMatch(/probe p[0-9]+ ended with no record of how, which shows nothing/);
 	});
 
-	it("says how a probe ended: timed out, cut, ended by a signal, or silent", async () => {
+	it("says how a probe ended: timed out, cut, ended by a signal, or silent", { tags: ["macos"] }, async () => {
 		const { run, requests } = await review(
 			{
 				planner: plan,
@@ -2615,7 +2849,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(ended).not.toHaveProperty("budgetEnded");
 	});
 
-	it("counts the probes' time in seconds", async () => {
+	it("counts the probes' time in seconds", { tags: ["macos"] }, async () => {
 		const slow = `await new Promise((resolve) => setTimeout(resolve, 200));\n${failing}`;
 		const { run } = await review({ planner: plan, prober: probing(slow) });
 		const seconds = Number(/ran 1 probe in ([0-9.]+) s/.exec(record((await run).verdict).reason!)![1]);
@@ -2789,9 +3023,417 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		);
 		expect(record((await run).verdict).status).toBe("ran");
 		expect(seen).toEqual(["first", "second", "second"]);
-		expect(textOf(requests[prober]![1]!.at(-1)!)).toContain(
+		const handover = textOf(requests[prober]![1]!.at(-1)!);
+		expect(handover).toContain("failed before it started");
+		expect(handover).not.toMatch(/already recorded|take over|continue/i);
+	});
+
+	it("tells a prober's next model to continue when the model before it answered an attack", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const limited = on(fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" }));
+		const provider = fake.ref("planning").provider;
+		const { run, requests } = await review(
+			{
+				planner: plan,
+				prober: [on(call("skip_attack", { attack: 1, reason: "r" })), limited, on(fauxAssistantMessage("Done."))],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		expect(record((await run).verdict).status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second"]);
+		expect(textOf(requests[prober]![2]!.at(-1)!)).toContain(
 			"The model reviewing this change failed, and you take over.",
 		);
+	});
+
+	// The refusal Codex gave the planner on pull requests #532 and #576, on 2026-11-20.
+	const flagged = () =>
+		fauxAssistantMessage("", {
+			stopReason: "error",
+			errorMessage:
+				"Codex error: This content was flagged for possible cybersecurity risk. If this seems wrong, try rephrasing your request.",
+		});
+
+	it("moves a planner whose model's content filter refused the change to its next model, after its tool calls", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const reads = Array.from({ length: 13 }, () => on(call("read_file", { path: "src/load.ts" })));
+		const provider = fake.ref("first").provider;
+		const { run, requests } = await review(
+			{
+				planner: [...reads, on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual([...Array(14).fill("first"), "second", "second"]);
+		// The first model's reads stand, so the next is told to take over rather than start again.
+		expect(textOf(requests[planner]![14]!.at(-1)!)).toBe(handoverWording.continue);
+		expect(ran.reason).toContain(`${provider}/first refused the content, so ${provider}/second answered`);
+	});
+
+	it("fails a lens whose planner's every model refused the content, saying each refused", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const error = await failure(run);
+		expect(error.code).toBe("allModelsFailed");
+		const failed = record(error.verdict!);
+		expect(failed.status).toBe("failed");
+		expect(failed.reason).toContain(
+			`every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+		);
+	});
+
+	it("names the model that refused apart from one that hit its limit, when every model failed", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [flagged, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier failed; ${provider}/first refused the content`,
+		});
+	});
+
+	it("says nothing of a refusal when a lens moved on from a provider's limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{
+				planner: [limited, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe("it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1");
+	});
+
+	it("says only that every model failed when every model hit its limit", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const limited = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "usage_limit_reached" });
+		const { run } = await review(
+			{ planner: [limited, limited], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({ status: "failed", reason: "every model of its tier failed" });
+	});
+
+	it("says which model answered the prober after its first model's content filter refused the plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [flagged, call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toContain(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered`,
+		);
+		expect(ran.reason).not.toContain(`; ${provider}/first refused`);
+	});
+
+	it("moves a planner's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const seen: string[] = [];
+		const on =
+			(reply: ScriptedReply): ScriptedReply =>
+			(messages, model) => {
+				seen.push(model);
+				return typeof reply === "function" ? reply(messages, model) : reply;
+			};
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [on(fauxAssistantMessage("Nothing.")), on(flagged), ...plan.map(on)],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(seen).toEqual(["first", "first", "second", "second"]);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
+		);
+	});
+
+	it("moves a prober's reminder to the next model when the content filter refuses it", async () => {
+		const fake = createFakeModels({ models: [{ id: "planning" }, { id: "first" }, { id: "second" }] });
+		const provider = fake.ref("planning").provider;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					fauxAssistantMessage("Done."),
+					flagged,
+					call("skip_attack", { attack: 1, reason: "r" }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/planning` },
+						light: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.status).toBe("ran");
+		expect(ran.reason).toBe(
+			`for its prober, ${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
+		);
+	});
+
+	it("names an earlier refusal when the next model fails in a way that does not move on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, malformed], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; ${provider}/first refused the content`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when its prober then fails without moving on", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const malformed = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "prompt is malformed" });
+		const { run } = await review(
+			{ planner: [flagged, ...plan], prober: [malformed] },
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "prompt is malformed",
+		});
+	});
+
+	it("names the planner's refusal when the model that answered recorded no plan", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [flagged, fauxAssistantMessage("Nothing."), fauxAssistantMessage("Nothing.")], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `the lens did not finish; for its planner, ${provider}/first refused the content, so ${provider}/second answered`,
+			error: "the planner recorded no attack plan",
+		});
+	});
+
+	it("keeps a reminder's own request ID, and adds the attempt only for a model it moved on to", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [fauxAssistantMessage("Nothing."), flagged, ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		await run;
+		const ids: string[] = [];
+		for (let id = 1; id < 100; id++) {
+			const submission = await (await harness!.harness.submission(id as SubmissionId, backgroundContext))?.status(
+				backgroundContext,
+			);
+			if (submission?.requestId?.startsWith("lens:") === true) ids.push(submission.requestId);
+		}
+		const key = ids[0]!.replace(/:0$/, "");
+		expect(ids).toEqual([`${key}:0`, `${key}:plan`, `${key}:plan:1`, `${key}/prober:0`]);
+	});
+
+	it("still names a planner's refusal when its reminder goes to the model that answered", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }, { id: "probing" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{
+				planner: [flagged, fauxAssistantMessage("Nothing."), ...plan],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		const ran = record((await run).verdict);
+		expect(ran.reason).toBe(
+			`${provider}/first refused the content, so ${provider}/second answered; it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1`,
+		);
+	});
+
+	it("fails a lens whose planner's reminder every model refused, with the last model's own words", async () => {
+		const fake = createFakeModels({ models: [{ id: "first" }, { id: "second" }] });
+		const provider = fake.ref("first").provider;
+		const { run } = await review(
+			{ planner: [fauxAssistantMessage("Nothing."), flagged, flagged], prober: [] },
+			{ fake, config: { models: { heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`] } } } },
+		);
+		const failed = record((await failure(run)).verdict!);
+		expect(failed).toMatchObject({
+			status: "failed",
+			reason: `every model of its tier refused the content: ${provider}/first, ${provider}/second`,
+			error: `tried ${provider}/first, ${provider}/second; the last said: ${flagged().errorMessage}`,
+		});
+	});
+
+	it("counts a reminder's moves apart from its conversation's, from the model it moved on to", async () => {
+		const fake = createFakeModels({
+			models: [{ id: "first" }, { id: "second" }, { id: "third" }, { id: "probing" }],
+		});
+		const provider = fake.ref("first").provider;
+		let release: () => void = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let asked: () => void = () => {};
+		const reached = new Promise<void>((resolve) => {
+			asked = resolve;
+		});
+		const { run } = await review(
+			{
+				planner: [
+					flagged,
+					fauxAssistantMessage("Nothing."),
+					flagged,
+					async () => {
+						asked();
+						await held;
+						return plan[0]!;
+					},
+					plan[1]!,
+				],
+				prober: [call("skip_attack", { attack: 1, reason: "r" }), fauxAssistantMessage("Done.")],
+			},
+			{
+				fake,
+				lens: probingWith({ prober: "light" }),
+				config: {
+					models: {
+						heavy: { model: `${provider}/first`, fallbacks: [`${provider}/second`, `${provider}/third`] },
+						light: { model: `${provider}/probing` },
+					},
+				},
+			},
+		);
+		try {
+			await reached;
+			const { tasks } = await harness!.harness.inspect(backgroundContext);
+			const attempts = tasks
+				.map(({ record }) => (record.state as { checkpoint?: { attempts?: Record<string, number> } }).checkpoint)
+				.find((checkpoint) => checkpoint?.attempts !== undefined)?.attempts;
+			const key = Object.keys(attempts ?? {}).find((each) => !each.endsWith(":plan"))!;
+			expect(attempts).toEqual({ [key]: 1, [`lens:${key}:plan`]: 2 });
+		} finally {
+			release();
+		}
+		expect(record((await run).verdict).status).toBe("ran");
 	});
 
 	it("fails a lens whose prober's every model failed, naming them", async () => {
@@ -3568,6 +4210,49 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(verdict.counted().map((each) => each.ruleId)).not.toContain("path-traversal");
 	});
 
+	// A refutation answers no attack, so its corrections stay capped however many probes it rests on.
+	it("refuses a prober's fifth refutation of one finding as a correction past the cap", async () => {
+		const fake = createFakeModels();
+		const { probe: _, ...plain } = finding("p0");
+		let probe = "p0";
+		const refute: ScriptedReply = (messages) => {
+			probe = /probe (p[0-9]+)/.exec(lastResults(messages))?.[1] ?? probe;
+			const id = /([0-9a-f]{16}) P1 path-traversal/.exec(JSON.stringify(messages))?.[1] ?? "none";
+			return call("report_finding", { ...finding(probe), refuted: id });
+		};
+		const scripts = {
+			planner: [],
+			prober: [
+				call("run_probe", { attack: 1, script: passing }),
+				...[1, 2, 3, 4, 5].map(() => refute),
+				fauxAssistantMessage("Refuted 1 finding."),
+			],
+			others: [
+				{ match: planner, replies: plan },
+				{ match: reviewer, replies: [call("report_finding", plain), fauxAssistantMessage("Reported 1 finding.")] },
+			],
+		};
+		const route = `${fake.ref().provider}/${fake.ref().modelId}`;
+		const careful = (lens: Lens) =>
+			Lens.from({ ...lens.toJSON(), levels: { ...lens.levels, careful: { ...lens.level("careful"), probe: {} } } });
+		const decider = new RecordedDecider(
+			{ triage: { version: "1", answers: { "trust-boundary": { distribution: { quick: 1 } } } } },
+			{ name: "recorded" },
+		);
+		const { run, requests } = await review(scripts, {
+			fake,
+			decider,
+			lens: careful,
+			config: {
+				lenses: { "trust-boundary": { level: { floor: "quick" as const, ceiling: "careful" as const } } },
+				models: { heavy: { model: route }, medium: { model: route } },
+			},
+		});
+		await run.catch((error: ReviewError) => ({ verdict: error.verdict! }));
+		expect(lastResults(requests[prober]![5]!)).toContain("recorded that finding");
+		expect(lastResults(requests[prober]![6]!)).toMatch(/^\[not recorded: this lens has corrected finding/);
+	});
+
 	it("refuses a prober's refutation with no probe, under the injection rule too, and keeps the carried finding", async () => {
 		const fake = createFakeModels();
 		const { probe: _, ...plain } = finding("p0");
@@ -3957,7 +4642,7 @@ describe("the turns a lens run is sent", () => {
 			[
 				...runs.flatMap((each) => [each.instructions, each.prompt, each.probe?.instructions ?? ""]),
 				injectionPolicy(input.revision.nonce),
-				continuePrompt,
+				...Object.values(handoverWording),
 			].flatMap(linesOf),
 		);
 		for (const section of ["instructions", injectionPolicySection.key])
@@ -4044,12 +4729,12 @@ async function probingTurns(options: NonNullable<Parameters<typeof review>[1]>, 
 	return shown;
 }
 
-// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, so the
-// trust-boundary lens's planner and prober must still be shown what they were shown then, but for the prober's
-// sentence on probes that show nothing and its reminder, which the maintainer's ruling of 2026-11-16 on issue #493 changed,
-// and the reminder again, which the ruling of 2026-11-17 on pull request #532 changed.
+// The golden was written by main's code at 512c8ae2, before lenses had probing wording of their own, and rewritten
+// by its test for issue #511, whose wording names where the checkout is, the stand-in rule and the cause file. Issue #493
+// changed the prober's sentence on probes that show nothing and its reminder, by the maintainer's rulings of 2026-11-16
+// and 2026-11-17. Any other change to what the trust-boundary lens's planner and prober are shown fails it.
 describe("the trust-boundary lens's probing turns", () => {
-	it("are what main sent its planner and prober, byte for byte, through an escalation, a plan and both reminders", async () => {
+	it("are what the golden records, byte for byte, through an escalation, a plan and both reminders", async () => {
 		const shown = await probingTurns(escalating(createFakeModels()), prober);
 		await expect(`${shown}\n`).toMatchFileSnapshot("golden/trust-boundary-probing-turns.txt");
 	});
@@ -4078,5 +4763,469 @@ describe("the trust-boundary lens's probing turns", () => {
 		expect(shown).toContain(name);
 		const golden = readFileSync(new URL("golden/trust-boundary-probing-turns.txt", import.meta.url), "utf8");
 		expect(`${shown.replaceAll(name, "trust-boundary")}\n`).toBe(golden);
+	});
+});
+
+describe("a review that requires probes", { timeout: 60_000 }, () => {
+	// The review's record of the lens and the gaps it reported, whether the review passed or failed.
+	async function settled(run: Promise<{ verdict: { ran?: readonly CheckRecord[]; notRun: readonly CheckRecord[] } }>) {
+		const verdict = await run.then(
+			(done) => done.verdict,
+			(thrown: unknown) => {
+				if (!(thrown instanceof ReviewError) || thrown.verdict === undefined) throw thrown;
+				return thrown.verdict;
+			},
+		);
+		return record(verdict);
+	}
+
+	it("fails a level that cannot probe here rather than run it without probes, and reports why", async () => {
+		const gaps: unknown[] = [];
+		const { run, requests } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({
+			status: "failed",
+			level: "deep",
+			reason: "probes are required, and deep ran without probes, which cannot run here: octocat has read permission",
+		});
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "untrusted-writer" }]);
+		expect(requests[reviewer]).toEqual([]);
+	});
+
+	it.each([
+		["no writer", { writer: undefined }, "no-writer"],
+		[
+			"a sandbox that cannot run",
+			{ sandbox: { ...unconfinedSandbox(), unavailable: () => "no seatbelt" } },
+			"sandbox-unavailable",
+		],
+		["a prober's tier with no model", { lens: probingWith({ prober: "light" }) }, "prober-tier-unrouted"],
+	] as const)("names the cause for %s", async (_, options, cause) => {
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({ ...options, requireProbes: true, probeGap: (gap) => gaps.push(gap) });
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual([cause]);
+	});
+
+	it("names the cause when the base policy trusts no writer", async () => {
+		withBasePolicy("trust:\n  writers: false\n");
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({
+			writer: { trusted: true, by: "writer" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["writers-untrusted"]);
+	});
+
+	it("names the cause when the head refuses probes", async () => {
+		const limits = headTreeLimits as { entries: number };
+		const entries = limits.entries;
+		limits.entries = 1;
+		onTestFinished(() => {
+			limits.entries = entries;
+		});
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({ requireProbes: true, probeGap: (gap) => gaps.push(gap) });
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["head-refuses"]);
+	});
+
+	it("names the cause when the plan refuses its prober's tier", async () => {
+		const fake = createFakeModels();
+		const gaps: { cause: string }[] = [];
+		const { run } = await withoutProbes({
+			fake,
+			lens: probingWith({ prober: "medium" }),
+			config: {
+				models: {
+					heavy: { model: `${fake.ref().provider}/${fake.ref().modelId}` },
+					medium: { accept: ["nowhere/model"], unavailable: "fail" },
+				},
+			},
+			plan: async (config, lenses, fake) => {
+				const { catalog, credentials } = await planInputs(fake.review);
+				return ReviewPlan.resolve({
+					config,
+					routes: { committed: config.models, overridden: {}, lensTiers: {}, retiered: {} },
+					catalog,
+					credentials,
+					lenses,
+					checks: ["lens.trust-boundary"],
+				});
+			},
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect((await settled(run)).status).toBe("failed");
+		expect(gaps.map((gap) => gap.cause)).toEqual(["prober-tier-refused"]);
+	});
+
+	it("still runs a level that does not probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			lens: (lens) => lens,
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "ran", level: "deep" });
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose probes ran, and one whose planner found nothing to probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{ planner: plan, prober: probing(failing) },
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect(await settled(run)).toMatchObject({ status: "ran" });
+		await harness?.close();
+		harness = undefined;
+		const empty = await review(
+			{ planner: [call("record_plan", { attacks: [] }), plan[1]!], prober: [] },
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect(await settled(empty.run)).toMatchObject({ status: "ran" });
+		expect(gaps).toEqual([]);
+	});
+
+	// A prober whose one probe the sandbox refuses, which then skips the attack.
+	const refusing = (requireProbes: boolean, gaps: unknown[]) => {
+		const base = unconfinedSandbox();
+		return review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
+			{
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+	};
+
+	it("fails a level whose prober asked for a probe that could not run, keeping the level's own reason", async () => {
+		const passed = await settled((await refusing(false, [])).run);
+		expect(passed.status).toBe("ran");
+		await harness?.close();
+		harness = undefined;
+		const gaps: unknown[] = [];
+		const failed = await settled((await refusing(true, gaps)).run);
+		expect(failed).toEqual({
+			...passed,
+			status: "failed",
+			reason: `probes are required, and 1 probe the deep prober asked for could not run; ${passed.reason}`,
+		});
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
+	});
+
+	const ending = (script: string, prober: ScriptedReply[], gaps: unknown[], rewrite?: string) =>
+		review(
+			{ planner: plan, prober: [call("run_probe", { attack: 1, script }), ...prober] },
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				...(rewrite === undefined ? {} : { rewrite: (command) => (inHeadTree(command) ? rewrite : command) }),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+
+	it.each([
+		["timed out", "sleep 10"],
+		["was cut at its output limit", "yes x | head -c 40000"],
+		["was ended by a signal", "kill -9 $$"],
+		["timed out, though its sandbox then exited with a code", "trap 'exit 3' TERM; sleep 10 & wait"],
+	])("fails a level whose only probe of an attack %s", { tags: ["macos"] }, async (_, rewrite) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[fauxAssistantMessage("Done."), fauxAssistantMessage("Done.")],
+			gaps,
+			rewrite,
+		);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it("fails a level that answered one attack while every probe of another showed nothing", {
+		tags: ["macos"],
+	}, async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: [call("record_plan", { attacks: [attack, { ...attack, target: "src/load.ts again" }] }), plan[1]!],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 2, script: passing }),
+					fauxAssistantMessage("Done."),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 2 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		const failed = await settled(run);
+		expect([heads, failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			2,
+			"failed",
+			"probes are required, and every probe the deep prober ran for 1 attack showed nothing",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-inconclusive" }]);
+	});
+
+	it("fails a level whose only probe of an attack exited before its runner started, as a sandbox that cannot launch does", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[
+				fauxAssistantMessage("Done."),
+				call("skip_attack", { attack: 1, reason: "the sandbox did not start its probe" }),
+				fauxAssistantMessage("Skipped it."),
+			],
+			gaps,
+			"exit 1",
+		);
+		const failed = await settled(run);
+		expect([failed.status, failed.reason?.split("; ")[0]]).toEqual([
+			"failed",
+			"probes are required, and 1 probe the deep prober asked for could not run",
+		]);
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "deep", cause: "probe-refused" }]);
+	});
+
+	it.each([
+		["passed", passing, [fauxAssistantMessage("Done.")]],
+		["failed, with its finding", failing, probing(failing).slice(1)],
+	])("passes a level whose probe of its attack %s", async (_, script, replies) => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(script, replies, gaps);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose prober skipped, with its reason, an attack its probe showed nothing on", {
+		tags: ["macos"],
+	}, async () => {
+		const gaps: unknown[] = [];
+		const { run } = await ending(
+			passing,
+			[call("skip_attack", { attack: 1, reason: "its probe timed out" }), fauxAssistantMessage("Skipped it.")],
+			gaps,
+			"sleep 10",
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("passes a level whose later probe of an attack ran to its end after one that showed nothing", {
+		tags: ["macos"],
+	}, async () => {
+		const gaps: unknown[] = [];
+		let heads = 0;
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				lens: probingWith({ timeout: 2_000 }),
+				rewrite: (command) => (inHeadTree(command) && ++heads === 1 ? "sleep 10" : command),
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect([heads, gaps]).toEqual([2, []]);
+	});
+
+	it("passes a level whose prober skipped every attack without asking for a probe", async () => {
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [call("skip_attack", { attack: 1, reason: "nothing to run" }), fauxAssistantMessage("Skipped it.")],
+			},
+			{ requireProbes: true, probeGap: (gap) => gaps.push(gap) },
+		);
+		expect((await settled(run)).status).toBe("ran");
+		expect(gaps).toEqual([]);
+	});
+
+	it("names the quick level when it and its escalation would both run without probes", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			...options,
+			lens: (lens) => {
+				const careful = options.lens(lens);
+				return Lens.from({
+					...careful.toJSON(),
+					levels: { ...careful.levels, quick: { ...careful.level("quick"), probe: {} } },
+				});
+			},
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "quick" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "untrusted-writer" }]);
+	});
+
+	it("checks no level above one triage did not choose quick for", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const gaps: unknown[] = [];
+		const { run } = await withoutProbes({
+			...options,
+			decider: new RecordedDecider(
+				{ triage: { version: "1", answers: { "trust-boundary": { distribution: { careful: 1 } } } } },
+				{ name: "recorded" },
+			),
+			lens: probingWith({}),
+			config: {
+				...options.config,
+				lenses: { "trust-boundary": { level: { floor: "quick", ceiling: "deep" } } },
+			},
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "ran", level: "careful" });
+		expect(gaps).toEqual([]);
+	});
+
+	it("fails a level that cannot probe when the host takes no gaps", async () => {
+		const { run } = await withoutProbes({
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "deep" });
+	});
+
+	it("fails a level whose prober's probe could not run when the host takes no gaps", async () => {
+		const base = unconfinedSandbox();
+		const { run } = await review(
+			{
+				planner: plan,
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+					call("skip_attack", { attack: 1, reason: "the sandbox refused its probe" }),
+					fauxAssistantMessage("Skipped it."),
+				],
+			},
+			{
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command)) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+			},
+		);
+		expect((await settled(run)).status).toBe("failed");
+	});
+
+	it("fails a level whose quick run's probe could not run, though the level it escalated to probed", async () => {
+		const fake = createFakeModels();
+		const options = escalating(fake);
+		const base = unconfinedSandbox();
+		let refusals = 1;
+		const gaps: unknown[] = [];
+		const { run } = await review(
+			{
+				planner: [...plan, ...plan],
+				prober: [
+					call("run_probe", { attack: 1, script: passing }),
+					...probing(failing),
+					call("run_probe", { attack: 1, script: passing }),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{
+				...options,
+				lens: (lens) =>
+					Lens.from({
+						...lens.toJSON(),
+						levels: {
+							...lens.levels,
+							quick: { ...lens.level("quick"), probe: {} },
+							careful: { ...lens.level("careful"), probe: {} },
+						},
+					}),
+				sandbox: {
+					...base,
+					wrap: async (command, policy) => {
+						if (inHeadTree(command) && refusals-- > 0) throw new Error("no seatbelt now");
+						return base.wrap(command, policy);
+					},
+				},
+				requireProbes: true,
+				probeGap: (gap) => gaps.push(gap),
+			},
+		);
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "careful" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "quick", cause: "probe-refused" }]);
+	});
+
+	it("fails as the lens failed when its task ended with no result", async () => {
+		const aborted: ScriptedReply = async () => {
+			const root = await harness!.harness.root(backgroundContext);
+			const index = await harness!.harness.snapshot(ReviewIndex, root.id, backgroundContext);
+			await harness!.harness.abortTask(Object.values(index!.reviews)[0]!.task as TaskId, backgroundContext);
+			return fauxAssistantMessage("Reported 0 findings.");
+		};
+		const { run } = await review(
+			{ planner: [], prober: [], others: [{ match: reviewer, replies: [aborted] }] },
+			{ lens: (lens) => lens, requireProbes: true, probeGap: () => {} },
+		);
+		await expect(run).rejects.toMatchObject({ code: "lensFailed" });
+	});
+
+	it("fails a quick level whose escalation would run without probes, before it runs", async () => {
+		const fake = createFakeModels();
+		const gaps: unknown[] = [];
+		const { run, requests } = await withoutProbes({
+			...escalating(fake),
+			writer: { trusted: false, detail: "octocat has read permission" },
+			requireProbes: true,
+			probeGap: (gap) => gaps.push(gap),
+		});
+		expect(await settled(run)).toMatchObject({ status: "failed", level: "careful" });
+		expect(gaps).toEqual([{ check: "lens.trust-boundary", level: "careful", cause: "untrusted-writer" }]);
+		expect(requests[reviewer]).toEqual([]);
 	});
 });

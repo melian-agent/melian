@@ -14,6 +14,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Run, staticToolSource, staticToolVersion, toolLocale } from "../src/static.ts";
 import { fakeMutationProcesses } from "./fixtures/mutation-process.ts";
+import { replaceRefsProbe } from "./fixtures/replace-refs.ts";
 import { commit, createRepository, fakeTool, gitIn, lines, removeRepository, writeFiles } from "./fixtures/repo.ts";
 import { emptyVitestInstall } from "./fixtures/vitest-listing.ts";
 
@@ -67,6 +68,12 @@ describe("staticToolVersion", () => {
 		expect(staticToolVersion(repo, "tsc")).toBe(carried.version);
 	});
 
+	it("takes Melian's own copy when the checkout tracks node_modules, though GIT_INDEX_FILE names an empty index", () => {
+		commit(repo, { "node_modules/.bin/biome": "#!/bin/sh\n" });
+		vi.stubEnv("GIT_INDEX_FILE", join(repo, "no-such-index"));
+		expect(staticToolSource(repo, "biome").from).toBe("melian");
+	});
+
 	it("says unavailable for a manifest that names no version, or cannot be read", () => {
 		own(7);
 		expect(staticToolVersion(repo, "biome")).toBe("unavailable");
@@ -103,6 +110,25 @@ it("checks out the commit an ID names, not a replacement refs/replace puts behin
 	const read = await run.inWorktree(async (root) => readFileSync(join(root, "a.ts"), "utf8"));
 
 	expect(read).toBe("export const side = 'original';\n");
+});
+
+it("checks out with core.useReplaceRefs read as false though the repository's configuration turns it on", {
+	timeout: 60_000,
+}, async () => {
+	const head = commit(repo, { "a.ts": "export const side = 'original';\n" });
+	gitIn(repo, "config", "core.useReplaceRefs", "true");
+	const probe = replaceRefsProbe();
+	vi.stubEnv("PATH", `${probe.bin}:${process.env.PATH}`);
+	let answers: string[];
+	try {
+		await new Run(input("biome", head), context).inWorktree(async () => undefined);
+		answers = probe.answers();
+	} finally {
+		rmSync(probe.bin, { recursive: true, force: true, maxRetries: 3 });
+	}
+
+	expect(answers.length).toBeGreaterThan(0);
+	expect(new Set(answers)).toEqual(new Set(["false"]));
 });
 
 const tsconfig = JSON.stringify({

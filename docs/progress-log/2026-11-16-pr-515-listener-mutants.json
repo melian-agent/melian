@@ -1,0 +1,2317 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ceb9d8553af318422987657afe96a8fe7298346f",
+		"head": "31868088732ba742138295a9736789d26c2aac25"
+	},
+	"claimsIn": [
+		"scripts/round-probe-containment.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "3638d6e696ce30ad2841abdadcce1d50037187b11203d2f50df717eac24bbf3d",
+	"mutants": [
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 342,
+			"column": 5,
+			"endLine": 342,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3192f0225ad9b6fd834a4dc1157b52a4b573e12397efa73e3a0382e3047b0992",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 342,
+			"column": 5,
+			"endLine": 342,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9cbe7941f978fb38e575e99aced0ee8ec2fc64a9eab36f226d7b00e07e9c1f08",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe that did not try DNS"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 342,
+			"column": 5,
+			"endLine": 342,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "report.dns !== undefined",
+			"status": "generated",
+			"id": "622da960efd98a6f4b8bf8f5f80654714e3fc137a5e7bd9e02ee6c20c258dd87",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 342,
+			"column": 31,
+			"endLine": 342,
+			"endColumn": 74,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4beab129ec1299e8a94127923d62f99ba07ab04a67091d01ba9793ae2d769875",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe that did not try DNS"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 342,
+			"column": 45,
+			"endLine": 342,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6b84cad87d6c61cc016070affaf7ac609146768d4a0156f91dcc06e7ae0b0093"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 343,
+			"column": 5,
+			"endLine": 343,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "33897eaf0979f3931795276d450595697d0eb7c533b6402a6e414a21661cda88",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 343,
+			"column": 5,
+			"endLine": 343,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d4dbd882d7e50f5cd2943e76ca9b164197580d9c02bf6c5f996a1002711d2a93",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe that sent no datagram"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 343,
+			"column": 5,
+			"endLine": 343,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "report.udp !== undefined",
+			"status": "generated",
+			"id": "e071af615b470389bc06a69161b692866b6bcb6335c2706c6e0cfcd4115bc743",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 343,
+			"column": 31,
+			"endLine": 343,
+			"endColumn": 74,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "3d7d8445090b3428e1be90b5743d2c177073331a6d647563c23591805e240580",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe that sent no datagram"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 343,
+			"column": 45,
+			"endLine": 343,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "110c429a468e3285ebeb2133028a4598fc930a30901c9e404881438689785f6c"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 5,
+			"endLine": 345,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b63be927dc379321ccff4f2ce6efca4691b07298a5d9639d2b60998e00a701b1",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 5,
+			"endLine": 345,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c3508b546e3ba4528abc7a1655a6136b8e147e25536cc94c163ac614de024bb7",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose connection or datagram reached the host's listener, whatever the probe reported"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 5,
+			"endLine": 345,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "connections >= 0",
+			"status": "generated",
+			"id": "0186746a0d3a6d80d62f53ec632b1466e243a6a95dcf5ba8336197b726614e17",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 5,
+			"endLine": 345,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "connections <= 0",
+			"status": "generated",
+			"id": "436691bda19a1522926359547aac80cccc89f5431973b5cc1398aeb17af3d5f9",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 22,
+			"endLine": 345,
+			"endColumn": 104,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "ecccb0a265e7726f6644cd7f8713b67b4980b31c9409a80a2be72edfa48ad488",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose connection or datagram reached the host's listener, whatever the probe reported"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 36,
+			"endLine": 345,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e66c9d0b4403c934f7e5143323697d0f76135500de7ed0cf734451eda6edf3ee"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 345,
+			"column": 59,
+			"endLine": 345,
+			"endColumn": 71,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4f004b8f643528e2e5f64055b3cdbed8b7f8099075e5febe0ee2fb4de606e1da"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 5,
+			"endLine": 346,
+			"endColumn": 18,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9939f191b584a31fd1d789c12b696696a3e343009121f641a0dc1714077a1f15",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 5,
+			"endLine": 346,
+			"endColumn": 18,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3fe2ed73fc4fd5933f6cac8cbbec02a98492e2138d0882c696d1ff197d3dd5c6",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose connection or datagram reached the host's listener, whatever the probe reported"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 5,
+			"endLine": 346,
+			"endColumn": 18,
+			"mutatorName": "EqualityOperator",
+			"replacement": "datagrams >= 0",
+			"status": "generated",
+			"id": "6c262cb7486dafe2b3564c6a2504d74f743372878f1023117906044202b00bfd",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 5,
+			"endLine": 346,
+			"endColumn": 18,
+			"mutatorName": "EqualityOperator",
+			"replacement": "datagrams <= 0",
+			"status": "generated",
+			"id": "472f2370c8e1c658e18e6984c706edf27c2ee80ab51f8f94f029a456a43ad202",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"passes a probe every route of which was shut"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 20,
+			"endLine": 346,
+			"endColumn": 98,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "5e3d73b84c9f78de2a2adbb94fcb215bc443ef6113758174c2a4bfab67722ded",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"judge",
+						"fails a probe whose connection or datagram reached the host's listener, whatever the probe reported"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 34,
+			"endLine": 346,
+			"endColumn": 96,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0160b2d7e99c2ac398f579aecd8ef8ec6819a680af59f654e7c8f5925076d187"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 346,
+			"column": 55,
+			"endLine": 346,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cabd29d4783c9cbf11f272ab901580835b205521a527b947afde66d2468fbf61"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 456,
+			"column": 40,
+			"endLine": 460,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5134d8d120740d1f1f231c1e66564da6a0e23c6a23068833d249c5b3ae8164f0",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 457,
+			"column": 8,
+			"endLine": 459,
+			"endColumn": 71,
+			"mutatorName": "OptionalChaining",
+			"replacement": "Object.values(interfaces).flat().find(entry => entry.family === \"IPv4\" && !entry.internal).address",
+			"status": "generated",
+			"id": "a243d9a9648baabdb40355308ae18d8fb1b677c3c6751c58bbc54b77c9cb4e18",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"finds none where every IPv4 address is loopback"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 8,
+			"endLine": 459,
+			"endColumn": 61,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "bbf77673c93a87ea6142983d0de3174360ff5c94e28a594f7b9a7ad650e8b938",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 19,
+			"endLine": 459,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f1482b1afe896e12a7c99a6c0cf1a74ff6f982631f158824b193cfb89a95230a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 19,
+			"endLine": 459,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d7bd911f2f2734ac1c6250dba9deb70b01c648f70ce0d45a99381aa91fc19ecd",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 19,
+			"endLine": 459,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "entry.family === \"IPv4\" || !entry.internal",
+			"status": "generated",
+			"id": "e62fbd054dbec639e21d084c6c67da7dc620b9eaedba88dfed33cfe4b8cf07b8",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 19,
+			"endLine": 459,
+			"endColumn": 42,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "473be848af7aba27898d787c80b44492be1c2f9a399d8ef60848d65ba2a8fd75",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 19,
+			"endLine": 459,
+			"endColumn": 42,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.family !== \"IPv4\"",
+			"status": "generated",
+			"id": "de3ae0e162f2f2d0a73deb4706e304a1d4d9a03bd00f68a06fbe7e6126ea1f77",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 36,
+			"endLine": 459,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9eb44e60943c080a1546ac0e44301e26b90f75ee182c6c324bff8b004005c07b"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 459,
+			"column": 46,
+			"endLine": 459,
+			"endColumn": 61,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "entry.internal",
+			"status": "generated",
+			"id": "062868cfe15edb8101f12977bbf19d1e8ed15c8c0dbd3c72dcf9a2c6c0de71fe",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"hostAddress",
+						"takes the first IPv4 address outside loopback, past an IPv6 one"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 463,
+			"column": 27,
+			"endLine": 466,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9882fc5b48614bc96e160fa934251ed4d5630cc27df6c5bea451f80fd8e9535c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 22,
+			"endLine": 464,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8b62b2fe01733a1748857f1ee6b27d3c58543d8c38d83be7a2302d9af5d22b9d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 22,
+			"endLine": 464,
+			"endColumn": 46,
+			"mutatorName": "LogicalOperator",
+			"replacement": "waited < 5000 || !test()",
+			"status": "generated",
+			"id": "8c57b4ad4c39b264336827e8a1cf3eaab971a26631085d0d667c92c582749fc8",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 22,
+			"endLine": 464,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fe7819e109d5327a732a3327282c9a5c48b898cb65e5d8b6293958823a8c3341",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 22,
+			"endLine": 464,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "waited <= 5000",
+			"status": "generated",
+			"id": "9869b101d1cabff5bf43a7467687609dc8e3176f0ba04b40b0101a8f27e2f78f",
+			"survivorClasses": [
+				"numeric-bound"
+			],
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "At the bound the loop waits one more 20 ms poll before it returns test(), which it returns either way; no outcome changes."
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 22,
+			"endLine": 464,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "waited >= 5000",
+			"status": "generated",
+			"id": "70b0e49bfaa5fc0be96d47a00cdfbfb8b53c587ddb975a09a141b64c901c118d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 39,
+			"endLine": 464,
+			"endColumn": 46,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "test()",
+			"status": "generated",
+			"id": "709acddcf7b1d8afd182fa49268008cccf38ceeef6a1d1a5343f9db420b50818",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 48,
+			"endLine": 464,
+			"endColumn": 60,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "waited -= 20",
+			"status": "generated",
+			"id": "a4cb1f78f530d70cef0094dc985ded3b11a12316763751025e52091d89f5e175",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 464,
+			"column": 80,
+			"endLine": 464,
+			"endColumn": 116,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "dc77cd433a6696694bbce58edc53eb98dc534c54d49d78c1a99358bb47ab0ba2",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 479,
+			"column": 32,
+			"endLine": 483,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f757d2e39708ffdcc13c92096a090e410510a2909da9c613f552db73ac22bb2f",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 485,
+			"column": 28,
+			"endLine": 502,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a24f55aed1bba01f29bf17912cc9ddfd05cb50e8e66c5216555622673f297159",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 486,
+			"column": 70,
+			"endLine": 486,
+			"endColumn": 76,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0ab5873d9303499963fec396dd4ba0975531581ad0c17ba213b26071e0fda913"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 487,
+			"column": 18,
+			"endLine": 487,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "de6c89a4aceb79b99b7503495274d642f8e775ee45b530aeed9aa1d18070b3b3"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 487,
+			"column": 44,
+			"endLine": 490,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dcc544ba888dadf9bb9988275c96eb507aac9f2fa834ccbc7a3199995be1e224",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 488,
+			"column": 3,
+			"endLine": 488,
+			"endColumn": 25,
+			"mutatorName": "UpdateOperator",
+			"replacement": "listener.connections--",
+			"status": "generated",
+			"id": "7ed581ba52c44be423d8439ec6716a19a086fcee76aa3bb34cb984c500c5c47d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 489,
+			"column": 3,
+			"endLine": 489,
+			"endColumn": 20,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "5f8e4b86a7e54f25b099d762c1c0a5741a5d9737aefee6628574833c126a8c28",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 491,
+			"column": 18,
+			"endLine": 491,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "83e3ab65539e4c43fbc4783fabd4c51afe8ddd8f180b9dce87d94040659a3f10"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 491,
+			"column": 35,
+			"endLine": 493,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fe0d3b840c5b5b4537c606129c7d5ab18e19c7d36700cb6841092f43c443c869",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 492,
+			"column": 3,
+			"endLine": 492,
+			"endColumn": 23,
+			"mutatorName": "UpdateOperator",
+			"replacement": "listener.datagrams--",
+			"status": "generated",
+			"id": "42a2babfbfa8c1af199925bf56ea4d81907b470f0d71986fc96f52adaf5e797d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 494,
+			"column": 6,
+			"endLine": 497,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f105900d3a0920cdf21cb83ceb5ca72dcaa413fa4b032723ed9040eb637193e3",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 495,
+			"column": 21,
+			"endLine": 495,
+			"endColumn": 104,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ddee367a6baf46ec4d6b5e6ee127d10ed0ea003d7fcc1d9cafa2c0f37e680a91",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 495,
+			"column": 60,
+			"endLine": 495,
+			"endColumn": 67,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0493d6e008d7af40a8c5344a87fcffe0a55772e1dda1c1030f9d619f8f6ceac9"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 496,
+			"column": 21,
+			"endLine": 496,
+			"endColumn": 102,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ed6dbf911309c9b3a9bf12899ff6231ed9a03925de919590f38b6fd37982ccbe",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 496,
+			"column": 60,
+			"endLine": 496,
+			"endColumn": 67,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6d01610f3efad26f88fb4a427efafdad4c5ce74b3ad015614caefb835b01c3fd"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 497,
+			"column": 18,
+			"endLine": 500,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1941ece08e80a4fd720f13897ffbe37bcf649fe2bba1eb6b8ce272568f91166c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, opens no probe, and leaves nothing, when its listener cannot open"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 505,
+			"column": 11,
+			"endLine": 510,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fb3b60ceb357040fce5eb39471f4303b9a41bc828dfe748dfe38e93b2752dc1a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 506,
+			"column": 9,
+			"endLine": 509,
+			"endColumn": 3,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "146e913a47c4045527ae642dd80a064f4f101c035ef4ca0e681b685a9be5de2e",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 507,
+			"column": 8,
+			"endLine": 507,
+			"endColumn": 61,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "85f08ae41c40c636832f87f1d1e50f1e0ee591b6a510e10da99c0c1e2065ff7a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 508,
+			"column": 8,
+			"endLine": 508,
+			"endColumn": 61,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ac7d13a361f842dcf73afb7eae86a276a21092ab2b23d185e2f2403b0ab9205b",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 513,
+			"column": 17,
+			"endLine": 528,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b63b74e28c06bed4e3ed045e9f6776a235d85738d4460b40aaa40df40f34942c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 516,
+			"column": 2,
+			"endLine": 516,
+			"endColumn": 31,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8bca46a763a26afe757aa2aa6494c11432fb657d2f08c1da5cb799312e325db5",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 516,
+			"column": 12,
+			"endLine": 516,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e4af030cab59de815b5281aaf106be54faca590292ec4f0f8880d6f5cc06dc32"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 517,
+			"column": 32,
+			"endLine": 517,
+			"endColumn": 58,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "877a7e9e4bb7e53deafc2123c22478d9806951f1fb843fcc06494baf6b07b081",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 517,
+			"column": 38,
+			"endLine": 517,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f0490ac087fb657e4a74c234c45f149458e66379bd5717504befbc10757feb22",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 517,
+			"column": 38,
+			"endLine": 517,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "09268716faa6a3f479193c32a032f2dada2515c656924d9fd898f346f21c48f7",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 517,
+			"column": 38,
+			"endLine": 517,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.connections >= 0",
+			"status": "generated",
+			"id": "8f3374b5830b4ead1fc7cc76f700c7df266aa1dba2cdb422f92e64e9c3b41340",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 517,
+			"column": 38,
+			"endLine": 517,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.connections <= 0",
+			"status": "generated",
+			"id": "3d8353b5e5b69600b712206e80300de64a388240a25e5167e62db3316151ba8a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 518,
+			"column": 2,
+			"endLine": 518,
+			"endColumn": 19,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "85e9e9baf497a1aef0f2299ad1c898b774e3c8742724d02eef08315142cea13c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control when no connection reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 519,
+			"column": 6,
+			"endLine": 519,
+			"endColumn": 16,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "connected",
+			"status": "generated",
+			"id": "eedfbc71aaf937a7c537627d89f5165095ba733c26c3e1b9aa4c92e179efcd24",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 519,
+			"column": 6,
+			"endLine": 519,
+			"endColumn": 16,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "06c137e9ee0d9815f25f6f8fd989c4e84ddbddf747459a9e3a7cae1b3656545c",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 519,
+			"column": 6,
+			"endLine": 519,
+			"endColumn": 16,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9a49a81f905831d70a3a03d22ad3ce194140c8a03b3a75063a21acfef03c7dbb",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 519,
+			"column": 18,
+			"endLine": 519,
+			"endColumn": 97,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2c224d7c67e02b21e77bf33323e2afb6e8b3b01ce66a7867a8693a6db61108b4",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its connection errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 519,
+			"column": 34,
+			"endLine": 519,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "718d1c75fbd94fe1d9193e7f1231fc6a56cb4e62604db5fd4fa19460cd94cd70"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 520,
+			"column": 30,
+			"endLine": 520,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "82f66e9ca09e6a1e5550ad422cbb21ae67d0fd8a67e5904b57fe8a47fd1904d2"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 521,
+			"column": 2,
+			"endLine": 521,
+			"endColumn": 31,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "f07646d418ef639bdaa0b024215bd763d8c3032bceab5098160c45ddc8ae5ebd",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 521,
+			"column": 12,
+			"endLine": 521,
+			"endColumn": 19,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fde9495eeb12b40f8a7a1e318bf04786fb0b3b67c945cd8f3fb2770c8cb7e3a0"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 522,
+			"column": 2,
+			"endLine": 522,
+			"endColumn": 45,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "89777906326c539f47780944114413f7ce9c3578ed745ee1a2fdaa94955bb196",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 522,
+			"column": 14,
+			"endLine": 522,
+			"endColumn": 23,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6464f3fbdb78869f8f942161f59cf36faeb45cefbd4fbda6774a8df6eac251f6"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 523,
+			"column": 31,
+			"endLine": 523,
+			"endColumn": 55,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "27d5d187a3c5097fa84ab67681b227ae1ae50b9f4c1a680c53843ef1f1bf068a",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 523,
+			"column": 37,
+			"endLine": 523,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "009c69fe2c94db10a480d7d7e255fab97126ae4417c86c577e18a8509474b16e",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 523,
+			"column": 37,
+			"endLine": 523,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0c6782a2f34e0b0c1aefb8c1ecc1dab2c4946e97c18b9cd5e45ca9af15f7665d",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 523,
+			"column": 37,
+			"endLine": 523,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.datagrams >= 0",
+			"status": "generated",
+			"id": "4f5cd2fd8c9993cc6413dc9a4609590a6cf435d74c7c5fa940094e9bbb5e7bea",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 523,
+			"column": 37,
+			"endLine": 523,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.datagrams <= 0",
+			"status": "generated",
+			"id": "fcc6f1ceb388ac4ada388bf544110ca5e56bc5d8537da916e841d014ea7d85ff",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 524,
+			"column": 2,
+			"endLine": 524,
+			"endColumn": 17,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "46506cfcce42246b0a7006017a969d5638fd3826ad595906bc4cbb56e3014937",
+			"survivorClasses": [],
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"closes the sockets it reaches itself from"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 525,
+			"column": 6,
+			"endLine": 525,
+			"endColumn": 15,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "received",
+			"status": "generated",
+			"id": "3f675f40f70a2c0f2b3b2fdb22b22582c88c856713053bb9411a4f2a08e154dc",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 525,
+			"column": 6,
+			"endLine": 525,
+			"endColumn": 15,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8d8875433ad1becb3245bc4fef8faaf1f158ca658e3953a774cea082ec220351",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"passes its own control, starts its counts again, and then counts what reaches it"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 525,
+			"column": 6,
+			"endLine": 525,
+			"endColumn": 15,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "831722fbfb1462666984fb7c4615a4143e90ff618fcad9b2facde3e18ba080c1",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 525,
+			"column": 17,
+			"endLine": 525,
+			"endColumn": 94,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "0d3567ccd9786a6f14fd58f54064dbbdd4fdae5c0ed450d3ab060cb20f738fb5",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"fails its control, and throws nothing else, when its datagram errors"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 525,
+			"column": 33,
+			"endLine": 525,
+			"endColumn": 92,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "47b9e7ac2e5a5fe0dcd23312739980612e9ce2c187909a254dc722d1934737be"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 530,
+			"column": 15,
+			"endLine": 533,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "fa9dd2ad4c561e3257ad18febf94ad0f9ae606e62d875be549b31588cbf38ef1",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"frees both ports when it closes"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 531,
+			"column": 20,
+			"endLine": 531,
+			"endColumn": 64,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "8f279e723bc7fa92faab1a92ecfcba49fe25d0e56334791a6d8f5abcf8554c29",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"frees both ports when it closes"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 531,
+			"column": 48,
+			"endLine": 531,
+			"endColumn": 63,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "69cc2358b92debdc41a610e605ea32e7ec3deabf01a1c7834ab1cc6381fad330",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"frees both ports when it closes"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 532,
+			"column": 20,
+			"endLine": 532,
+			"endColumn": 56,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "08748c3689c54578c6d3bc2123393da64509b9ca7f5c13ccf0a6c180667f3df5",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"Listener",
+						"frees both ports when it closes"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 647,
+			"column": 5,
+			"endLine": 647,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1c4fd83538f07ff1af8152efab5acb0506fe0346d2250e331a510b56b92b425f",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails a probe that did not finish, and leaves nothing it planted"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 647,
+			"column": 5,
+			"endLine": 647,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bf33634df95584945f19cc87295bb9853e5281df23cc9ff28c0553e92fbce95b",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, and plants nothing, when the host has no address outside loopback"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 647,
+			"column": 5,
+			"endLine": 647,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "address !== undefined",
+			"status": "generated",
+			"id": "4d1e49b1b7fee0500d07f9aaf450e06d20895eff7b8842f2ef22e90c2dc6a740",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails a probe that did not finish, and leaves nothing it planted"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 647,
+			"column": 28,
+			"endLine": 650,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "51d95cca9eb55120b9abddb083b2e0d432adeee0ee8f7024362105caab39cfd1",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, and plants nothing, when the host has no address outside loopback"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 648,
+			"column": 2,
+			"endLine": 648,
+			"endColumn": 76,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "abacc680aa1f7aa467644a163a69886dc1a5abfc2dec053d3a1e73802c9281a0",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, and plants nothing, when the host has no address outside loopback"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 648,
+			"column": 6,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "29fd4ea8728a06154e73783a62ea98aa927bd3ebb9403266fc2be1432eb3e682"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 663,
+			"column": 6,
+			"endLine": 666,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a9bb9764d0609c5b2197859a8d987f0fe08430232b818c39b8919c5452a57319",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails a probe that did not finish, and leaves nothing it planted"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 666,
+			"column": 18,
+			"endLine": 669,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0c9eb245a0fcdadfd2777312c23bf353b2e520ed94d82a7a01b8fdfe3184b365",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, opens no probe, and leaves nothing, when its listener cannot open"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 667,
+			"column": 3,
+			"endLine": 667,
+			"endColumn": 84,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "41724c7b941150c0b5025fbcf4f4984d57842c8300e78c0bf0131d063a6278f9",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, opens no probe, and leaves nothing, when its listener cannot open"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 667,
+			"column": 7,
+			"endLine": 667,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7a7d99d13ba363060333c8897c64c59dc186529ea7d10556aaf3a63992913c3b"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 730,
+			"column": 2,
+			"endLine": 730,
+			"endColumn": 109,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "e23af11a8432d517ccbf228b1f9f61a2e7eb77adec8cbab7c34c08623488e654",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"the containment step",
+						"shuts every route on this machine, and prints each line a reader of the log needs"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 730,
+			"column": 6,
+			"endLine": 730,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "989a78e58d340316f3edf380390abbe258377244bddd9348553cd0520d8b43f7"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 731,
+			"column": 15,
+			"endLine": 731,
+			"endColumn": 112,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "22b02f48c5d70c4381d012c30f887a7cc6dc8439e8051b4264ed783025a7e764",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"leaves a file that was at a write target before it ran"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 731,
+			"column": 38,
+			"endLine": 731,
+			"endColumn": 71,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "509486328b8289fdd9612739a8496b6dfa16e4cfd437d90db5e0b58a8de35f3f",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"the containment step",
+						"shuts every route on this machine, and prints each line a reader of the log needs"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 731,
+			"column": 84,
+			"endLine": 731,
+			"endColumn": 110,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "159353d90c7e3a45125698b0aff031b3a6f3b260ab388fe90ed6939cec09ae9b",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails a probe whose connection and datagram reached its listener"
+					]
+				}
+			}
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 736,
+			"column": 8,
+			"endLine": 736,
+			"endColumn": 23,
+			"mutatorName": "OptionalChaining",
+			"replacement": "listener.close",
+			"status": "generated",
+			"id": "2374567ef41e15dfa94a29e7bf478426f7718c09d3586297eae7cc7fa5e5ee81",
+			"survivorClasses": [],
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, opens no probe, and leaves nothing, when its listener cannot open"
+					]
+				}
+			}
+		}
+	],
+	"total": 113,
+	"omitted": 0,
+	"unmutated": []
+}

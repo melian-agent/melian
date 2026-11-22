@@ -1,0 +1,621 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "23cd7ec472155cec032feb153cd36eee26af456b",
+		"head": "56884d66b4a7b234228054755a320acc64f65932"
+	},
+	"claimsIn": [
+		"packages/core/src/findings.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4a31f9e61456f1b813c5e8a72a37f7b7b72985b69c13f634956512f5448eeb95",
+	"mutants": [
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1888,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0841d138624eab48b40920d1db686b698bfa603376c0949b66e9511e41e04ba7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: Enola's table blocks while the guardrails table quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1888,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "dde10d6a6e47ade931b3a92135d96170bec5e05d913111730731d3990b8e2046",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"lets the class entry decide a notice the guardrails check raised itself, over its whole guardrail's"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1888,
+			"column": 3,
+			"endLine": 1888,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check !== \"guardrails\"",
+			"status": "generated",
+			"id": "c2e4f2ef3bdbca9379ef9341377b7951b3271b6166dcd295ead1ec2e6aec2c64",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: Enola's table blocks while the guardrails table quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1888,
+			"column": 20,
+			"endLine": 1888,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dc99733dc298f1432da53ac057b95efdbdfee065573844a4c8d45faab22f5d67"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1889,
+			"column": 6,
+			"endLine": 1889,
+			"endColumn": 8,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "2bf21b24ee7bb9fc28ab4d2ecebdcf9be86c3e37434f6326d6a3212392a96741",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves, and keys its ID, as the guardrails check's own notice does, not by the check that raised it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1891,
+			"column": 6,
+			"endLine": 1892,
+			"endColumn": 100,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e3cdde9110f0fc3acc359d4502ff98823a2af47a24bd104fb26664ab287b3e47",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: Enola's table blocks while the guardrails table quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1895,
+			"column": 6,
+			"endLine": 1895,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7d8cf82fd062de217726fb1daaecda5dbde120dd46dae3e6bdb0ac1606043efb",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: the guardrails table blocks while Enola's quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1895,
+			"column": 6,
+			"endLine": 1895,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9dafc94d1402d2d19b4d30140841125fa482273b050ee56b47d6d24f08cb8d74",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"Finding.decision",
+						"resolves under its check and rule, and names the file and entry that decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1895,
+			"column": 6,
+			"endLine": 1895,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "guardrail !== undefined",
+			"status": "generated",
+			"id": "5a0a5d2baa92782bd5870f417c6a8902d1e7590c3ed23219a653efa8df97e1e5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: the guardrails table blocks while Enola's quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2017d85aa9179e1e0dbef39151b68242a4a192ffe1adf6001aab96b3c9f5e8d7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"Finding.decision",
+						"resolves under its check and rule, and names the file and entry that decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1fa43a788f3badaae058e50fe02471c98674dbfe753fc3e628cda01ca6ab2d3a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 10,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "source.check !== \"guardrails\"",
+			"status": "generated",
+			"id": "1ffa5e591b45f37a9c8bbf115184cb117cfdb0d43fc99a7daefca627bb68e8ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"Finding.decision",
+						"resolves under its check and rule, and names the file and entry that decided"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 27,
+			"endLine": 1896,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "76c2ff2655192a65d08acea6db771d56af995a0f08b4f20b4b652a1cdd674d0f"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 42,
+			"endLine": 1896,
+			"endColumn": 97,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "11ab7f13ce6c23941e5ee56f5ebc0c528d08968b8e899fafdf8cb0a0297076c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 43,
+			"endLine": 1896,
+			"endColumn": 96,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "38079811cc3a67b6fbb19248bbe84aad9729dc9c8666f6e0bfd7b2483554690a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1896,
+			"column": 52,
+			"endLine": 1896,
+			"endColumn": 64,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f8cfd487b39d9a042def299a785fdd6d93d300e180ccf0e4a49c6580d85cd058"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1898,
+			"column": 6,
+			"endLine": 1898,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b0b76697f3941e043cd9ae0db3a9a4ee50bd64d00444568294976f54203d1695",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: Enola's table blocks while the guardrails table quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1898,
+			"column": 6,
+			"endLine": 1898,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4a8c0f759a3115016ae7408976f9b1f41cc0e3246de710412198b95a25940b44",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves under each configured rule it matched and keeps the strictest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1898,
+			"column": 6,
+			"endLine": 1898,
+			"endColumn": 13,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4b9feaa2191c472ab731c533a05252e15440672878c1bc0ee0877b02a594c59a"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1899,
+			"column": 10,
+			"endLine": 1899,
+			"endColumn": 100,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "511d6d4247873041f52497ee4cef8e5f8d00c443868832db4596bba9a21b01c0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1899,
+			"column": 42,
+			"endLine": 1899,
+			"endColumn": 98,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "33378b8950d99a972ab96b0f2fab6cf23f151624d1f41c06c17a4d7e9c3087f3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1899,
+			"column": 53,
+			"endLine": 1899,
+			"endColumn": 97,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0778ab944d4222ab5fb320cccd9b76e093c40e71ce44d4ad7aab34671b2c71d7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"resolves a finding with no matched rules under its whole guardrail"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1899,
+			"column": 71,
+			"endLine": 1899,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "36059cf37223fc3b2e6afbfa97ed6c43dfca1c59426eebd7331fa34927ac4c33"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1903,
+			"column": 9,
+			"endLine": 1906,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "252ac90dfabbaba062523d9729918e1f5c46b806a2dcd7960acdc6f911422713",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: Enola's table blocks while the guardrails table quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1905,
+			"column": 34,
+			"endLine": 1905,
+			"endColumn": 95,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "3630bc09c3ea5d49bac6b3acf4de50fd15a5505de98157d9fc09e0fa63c6ce70",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"lets no entry under guardrails move a notice of a changed resolution"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1905,
+			"column": 35,
+			"endLine": 1905,
+			"endColumn": 85,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e1672ef8eecd46ffc3e5a318b30cb23c0519f23846394126500ca0e78311ddfb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"lets no entry under guardrails move a notice of a changed resolution"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1905,
+			"column": 44,
+			"endLine": 1905,
+			"endColumn": 56,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f5dd95b6597ebfe4d1e7cec10db8c5db66780b26fc2b696bee3aac98bb65a5f1"
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1905,
+			"column": 79,
+			"endLine": 1905,
+			"endColumn": 83,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2b602ac1eb5e3791f774756287c1e18f53d35d901b64359099ad2e0640b6f748",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/finding-resolution.test.ts",
+					"path": [
+						"a guardrail finding's keys",
+						"lets no entry under guardrails move a notice of a changed resolution"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/findings.ts",
+			"line": 1905,
+			"column": 98,
+			"endLine": 1905,
+			"endColumn": 107,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "34bb03446ae0575b63feba3dfd7fbc5fcfe5c47cd6ef9836b2968ba76874393e",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/packwerk-notices.test.ts",
+					"path": [
+						"packwerkNotices",
+						"resolves under its own check and the guardrail's both, the stricter standing: the guardrails table blocks while Enola's quietens"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 45,
+			"column": 34,
+			"endLine": 45,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6aa30f55155ee3e19a62cf4cbd2ba7b68f6f7a21a33aada28a7b20f5b0346632"
+		}
+	],
+	"total": 30,
+	"omitted": 0,
+	"unmutated": []
+}

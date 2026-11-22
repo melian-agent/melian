@@ -1,0 +1,182 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "8df7f1adbae4754e1304f86404609af69378a9ab",
+    "head": "a556767f6acf7ffb6e4f68d7fa6c34ae7ab6fe30"
+  },
+  "claimsIn": [
+    "scripts/compare-platform-reports.mjs"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 98,
+      "column": 8,
+      "endLine": 98,
+      "endColumn": 74,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ca26b1df1445809645c87b9969ca3da4a8d611f75f6ec88cdb6cd408a6a633f3",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "compare",
+            "escapes the Arabic letter mark, a bidi control core's visibleText escapes"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 110,
+      "column": 24,
+      "endLine": 117,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "ad52ac56ead5b7ed80e1fad2ed08b860b2465172c71ab93c0f2946965a930ee9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "the command",
+            "exits 0 and prints its counts when the reports agree, and 1 with each error when they do not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 111,
+      "column": 6,
+      "endLine": 113,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "d189195f35a66312bb5827292d6b23ad6ca31047b228333934a568158dc24a07",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "the command",
+            "exits 0 and prints its counts when the reports agree, and 1 with each error when they do not"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 112,
+      "column": 40,
+      "endLine": 112,
+      "endColumn": 46,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cb8a7d13a24754b0fbb7da860fd3122482bccf9b6e8cede06696388d6d45a051"
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 113,
+      "column": 10,
+      "endLine": 116,
+      "endColumn": 3,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "da93a2d1e90cfd75e28572e8fff58f2e1c6ceb7a59c191e9411c102e89e3e1c9",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "the command",
+            "names a report it cannot parse and prints none of the parser's text, which quotes the file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 114,
+      "column": 3,
+      "endLine": 114,
+      "endColumn": 70,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "91a796a4c8a40cde667449ad6a21357dcb0e9e81d7c2108ef1d0fd9d4c658835",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "the command",
+            "names a report it cannot parse and prints none of the parser's text, which quotes the file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 114,
+      "column": 24,
+      "endLine": 114,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "86fbbccf18260a72c5b2426c520a2cae112c3cbf57745b93f71b22342f84403a"
+    },
+    {
+      "file": "scripts/compare-platform-reports.mjs",
+      "line": 115,
+      "column": 3,
+      "endLine": 115,
+      "endColumn": 19,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "5fc3e52709ad5539fbd40a5321e83cb36e897c967b474ada395d719b085caaed",
+      "claim": "new-test",
+      "evidence": {
+        "test": {
+          "file": "scripts/compare-platform-reports.test.mjs",
+          "path": [
+            "the command",
+            "names a report it cannot parse and prints none of the parser's text, which quotes the file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 8,
+  "omitted": 0,
+  "unmutated": []
+}

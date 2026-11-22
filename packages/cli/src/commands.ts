@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
 	Changeset,
@@ -36,10 +37,12 @@ import {
 	openPublishHarness,
 	openReviewHarness,
 	PrepareSpans,
+	type ProbeGap,
 	type Publication,
 	PublishError,
 	publishReview,
 	RecordedRound,
+	type Review,
 	ReviewError,
 	type ReviewHarness,
 	type ReviewOrigin,
@@ -65,7 +68,14 @@ import {
 	Triage,
 } from "./models.ts";
 import { CliError, git, openStorage, pullRequestRefs, roundChangeset, storagePath } from "./repository.ts";
-import { currentBase, fetchedPullRequest, gitHubFor, parseTarget, pullRequestChangeset } from "./target.ts";
+import {
+	checkExpected,
+	currentBase,
+	fetchedPullRequest,
+	gitHubFor,
+	parseTarget,
+	pullRequestChangeset,
+} from "./target.ts";
 
 /** Where a command reads and writes: its working directory, environment, and output. */
 export interface Io {
@@ -198,6 +208,10 @@ export async function review(
 		// The base and head the caller approved, such as the melian round workflow's gate; a pull request that moved
 		// since is refused before any model credential is read.
 		readonly expect?: { readonly base: string; readonly head: string };
+		// Fail each level that probes and cannot, rather than run it without probes, and write each such level's check,
+		// level and cause to `probeGaps` as JSON, where the reason's text, which can name a path in the head, never goes.
+		readonly requireProbes?: boolean;
+		readonly probeGaps?: string;
 	},
 ): Promise<number> {
 	const beganAt = Date.now();
@@ -215,20 +229,9 @@ export async function review(
 	if (target.kind === "pullRequest") {
 		const provider = await gitHubFor(io.cwd, io.env);
 		const { pullRequest, changeset: fetched } = await fetchedPullRequest(io.cwd, provider, target.number);
-		const { expect } = options;
-		if (expect !== undefined && (pullRequest.base.sha !== expect.base || pullRequest.head.sha !== expect.head))
-			throw new CliError(
-				`pull request #${pullRequest.number} is at base ${pullRequest.base.sha} and head ${pullRequest.head.sha}, not the expected base ${expect.base} and head ${expect.head}, so nothing was reviewed`,
-			);
-		// The policy and origin come from GitHub's answer, above, and the diff from the refs the fetch wrote, which a second
-		// review of the pull request in this clone can move before they resolve.
-		if (expect !== undefined) {
-			const mergeBase = await git(fetched.repoRoot, ["merge-base", expect.base, expect.head]);
-			if (fetched.revision.base !== mergeBase || fetched.revision.head !== expect.head)
-				throw new CliError(
-					`pull request #${pullRequest.number}'s fetched refs resolve to base ${fetched.revision.base} and head ${fetched.revision.head}, not the expected base ${mergeBase} and head ${expect.head}, so nothing was reviewed`,
-				);
-		}
+		// The policy and origin come from GitHub's answer, and the diff from the refs the fetch wrote.
+		if (options.expect !== undefined)
+			await checkExpected(pullRequest, fetched, options.expect, "nothing was reviewed");
 		changeset = fetched;
 		source = { kind: "revision", commit: pullRequest.base.sha };
 		origin = {
@@ -404,8 +407,10 @@ export async function review(
 		};
 		let verdict: Verdict;
 		let decisionIndexWarning: string | undefined;
+		let unshared: Review["unshared"] = [];
+		const gaps: ProbeGap[] = [];
 		try {
-			({ verdict, decisionIndexWarning } = await reviewChangeset({
+			({ verdict, decisionIndexWarning, unshared } = await reviewChangeset({
 				harness: reviewHarness,
 				changeset,
 				config: loaded,
@@ -424,6 +429,7 @@ export async function review(
 				origin,
 				writer,
 				lensesStarted: summarize,
+				...(options.requireProbes === true ? { requireProbes: true, probeGap: (gap) => gaps.push(gap) } : {}),
 				...(records === undefined ? {} : { records }),
 			}));
 		} catch (error) {
@@ -431,7 +437,9 @@ export async function review(
 			io.stderr(`melian: ${visibleText(error.message)}\n`);
 			verdict = error.verdict;
 			decisionIndexWarning = error.decisionIndexWarning;
+			unshared = error.unshared;
 		}
+		if (options.probeGaps !== undefined) await writeFile(options.probeGaps, `${JSON.stringify(gaps)}\n`, "utf8");
 		summarize();
 		spans.end();
 		await walkthrough;
@@ -440,8 +448,12 @@ export async function review(
 		const outcome = new ReviewOutcome(verdict, argument);
 		const timings = await reviewTimings(reviewHarness, storage, spans, Revision.key(changeset.revision), beganAt, io);
 		io.stderr(timings.slowest());
-		if (indexWarning !== undefined) io.stderr(`melian: ${indexWarning.text}\n`);
-		const warnings = indexWarning === undefined ? {} : { warnings: [indexWarning.text] };
+		const texts = [
+			...(indexWarning === undefined ? [] : [indexWarning.text]),
+			...unshared.map(({ finding, code }) => `the dismissal of ${finding} is not shared with the records (${code})`),
+		];
+		for (const text of texts) io.stderr(`melian: ${text}\n`);
+		const warnings = texts.length === 0 ? {} : { warnings: texts };
 		io.stdout(
 			options.json
 				? `${JSON.stringify({ ...JSON.parse(verdict.renderJson()), ...warnings, telemetry: timings.report() }, null, 2)}\n`
@@ -519,7 +531,7 @@ const committedRange =
 
 const writePermissions: readonly RepositoryPermission[] = ["write", "maintain", "admin"];
 
-async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
+export async function writerTrust(provider: ReviewProvider, pullRequest: PullRequest): Promise<WriterTrust> {
 	const head = pullRequest.head.repository;
 	if (head === undefined)
 		return { trusted: false, detail: "the provider names no repository for the pull request head" };
@@ -545,7 +557,9 @@ export function short(commit: string): string {
 }
 
 // An argument echoed in a command to run, quoted so it can be pasted into a shell: an unquoted `#` starts a comment.
-export function shellQuote(argument: string): string {
+// Control characters are written visibly first, so a path cannot rewrite the terminal the command is printed to.
+export function shellQuote(text: string): string {
+	const argument = visibleText(text);
 	if (/^[\w@%+=:,./-]+$/.test(argument)) return argument;
 	if (!/["$`\\!]/.test(argument)) return `"${argument}"`;
 	return `'${argument.replace(/'/g, `'\\''`)}'`;
@@ -661,7 +675,7 @@ export class StoredReview {
 }
 
 // A changeset and the source a review of it reads its policy from.
-class ReviewSource {
+export class ReviewSource {
 	readonly changeset: Changeset;
 	readonly source: RepositorySource;
 
@@ -672,6 +686,14 @@ class ReviewSource {
 
 	static of(changeset: Changeset, source: RepositorySource): ReviewSource {
 		return new ReviewSource(changeset, source);
+	}
+
+	// The source a stored review read its policy from: a pull request's base, or what a range reads.
+	static async ofStored(stored: StoredReview, env: Io["env"]): Promise<ReviewSource> {
+		const target = parseTarget(stored.argument);
+		if (target.kind !== "pullRequest") return ReviewSource.ofRange(stored.changeset, env);
+		const commit = await git(stored.changeset.repoRoot, ["rev-parse", pullRequestRefs(target.number).base]);
+		return ReviewSource.of(stored.changeset, { kind: "revision", commit });
 	}
 
 	// A range reads the working tree when its head is checked out, so the reviewer's own edits count, and otherwise the
@@ -790,16 +812,10 @@ async function recordedFindings(
 	store: string,
 	options: { readonly all: boolean; readonly json: boolean; readonly notes?: boolean },
 ): Promise<number> {
-	const target = parseTarget(argument);
-	const { changeset } = await StoredReview.open(io, argument);
+	const review = await StoredReview.open(io, argument);
+	const { changeset } = review;
 	const { repoRoot } = changeset;
-	const reviewed =
-		target.kind === "pullRequest"
-			? ReviewSource.of(changeset, {
-					kind: "revision",
-					commit: await git(repoRoot, ["rev-parse", pullRequestRefs(target.number).base]),
-				})
-			: await ReviewSource.ofRange(changeset, io.env);
+	const reviewed = await ReviewSource.ofStored(review, io.env);
 	const { source } = reviewed;
 	const { config } = await loadConfig(repoRoot, source, ".");
 	if (!(await reviewed.trustsWriters()))
@@ -830,16 +846,18 @@ async function recordedFindings(
 		target: argument,
 	});
 	const decided: { round: string; verdict: Verdict }[] = [];
-	for (const { id } of rounds)
+	for (const { id } of rounds) {
+		const round = RecordedRound.of(stored, id, () => true);
+		const contents = round.contents(changeset.revision);
+		for (const ended of "refused" in contents ? [] : contents.ended)
+			io.stderr(
+				`melian: finding ${ended.finding} is live again in round ${id}: it was dismissed at revision ${ended.madeAt}, and round ${ended.round} reviewed ${ended.at}, as after a push. A shared dismissal holds only at the revision it was made at. To share it at this one, dismiss it again: melian dismiss ${shellQuote(argument)} ${ended.finding} --reason "<text>" --records ${shellQuote(store)}\n`,
+			);
 		decided.push({
 			round: id,
-			verdict: await RecordedRound.of(stored, id, () => true).verdict({
-				revision: changeset.revision,
-				config,
-				repoRoot,
-				policy: source,
-			}),
+			verdict: await round.verdict({ revision: changeset.revision, config, repoRoot, policy: source }),
 		});
+	}
 	io.stdout(
 		options.json
 			? `${JSON.stringify(
@@ -918,16 +936,24 @@ export async function dismiss(
 	argument: string,
 	id: string,
 	reason: string,
-	options: { readonly only: boolean } = { only: false },
+	options: { readonly only: boolean; readonly records?: string },
 ): Promise<number> {
 	const stored = await StoredReview.open(io, argument);
 	const { changeset } = stored;
 	const path = await storagePath(changeset.repoRoot, changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path)) throw stored.missing();
+	// A record counts only from a writer the base trusts, so a dismissal is written to a store only under that policy.
+	if (options.records !== undefined && !(await (await ReviewSource.ofStored(stored, io.env)).trustsWriters()))
+		throw new CliError(
+			"the base's melian.yaml does not set trust.writers: true, so no reader would count the dismissal's record",
+		);
 	const by = await gitAuthor(changeset.repoRoot);
 	// Only the adjudication task: a review or publication a crash interrupted must not resume here.
 	const dismissHarness = await DismissHarness.open(await openStorage(path), idleModels(io.env));
+	let store: DirectoryRecordStore | undefined;
 	try {
+		if (options.records !== undefined)
+			store = await DirectoryRecordStore.open(resolve(io.cwd, options.records.slice("dir:".length)), reviewPayloads);
 		const dismissal = { by, reason, at: new Date().toISOString() };
 		const recorded = await recordDismissal({
 			harness: dismissHarness.harness,
@@ -936,9 +962,16 @@ export async function dismiss(
 			dismissal,
 			only: options.only,
 			repoRoot: changeset.repoRoot,
+			...(store === undefined ? {} : { records: { store, changeset: changeset.id } }),
 		}).catch((error: unknown) => {
 			if (!(error instanceof DismissError)) throw error;
 			if (error.code === "notReviewed") throw stored.missing();
+			if (error.code === "storeFailed") {
+				const why = error.cause instanceof Error ? error.cause.message : String(error.cause);
+				throw new CliError(
+					`the dismissal is not recorded, because the record store ${visibleText(options.records!)} failed: ${visibleText(why)}`,
+				);
+			}
 			if (error.code === "unknownFinding") {
 				throw new CliError(
 					`the review of ${short(changeset.revision.head)} has no finding ${id}; melian findings ${shellQuote(argument)} --all lists them`,
@@ -946,7 +979,7 @@ export async function dismiss(
 			}
 			throw error;
 		});
-		const { finding, also, live, replaced, verdict } = recorded;
+		const { finding, also, live, replaced, verdict, unshared } = recorded;
 		const { ruleId } = finding;
 		const { path: file, id: shown } = finding.properties;
 		const line = finding.locations[0]!.physicalLocation.region.startLine;
@@ -970,12 +1003,19 @@ export async function dismiss(
 			io.stdout(`Still live, merged with it before:\n${reports.join("")}`);
 		}
 		io.stdout(`Verdict now: ${verdictWords[verdict.status]}${verdict.blocking ? ", blocking" : ""}.\n`);
+		if (store === undefined)
+			io.stdout(
+				"The dismissal is not shared: no record names the rounds the store held as it was made, so no review exports it. Dismiss it again with --records to share it.\n",
+			);
+		for (const { finding: report, code } of unshared)
+			io.stderr(`melian: the dismissal of ${report} is not shared with the records (${code})\n`);
 		const target = parseTarget(argument);
 		if (target.kind === "pullRequest") {
 			io.stdout(`Run melian publish ${shellQuote(argument)} to post the new verdict to the pull request.\n`);
 		}
 		return 0;
 	} finally {
+		await store?.close();
 		await dismissHarness.close(context);
 	}
 }
