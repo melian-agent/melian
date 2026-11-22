@@ -1,0 +1,266 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "908d0ae91e9ab63c9be391782a2582306dc25bc2",
+		"head": "994c213a893dd254b87b6289d86e7588bca88f17"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/record-gate.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 124,
+			"column": 57,
+			"endLine": 124,
+			"endColumn": 59,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "bce32ccde7289d85500eefc215ab76ed5085d58e3ed9ebe63f29524e43162ef8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 137,
+			"column": 17,
+			"endLine": 137,
+			"endColumn": 68,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "48763da117ded477d374d6eb39126d555fbc5335cf9163f9bb1135383499cd44",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 137,
+			"column": 43,
+			"endLine": 137,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "40deffa0d65a9286ed8352429cfe29ffc32fc051423d5c67e5a4de47200df7b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"drops a stacked parent's pre-existing finding in a file the merge's diff leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 137,
+			"column": 43,
+			"endLine": 137,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ddbe88bc738545f36b17e0ef4badf676f2b0f901db5a5fb0f9a48b0175b28f27",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 137,
+			"column": 43,
+			"endLine": 137,
+			"endColumn": 66,
+			"mutatorName": "EqualityOperator",
+			"replacement": "round.revision !== gate",
+			"status": "generated",
+			"id": "725a211b5b2bc39f6f6f71bdc85bc849f5a209570594da974495f20f6afc336a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 198,
+			"column": 18,
+			"endLine": 198,
+			"endColumn": 70,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a63fdc6b7733478de01c34840b8ff37a40350e7888a5ee3672549f0fee50e40f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 198,
+			"column": 48,
+			"endLine": 198,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "af1fa86626575376baaf2e9c859c72e2c03867eca1224be5cb712c281771738a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"drops a stacked parent's pre-existing finding in a file the merge's diff leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 198,
+			"column": 48,
+			"endLine": 198,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "01f08ee463af84646a1d97165d91ed4a3620b9a5bd5c1cea8348ddd7df0ecc30",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 198,
+			"column": 48,
+			"endLine": 198,
+			"endColumn": 70,
+			"mutatorName": "LogicalOperator",
+			"replacement": "own && proves(finding)",
+			"status": "generated",
+			"id": "0a1769169699b0d70652a447434bb055f49e1568eb7a89d07c35bb1c3a6e5741",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 199,
+			"column": 25,
+			"endLine": 199,
+			"endColumn": 78,
+			"mutatorName": "MethodExpression",
+			"replacement": "Object.values(verdict.findings).flat()",
+			"status": "generated",
+			"id": "63c9d13aa08be51e94034f09f3d60f9cbed0d6f7c35f4edd947f3a904f54598d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"drops a stacked parent's pre-existing finding in a file the merge's diff leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 203,
+			"column": 25,
+			"endLine": 203,
+			"endColumn": 57,
+			"mutatorName": "MethodExpression",
+			"replacement": "verdict.dismissed",
+			"status": "generated",
+			"id": "986660d342a57ac000ff0f008484245d04e4ad97d6ed716a2a8462b0a6f13a23",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's merged findings",
+						"lists no dismissal of a finding in a file the merge's diff leaves alone"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 11,
+	"omitted": 0,
+	"unmutated": []
+}

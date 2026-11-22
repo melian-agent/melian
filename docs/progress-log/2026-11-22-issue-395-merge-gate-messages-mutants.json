@@ -1,0 +1,1267 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "994c213a893dd254b87b6289d86e7588bca88f17",
+		"head": "5c9417068f4372b102268a57e4fbe86a814b3b7b"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/record-gate.ts",
+		"packages/core/src/tier-account.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 150,
+			"column": 53,
+			"endLine": 153,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "f1fefcb9e85778ecf5ef1f60cc01cd7177f74460733bef2d47aa4611aea1f70a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 17,
+			"endLine": 151,
+			"endColumn": 74,
+			"mutatorName": "MethodExpression",
+			"replacement": "this.#lenses.selected",
+			"status": "generated",
+			"id": "f86d05f0be6cd1027190b70d4b8fb714dd163380acb398f30dc6808a7f8ef304",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 46,
+			"endLine": 151,
+			"endColumn": 73,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "628c444f99ff02b9819c789140ea104f4c8e2a0844308d22009550a880180a31",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 60,
+			"endLine": 151,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "4608fa1b29f913b8ea281a28eb22d041fbd7cb9b7845dcc1b7fc3f0456f42603",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 60,
+			"endLine": 151,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0abd04b4d72c3d868346bd4da33f1271dd22d4a699acdae5bd0c182389621174",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 60,
+			"endLine": 151,
+			"endColumn": 73,
+			"mutatorName": "EqualityOperator",
+			"replacement": "name !== lens",
+			"status": "generated",
+			"id": "2be9cfd0c8b24de0bf5a36319efb6879524f6bd5df4a2e27e955a5d0e8ff1c0a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 151,
+			"column": 79,
+			"endLine": 151,
+			"endColumn": 103,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "3973e17cdf55287062a8cdaed6e5e467b97b374c759c0705b1e2e3dcda76eadd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed after the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 152,
+			"column": 9,
+			"endLine": 152,
+			"endColumn": 97,
+			"mutatorName": "MethodExpression",
+			"replacement": "floors",
+			"status": "generated",
+			"id": "d37e3e58210b0db13cef021bd5ea9943a454ddc02cff6a2135959bd1bfaf7e32",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed before the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 152,
+			"column": 21,
+			"endLine": 152,
+			"endColumn": 96,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e408e2cc949eb6834d5dcfd835b3524535212439f86a2868aa7087daec764d93",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed before the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/tier-account.ts",
+			"line": 152,
+			"column": 38,
+			"endLine": 152,
+			"endColumn": 96,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "triageChoices.indexOf(right) + triageChoices.indexOf(left)",
+			"status": "generated",
+			"id": "3cfc38ac38187db42708cc82ead0adf127c04ea9220836693fa258559dc571db",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/tier-account.test.ts",
+					"path": [
+						"TierAccount",
+						"meetsFloor",
+						"names the highest floor of a lens's variants, listed before the lower, and none for a lens no path selects"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 113,
+			"column": 38,
+			"endLine": 113,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ab70c5f88cd507dd50a95ce15472a8b01f2f264c873ee8c795b01adf2aa40ce7"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 149,
+			"column": 51,
+			"endLine": 151,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1c91994ef0ccf2f9cb762c8c75321c722952c1317c3467da946d1a4ec1f53f3c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 150,
+			"column": 8,
+			"endLine": 150,
+			"endColumn": 25,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "short.has(check)",
+			"status": "generated",
+			"id": "9f356b6d456e0a8cce3934db78977d33a157e747caaf94c6de91aeedbd71d77a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 150,
+			"column": 8,
+			"endLine": 150,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b9a88daf588265ede0a9ad3ee3f978d99e0d2e0de94c730f2f9715402d1b5ddd",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the first round that ran a lens below its floor, when two did"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 150,
+			"column": 8,
+			"endLine": 150,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c5d3fa7c4a91fb972406872325d937a4c2fed5f288ca65261d9f24b35c7e378e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 150,
+			"column": 27,
+			"endLine": 150,
+			"endColumn": 71,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "e6e6d0258b685bd385a9eddcae0e7fea06ad801393bd94d8e082940ff8c663d4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 150,
+			"column": 44,
+			"endLine": 150,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8e884b805797fc671c7157959775d917d868d82cac475b9920168819cde4df01"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c110b224b563c82267c8745435d0f91dc1ae3f845a43f0018339dbb64df919b2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4155ebe562dd5fd3afb00e510d0c4fc93dd69922880db0cf1acee3ea71ad85b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 152,
+			"column": 7,
+			"endLine": 152,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6f10720ccad0a99bcb7d8db493ae825e4f171bbca3c7390f01bbd38b97b654e0"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 153,
+			"column": 24,
+			"endLine": 153,
+			"endColumn": 42,
+			"mutatorName": "LogicalOperator",
+			"replacement": "covers.would && []",
+			"status": "generated",
+			"id": "1f856507bc55a8ea7983fa78f83acf6ef9887c62f3804f9183b7cfdd79501072",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 153,
+			"column": 40,
+			"endLine": 153,
+			"endColumn": 42,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "9af892463934cec63721e2501232a2a24f363178e355f70f0791078da5f0f302",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`would` is absent only on a refusal whose reason is not the verifier's, and the name it then explains is never a check of the base tip's tier, the only names whose gap reason the gate reads."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 154,
+			"column": 5,
+			"endLine": 154,
+			"endColumn": 91,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "2e6b16e3dbde52d088290c02ec666f638f305687b4927ffaebdd149bc598ec3d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 154,
+			"column": 20,
+			"endLine": 154,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ebf7a8270080cd12ed5958414a152461f3fd14ffccce81623c41f6db0557099a"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 155,
+			"column": 8,
+			"endLine": 162,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "74ca58f16d96975554d9f4b59080100207ef1ab40e6704e05e826e96b08c298f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 156,
+			"column": 39,
+			"endLine": 156,
+			"endColumn": 58,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "4f49aaa352ce1ca0172e83a5f154c3f753b96519d2c726a63e0821feba705479",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 6,
+			"endLine": 160,
+			"endColumn": 214,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3385e6187b99ac2b2ffdc26b9dd16658d79f598360591c4fd3736ff931a516fb"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 17,
+			"endLine": 160,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "708b07b315900ea5bf796b18b2b4d3c521f63063281faa5ba4b73050e36130eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 17,
+			"endLine": 160,
+			"endColumn": 36,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a211861e1472caf143ffe96cdebf7f18d1c10b83e04c889f81c039baeb46dd1a",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`below` holds only lens checks, since atFloor passes every other check, and the lens record's schema requires its check's level, so no check in `below` lacks one."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 17,
+			"endLine": 160,
+			"endColumn": 36,
+			"mutatorName": "EqualityOperator",
+			"replacement": "level !== undefined",
+			"status": "generated",
+			"id": "26c1d5d768a594835ed8cb2e5419f733f827cda0540e15b28a25c0002b86e22f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 39,
+			"endLine": 160,
+			"endColumn": 54,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3a4b10f05800cec9190322b05d112c7f27e464077e877e2a0f7e97115985cd8e"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 57,
+			"endLine": 160,
+			"endColumn": 70,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "499fb49a9df5c5112aae62f9fd3efb00dd3f657ac2b4647d3190563f693b456e"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 113,
+			"endLine": 160,
+			"endColumn": 140,
+			"mutatorName": "MethodExpression",
+			"replacement": "check",
+			"status": "generated",
+			"id": "00f4a324dcc1319bd3c9d4ce4ca594e8e0e72a56031f245c8aa771914ee7a8b8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 160,
+			"column": 125,
+			"endLine": 160,
+			"endColumn": 132,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b7e0653cc8d97bf03a156c2ae8f0650397d350fb990d28841979e89ca5aaeb1d"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 163,
+			"column": 15,
+			"endLine": 167,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0d5dfd2b0eb665a8e38cee6ef6d874f4d15071b73958090ab14d938702ba5d7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 166,
+			"column": 12,
+			"endLine": 166,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "af1470a3e76b217cc60dbc52bea67c88ad04138268f1cab85357424f074a1a85"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 166,
+			"column": 34,
+			"endLine": 166,
+			"endColumn": 61,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5239e95b6a63393d7b33ec473bec32bf23f1efa4421d21680068c31fc6e88888",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 172,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 5,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "be5b6e20913345fd48d3853b5f285dc686496411310aa7ca6f1e6fc8568c1f84",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 172,
+			"column": 19,
+			"endLine": 176,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "71f3d4c19cf91f236e2316606bc755946eaa16a1cb456a88e835dff26373e1e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 174,
+			"column": 12,
+			"endLine": 174,
+			"endColumn": 21,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "368b9d133c063df30db78cf2b87020f8ea1226b7b1b08f765a98926f6dcd97ae"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 175,
+			"column": 12,
+			"endLine": 175,
+			"endColumn": 83,
+			"mutatorName": "LogicalOperator",
+			"replacement": "short.get(name) && `no round of ${gate} that stands as reviewed ran it`",
+			"status": "generated",
+			"id": "693538b31b65f435d6c5a1756a395c7a939d0fd282f4d4041f36c67679f88899",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 175,
+			"column": 31,
+			"endLine": 175,
+			"endColumn": 83,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a857be549b0c483d7c9eac56d4de9aaed363f843b3a379a3869aa255112aeb8d"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 5,
+			"endLine": 308,
+			"endColumn": 103,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "91f9a771d7f6fee61ee3c93da7d412e9389173d43b4a46035d344d6ca5d8b109",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 5,
+			"endLine": 308,
+			"endColumn": 103,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f385fffb4128906b3cc394fd3792158d8c16236511d9980cb1e65f5408e678fc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 5,
+			"endLine": 308,
+			"endColumn": 103,
+			"mutatorName": "LogicalOperator",
+			"replacement": "claim.checks.includes(\"verifier\") || !(reviewed.ran ?? []).some(({\n  name\n}) => name === \"verifier\")",
+			"status": "generated",
+			"id": "81faaa61db642a1bf917a2e988cef93a83f0efaa20a198fc724d5cfc9c8a554e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 27,
+			"endLine": 308,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "90eb369ddb0eff1374e5a85fe93ad074bed641a1a37f32f630777d121223b1f3"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 42,
+			"endLine": 308,
+			"endColumn": 103,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "(reviewed.ran ?? []).some(({\n  name\n}) => name === \"verifier\")",
+			"status": "generated",
+			"id": "71adff3cf4c2d34fd96588551e8e451d68efabc8d80866ac374a9355bc0a659b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 43,
+			"endLine": 308,
+			"endColumn": 103,
+			"mutatorName": "MethodExpression",
+			"replacement": "(reviewed.ran ?? []).every(({\n  name\n}) => name === \"verifier\")",
+			"status": "generated",
+			"id": "3f982305550e5277f9477f620a531c5b1be753f90c846474ec2ec98099ec5df0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"takes the coverage of a second round whose verifier ran, beside one whose verifier failed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 44,
+			"endLine": 308,
+			"endColumn": 62,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reviewed.ran && []",
+			"status": "generated",
+			"id": "d578c2f583da238bc4a449f44637ec91a2a85cd705856fbf3b3cdaf130971787",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"takes the coverage of a second round whose verifier ran, beside one whose verifier failed"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 60,
+			"endLine": 308,
+			"endColumn": 62,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "bafd2b2342b04a78f9144dc6a36ba551c37a8dfd2e7fdeba0745309bc9ec6e38",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`Adjudication.adjudicate` always sets `ran`, so the fallback never applies."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 69,
+			"endLine": 308,
+			"endColumn": 102,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7ceeaedd00a01fd8e2f0cf11f7c8c98048cba5ae145be69c2169b8b91f5cc3de",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"takes the coverage of a second round whose verifier ran, beside one whose verifier failed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 83,
+			"endLine": 308,
+			"endColumn": 102,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7954ee2e7e85acbddc2e468c419c185c427b0d7fbc2e814cfe44ae546b5bf9c1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 83,
+			"endLine": 308,
+			"endColumn": 102,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f8cf85b820d8bac854a9897da6b62bf51c871d4cc9c6e76fb04e3ec1d726f2e7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"takes the coverage of a second round whose verifier ran, beside one whose verifier failed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 83,
+			"endLine": 308,
+			"endColumn": 102,
+			"mutatorName": "EqualityOperator",
+			"replacement": "name !== \"verifier\"",
+			"status": "generated",
+			"id": "f9f3b472012110e70963d8beeaa9069a6e47a4edd7670c85d634a7fd265f353a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 308,
+			"column": 92,
+			"endLine": 308,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "69c0afdc7e61fdd1ff8ceecadbca8767308093b80b17a5b94e96cbfbf6e94438"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 309,
+			"column": 9,
+			"endLine": 309,
+			"endColumn": 106,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "476eecedf040a5c7a31edeb13ae450c42540afbac4ccf802745bae716506c5f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 309,
+			"column": 20,
+			"endLine": 309,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1adde887aaaabdb119c6faa550faf2a98e764841d567ca1f2237bf73eb22a620"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 8,
+			"endLine": 310,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "030240603d79e938c0d433834ce7fc1052f264036887f54c4ec13a53ccee851c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 25,
+			"endLine": 310,
+			"endColumn": 80,
+			"mutatorName": "MethodExpression",
+			"replacement": "reviewed.ran ?? []",
+			"status": "generated",
+			"id": "30fc719c9a4bbb095ce885d2ad9e1afffdff84d65e3bb1ab16e7d7eeba0c0b88",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A check `below` adds that is at its floor is covered by the same round, and the gate reads a check's reason only for a check no round covered."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 26,
+			"endLine": 310,
+			"endColumn": 44,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reviewed.ran && []",
+			"status": "generated",
+			"id": "df5e3dde82edc8ce017c93ad8fe6ac9763130da878cc664aaf998f8ff8d3f33b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 42,
+			"endLine": 310,
+			"endColumn": 44,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "5bdb7bb47bb867a8afce5ebe7471606b870c953b2bfa6d9b74241414ecad5ba0",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`Adjudication.adjudicate` always sets `ran`, so the fallback never applies."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 53,
+			"endLine": 310,
+			"endColumn": 79,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "444cd2863fa22778e838a6a1aaf8e6cb595cfb836429ef48840e15c46263fbfa",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 310,
+			"column": 64,
+			"endLine": 310,
+			"endColumn": 79,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "atFloor(check)",
+			"status": "generated",
+			"id": "cb487c56fb5e2c1e73aed03fc48d2adad88b3d0f0ba20a48b30485a8ec12205e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 63,
+	"omitted": 0,
+	"unmutated": []
+}
