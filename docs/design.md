@@ -9,6 +9,7 @@ Milestone 3, "Melian reviews pull requests on GitHub Actions", runs it there, an
 ## Goals
 
 - Review every change before it merges, with static analysis and adversarial agentic review, against standards the team controls.
+- Reach parity with the review of record first, then optimise cost, as [the decision](decisions/2026-11-18-parity-first-then-cost.md) sets out.
 - Explain each finding in plain language: what, why here, what to do.
 - Be durable. A review survives crashes, restarts, and deploys without repeating work or duplicating output.
 - Be quiet. Good changes pass without ceremony. Findings are in scope, confident, and never repeated once dismissed.
