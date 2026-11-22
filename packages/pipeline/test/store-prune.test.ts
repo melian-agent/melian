@@ -367,17 +367,87 @@ it("keeps changesets, scripted stores, links, scratch and anything it does not r
 	expect(await exists("tools/linked")).toBe(true);
 });
 
-it("keeps the evidence directory as durable, however old, and counts its bytes", async () => {
-	const pointer = join("evidence", "pull-1111111111111111", "r1", "misses", `${"a".repeat(16)}.json`);
-	await mkdir(join(state, "evidence", "pull-1111111111111111", "r1", "misses"), { recursive: true });
+it("plans a round's evidence nothing wrote for more than ninety days, judged by its newest file", async () => {
+	const round = join("evidence", "pull-1111111111111111", "r1");
+	const pointer = join(round, "misses", `${"a".repeat(16)}.json`);
+	await mkdir(join(state, round, "misses"), { recursive: true });
 	await writeFile(join(state, pointer), "1234567");
-	await age("evidence", 400 * day);
+	await age(pointer, 200 * day);
+	await age(join(round, "misses"), 200 * day);
+	const newest = await age(round, 90 * day);
+	await age(join("evidence", "pull-1111111111111111"), 200 * day);
+	await age("evidence", 200 * day);
+
+	expect(await plan({ now: newest + 90 * day })).toMatchObject({ entries: [], kept: [], agedEvidence: [] });
+	expect((await plan({ now: newest + 90 * day + 1 })).agedEvidence).toEqual([
+		{ kind: "evidence", paths: [round], bytes: 7 },
+	]);
+
+	await mkdir(join(state, round, "stages"));
+	await writeFile(join(state, round, "stages", "conversation-1.json.gz"), "12");
+	await age(join(round, "stages", "conversation-1.json.gz"), 89 * day);
+	await age(join(round, "stages"), 200 * day);
+	await age(round, 200 * day);
+	expect((await plan()).agedEvidence).toEqual([]);
+});
+
+it("removes no aged evidence when it applies, since evidence is durable", async () => {
+	const round = join("evidence", "pull-1111111111111111", "r1");
+	const pointer = join(round, "misses", `${"a".repeat(16)}.json`);
+	await mkdir(join(state, round, "misses"), { recursive: true });
+	await writeFile(join(state, pointer), "1234567");
+	for (const path of [pointer, join(round, "misses"), round]) await age(path, 400 * day);
+	const prune = await plan();
+	expect(prune).toMatchObject({ entries: [], evidence: { bytes: 7 } });
+	expect(prune.agedEvidence).toEqual([{ kind: "evidence", paths: [round], bytes: 7 }]);
+
+	expect(await prune.apply()).toEqual({ removed: [], live: [] });
+
+	expect(await readFile(join(state, pointer), "utf8")).toBe("1234567");
+});
+
+it("plans each round of a changeset by its own age, under either form of round name", async () => {
+	const changeset = join("evidence", "range-2222222222222222");
+	const old = join(changeset, `k${"c".repeat(16)}`);
+	const recent = join(changeset, "r2");
+	for (const round of [old, recent]) {
+		await mkdir(join(state, round, "misses"), { recursive: true });
+		await writeFile(join(state, round, "misses", `${"b".repeat(16)}.json`), "123");
+		await age(join(round, "misses", `${"b".repeat(16)}.json`), 100 * day);
+		await age(join(round, "misses"), 100 * day);
+	}
+	await age(old, 100 * day);
+	await age(recent, 10 * day);
+
+	expect((await plan()).agedEvidence).toEqual([{ kind: "evidence", paths: [old], bytes: 3 }]);
+});
+
+it("lists a name under evidence it does not recognise, and plans none of it however old", async () => {
+	const elsewhere = await mkdtemp(join(tmpdir(), "melian-prune-elsewhere-"));
+	outside.push(elsewhere);
+	const changeset = join("evidence", "pull-1111111111111111");
+	await mkdir(join(state, changeset, "r0"), { recursive: true });
+	await mkdir(join(state, changeset, "r1x"));
+	await writeFile(join(state, changeset, "r2"), "1");
+	await symlink(elsewhere, join(state, changeset, "r3"));
+	await mkdir(join(state, "evidence", "pull-111111111111111"));
+	await writeFile(join(state, "evidence", "pull-3333333333333333"), "1");
+	await symlink(elsewhere, join(state, "evidence", "pull-4444444444444444"));
+	for (const name of ["r0", "r1x", "r2"]) await age(join(changeset, name), 400 * day);
+	await age(join("evidence", "pull-111111111111111"), 400 * day);
+
 	const prune = await plan();
 
-	await prune.apply();
-
-	expect(prune).toMatchObject({ entries: [], kept: [], evidence: { bytes: 7 } });
-	expect(await exists(pointer)).toBe(true);
+	expect(prune.agedEvidence).toEqual([]);
+	expect(prune.kept).toEqual([
+		"evidence/pull-111111111111111",
+		`${changeset}/r0`,
+		`${changeset}/r1x`,
+		`${changeset}/r2`,
+		`${changeset}/r3`,
+		"evidence/pull-3333333333333333",
+		"evidence/pull-4444444444444444",
+	]);
 });
 
 it("lists a linked evidence directory as not recognised and counts none of it", async () => {
@@ -388,7 +458,7 @@ it("lists a linked evidence directory as not recognised and counts none of it", 
 
 	const prune = await plan();
 
-	expect(prune).toMatchObject({ entries: [], kept: ["evidence"], evidence: { bytes: 0 } });
+	expect(prune).toMatchObject({ entries: [], kept: ["evidence"], evidence: { bytes: 0 }, agedEvidence: [] });
 });
 
 it("lists a name that only contains .sqlite as not recognised, and leaves it out of the changeset count", async () => {

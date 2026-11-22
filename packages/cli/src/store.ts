@@ -1,5 +1,5 @@
 import { gitOutput, visibleText } from "@melian-agent/core";
-import { type LiveRun, type PruneEntry, StorePrune } from "@melian-agent/pipeline";
+import { evidenceAgeDays, type LiveRun, type PruneEntry, StorePrune } from "@melian-agent/pipeline";
 import type { Io } from "./commands.ts";
 import { stateDirectory } from "./repository.ts";
 
@@ -53,6 +53,15 @@ export async function storePrune(io: Io, apply: boolean): Promise<number> {
 	lines.push(
 		`Kept ${files} changeset ${files === 1 ? "file" : "files"}, ${size(bytes)}, the evidence of valid misses, ${size(prune.evidence.bytes)}, and scripted/.\n`,
 	);
+	const aged = prune.agedEvidence;
+	if (aged.length > 0) {
+		const total = aged.reduce((sum, entry) => sum + entry.bytes, 0);
+		lines.push(
+			`Evidence nothing wrote for more than ${evidenceAgeDays} days: ${aged.length} ${aged.length === 1 ? "round" : "rounds"}, ${size(total)}. --apply removes none of it until issue #633 (https://github.com/melian-agent/melian/issues/633) makes its removal safe beside a write.\n`,
+		);
+		for (const entry of aged)
+			lines.push(`  evidence  ${size(entry.bytes)}  ${visibleText(entry.paths.join(", "))}\n`);
+	}
 	if (prune.kept.length > 0) lines.push(`Kept, not recognised: ${prune.kept.map(visibleText).join(", ")}\n`);
 	io.stdout(lines.join(""));
 	if (outcome.live.length === 0) return 0;
