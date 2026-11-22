@@ -123,6 +123,8 @@ export class RecordGate {
 		const unjudged: UnjudgedDismissal[] = [];
 		const verdicts: { verdict: Verdict; own: boolean }[] = [];
 		const covered = new Set<string>();
+		// Why a round of the merge that ran a check still leaves it uncovered, by the check's name, the first round's.
+		const short = new Map<string, string>();
 		for (const round of counted) {
 			const read = RecordedRound.of(records, round.id, context.counts);
 			const sides = Revision.parseKey(round.revision!)!;
@@ -144,13 +146,34 @@ export class RecordGate {
 				round.revision !== gate
 					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
 					: await coverage(set, round, read, { ...under, revision }, context.tier);
-			if (!("refused" in covers)) for (const name of covers) covered.add(name);
-			rounds.push({ id: round.id, revision: round.revision!, covers });
+			const explain = (check: string, why: string) => {
+				if (!short.has(check)) short.set(check, `round ${round.id}${why}`);
+			};
+			if ("refused" in covers)
+				for (const check of covers.would ?? [])
+					explain(check, " would cover it, but did not run its verifier, so it covers nothing");
+			else {
+				for (const check of covers.covers) covered.add(check);
+				for (const { name: check, level } of covers.below)
+					explain(
+						check,
+						` ran it ${level === undefined ? "with no level" : `at ${level}`}, below the floor of ${context.tier.floor(check.slice("lens.".length))} the base tip sets for it now, so a new round must run it at that floor`,
+					);
+			}
+			rounds.push({
+				id: round.id,
+				revision: round.revision!,
+				covers: "refused" in covers ? { refused: covers.refused } : covers.covers,
+			});
 		}
 		if (counted.length === 0) failures.push(`no round reviewed head ${revision.head} at a base the base tip holds`);
 		const gaps: CheckRecord[] = context.tier.checks
 			.filter((name) => !covered.has(name))
-			.map((name) => ({ name, status: "skipped", reason: `no round of ${gate} that stands as reviewed ran it` }));
+			.map((name) => ({
+				name,
+				status: "skipped",
+				reason: short.get(name) ?? `no round of ${gate} that stands as reviewed ran it`,
+			}));
 		return new RecordGate({
 			verdict: RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]),
 			rounds,
@@ -245,14 +268,18 @@ async function ancestor(repoRoot: string, commit: string, tip: string): Promise<
 }
 
 // The checks `round` covers for a merge of its own diff: those that ran, and those skipped with the tier's leave, when
-// its records stand as reviewed under the base tip's policy and account for its tier; otherwise why they cannot.
+// its records stand as reviewed under the base tip's policy and account for its tier, with each lens that ran below the
+// base tip's floor; otherwise why they cannot, with the checks it would cover when only its verifier did not run.
 async function coverage(
 	set: RecordSet,
 	round: SharedRecord,
 	read: RecordedRound,
 	under: Parameters<RecordedRound["reviewed"]>[0],
 	tier: TierAccount,
-): Promise<readonly string[] | { readonly refused: string }> {
+): Promise<
+	| { readonly covers: readonly string[]; readonly below: readonly CheckRecord[] }
+	| { readonly refused: string; readonly would?: readonly string[] }
+> {
 	const manifest = round.manifest()!;
 	if (manifest.replaces.length > 0) return { refused: `replaces ${manifest.replaces.join(", ")}` };
 	const byId = new Map(set.records().map((record) => [record.id, record]));
@@ -269,17 +296,18 @@ async function coverage(
 	if (refusal !== undefined) return { refused: `does not account for the base tip's tier (${refusal})` };
 	const reviewed = await read.reviewed(under);
 	if ("refused" in reviewed) return reviewed;
-	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
-	if (claim.checks.includes("verifier") && !(reviewed.ran ?? []).some(({ name }) => name === "verifier"))
-		return { refused: "its verifier did not run" };
 	// A lens's level is the one the check in its standing record holds, which the round's host wrote.
 	const atFloor = ({ name, level }: CheckRecord) =>
 		!name.startsWith("lens.") || tier.meetsFloor(name.slice("lens.".length), level);
 	const leave = new Set(tier.allowSkip(facts));
-	return [
+	const covers = [
 		...(reviewed.ran ?? []).filter(atFloor).map(({ name }) => name),
 		...reviewed.notRun.filter(({ status, name }) => status === "skipped" && leave.has(name)).map(({ name }) => name),
 	];
+	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
+	if (claim.checks.includes("verifier") && !(reviewed.ran ?? []).some(({ name }) => name === "verifier"))
+		return { refused: "did not run its verifier, so not every finding it raised was judged", would: covers };
+	return { covers, below: (reviewed.ran ?? []).filter((check) => !atFloor(check)) };
 }
 
 function asFailure(reason: string): CheckRecord {

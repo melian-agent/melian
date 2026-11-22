@@ -9,6 +9,7 @@ import {
 	type MelianConfig,
 	MemoryRecordStore,
 	type RecordEnvelope,
+	Rendering,
 	type RepositorySource,
 	Revision,
 	reviewPayloads,
@@ -879,7 +880,15 @@ describe("the merge gate's forged rounds", () => {
 		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
 		const outcome = await gate(await listed(store));
 		expect(outcome.passes()).toBe(false);
-		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([{ refused: "its verifier did not run" }]);
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([
+			{ refused: "did not run its verifier, so not every finding it raised was judged" },
+		]);
+		const [round] = outcome.rounds;
+		expect(outcome.verdict.notRun.map(({ name, reason }) => [name, reason])).toEqual(
+			["guardrails", "static.biome", "static.tsc", "decisions.fast", "lens.correctness", "lens.contracts"].map(
+				(name) => [name, `round ${round!.id} would cover it, but did not run its verifier, so it covers nothing`],
+			),
+		);
 	});
 
 	it("blocks on the finding of a round no verifier model could serve, and takes no coverage from it", async () => {
@@ -889,7 +898,9 @@ describe("the merge gate's forged rounds", () => {
 		expect(verdict.status).toBe("not-reviewed");
 		const outcome = await gate(await listed(store));
 		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
-		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([{ refused: "its verifier did not run" }]);
+		expect(outcome.rounds.map(({ covers }) => covers)).toEqual([
+			{ refused: "did not run its verifier, so not every finding it raised was judged" },
+		]);
 	});
 
 	it("takes the coverage of a second round whose verifier ran, beside one whose verifier failed", async () => {
@@ -900,7 +911,7 @@ describe("the merge gate's forged rounds", () => {
 		const outcome = await gate(await listed(store));
 		expect(outcome.verdict.notRun).toEqual([]);
 		expect(outcome.rounds.map(({ covers }) => covers)).toEqual(
-			expect.arrayContaining([{ refused: "its verifier did not run" }]),
+			expect.arrayContaining([{ refused: "did not run its verifier, so not every finding it raised was judged" }]),
 		);
 		expect(outcome.passes()).toBe(true);
 	});
@@ -936,6 +947,19 @@ describe("the merge gate's forged rounds", () => {
 		]);
 		expect(outcome.verdict.notRun.map(({ name }) => name)).toEqual(["lens.contracts"]);
 		expect(outcome.passes()).toBe(false);
+	});
+
+	it("names the level a lens ran at and the floor the base tip now sets, so a builder can tell it from a lens that never ran", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		writeFileSync(join(repo, "melian.yaml"), "lenses:\n  contracts:\n    level: { floor: deep }\n");
+		const outcome = await gate(await listed(store));
+		const [round] = outcome.rounds;
+		const said = `round ${round!.id} ran it at careful, below the floor of deep the base tip sets for it now, so a new round must run it at that floor`;
+
+		expect(outcome.verdict.notRun.map(({ name, reason }) => [name, reason])).toEqual([["lens.contracts", said]]);
+		const rendered = outcome.verdict.render(new Rendering({ color: false, emoji: false, ids: true, decided: true }));
+		expect(rendered).toContain(`lens.contracts  skipped: ${said}`);
 	});
 
 	it("takes the coverage of a lens that ran at the floor the base tip sets for it", async () => {
