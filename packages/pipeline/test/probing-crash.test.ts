@@ -99,7 +99,7 @@ describe("a level that probes across a crash", { timeout: 60_000 }, () => {
 			const { verdict } = await review();
 			const record = [...(verdict.ran ?? []), ...verdict.notRun].find(({ name }) => name === "lens.trust-boundary")!;
 			expect(record).toMatchObject({ status: "ran", level: "deep" });
-			expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped 1 attack");
+			expect(record.reason).toContain("it planned 1 attack and ran 0 probes in 0.0 s, and skipped attack 1");
 			expect(asked).toEqual(["prober b", "prober b"]);
 		} finally {
 			await harness.close(context);

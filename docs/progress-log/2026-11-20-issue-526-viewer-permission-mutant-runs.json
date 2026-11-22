@@ -1,0 +1,1095 @@
+[
+  {
+    "id": "d1703bca4510974dfff240796e0b3eff5113d0e2fbbf317f633b4ae71552572d",
+    "file": "packages/github/src/provider.ts",
+    "line": 316,
+    "column": 10,
+    "endLine": 318,
+    "endColumn": 3,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "GET /user must name the asked login exactly"
+      ],
+      "title": "refuses a login differing by case",
+      "pattern": "^GET /user must name the asked login exactly > refuses a login differing by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "f57ce27ff76302535080981963663a94444d11782c955ad4d8dd989e758ee170",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 324,
+    "endColumn": 24,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "reads an unknown role as unknown and never falls back",
+      "pattern": "^the collaborator endpoint is the authority when it answers > reads an unknown role as unknown and never falls back$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "5501d04a6e46d602b9d7d9d6bce94f086fa8a62afe17c0bbc871c3502c648a24",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 324,
+    "endColumn": 24,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "b54a24b47cd66274a29bb4dcff048af7b1321b0553589250686102ef9a14eb18",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 324,
+    "endColumn": 24,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(permission === \"admin\" || permission === \"maintain\" || permission === \"write\" || permission === \"triage\" || permission === \"read\") && permission === \"none\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "c4170ae04674f51207e1af86deefcd0869586eef39fe91c5a59de30578f15e1c",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 323,
+    "endColumn": 24,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "a134e04d5077266edea664d34ac6ccecf8d23df36e64952fcbfc82cf6cc4c3a8",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 323,
+    "endColumn": 24,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(permission === \"admin\" || permission === \"maintain\" || permission === \"write\" || permission === \"triage\") && permission === \"read\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "42deeaf52e4b1db2ad2a75dadefdc63890a3253bd95ce46da19337fbd44ed59e",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 322,
+    "endColumn": 26,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "5ebd71e2a9a7c85fa3266054c335c465360b201e49af79ae3ef4788f2c395509",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 322,
+    "endColumn": 26,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(permission === \"admin\" || permission === \"maintain\" || permission === \"write\") && permission === \"triage\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "f6383c571188685b2265b22cfbdaef2eca3f94a3a7b728715bf9e37947aa12bb",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 321,
+    "endColumn": 25,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "02adb9e573513d5d7f9f558d7bb4b7008715dfc7aae211b2904bbefe255f69e1",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 321,
+    "endColumn": 25,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(permission === \"admin\" || permission === \"maintain\") && permission === \"write\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "b749d5e194ede26e4685521b8e11264ed3cdf826ed5054565480a72b22bf63a1",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 320,
+    "endColumn": 28,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "396b579fee7e6cedf6c4e5ad2833edc7f5387967b9d2ebdd6acb876a1201c811",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 320,
+    "endColumn": 28,
+    "mutatorName": "LogicalOperator",
+    "replacement": "permission === \"admin\" && permission === \"maintain\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "e4e7edd792d84f35f56d422bc0663653ef913a52ffb980c201b785676590fae8",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 319,
+    "endColumn": 31,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "3500d2b12784bafd9925ea82f49364db4703e90f482a65cf367cfe2daf0a62b6",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 9,
+    "endLine": 319,
+    "endColumn": 31,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"admin\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps admin against a repository answer of read",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps admin against a repository answer of read$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "251dfd7e6aa93b4614181e7712609b622dfc99decded709e5a28804048dfd400",
+    "file": "packages/github/src/provider.ts",
+    "line": 320,
+    "column": 3,
+    "endLine": 320,
+    "endColumn": 28,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of maintain",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of maintain$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "3187b2d8a7081d7f13fb23564ff24ab0f5b2b14da2337dbb62252803cc22c25d",
+    "file": "packages/github/src/provider.ts",
+    "line": 320,
+    "column": 3,
+    "endLine": 320,
+    "endColumn": 28,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"maintain\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of maintain",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of maintain$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "08af680baa9c4683c3a1c32267237ead8d757ad2fc56897d18800cbade56dac7",
+    "file": "packages/github/src/provider.ts",
+    "line": 321,
+    "column": 3,
+    "endLine": 321,
+    "endColumn": 25,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of write",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of write$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "201320e5e348b5bcffec984d861b78e482c3340aa74524d43174f3de625d858a",
+    "file": "packages/github/src/provider.ts",
+    "line": 321,
+    "column": 3,
+    "endLine": 321,
+    "endColumn": 25,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"write\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of write",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of write$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "94d287aa1fa82017f21bdc6d5fcf91f1fc2ca5e880f2fa5f096b91e615f74cae",
+    "file": "packages/github/src/provider.ts",
+    "line": 322,
+    "column": 3,
+    "endLine": 322,
+    "endColumn": 26,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of triage",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of triage$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "8fc332234b3635bba041f8e21ff2bb219209db082ae2fdcf16eaa4812fe76419",
+    "file": "packages/github/src/provider.ts",
+    "line": 322,
+    "column": 3,
+    "endLine": 322,
+    "endColumn": 26,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"triage\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of triage",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of triage$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "2af730e41dd31f1532cf41cd71805ad09ff2d1a995b7c3a8431a7a2d5b382125",
+    "file": "packages/github/src/provider.ts",
+    "line": 323,
+    "column": 3,
+    "endLine": 323,
+    "endColumn": 24,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "bf44c50dd0229e5d6f7aaa3f18d8f2ae2b3b0c49eac7094c46495109ca876a35",
+    "file": "packages/github/src/provider.ts",
+    "line": 323,
+    "column": 3,
+    "endLine": 323,
+    "endColumn": 24,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"read\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps read against a repository answer of admin",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps read against a repository answer of admin$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "dc286b1b2e3bc30d880818b83e6ee31bff8203e45bb621828c514fe0d8f54283",
+    "file": "packages/github/src/provider.ts",
+    "line": 324,
+    "column": 3,
+    "endLine": 324,
+    "endColumn": 24,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of none",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of none$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "39fff7b1adde24fdcadcb4d7d1664f19244c4913e5a73ad64afd1fd81450a5ee",
+    "file": "packages/github/src/provider.ts",
+    "line": 324,
+    "column": 3,
+    "endLine": 324,
+    "endColumn": 24,
+    "mutatorName": "EqualityOperator",
+    "replacement": "permission !== \"none\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "keeps its answer of none",
+      "pattern": "^the collaborator endpoint is the authority when it answers > keeps its answer of none$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "116c9853a9033dd5d14a734ffc1cc56a3d79bf08976a1b95c22fe9b1d14c640a",
+    "file": "packages/github/src/provider.ts",
+    "line": 334,
+    "column": 7,
+    "endLine": 334,
+    "endColumn": 29,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "cfd1ddd2f070e8871f70577c4c0e53a1b1f0b5ee58d6e8592aa3aaa3145275c4",
+    "file": "packages/github/src/provider.ts",
+    "line": 334,
+    "column": 7,
+    "endLine": 334,
+    "endColumn": 29,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "GET /user must name the asked login exactly"
+      ],
+      "title": "refuses a login differing by case",
+      "pattern": "^GET /user must name the asked login exactly > refuses a login differing by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "d0639dea447905f65890bb90e3ebff5cf6b6a146aade67aa44e8126554e32965",
+    "file": "packages/github/src/provider.ts",
+    "line": 334,
+    "column": 7,
+    "endLine": 334,
+    "endColumn": 29,
+    "mutatorName": "EqualityOperator",
+    "replacement": "viewer.login === login",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "GET /user must name the asked login exactly"
+      ],
+      "title": "refuses a login differing by case",
+      "pattern": "^GET /user must name the asked login exactly > refuses a login differing by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "f20c3aeec66b6dee2baf54cfb6936b00dee433e8c5ed0136187984c0ebe39ac1",
+    "file": "packages/github/src/provider.ts",
+    "line": 335,
+    "column": 54,
+    "endLine": 335,
+    "endColumn": 92,
+    "mutatorName": "ObjectLiteral",
+    "replacement": "{}",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "d21a56ffe0e243aba34ba2678397342d863638b814c335bb858e3f1176928f4e",
+    "file": "packages/github/src/provider.ts",
+    "line": 336,
+    "column": 7,
+    "endLine": 336,
+    "endColumn": 82,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "4dc2f854bb5e03bf19073ad4866eb90e32194adc71137a7e2ba7334219c18d0e",
+    "file": "packages/github/src/provider.ts",
+    "line": 336,
+    "column": 7,
+    "endLine": 336,
+    "endColumn": 82,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "refuses another owner's repository of the same name",
+      "pattern": "^the repository answer > refuses another owner's repository of the same name$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "a602b64a8cab3c67fe356f7c8e022dc27622f6187d032cc78fc2bad1d38c2110",
+    "file": "packages/github/src/provider.ts",
+    "line": 336,
+    "column": 7,
+    "endLine": 336,
+    "endColumn": 82,
+    "mutatorName": "EqualityOperator",
+    "replacement": "data.full_name.toLowerCase() === `${this.owner}/${this.repo}`.toLowerCase()",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "0a4832169c38f2bb69a511fd6181c26b93ec4faddc3868f9649e9e3b2507fe44",
+    "file": "packages/github/src/provider.ts",
+    "line": 336,
+    "column": 7,
+    "endLine": 336,
+    "endColumn": 35,
+    "mutatorName": "MethodExpression",
+    "replacement": "data.full_name.toUpperCase()",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "864053b577772e1c4a8483e1b6e2c54cf45874556688f4c6979a78bdea6beaec",
+    "file": "packages/github/src/provider.ts",
+    "line": 336,
+    "column": 40,
+    "endLine": 336,
+    "endColumn": 82,
+    "mutatorName": "MethodExpression",
+    "replacement": "`${this.owner}/${this.repo}`.toUpperCase()",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "b46e1d6bc915c5cd705c37031b2bdd8d47007dca78925109c09cee3f28e05e19",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 74,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "6f530d986d9b478f97901f658eb5c0e1c1cf564880c41415ce02008c462ac1e8",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 74,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps an array",
+      "pattern": "^the repository answer > maps an array$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "669d41ef95c1b629883dd494697c4ebbc226b64cc401a2b67e689d41f86e294b",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 74,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(typeof roles !== \"object\" || roles === null) && Array.isArray(roles)",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps an array",
+      "pattern": "^the repository answer > maps an array$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "31ac8b614ec3761bda915a5f864db27ceccf7a5d0542b55294da280731ceefcd",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 50,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps a string",
+      "pattern": "^the repository answer > maps a string$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "8c55ef674e89f21305fb6fffbc0de59bd64faa6f14e7dc6adb23305715cedc13",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 50,
+    "mutatorName": "LogicalOperator",
+    "replacement": "typeof roles !== \"object\" && roles === null",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps a string",
+      "pattern": "^the repository answer > maps a string$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "5789e468a343559d31fa71da37f4444c8f01386d5df4414fd36431619d7f8e31",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 32,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps a string",
+      "pattern": "^the repository answer > maps a string$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "14349bd9616495451b180deb714dc97fb863f60df4496b63e1554859d980af4b",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 7,
+    "endLine": 338,
+    "endColumn": 32,
+    "mutatorName": "EqualityOperator",
+    "replacement": "typeof roles === \"object\"",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "ac909c7fdb380e98aee1917cc4e76b1074add00492772985095d67b0ed32c239",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 36,
+    "endLine": 338,
+    "endColumn": 50,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "survived",
+    "test": null,
+    "note": "equivalent; every test in packages/github/test/viewer-permission.test.ts passed under it at 6373cae4, the null case included"
+  },
+  {
+    "id": "4b69f0ef9a24706667c87be1b236abbe8e4ed0badb86a9c8d66fa281bd7b5b04",
+    "file": "packages/github/src/provider.ts",
+    "line": 338,
+    "column": 36,
+    "endLine": 338,
+    "endColumn": 50,
+    "mutatorName": "EqualityOperator",
+    "replacement": "roles !== null",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "6a898777bb92bd09126a2f0ba6a452fab8debae6b43567a7078af6afeb366df5",
+    "file": "packages/github/src/provider.ts",
+    "line": 339,
+    "column": 14,
+    "endLine": 339,
+    "endColumn": 81,
+    "mutatorName": "ArrowFunction",
+    "replacement": "() => undefined",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "f4146659c261c6d092f0c249c45eba9d17f8247f6eeb6c079f84076922f509c4",
+    "file": "packages/github/src/provider.ts",
+    "line": 339,
+    "column": 32,
+    "endLine": 339,
+    "endColumn": 81,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "9bc59caef130d6b452785de0ce67b0ad0439724537af11686c7373b69acc1ddf",
+    "file": "packages/github/src/provider.ts",
+    "line": 339,
+    "column": 32,
+    "endLine": 339,
+    "endColumn": 81,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "69292a9fe7d494ff799084b7bc90d7b62593b033fe97005163c8b5cf7508fb77",
+    "file": "packages/github/src/provider.ts",
+    "line": 339,
+    "column": 32,
+    "endLine": 339,
+    "endColumn": 81,
+    "mutatorName": "EqualityOperator",
+    "replacement": "(roles as Record<string, unknown>)[role] !== true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "126f13511e5d5cb6ab989743d75768b3dd7a69cdeadb8618817c51db0a4bc00e",
+    "file": "packages/github/src/provider.ts",
+    "line": 339,
+    "column": 77,
+    "endLine": 339,
+    "endColumn": 81,
+    "mutatorName": "BooleanLiteral",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "7d215a3fe89c027287b270f8a7415dd0a19c08cf0d9572abde961fe992ef1e24",
+    "file": "packages/github/src/provider.ts",
+    "line": 340,
+    "column": 7,
+    "endLine": 340,
+    "endColumn": 18,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "3b1a980b6722a3de8b145c32ede484d00878ea1d4cf7bbbfdb23b4dbec8705a4",
+    "file": "packages/github/src/provider.ts",
+    "line": 340,
+    "column": 7,
+    "endLine": 340,
+    "endColumn": 18,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps every role",
+      "pattern": "^the repository answer > maps every role$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "eb76b4cbd5efca8e4ececbe3ef64eb699f9a8e50a0828d05160346690f36bf1d",
+    "file": "packages/github/src/provider.ts",
+    "line": 341,
+    "column": 7,
+    "endLine": 341,
+    "endColumn": 21,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "52fc1e74c25230225fc20b903008aec2a7fd81d01bde2448300cba0d9912f180",
+    "file": "packages/github/src/provider.ts",
+    "line": 341,
+    "column": 7,
+    "endLine": 341,
+    "endColumn": 21,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps several roles",
+      "pattern": "^the repository answer > maps several roles$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "3f69b59a2eb25bfe4d209016cdadc7b7c6cb346647b0b1e5fe8bf00a101a49bd",
+    "file": "packages/github/src/provider.ts",
+    "line": 342,
+    "column": 7,
+    "endLine": 342,
+    "endColumn": 17,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps triage and pull",
+      "pattern": "^the repository answer > maps triage and pull$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "780e9587dc1a218873b0f0ce678822a05c9386cc3240c2506966d2aee6a35109",
+    "file": "packages/github/src/provider.ts",
+    "line": 342,
+    "column": 7,
+    "endLine": 342,
+    "endColumn": 17,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "accepts a full_name differing only by case",
+      "pattern": "^the repository answer > accepts a full_name differing only by case$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "0db305b5a80e1afd1684df85aa1353748107b9326c9ea587141033f37377c7dd",
+    "file": "packages/github/src/provider.ts",
+    "line": 343,
+    "column": 7,
+    "endLine": 343,
+    "endColumn": 19,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps pull alone",
+      "pattern": "^the repository answer > maps pull alone$"
+    },
+    "note": "ran at 6373cae4"
+  },
+  {
+    "id": "c032e620f71ab06a9edcb1a1baa6a9497c69127fc80ec38305351278b84e4cd9",
+    "file": "packages/github/src/provider.ts",
+    "line": 343,
+    "column": 7,
+    "endLine": 343,
+    "endColumn": 19,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the repository answer"
+      ],
+      "title": "maps triage and pull",
+      "pattern": "^the repository answer > maps triage and pull$"
+    },
+    "note": "ran at 6373cae4"
+  }
+]

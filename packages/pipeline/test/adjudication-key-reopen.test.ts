@@ -16,6 +16,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type AdjudicationResult, VerdictDocument } from "../src/adjudication.ts";
 import type { TaskId } from "../src/harness.ts";
 import { ReviewIndex } from "../src/review-index.ts";
+import { verifierVersion } from "../src/verification-instructions.ts";
 import { createRepository, gitIn, isolatedGitEnv, removeRepository } from "./fixtures/repo.ts";
 
 const fixture = (name: string) => new URL(`./fixtures/adjudication-key-main/${name}`, import.meta.url);
@@ -65,6 +66,12 @@ async function stored() {
 	return (await harness.snapshot(ReviewIndex, root.id, context))!.reviews[recorded.key]!.adjudication!;
 }
 
+// The provenance names the verifier this build carries, which a build that changes its wording moves.
+function decidedHere() {
+	const input = JSON.parse(recorded.adjudication.input) as { provenance: object };
+	return { ...input, provenance: { ...input.provenance, verifierVersion }, code: codeVersion("adjudication") };
+}
+
 async function review() {
 	const resolved = await Changeset.resolve(repo, "legacy-base...legacy-head");
 	const input = JSON.parse(recorded.adjudication.input) as { repoRoot: string };
@@ -87,10 +94,7 @@ it("decides main's stored verdict again once, under a key that adds the code ver
 
 	const decided = await stored();
 	expect(decided.task).not.toBe(recorded.adjudication.task);
-	expect(JSON.parse(decided.input)).toEqual({
-		...JSON.parse(recorded.adjudication.input),
-		code: codeVersion("adjudication"),
-	});
+	expect(JSON.parse(decided.input)).toEqual(decidedHere());
 	expect(first.verdict.status).toBe("passed");
 
 	const repeat = await review();
@@ -120,10 +124,7 @@ it("fails a version 7 task main left pending, which names no code version, and d
 
 	const decided = await stored();
 	expect(decided.task).not.toBe(pending.task);
-	expect(JSON.parse(decided.input)).toEqual({
-		...JSON.parse(recorded.adjudication.input),
-		code: codeVersion("adjudication"),
-	});
+	expect(JSON.parse(decided.input)).toEqual(decidedHere());
 	expect(verdict.status).toBe("passed");
 	expect((await harness.snapshot(VerdictDocument, root.id, context))!.decisions![recorded.key]!.task).toBe(
 		decided.task,

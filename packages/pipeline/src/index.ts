@@ -49,6 +49,16 @@ export {
 	type ReviewErrorCode,
 	type UnsharedCode,
 } from "./errors.ts";
+export {
+	type EvidenceConversation,
+	EvidenceError,
+	type EvidenceLensFile,
+	type EvidencePointer,
+	type EvidenceStage,
+	EvidenceStore,
+	evidenceLimits,
+	MissEvidence,
+} from "./evidence.ts";
 export { FileImporter, maxReviewerFileBytes } from "./file-import.ts";
 export {
 	type Dismissal,
@@ -162,6 +172,7 @@ export { ReviewTranscript } from "./review-coverage.ts";
 export { Round, RoundError, RoundReader } from "./rounds.ts";
 export { type PrepareRecord, PrepareSpans, type Span } from "./spans.ts";
 export {
+	evidenceAgeDays,
 	graphAgeDays,
 	type LiveRun,
 	mutationAgeDays,

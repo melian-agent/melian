@@ -324,13 +324,13 @@ describe("ProbingCombination", () => {
 	it("refuses a lens core would not let probe, and one the policy does not load, naming each", async () => {
 		const loaded = await lenses();
 		expect(() =>
-			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "tests"]).routed(
+			ProbingCombination.parse("pair=a/plan>b/probe", "medium", ["trust-boundary", "contracts"]).routed(
 				config,
 				loaded,
 				changed,
 			),
 		).toThrow(
-			'MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
+			'MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens\'s words',
 		);
 		expect(() =>
 			ProbingCombination.parse("off=a/plan", "medium", ["contracts"]).routed(config, loaded, changed),
@@ -1114,8 +1114,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 		try {
 			for (const [named, refusal] of [
 				[
-					"tests",
-					/^MELIAN_EVAL_PROBE_LENSES names tests, which cannot probe: "probe" is refused in the tests lens/,
+					"contracts",
+					/^MELIAN_EVAL_PROBE_LENSES names contracts, which cannot probe: "probe" needs the probing wording/,
 				],
 				["nowhere", /^MELIAN_EVAL_PROBE_LENSES names nowhere, which the base's policy does not load$/],
 			] as const) {

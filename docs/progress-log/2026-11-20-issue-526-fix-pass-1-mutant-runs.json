@@ -1,0 +1,22 @@
+[
+  {
+    "id": "c094081ac1670f42661d35d73e157bb3881c52ad0c3a3bdd8f667a0726596569",
+    "file": "packages/github/src/provider.ts",
+    "line": 319,
+    "column": 21,
+    "endLine": 319,
+    "endColumn": 74,
+    "mutatorName": "OptionalChaining",
+    "replacement": "(body as {\n  permission?: unknown;\n} | null).permission",
+    "result": "killed",
+    "test": {
+      "file": "packages/github/test/viewer-permission.test.ts",
+      "ancestorTitles": [
+        "the collaborator endpoint is the authority when it answers"
+      ],
+      "title": "reads a null body as unknown and never falls back",
+      "pattern": "^the collaborator endpoint is the authority when it answers > reads a null body as unknown and never falls back$"
+    },
+    "note": "ran at e190c238"
+  }
+]
