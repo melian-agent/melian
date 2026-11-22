@@ -414,6 +414,27 @@ describe("the relay's sum and the record bytes", () => {
 		return directory;
 	}
 
+	it("joins the walkthrough to a round that still fits with it, and leaves it out of one that does not", () => {
+		const told = records().walkthrough("f".repeat(64), "fake/light", {
+			summary: "Changes a.",
+			files: [{ path: "src/a.ts", summary: "Sets a to 2." }],
+		});
+		const before = ["e".repeat(64)];
+		const small = [guardrailsOf(1)];
+		expect(records().batch(small, told, before)).toEqual([...small, told, records().round(small, told, [], before)]);
+		expect(records().batch(small, undefined, before)).toEqual([
+			...small,
+			records().round(small, undefined, [], before),
+		]);
+		const statics = [staticOf("static.biome", 3000), staticOf("static.tsc", 3000)];
+		const unfilled = [guardrailsOf(1), ...statics];
+		const pad = 1 + relayLimits.bytes - sum(records().batch(unfilled, undefined, before));
+		const filled = [guardrailsOf(pad), ...statics];
+		const batch = records().batch(filled, told, before);
+		expect(batch).toEqual([...filled, records().round(filled, undefined, [], before)]);
+		expect(sum(batch)).toBe(relayLimits.bytes);
+	});
+
 	it("sums what the relay sums, takes a batch of exactly 8 MiB and refuses one a byte past", async () => {
 		const statics = [staticOf("static.biome", 3000), staticOf("static.tsc", 3000)];
 		const small = batchOf([guardrailsOf(1), ...statics]);
