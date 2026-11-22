@@ -47,7 +47,7 @@ export class PullRequestComparison {
 		this.url = url;
 		this.repository = repository;
 	}
-	static async open(io: Io, number: number, exporting = false): Promise<PullRequestComparison> {
+	static async open(io: Io, number: number, exporting = false, causes = false): Promise<PullRequestComparison> {
 		const repository = parseGitHubRemote(await git(io.cwd, ["remote", "get-url", "origin"]));
 		const stores = await ComparisonStores.read(
 			io,
@@ -57,6 +57,7 @@ export class PullRequestComparison {
 			},
 			true,
 			exporting,
+			causes,
 		);
 		return new PullRequestComparison(
 			io,

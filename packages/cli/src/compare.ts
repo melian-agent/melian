@@ -23,6 +23,7 @@ import {
 import { coderabbitLogin, ReviewThreadImporter } from "@melian-agent/github";
 import {
 	CompareHarness,
+	ComparisonCauses,
 	ComparisonReader,
 	backgroundContext as context,
 	FileImporter,
@@ -295,7 +296,7 @@ export async function comparisonStats(
 	io: Io,
 	options: { readonly since?: string; readonly last?: number },
 ): Promise<number> {
-	const stores = await ComparisonStores.read(io, undefined, true);
+	const stores = await ComparisonStores.read(io, undefined, true, false, true);
 	const comparisons = new ComparisonSet(stores.entries);
 	io.stdout(comparisons.renderStats(options));
 	const unattributed = new Set(
@@ -320,8 +321,8 @@ export async function exportComparison(
 ): Promise<number> {
 	const target = parseTarget(argument);
 	if (target.kind === "pullRequest")
-		return (await PullRequestComparison.open(io, target.number, true)).export(options);
-	const { entries, repoRoot } = await rangeComparisons(io, argument);
+		return (await PullRequestComparison.open(io, target.number, true, true)).export(options);
+	const { entries, repoRoot } = await rangeComparisons(io, argument, true);
 	const remote = await git(repoRoot, ["remote", "get-url", "origin"]).catch(() => "");
 	const repository =
 		/^(?:git@github\.com:|https:\/\/github\.com\/)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?$/.exec(remote)?.[1];
@@ -409,14 +410,17 @@ async function unplaced({ repo, base, head, file, lines: [first, last] }: MissCa
 		: `lines ${first}-${last} run past ${file}, which has ${lines.length} lines at ${head}`;
 }
 
-async function rangeComparisons(io: Io, argument: string) {
+async function rangeComparisons(io: Io, argument: string, causes = false) {
 	const stored = await StoredReview.open(io, argument);
 	const path = await storagePath(stored.changeset.repoRoot, stored.changeset.id, io.env, isScripted(io.env));
 	if (!existsSync(path))
 		throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
 	const storage = await openStorage(path);
 	try {
-		const entries = await ComparisonReader.open(storage).read(stored.changeset.id);
+		const read = await ComparisonReader.open(storage).read(stored.changeset.id);
+		const entries = causes
+			? await ComparisonCauses.open(storage, stored.changeset.repoRoot).read(read, stored.changeset.id)
+			: read;
 		if (entries.length === 0)
 			throw new CliError(`no comparison recorded; run melian compare ${shellQuote(argument)} first`);
 		return { entries, repoRoot: stored.changeset.repoRoot };

@@ -36,7 +36,7 @@ import { probeLimits } from "./probe.ts";
 import { type Attack, type ProbeRecord, ProbingDocument, probeConclusive, probeFailed } from "./probing.ts";
 import { ReviewTranscript } from "./review-coverage.ts";
 import { ReviewIndex } from "./review-index.ts";
-import { RoundsDocument } from "./rounds.ts";
+import { type Round, RoundsDocument } from "./rounds.ts";
 import { PrepareDocument, type PrepareRecord } from "./spans.ts";
 import { SummaryIndex } from "./summarize.ts";
 import { TimingDocument } from "./task-timing.ts";
@@ -598,6 +598,18 @@ export class TelemetryReader {
 			if (stored.run !== undefined) return;
 			stored.run = { ...telemetry.runDetails(), roundId };
 		}, context);
+	}
+
+	/**
+	 * The stages of `round`'s own run, or nothing when this storage does not hold it: the round has not decided, or a
+	 * later review of its revision has replaced it in the review index.
+	 */
+	async round(round: Round, context: Context = backgroundContext): Promise<StageTelemetry | undefined> {
+		const scope = { kind: "conversation", conversationId: ROOT_CONVERSATION_ID } as const;
+		const owner = (await this.document(ReviewIndex, scope, context))?.reviews[round.revisionKey()]?.adjudication
+			?.task;
+		if (round.stored.verdict === undefined || !round.stored.tasks.some((task) => task === owner)) return undefined;
+		return this.read(round.revisionKey(), undefined, context);
 	}
 
 	/** Select the revision's stages, marking reuse against the optional call start. */
