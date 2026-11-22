@@ -1,5 +1,6 @@
 import * as childProcess from "node:child_process";
 import { ChildProcess, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmodSync } from "node:fs";
 import * as nodeFs from "node:fs/promises";
 import { access, chmod, mkdir, mkdtemp, readdir, readFile, rm, symlink } from "node:fs/promises";
@@ -11,6 +12,8 @@ import { PassThrough } from "node:stream";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as core from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { melianInstall } from "../src/code-version.ts";
+import { Install } from "../src/installed-packages.ts";
 import {
 	ancestorInstalls,
 	inside,
@@ -22,7 +25,7 @@ import { commit, createRepository, gitIn, removeRepository, writeFiles } from ".
 
 vi.mock("node:module", async (original) => {
 	const actual = await original<typeof nodeModule>();
-	return { ...actual, createRequire: vi.fn(actual.createRequire) };
+	return { ...actual, createRequire: vi.fn(actual.createRequire), findPackageJSON: vi.fn(actual.findPackageJSON) };
 });
 vi.mock("node:child_process", async (original) => {
 	const actual = await original<typeof childProcess>();
@@ -1706,6 +1709,26 @@ describe("mutation enumeration", { timeout: 60_000 }, () => {
 		const installed = await TypeScriptMutationAdapter.open(repo);
 		expect(installed.source).toBe("checkout");
 		expect(installed.identity).toEqual({ ...fallback.identity, source: "checkout" });
+		const manifest = await readFile(join(repo, "node_modules/@stryker-mutator/instrumenter/package.json"));
+		expect(installed.install().entries).toEqual([
+			[
+				"node_modules/@stryker-mutator/instrumenter",
+				"manifest",
+				createHash("sha256").update(manifest).digest("hex"),
+			],
+		]);
+		expect(fallback.install().digest).toBe(melianInstall().digest);
+		// The checkout's install holds three directories: node_modules, the scope and the instrumenter.
+		const read = Install.read.bind(Install);
+		let bound = 3;
+		const bounded = vi
+			.spyOn(Install, "read")
+			.mockImplementation((from, _limit, ...rest) => read(from, bound, ...rest));
+		expect(installed.install().identified).toBe(true);
+		bound = 2;
+		const past = installed.install();
+		expect([past.identified, past.unrecognised[0]]).toEqual([false, "."]);
+		bounded.mockRestore();
 		gitIn(repo, "add", "-f", "node_modules/.keep");
 		gitIn(repo, "commit", "-qm", "tracked install");
 		expect((await TypeScriptMutationAdapter.open(repo)).source).toBe("melian");

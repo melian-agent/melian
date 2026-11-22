@@ -1,0 +1,145 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "f5a8802409c9e33cb852a616c94fdd3070bb3e23",
+		"head": "5c39f151aef18b9248fd045d69d16161b759bcf9"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 169,
+			"column": 48,
+			"endLine": 169,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be511074177ca26fd3b1dd5f65cff6163ff50528013d57758d496b51ff37cd4b"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 193,
+			"column": 43,
+			"endLine": 193,
+			"endColumn": 57,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "87bcc29c4023af4ad9703cf8ae4347259d94557e1e1c06f55d2748e3b3f9042b"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 194,
+			"column": 3,
+			"endLine": 194,
+			"endColumn": 41,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "0ed3b2c7bfe920eda5da93f4a6dcdb609cb01d676e3faa545619d157ef3b2320",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"fails, naming the place, on a manifest that is not JSON"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 194,
+			"column": 32,
+			"endLine": 194,
+			"endColumn": 38,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "516146b0045353a3e5ec5f4e1010b9607f17850132e4a1b5576bfd4257ebd52e"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 198,
+			"column": 9,
+			"endLine": 198,
+			"endColumn": 74,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "7a11222abd804ff599069678a2080661214e03445f7365595e636017fa8031da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 198,
+			"column": 10,
+			"endLine": 198,
+			"endColumn": 20,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7f8b8e8099c4937e10c96bb013622257bc7f3815fa36f44abb90eba70bde3557"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 198,
+			"column": 33,
+			"endLine": 198,
+			"endColumn": 41,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c40d6e90fc52b66a447d7dfe19f41db06b90735792199e81989e73ad33d3a3b9"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 198,
+			"column": 67,
+			"endLine": 198,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f903b42c08bb05790040dfc59969dc499dd275cfaad954214a478d74d2affe01"
+		}
+	],
+	"total": 8,
+	"omitted": 0,
+	"unmutated": []
+}

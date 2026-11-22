@@ -6,6 +6,8 @@ import { replaceCheckFindings } from "../../src/findings.ts";
 const current = { guardrails: 1, "static.biome": 3, "static.tsc": 4, "static.enola": 5, "static.mutation": 3 };
 // A run's request always keys the checkout's install; an identified one lets no second run share the key.
 const install = { digests: { "package-lock.json": "a".repeat(64) }, identified: true };
+// And Melian's own install, identified, so the request keys everything its run read.
+const packages = { digest: "b".repeat(64), identified: true };
 
 // What a run's terminal commits leave for `records` at the changeset's revision, with no sightings: the request kept
 // under its key, the records under the run, and each static check stamped with the key and the check task the run's
@@ -17,7 +19,7 @@ export async function provenRun(
 	records: readonly CheckRunRecord[],
 	tier = "full",
 ): Promise<CheckRun> {
-	const asked = KeyedRequest.of("check", { checks: current, install });
+	const asked = KeyedRequest.of("check", { checks: current, install, packages });
 	const root = await harness.root(context);
 	const revision = Revision.key(changeset.revision);
 	const { base, head } = changeset.revision;

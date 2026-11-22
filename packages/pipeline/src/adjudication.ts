@@ -24,7 +24,7 @@ import {
 	type Walkthrough,
 } from "@melian-agent/core";
 import { verdictWithLegacyCaveats, withLegacyCaveats } from "./caveats.ts";
-import { codeVersion } from "./code-version.ts";
+import { codeVersion, melianInstall } from "./code-version.ts";
 import { configsFor } from "./configurations.ts";
 import { findingsVersion, type Producer, readFindings, seenBefore } from "./findings.ts";
 import { type Context, type ConversationId, type DocumentReader, defineDoc, defineTask } from "./harness.ts";
@@ -223,6 +223,11 @@ export type AdjudicationTaskInput = {
 	// `codeVersion("adjudication")` of the build that created the task, which only that code may decide. Absent from a
 	// task created before version 8.
 	code?: string;
+	// The digest of Melian's install the task was created on, which only that install may decide. Absent
+	// from a task created before it was keyed, which then fails to decide.
+	packages?: string;
+	// Whether Melian could identify that install, so a task on one it could not stands for no task on one it can.
+	identified?: boolean;
 };
 
 // What a stored adjudication is reused for: its input, whose `code` names the code that decides it, so a build whose
@@ -271,9 +276,9 @@ export const AdjudicationTask = defineTask<
 				}, context);
 			};
 			// Builds share a store, so one can resume a task another created. Its verdict would sit under the other's code.
-			if (task.input.code !== codeVersion("adjudication")) {
+			if (task.input.code !== codeVersion("adjudication") || task.input.packages !== melianInstall().digest) {
 				await fail(
-					"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+					"another build's adjudication code, or another install's packages, created this task, so this build decides nothing; run melian review again to decide it here",
 				);
 				return;
 			}
@@ -417,6 +422,8 @@ export function adjudicationInput(options: {
 		...(options.verificationRan === undefined ? {} : { verificationRan: options.verificationRan }),
 		...(options.files === undefined ? {} : { files: structuredClone([...options.files]) }),
 		code: codeVersion("adjudication"),
+		packages: melianInstall().digest,
+		identified: melianInstall().identified,
 	};
 }
 

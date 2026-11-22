@@ -71,6 +71,7 @@ import { CallerContext, type CoverageSource } from "./callers.ts";
 import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
 import { ChangeLenses } from "./change-lenses.ts";
 import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
+import { melianInstall } from "./code-version.ts";
 import { configsFor } from "./configurations.ts";
 import {
 	DecisionDocument,
@@ -1922,6 +1923,8 @@ async function runLenses(
 	harness: Harness,
 	input: StoredLensTaskInput,
 	rerun: boolean,
+	// False when an install the runs are keyed by is unidentified, so its key may stand for another install's runs.
+	reusable: boolean,
 	context: Context,
 	refused: (key: string, model: string) => boolean = () => false,
 	unlockModels: ((providers: readonly string[]) => Promise<void>) | undefined,
@@ -1941,6 +1944,7 @@ async function runLenses(
 		const known = (await harness.snapshot(ReviewIndex, root.id, context))?.reviews[revision];
 		const record = known?.task === undefined ? undefined : await harness.getTask(known.task as TaskId, context);
 		const attaches =
+			reusable &&
 			known !== undefined &&
 			known.lenses.join("\n") === selection.join("\n") &&
 			record !== undefined &&
@@ -1948,9 +1952,11 @@ async function runLenses(
 			!(await lensFailed(record!, refused, (id) => harness.snapshot(ProbingDocument, id, context), !rerun));
 		if (attaches) attachesTo = known.task;
 		else {
-			const copied = await copiesFrom(record, input.lenses, input.callers, refused, (id) =>
-				harness.snapshot(ProbingDocument, id, context),
-			);
+			const copied = reusable
+				? await copiesFrom(record, input.lenses, input.callers, refused, (id) =>
+						harness.snapshot(ProbingDocument, id, context),
+					)
+				: {};
 			await unlockModels(providersOf(input.lenses.filter((lens) => copied[lens.key] === undefined)));
 			unlockedFor = Object.keys(copied).join("\n");
 		}
@@ -1964,6 +1970,7 @@ async function runLenses(
 		const known = index.reviews[revision];
 		const same = known !== undefined && known.lenses.join("\n") === selection.join("\n");
 		const attach =
+			reusable &&
 			same &&
 			(await attachable(tx, known.task, undecided)) &&
 			!(await anyLensFailed(tx, known.task, refused, !rerun));
@@ -1971,9 +1978,9 @@ async function runLenses(
 		if (attach) return checked && known.task !== attachesTo ? undefined : (known.task as TaskId<LensResult>);
 		// A lens whose request a completed task of this revision answered in full is copied from it, findings and all.
 		const previous = known?.task === undefined ? undefined : await tx.task(known.task as TaskId);
-		const reused = await copiesFrom(previous, input.lenses, input.callers, refused, (id) =>
-			tx.doc(ProbingDocument, id),
-		);
+		const reused = reusable
+			? await copiesFrom(previous, input.lenses, input.callers, refused, (id) => tx.doc(ProbingDocument, id))
+			: {};
 		if (checked && Object.keys(reused).join("\n") !== unlockedFor) return undefined;
 		await recordRevision(tx, root.id, revision);
 		// A copied lens keeps the caller notes of the task it came from, which say what its model was shown.
@@ -2164,6 +2171,7 @@ async function startAdjudication(
 		const retry = [...undecided, "failed"];
 		const rounds = new RoundWriter(tx, root.id);
 		if (
+			melianInstall().identified &&
 			known?.adjudication?.input === key &&
 			(await rounds.checkRun(known.adjudication.task, checkRun)) === checkRun &&
 			(await attachable(tx, known.adjudication.task, retry))
@@ -2762,7 +2770,15 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	let lister: Promise<MutantLister> | undefined;
 	const mutantLister = () =>
 		(lister ??= TypeScriptMutationAdapter.open(repoRoot).then(
-			(adapter): MutantLister => ({ version: adapter.identity.toolVersion, source: adapter.source }),
+			(adapter): MutantLister => {
+				const install = adapter.install();
+				return {
+					version: adapter.identity.toolVersion,
+					source: adapter.source,
+					packages: install.digest,
+					identified: install.identified,
+				};
+			},
 			(error: unknown): MutantLister => {
 				if (error instanceof MutationEnumerationError && error.code === "instrumenter") return "unavailable";
 				throw error;
@@ -3548,6 +3564,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					walkthrough = { at, done };
 				};
 	const lensInput = new LensTaskInput(root, state, lenses, escalateAt, callersInput).toJSON();
+	// A run keyed by an install Melian cannot identify stands for no other run, nor any other run for it.
+	const listed = lister === undefined ? undefined : await lister;
+	const reusable =
+		melianInstall().identified && (listed === undefined || listed === "unavailable" || listed.identified);
 	spans.end();
 	if (lenses.length === 0) startWalkthrough?.();
 	const {
@@ -3560,6 +3580,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				harness,
 				lensInput,
 				options.rerun === true,
+				reusable,
 				context,
 				(key, model) => {
 					const run = runsOf(lenses).find((each) => each.key === key);

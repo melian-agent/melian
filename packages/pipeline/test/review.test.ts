@@ -58,8 +58,11 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // The deciding code's version, which a test moves to stand for a build whose adjudication code differs.
-const code = vi.hoisted(() => ({ version: "recorded" }));
-vi.mock("../src/code-version.ts", () => ({ codeVersion: () => code.version }));
+const code = vi.hoisted(() => ({ version: "recorded", packages: "installed", identified: true }));
+vi.mock("../src/code-version.ts", () => ({
+	codeVersion: () => code.version,
+	melianInstall: () => ({ digest: code.packages, identified: code.identified, outside: [], entries: [] }),
+}));
 
 import { AdjudicationTask, adjudicationInput, VerdictDocument } from "../src/adjudication.ts";
 import { EnclosingFunctions } from "../src/enclosing-functions.ts";
@@ -345,6 +348,33 @@ describe("reviewChangeset", () => {
 			]);
 		afterEach(() => {
 			code.version = "recorded";
+			code.packages = "installed";
+			code.identified = true;
+		});
+
+		it("decides again on an install Melian cannot identify, though the key is the same", async () => {
+			code.identified = false;
+			script();
+			await reviewed();
+			const decided = await adjudication();
+			script();
+
+			await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
+		});
+
+		it("decides again on an install Melian identifies, after a review on one it cannot with the same digest", async () => {
+			code.identified = false;
+			script();
+			await reviewed();
+			const decided = await adjudication();
+			code.identified = true;
+			script();
+
+			await reviewed();
+
+			expect(await adjudication()).not.toBe(decided);
 		});
 
 		it("decides again when the build's deciding code differs, spending nothing on the lenses", async () => {
@@ -361,10 +391,13 @@ describe("reviewChangeset", () => {
 			expect(repeat.verdict.fingerprint()).toBe(first.verdict.fingerprint());
 		});
 
-		it("dismisses under the dismissing build's code a review another build decided", async () => {
+		it.each<["version" | "packages", string]>([
+			["version", "code"],
+			["packages", "packages"],
+		])("dismisses under the dismissing build's %s a review another build decided", async (field, stored) => {
 			script();
 			const [finding] = (await reviewed()).verdict.findings.block;
-			code.version = "changed";
+			code[field] = "changed";
 
 			const recorded = await recordDismissal({
 				harness,
@@ -375,10 +408,10 @@ describe("reviewChangeset", () => {
 			});
 
 			expect(recorded.finding.properties).toMatchObject({ id: finding!.properties.id, status: "dismissed" });
-			const stored = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
+			const input = (await harness.snapshot(ReviewIndex, (await harness.root(context)).id, context))!.reviews[
 				reviewedRevision()
 			]!.adjudication!;
-			expect(JSON.parse(stored.input).code).toBe("changed");
+			expect(JSON.parse(input.input)[stored]).toBe("changed");
 		});
 
 		it("attaches to the stored decision when the build's deciding code is the same", async () => {
@@ -3757,7 +3790,10 @@ describe("on a repeat review after a task ended without deciding", () => {
 		expect(await readVerdict(harness, await rootId(), revision(), context)).toEqual(verdict);
 	});
 
-	it("decides nothing on an adjudication task another build's code created, and says why", async () => {
+	it.each<[string, "version" | "packages"]>([
+		["another build's code", "version"],
+		["another install's packages", "packages"],
+	])("decides nothing on an adjudication task %s created, and says why", async (_, field) => {
 		await reviewed({ config: noLenses() });
 		const input = (await entry())!.adjudication!.input;
 		const decided = (await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task;
@@ -3770,17 +3806,18 @@ describe("on a repeat review after a task ended without deciding", () => {
 			(await tx.doc(ReviewIndex, root.id)).reviews[revision()]!.adjudication = { task: created, input };
 			return created;
 		}, context);
-		code.version = "other";
+		const kept = code[field];
+		code[field] = "other";
 		try {
 			expect((await harness.waitForTask(copy, context)).state.outcome).toEqual({
 				status: "failed",
 				error: {
 					message:
-						"another build's adjudication code created this task, so this build decides nothing; run melian review again to decide it here",
+						"another build's adjudication code, or another install's packages, created this task, so this build decides nothing; run melian review again to decide it here",
 				},
 			});
 		} finally {
-			code.version = "recorded";
+			code[field] = kept;
 		}
 		expect((await harness.snapshot(VerdictDocument, await rootId(), context))!.decisions![revision()]!.task).toBe(
 			decided,

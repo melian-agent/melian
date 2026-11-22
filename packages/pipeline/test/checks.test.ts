@@ -31,6 +31,7 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CheckSources, ChecksDocument } from "../src/checks.ts";
+import * as codeVersion from "../src/code-version.ts";
 import { findingsVersion } from "../src/findings.ts";
 import * as staticRunner from "../src/static.ts";
 import { ToolProvisioning } from "../src/tool-provisioning.ts";
@@ -398,6 +399,30 @@ describe("runChecks", () => {
 		const moved = await runChecks(harness, input, context);
 		expect(moved.identity.policy).not.toBe(first.identity.policy);
 		expect(moved.identity.task).not.toBe(first.identity.task);
+	});
+
+	it("runs again when Melian's install moves, and attaches to no run on an install it cannot identify", {
+		timeout: 60_000,
+	}, async () => {
+		const base = commit(repo, { "melian.yaml": lines("tiers:", "  fast: [guardrails]") });
+		const head = commit(repo, { "src/a.ts": lines("a") });
+		const { harness, input, run: first } = await checks(base, head);
+		const installed = (digest: string, identified: boolean) =>
+			vi
+				.spyOn(codeVersion, "melianInstall")
+				.mockReturnValue({ digest, identified } as unknown as ReturnType<typeof codeVersion.melianInstall>);
+
+		installed("f".repeat(64), true);
+		const moved = await runChecks(harness, input, context);
+		expect(moved.identity.policy).not.toBe(first.identity.policy);
+		expect(moved.identity.task).not.toBe(first.identity.task);
+		expect((await runChecks(harness, input, context)).identity).toEqual(moved.identity);
+
+		installed("f".repeat(64), false);
+		const unidentified = await runChecks(harness, input, context);
+		const again = await runChecks(harness, input, context);
+		expect(again.identity.policy).toBe(unidentified.identity.policy);
+		expect(again.identity.task).not.toBe(unidentified.identity.task);
 	});
 
 	it("attaches to a mutation run only under the LANG it ran with, and to any other run under any LANG", {

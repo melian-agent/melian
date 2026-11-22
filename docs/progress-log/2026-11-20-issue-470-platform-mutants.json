@@ -1,0 +1,478 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "b855f3465acf6123448fa4218545833bc0db02cb",
+    "head": "dfe3b4c73f02924293cdad9b115990a7eb22c58c"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 6,
+      "endLine": 66,
+      "endColumn": 93,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "66ea77ab9fa56ff519ca8ea05306e63f15d83a6c738815c9c9e42c970d6bbc49",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 6,
+      "endLine": 66,
+      "endColumn": 93,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "aa1fb71cbb449285423792e8dbfe2852a4332486ab1d52542e072692e4d5ebf2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, pinned exactly, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 6,
+      "endLine": 66,
+      "endColumn": 93,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.os !== undefined || manifest.cpu !== undefined || range === manifest.version",
+      "status": "generated",
+      "id": "43f33b59dcdc119e8d861e2152ff57770ed8cf05f2ec299ee5cfd011ff662e2f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "keys a platform build its parent names by a range, since the parent's version does not fix it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 7,
+      "endLine": 66,
+      "endColumn": 62,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e1ec455882d3798348ab41807b1e5559652939af876a32f095aacd520b047f4e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "keys a package its parent pins exactly when it names no platform"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 7,
+      "endLine": 66,
+      "endColumn": 62,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.os !== undefined && manifest.cpu !== undefined",
+      "status": "generated",
+      "id": "b9c15a48f1611fc571ec120ed77a52c469ac6c63c865c35760171a56a42eac0e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, pinned exactly, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 7,
+      "endLine": 66,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "df14cf8ca8e23f868b727f67c1cf671a0074d599440c08035c5ed8a1abd1903c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, pinned exactly, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 7,
+      "endLine": 66,
+      "endColumn": 32,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest.os === undefined",
+      "status": "generated",
+      "id": "6c49076127e85045d639c6e9b5ec549c6e8438b2e4af5d519967701f7dd758bb",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "keys a package its parent pins exactly when it names no platform"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 36,
+      "endLine": 66,
+      "endColumn": 62,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "1e8d6f110a601315735362a56b8eb8ded31fd66bca1ecb9a1ae5ba5611210ff3",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares cpu, pinned exactly, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 36,
+      "endLine": 66,
+      "endColumn": 62,
+      "mutatorName": "EqualityOperator",
+      "replacement": "manifest.cpu === undefined",
+      "status": "generated",
+      "id": "f0c3bc4dd2946ba57627b9d834f03d8e97b714545f60117f475c9aa192d03115",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "keys a package its parent pins exactly when it names no platform"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 67,
+      "endLine": 66,
+      "endColumn": 93,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "3a67d75fabcd1c3f6598618589838c65412370e8ad22edaf092955cc66eaed38",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "keys a platform build its parent names by a range, since the parent's version does not fix it"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 66,
+      "column": 67,
+      "endLine": 66,
+      "endColumn": 93,
+      "mutatorName": "EqualityOperator",
+      "replacement": "range !== manifest.version",
+      "status": "generated",
+      "id": "7bba76bf6deec6c4f3deb12fdaaf56959419664de1debf37f557e8e0a53ec6d9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a package whose manifest declares os, pinned exactly, and what it needs"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 71,
+      "column": 51,
+      "endLine": 71,
+      "endColumn": 86,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.optionalDependencies && {}",
+      "status": "generated",
+      "id": "2eaecb8f7d03c27b7824346b6e4080516ab4f158e192d967087f494e76a17245",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "walks an optional dependency that is installed"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 72,
+      "column": 25,
+      "endLine": 72,
+      "endColumn": 44,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "3441ba30812d91ed02175c85e0764f165238f282fc9152b1553b7c0fb00d4bdd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out an optional dependency that is not installed, as npm leaves out one its platform refuses"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 72,
+      "column": 26,
+      "endLine": 72,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b57b0adf15d5f7bbd8cb45d62c2db85b99a035ad4ef83f71ea72ae00d0dd92f9"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 73,
+      "column": 51,
+      "endLine": 73,
+      "endColumn": 82,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.peerDependencies && {}",
+      "status": "generated",
+      "id": "0b4ceb40c240e671cea169ba81c31b5cfb7dab926cb0465406b1bc97f993dcda",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a declared peer that is not installed, and the release that wants it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 74,
+      "column": 25,
+      "endLine": 74,
+      "endColumn": 40,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "042ce52daa047b7d1c219524b59b015f60cb4c0d5a28e4d530344e03f677e1e5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "records a declared peer that is not installed, and the release that wants it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 74,
+      "column": 26,
+      "endLine": 74,
+      "endColumn": 32,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3b9c2895466d6fe6296f5365f1b4931001b4cf02aaf1fe12eddd2cf6acb32f28"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 75,
+      "column": 51,
+      "endLine": 75,
+      "endColumn": 78,
+      "mutatorName": "LogicalOperator",
+      "replacement": "manifest.dependencies && {}",
+      "status": "generated",
+      "id": "57ddb1b631a32264cf6417737d9d28dff607a487e2852806caf97f93a50147fd",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 76,
+      "column": 25,
+      "endLine": 76,
+      "endColumn": 44,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "7b2434340771189898e1790fd1f227f6783488b0c3d82e1db7ae8f334d6d5c31",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "leaves out a platform build its parent requires at its exact version"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 76,
+      "column": 26,
+      "endLine": 76,
+      "endColumn": 36,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "70c1d204f4bd7f8287e0c2c047a0211a718bd4667069563b84ac99f85994d6a5"
+    },
+    {
+      "file": "packages/pipeline/src/installed-packages.ts",
+      "line": 77,
+      "column": 50,
+      "endLine": 77,
+      "endColumn": 92,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "b45874ae17e573a44556fdb28169cf68967239c663209b845c1171927d3da400",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/installed-packages.test.ts",
+          "path": [
+            "installedPackages",
+            "lists each root and every package beneath it, as name@version, sorted"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 21,
+  "omitted": 0,
+  "unmutated": []
+}

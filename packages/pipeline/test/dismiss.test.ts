@@ -40,6 +40,7 @@ import {
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AdjudicationTask, type AdjudicationTaskInput } from "../src/adjudication.ts";
+import * as codeVersionModule from "../src/code-version.ts";
 import { ComparisonDocument } from "../src/compare.ts";
 import { configsFor } from "../src/configurations.ts";
 import { FindingsDocument } from "../src/findings.ts";
@@ -959,6 +960,67 @@ describe("recording a dismissal", () => {
 		expect(again.finding.properties.pastDismissals).toBeUndefined();
 		expect(again.verdict).toEqual(first.verdict);
 		expect(await adjudicationTask(harness)).toBe(task);
+	});
+
+	it("adjudicates the same dismissal again when its earlier adjudication was aborted", async () => {
+		const path = join(dir, "changeset.sqlite");
+		const first = await reviewHarness(await openSqliteStorage(path));
+		scriptFinding();
+		const id = (await reviewed(first)).findings[0]!.properties.id;
+		await dismissCutShort(first, id);
+		await first.close(context);
+		// Nothing resumes the reopened harness's scheduler before the abort, so the pending adjudication never runs.
+		const harness = await reviewHarness(await openSqliteStorage(path));
+		const aborted = (await adjudicationTask(harness))!;
+		await harness.abortTask(aborted as TaskId, context);
+		expect((await harness.waitForTask(aborted as TaskId, context)).state.outcome.status).toBe("aborted");
+		await dismiss(harness, id);
+		expect(await adjudicationTask(harness)).not.toBe(aborted);
+	});
+
+	it("adjudicates the same dismissal again on an install Melian cannot identify, though its key is the same", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		await dismiss(harness, id);
+		const task = await adjudicationTask(harness);
+		const { digest } = codeVersionModule.melianInstall();
+		const unidentified = vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest,
+			identified: false,
+			outside: ["node_modules/yaml"],
+			entries: [],
+		} as never);
+		try {
+			await dismiss(harness, id);
+			expect(await adjudicationTask(harness)).not.toBe(task);
+		} finally {
+			unidentified.mockRestore();
+		}
+	});
+
+	it("adjudicates the same dismissal again on an install Melian identifies, after one on an install it cannot", async () => {
+		const harness = await reviewHarness(createMemoryStorage());
+		scriptFinding();
+		const id = (await reviewed(harness)).findings[0]!.properties.id;
+		const { digest } = codeVersionModule.melianInstall();
+		const install = (identified: boolean) =>
+			vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+				digest,
+				identified,
+				outside: identified ? [] : ["node_modules/yaml"],
+				entries: [],
+			} as never);
+		try {
+			install(false);
+			await dismiss(harness, id);
+			const task = await adjudicationTask(harness);
+			install(true);
+			await dismiss(harness, id);
+			expect(await adjudicationTask(harness)).not.toBe(task);
+		} finally {
+			vi.restoreAllMocks();
+		}
 	});
 
 	it("refuses comparison writes after a cut-short dismissal until its adjudication records", async () => {

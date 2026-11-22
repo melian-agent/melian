@@ -33,7 +33,7 @@
 		"test": "vitest --run --root ../.. --passWithNoTests packages/state-git/"
 	},
 	"dependencies": {
-		"@melian-agent/core": "*"
+		"@melian-agent/core": "0.0.0"
 	},
 	"engines": {
 		"node": ">=22.19.0"

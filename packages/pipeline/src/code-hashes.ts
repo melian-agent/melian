@@ -134,7 +134,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/decisions/src/recorded.ts": "825e8ee8644d8a7a2f5850ad335db0d181cb0dea136e417870753380f4b2446a",
 
-	"packages/pipeline/src/adjudication.ts": "a17cde987fed27cfa98e489d7c3d0cf467e44d098cd21272862f172cf7714c66",
+	"packages/pipeline/src/adjudication.ts": "8fb568862c9ec32a38a55eceacb8039c8e0bf582376dada0ea8a4d8545239054",
 
 	"packages/pipeline/src/cache-scratch.ts": "525ebcf4936524e650601977391088828a7e06fd8eb6efc87544e49e6af6ee1d",
 
@@ -142,11 +142,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/caveats.ts": "d99cc92e5c6e7a74a9d422c437715859674e83bbf744a517a931fc7a8f92908e",
 
-	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
+	"packages/pipeline/src/check-request.ts": "84f83b4cd46117352264b10e14cdf30cc020036977294d547a9743955c98b259",
 
-	"packages/pipeline/src/checks.ts": "2556a57125683ebf45792239b695d1320e992a05f713f1073a0875e33311e88e",
+	"packages/pipeline/src/checks.ts": "387328e3315d23fc51fbf27a405081c6a97ee4657bbd86de694f587def7a3768",
 
-	"packages/pipeline/src/code-version.ts": "edbe76b8e42f481009ebfd59f80b65c5bef3d7c55e27f8f159500c5cd12890f2",
+	"packages/pipeline/src/code-version.ts": "33d7bb4753e279e20fdcad6423862597632b389fe1b7b33a6f38615a202f1cff",
 
 	"packages/pipeline/src/compare.ts": "99e347ec6633b9f161c160176402fbe9478b42878188cd9bb5b961a510195e97",
 
@@ -168,7 +168,9 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/graph-memo.ts": "a5406d7a8eb458d756ea496c032a71fe524f0b712ad0320a1cd3e76192d5f6ac",
 
-	"packages/pipeline/src/harness.ts": "e8a4aaf7f4901f9d79afc9a7b61e0868c76469ab3d5e3968467eac241f04a22f",
+	"packages/pipeline/src/harness.ts": "26af0c737cb88716edd3b7ff331dda2ab7ab46a8cf565ec491ea8c065dc56e16",
+
+	"packages/pipeline/src/installed-packages.ts": "c627751005e2a66e48909f2b3de55ebc5a5ff9a3d183be44b58e7ff83e3698a5",
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 
@@ -182,7 +184,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/mutation-cache.ts": "c208a31f4ad499026b86c7b3a6a1d581b2b7cdee96a28c505d2cd00ccaf5e78c",
 
-	"packages/pipeline/src/mutation-enumeration.ts": "8d852ff43da9fea610625f19173766530a51c0f3d03aa632638950461b0189a1",
+	"packages/pipeline/src/mutation-enumeration.ts": "21e8c4c4b62c4099311a04cd31f845aa70253195e735651182bf88aff4dd5a63",
 
 	"packages/pipeline/src/mutation-paths.ts": "b424ac4fbf34dba786bed82c85c88208589ad446a4b2e9a595ab764cbe10a8b4",
 
@@ -407,6 +409,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/graph-memo.ts",
 
 		"packages/pipeline/src/harness.ts",
+
+		"packages/pipeline/src/installed-packages.ts",
 
 		"packages/pipeline/src/installed-version.ts",
 
@@ -633,6 +637,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/graph-memo.ts",
 
 		"packages/pipeline/src/harness.ts",
+
+		"packages/pipeline/src/installed-packages.ts",
 
 		"packages/pipeline/src/installed-version.ts",
 

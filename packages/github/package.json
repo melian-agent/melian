@@ -42,10 +42,10 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@melian-agent/core": "*",
+		"@melian-agent/core": "0.0.0",
 		"@octokit/rest": "22.0.1"
 	},
 	"devDependencies": {
-		"@melian-agent/pipeline": "*"
+		"@melian-agent/pipeline": "0.0.0"
 	}
 }
