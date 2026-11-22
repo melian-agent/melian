@@ -396,18 +396,24 @@ describe("TierAccount", () => {
 			expect(account.meetsFloor("contracts", undefined)).toBe(false);
 		});
 
-		it("names the highest floor of a lens's variants, and none for a lens no path selects", () => {
-			const account = of(
-				{ name: "correctness", covers: ["src/user.ts"], band: careful },
-				{ name: "correctness", covers: ["lib/user.ts"], band: quickFloor },
-				{ name: "contracts", covers: ["src/user.ts"], band: skipFloor },
-			);
-			expect([account.floor("correctness"), account.floor("contracts"), account.floor("security")]).toEqual([
-				"careful",
-				"skip",
-				undefined,
-			]);
-		});
+		it.each([
+			["after", [careful, quickFloor]],
+			["before", [quickFloor, careful]],
+		])(
+			"names the highest floor of a lens's variants, listed %s the lower, and none for a lens no path selects",
+			(_, bands) => {
+				const account = of(
+					{ name: "correctness", covers: ["src/user.ts"], band: bands[0]! },
+					{ name: "correctness", covers: ["lib/user.ts"], band: bands[1]! },
+					{ name: "contracts", covers: ["src/user.ts"], band: skipFloor },
+				);
+				expect([account.floor("correctness"), account.floor("contracts"), account.floor("security")]).toEqual([
+					"careful",
+					"skip",
+					undefined,
+				]);
+			},
+		);
 
 		it("reads only the named lens's floor", () => {
 			const account = of(

@@ -906,8 +906,28 @@ describe("the merge gate's forged rounds", () => {
 	it("takes the coverage of a second round whose verifier ran, beside one whose verifier failed", async () => {
 		const store = exported();
 		const broken = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "the request was malformed" });
+		// The second round's verifier judges and refutes its finding, so that round's account names the verifier.
+		const refutes = (messages: readonly Message[]) =>
+			messages.some((message) => message.role === "toolResult")
+				? fauxAssistantMessage("Done.")
+				: fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "yes", base: "no" },
+							verdict: "refuted",
+							reason: "A guard prevents it.",
+							evidence: [{ file: "src/a.ts", line: 1, role: "context" }],
+						}),
+						{ stopReason: "toolUse" },
+					);
 		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
-		await review(store, "main...feature");
+		const second = await review(store, "main...feature", blocks(), checks, config, [
+			refutes,
+			refutes,
+			refutes,
+			refutes,
+		]);
+		expect((second.verdict.ran ?? []).map(({ name }) => name)).toContain("verifier");
 		const outcome = await gate(await listed(store));
 		expect(outcome.verdict.notRun).toEqual([]);
 		expect(outcome.rounds.map(({ covers }) => covers)).toEqual(
@@ -960,6 +980,23 @@ describe("the merge gate's forged rounds", () => {
 		expect(outcome.verdict.notRun.map(({ name, reason }) => [name, reason])).toEqual([["lens.contracts", said]]);
 		const rendered = outcome.verdict.render(new Rendering({ color: false, emoji: false, ids: true, decided: true }));
 		expect(rendered).toContain(`lens.contracts  skipped: ${said}`);
+	});
+
+	it("names the first round that ran a lens below its floor, when two did", async () => {
+		const store = exported();
+		await review(store, "main...feature");
+		await review(store, "main...feature", reportsEach(finding("src/a.ts", "P3")));
+		writeFileSync(join(repo, "melian.yaml"), "lenses:\n  contracts:\n    level: { floor: deep }\n");
+		const outcome = await gate(await listed(store));
+		expect(outcome.rounds).toHaveLength(2);
+		const [first] = outcome.rounds;
+
+		expect(outcome.verdict.notRun.map(({ name, reason }) => [name, reason])).toEqual([
+			[
+				"lens.contracts",
+				`round ${first!.id} ran it at careful, below the floor of deep the base tip sets for it now, so a new round must run it at that floor`,
+			],
+		]);
 	});
 
 	it("takes the coverage of a lens that ran at the floor the base tip sets for it", async () => {
