@@ -7,6 +7,7 @@ import {
 	LevelBand,
 	MemoryRecordStore,
 	pullRequestChangesetId,
+	recordLimit,
 	reviewPayloads,
 	SharedRecord,
 	TierAccount,
@@ -565,6 +566,10 @@ describe("RelayBatch", () => {
 		]);
 	}, 120_000);
 
+	it("bounds a file at the store's record limit, so it hands over any record a store keeps", () => {
+		expect(relayLimits.fileBytes).toBe(recordLimit);
+	});
+
 	it("takes a file at its byte bound, and refuses one byte more", async () => {
 		const path = `changesets/${changeset}/check/${"0".repeat(64)}/${"1".repeat(64)}.json`;
 		const at = await artefact();
@@ -572,6 +577,10 @@ describe("RelayBatch", () => {
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("invalidRecord");
 		await plant(at, path, Buffer.alloc(relayLimits.fileBytes + 1, 0x20));
 		expect((await refusal(RelayBatch.read(at, writer))).code).toBe("fileTooLarge");
+	});
+
+	it("bounds a batch at two of the store's records: one full record and as much again for the rest", () => {
+		expect(relayLimits.bytes).toBe(2 * recordLimit);
 	});
 
 	it("takes a batch at its byte bound, and refuses one byte more", async () => {

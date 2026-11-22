@@ -1939,6 +1939,23 @@ export class Finding {
 		}) as ResolvedFinding;
 	}
 
+	/**
+	 * This finding with its detail left out for `note`: What becomes its headline, unless its What is the shorter in
+	 * UTF-8 bytes, `note` stands as Why here, and What to do is kept. Nothing its ID, severity, resolution or place comes
+	 * from changes.
+	 */
+	abridged(note: string): Finding {
+		const { explanation } = this.properties;
+		const what =
+			Buffer.byteLength(explanation.what) < Buffer.byteLength(this.message.text)
+				? explanation.what
+				: this.message.text;
+		return Finding.parse({
+			...this.toJSON(),
+			properties: { ...this.properties, explanation: { ...explanation, what, whyHere: note } },
+		});
+	}
+
 	/** The finding as it is stored: a SARIF result, its fields in their stored order. */
 	toJSON(): StoredFinding {
 		const { ruleId, level, message, partialFingerprints, locations, properties } = this;

@@ -33,6 +33,7 @@ import {
 	type ModelRoute,
 	ModelRoutingError,
 	parseModelReference,
+	type RecordEnvelope,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -40,6 +41,7 @@ import {
 	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
+	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
@@ -81,7 +83,7 @@ import {
 	readRecordedDecision,
 } from "./decisions.ts";
 import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
-import { ReviewError } from "./errors.ts";
+import { DismissError, ReviewError, type UnsharedCode } from "./errors.ts";
 import {
 	clearSightings,
 	clearVerifications,
@@ -113,6 +115,7 @@ import {
 	defineTask,
 	type Harness,
 	holdsWork,
+	isContentRefusal,
 	isFailoverError,
 	type JsonObject,
 	openHarness,
@@ -330,6 +333,8 @@ type LensOutcome =
 			readonly status: "done";
 			// The model the lens finished on, after any failover; absent from an outcome an older Melian stored.
 			readonly model?: string;
+			// The models whose content filter refused the lens's conversation before `model` answered.
+			readonly refused?: readonly string[];
 			readonly budgetEnded?: StoredBudgetEnd;
 			// The findings budget, when a report past it was refused.
 			readonly capped?: number;
@@ -346,8 +351,29 @@ type LensOutcome =
 			// The task that asked this run, when this task copied it rather than ask it again.
 			readonly reused?: number;
 	  }
-	| { readonly status: "unanswered"; readonly reason: string }
-	| { readonly status: "exhausted"; readonly tried: string[]; readonly reason: string };
+	| {
+			readonly status: "unanswered";
+			readonly reason: string;
+			// The models whose content filter refused the conversation before it failed.
+			readonly refused?: readonly string[];
+			readonly planner?: PlannerRefusal;
+	  }
+	| {
+			readonly status: "exhausted";
+			readonly tried: string[];
+			readonly reason: string;
+			// The models of `tried` whose content filter refused the conversation.
+			readonly refused?: readonly string[];
+			readonly planner?: PlannerRefusal;
+	  };
+
+// On a probing run that failed after its planner finished, the models that refused the planner and the one that answered.
+type PlannerRefusal = { readonly refused: readonly string[]; readonly model: string };
+
+// A conversation's end: on `done`, the model that answered, its place in the route, and the models that refused before.
+type Conversed =
+	| { readonly status: "done"; readonly model: string; readonly attempt: number; readonly refused?: readonly string[] }
+	| Exclude<LensOutcome, { status: "done" }>;
 
 // What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
 // the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
@@ -392,6 +418,8 @@ type ProbeGapReason = { readonly cause: ProbeGapCause; readonly reason: string }
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
+	// The models whose content filter refused the prober's conversation before `model` answered.
+	readonly refused?: readonly string[];
 	readonly attacks: number;
 	readonly probes: number;
 	readonly milliseconds: number;
@@ -616,67 +644,101 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 			const rule = input.escalateAt === undefined ? undefined : new EscalationRule(input.escalateAt);
 			const revision = Revision.key(input.revision);
 			// One conversation of a run on `route`, from the attempt a crash left it at under `key`. A request ID per
-			// attempt: a rerun after a crash finds the attempt it had reached, settled or not.
+			// attempt: a rerun after a crash finds the attempt it had reached, settled or not. A reminder starts on the model
+			// that answered, at `from`, under its own request ID and attempt count, and carries the refusals before it.
 			const converse = async (
 				key: string,
 				route: readonly ModelReference[],
 				id: ConversationId,
 				prompt: string,
-			): Promise<{ readonly status: "done"; readonly model: string } | Exclude<LensOutcome, { status: "done" }>> => {
+				reminder?: { readonly requestId: string; readonly from: number; readonly refused?: readonly string[] },
+			): Promise<Conversed> => {
 				const child = (await runtime.conversation(id, context))!;
-				for (let attempt = started.attempts[key] ?? 0; ; attempt++) {
+				const first = reminder?.from ?? 0;
+				const requestOf = (attempt: number) =>
+					reminder === undefined
+						? `lens:${key}:${attempt}`
+						: attempt === first
+							? reminder.requestId
+							: `${reminder.requestId}:${attempt}`;
+				const counter = reminder?.requestId ?? key;
+				// The models before `attempt` whose content filter refused this conversation, read from each attempt's settled
+				// submission, so a resume after a crash names the refusals of attempts it did not see.
+				const refusedBefore = async (attempt: number) => {
+					const refused = [...(reminder?.refused ?? [])];
+					await runtime.commit(async (tx) => {
+						for (let at = first; at < attempt; at++) {
+							const settled = await tx.submissionByRequest(id, requestOf(at));
+							if (settled?.reason === "model_error" && isContentRefusal(unsettled(settled)))
+								refused.push(modelName(route[at]!));
+						}
+						return undefined;
+					}, context);
+					return refused.length === 0 ? {} : { refused };
+				};
+				for (let attempt = started.attempts[counter] ?? first; ; attempt++) {
 					// A task a later review replaced asks no model again, even when a resume restarts it.
 					if (await superseded(runtime, input, runtime.taskId, context)) {
 						return { status: "unanswered", reason: "a later review of this revision replaced this run" };
 					}
 					const content =
-						attempt === 0
+						attempt === first
 							? prompt
 							: (await holdsWork(runtime, id, context))
 								? handoverWording.continue
 								: handoverWording.fresh;
-					const request = { type: "input", content, requestId: `lens:${key}:${attempt}` } as const;
+					const request = { type: "input", content, requestId: requestOf(attempt) } as const;
 					const settled = await (await child.submit(request, context)).wait(context);
-					if (settled.status === "done") return { status: "done", model: modelName(route[attempt]!) };
+					if (settled.status === "done")
+						return {
+							status: "done",
+							model: modelName(route[attempt]!),
+							attempt,
+							...(await refusedBefore(attempt)),
+						};
 					const reason = unsettled(settled);
 					const failover =
 						settled.reason === "no_model" || (settled.reason === "model_error" && isFailoverError(reason));
-					if (!failover) return { status: "unanswered", reason };
+					if (!failover) return { status: "unanswered", reason, ...(await refusedBefore(attempt)) };
 					const next = route[attempt + 1];
 					if (next === undefined) {
 						const tried = route.slice(0, attempt + 1).map(modelName);
-						return { status: "exhausted", tried, reason };
+						return { status: "exhausted", tried, reason, ...(await refusedBefore(attempt + 1)) };
 					}
 					await runtime.commit(async (tx, current) => {
 						await configure(tx, id, { model: next });
 						const checkpoint = current.state.checkpoint as ReviewCheckpoint;
 						return {
 							status: "running",
-							checkpoint: { ...checkpoint, attempts: { ...checkpoint.attempts, [key]: attempt + 1 } },
+							checkpoint: { ...checkpoint, attempts: { ...checkpoint.attempts, [counter]: attempt + 1 } },
 						};
 					}, context);
 				}
 			};
-			// One more input to a conversation that finished without what its role owes, under a request ID of its own. A
-			// reminder that does not finish ends the lens, so what its conversation did before it failed never stands as done.
-			// One already submitted is waited on even when no longer owed, since before a crash it may have recorded what was.
+			// One more input to a conversation that `answered`, without what its role owes, under a request ID of its own. It
+			// moves along the route as the conversation did. A reminder that does not finish ends the lens, so what its
+			// conversation did before it failed never stands as done. One already submitted is waited on even when no longer
+			// owed, since before a crash it may have recorded what was.
 			const remind = async (
+				key: string,
+				route: readonly ModelReference[],
 				id: ConversationId,
 				content: string,
 				requestId: string,
 				which: string,
 				owed: boolean,
-			): Promise<Exclude<LensOutcome, { status: "done" }> | undefined> => {
+				answered: Extract<Conversed, { status: "done" }>,
+			): Promise<Conversed> => {
 				let submitted = false;
 				await runtime.commit(async (tx) => {
 					submitted = (await tx.submissionByRequest(id, requestId)) !== undefined;
 					return undefined;
 				}, context);
-				if (!owed && !submitted) return undefined;
-				const child = (await runtime.conversation(id, context))!;
-				const settled = await (await child.submit({ type: "input", content, requestId }, context)).wait(context);
-				if (settled.status === "done") return undefined;
-				return { status: "unanswered", reason: `${which} did not finish: ${unsettled(settled)}` };
+				if (!owed && !submitted) return answered;
+				const { attempt: from, refused } = answered;
+				const reminded = await converse(key, route, id, content, { requestId, from, refused });
+				if (reminded.status !== "unanswered") return reminded;
+				return { ...reminded, reason: `${which} did not finish: ${reminded.reason}` };
 			};
 			// The attack numbers the prober answered with neither a probe nor a skip.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
@@ -693,17 +755,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				planner: ConversationId,
 				carried: string | undefined,
 			): Promise<ProbingOutcome | Exclude<LensOutcome, { status: "done" }>> => {
-				const planOf = async () => (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
-				let plan = await planOf();
-				const failed = await remind(
-					planner,
-					recordPlanPrompt(lens.probe?.probesAs ?? lens.name),
-					`lens:${lens.key}:plan`,
-					"the planner's reminder",
-					plan === undefined && (await budgetEnded(runtime, planner, context)) === undefined,
-				);
-				if (failed !== undefined) return failed;
-				plan = await planOf();
+				let plan = (await runtime.snapshot(ProbingDocument, planner, context))?.plan;
 				if (plan === undefined) {
 					const ended = await budgetEnded(runtime, planner, context);
 					const reason =
@@ -738,7 +790,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				}
 				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
-				const answered = await converse(
+				let answered = await converse(
 					key,
 					lens.probe!.route,
 					prober!,
@@ -746,20 +798,24 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				);
 				if (answered.status !== "done") return answered;
 				let open = await unanswered(prober!, plan.length);
-				const unfinished = await remind(
+				answered = await remind(
+					key,
+					lens.probe!.route,
 					prober!,
 					answerPrompt(open),
 					`lens:${key}:answer`,
 					"the prober's reminder",
 					open.length > 0 && (await budgetEnded(runtime, prober!, context)) === undefined,
+					answered,
 				);
-				if (unfinished !== undefined) return unfinished;
+				if (answered.status !== "done") return answered;
 				open = await unanswered(prober!, plan.length);
 				const state = (await runtime.snapshot(ProbingDocument, prober!, context)) ?? {};
 				const probes = Object.values(state.probes ?? {});
 				return {
 					prober: prober!,
 					model: answered.model,
+					...(answered.refused === undefined ? {} : { refused: answered.refused }),
 					attacks: plan.length,
 					probes: probes.length,
 					milliseconds: probes.reduce((sum, each) => sum + each.milliseconds, 0),
@@ -777,10 +833,27 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				prompt: string,
 				carried?: string,
 			): Promise<LensOutcome> => {
-				const planned = await converse(lens.key, lens.route, id, prompt);
+				let planned = await converse(lens.key, lens.route, id, prompt);
 				if (planned.status !== "done") return planned;
+				if (lens.probe !== undefined) {
+					const plan = (await runtime.snapshot(ProbingDocument, id, context))?.plan;
+					planned = await remind(
+						lens.key,
+						lens.route,
+						id,
+						recordPlanPrompt(lens.probe.probesAs ?? lens.name),
+						`lens:${lens.key}:plan`,
+						"the planner's reminder",
+						plan === undefined && (await budgetEnded(runtime, id, context)) === undefined,
+						planned,
+					);
+					if (planned.status !== "done") return planned;
+				}
 				const probed = lens.probe === undefined ? undefined : await probe(lens, id, carried);
-				if (probed !== undefined && "status" in probed) return probed;
+				if (probed !== undefined && "status" in probed)
+					return planned.refused === undefined
+						? probed
+						: { ...probed, planner: { refused: planned.refused, model: planned.model } };
 				const conversations = [id, ...(probed?.prober === undefined ? [] : [probed.prober])];
 				let ended: StoredBudgetEnd | undefined;
 				let refused: number | undefined;
@@ -802,6 +875,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				return {
 					status: "done",
 					model: planned.model,
+					...(planned.refused === undefined ? {} : { refused: planned.refused }),
 					usage,
 					...(ended === undefined ? {} : { budgetEnded: ended }),
 					...(capped === undefined ? {} : { capped }),
@@ -1062,10 +1136,13 @@ export class ReviewHarness {
 					(checkpoint as LensCheckpoint | undefined)?.phase === "review"
 						? (checkpoint as ReviewCheckpoint)
 						: undefined;
-				// A probing run's prober counts too, from its own attempt.
+				// A probing run's prober counts too, from its own attempt. A reminder's counter, once it has one, is where its
+				// conversation is, since the conversation it follows has finished.
+				const from = (key: string, reminder: string) =>
+					started?.attempts[`lens:${key}:${reminder}`] ?? started?.attempts[key] ?? 0;
 				const remaining = (run: LensRun) => [
-					...run.route.slice(started?.attempts[run.key] ?? 0),
-					...(run.probe?.route.slice(started?.attempts[`${run.key}/prober`] ?? 0) ?? []),
+					...run.route.slice(from(run.key, "plan")),
+					...(run.probe?.route.slice(from(`${run.key}/prober`, "answer")) ?? []),
 				];
 				// A copied lens asks no model.
 				return input.lenses.flatMap((first) => {
@@ -1483,7 +1560,12 @@ export interface Review {
 	readonly verdict: Verdict;
 	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, and the code that says why; empty when it left none out. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
+
+/** A dismissal a review's record export left out: the finding's ID and the {@link DismissError} code that refused it. */
+export type UnsharedDismissal = { readonly finding: string; readonly code: UnsharedCode };
 
 // Why a conversation's request ended without finishing: the model's own message where it gave one.
 function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
@@ -2145,7 +2227,14 @@ function lensRecord(
 	const name = `lens.${lens.name}`;
 	const { level } = lens;
 	const probing = outcome?.status === "done" ? outcome.probing : undefined;
-	const notes = probing === undefined ? given : [...given, probingNote(probing)];
+	const refusals =
+		outcome?.status === "done"
+			? [
+					...refusalNote("", outcome.refused, outcome.model),
+					...refusalNote("for its prober, ", probing?.refused, probing?.model),
+				]
+			: refusalNote("for its planner, ", outcome?.planner?.refused, outcome?.planner?.model);
+	const notes = [...given, ...refusals, ...(probing === undefined ? [] : [probingNote(probing)])];
 	const noted = notes.length === 0 ? {} : { reason: notes.join("; ") };
 	const failed = (why: string) => [why, ...notes].join("; ");
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
@@ -2185,10 +2274,42 @@ function lensRecord(
 	}
 	if (outcome?.status === "exhausted") {
 		const error = `tried ${outcome.tried.join(", ")}; the last said: ${outcome.reason}`;
-		return { name, status: "failed", level, reason: failed("every model of its tier failed"), error };
+		const refused = outcome.refused ?? [];
+		const why =
+			refused.length === outcome.tried.length
+				? `every model of its tier refused the content: ${refused.join(", ")}`
+				: ["every model of its tier failed", ...refusedNote(refused)].join("; ");
+		return { name, status: "failed", level, reason: failed(why), error };
 	}
 	const error = outcome?.reason ?? "no outcome";
-	return { name, status: "failed", level, reason: failed("the lens did not finish"), error };
+	const why = ["the lens did not finish", ...refusedNote(outcome?.refused ?? [])].join("; ");
+	return { name, status: "failed", level, reason: failed(why), error };
+}
+
+// What a failed lens's record says of the models whose content filter refused it.
+function refusedNote(refused: readonly string[]): string[] {
+	return refused.length === 0 ? [] : [`${refused.join(", ")} refused the content`];
+}
+
+// What a lens record says of the models whose content filter refused a conversation, `whose` naming the conversation.
+function refusalNote(whose: string, refused: readonly string[] | undefined, model: string | undefined): string[] {
+	return refused === undefined || model === undefined
+		? []
+		: [`${whose}${refused.join(", ")} refused the content, so ${model} answered`];
+}
+
+// The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
+// before, and every held round of another revision that no such round names, so a round keeps the store's chain,
+// another host's rounds since this host's own included.
+function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
+	const rounds = held
+		.filter((each) => each.kind === "round" && each.revision !== reviewed)
+		.map((each) => SharedRecord.parse(each, reviewPayloads));
+	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
+	return rounds
+		.filter(({ id, revision }) => revision === previous || !named.has(id))
+		.map(({ id }) => id)
+		.sort();
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
@@ -2457,6 +2578,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const run = checked ?? request.checkRun;
 	const options = planned({ ...request, checkRun: undefined, checks: run?.records ?? supplied ?? [] });
 	const { changeset, config, standards, models } = options;
+	// The one listing the review fills each dismissal's `supersedes` from, in verification and export alike; a store
+	// that cannot be listed fails the review, as a failed export does.
+	const held = request.records === undefined ? [] : await request.records.list(changeset.id);
 	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
 	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
 	spans.step("standards.trust");
@@ -3070,7 +3194,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(restatement === undefined
 					? {}
 					: {
-							dismissed: restatement.dismissed,
+							dismissed: restatement.dismissed.map((each) => ({
+								...each,
+								record: predecessors.recordOf(changeset.id, each.id, held),
+							})),
 							dismissals: Object.fromEntries(
 								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
 							),
@@ -3292,24 +3419,31 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
+		const dismissals: SharedRecord[] = [];
+		const unsharedDismissals: UnsharedDismissal[] = [];
+		// A dismissal's record is written once: a store that holds it already gets nothing again.
+		const stored = new Set(held.map((each) => SharedRecord.parseEnvelope(each).id));
+		for (const id of state === undefined ? [] : Object.keys(state.items)) {
+			try {
+				const record = records.dismissalOf(state!, id, held, proof);
+				if (record !== undefined && !stored.has(record.id)) dismissals.push(record);
+			} catch (error) {
+				if (!(error instanceof DismissError) || (error.code !== "unprovenRun" && error.code !== "madeWithoutStore"))
+					throw error;
+				unsharedDismissals.push({ finding: id, code: error.code });
+			}
+		}
 		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
-		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
-		// issue #395 data it had to distrust.
-		const round = records.round(
-			read,
-			walkthrough,
-			[],
-			previous === undefined
-				? []
-				: stored
-						.filter((each) => each.kind === "round" && each.revision === previous)
-						.map((each) => SharedRecord.parseEnvelope(each).id),
-		);
+		// issue #395 data it had to distrust. `before` names only rounds of the one listing `held`, which this writer read.
+		const round = records.round(read, walkthrough, [], predecessors(held, reviewed, previous));
 		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
+				record.toJSON(),
+			),
 		);
+		return unsharedDismissals;
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
 	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
@@ -3558,7 +3692,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	let verificationCheck: CheckRecord | undefined;
 	// The verification task's request key and the outcomes it reached, which its record carries.
-	let verified: { key: string; result: VerificationResult } | undefined;
+	let verified:
+		| { key: string; result: VerificationResult; dismissals: { finding: string; record: string }[] }
+		| undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
@@ -3670,7 +3806,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
 				// The index names the request key the task attached under, which its record is keyed by.
 				const attachedAs = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
-				if (attachedAs?.task === verifying) verified = { key: attachedAs.input, result: results };
+				if (attachedAs?.task === verifying) {
+					// The dismissals the task's verifier was shown, each once; a task version 4 stored names no record.
+					const shown = new Map(
+						(
+							(await harness.getTask(verifying, context))!.input as unknown as VerificationInput
+						).candidates.flatMap((candidate) =>
+							(candidate.dismissed ?? []).flatMap(({ id, record }) =>
+								record === undefined ? [] : [[id, record] as const],
+							),
+						),
+					);
+					verified = {
+						key: attachedAs.input,
+						result: results,
+						dismissals: [...shown].map(([finding, record]) => ({ finding, record })),
+					};
+				}
 				const ended = Object.values(results).find((result) => result.status === "ended");
 				const failed = candidates
 					.map((candidate) => results[candidate.key])
@@ -3833,15 +3985,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
+	let unshared: readonly UnsharedDismissal[] = [];
 	if (request.records !== undefined && owned) {
 		const findings = findingsDecided;
-		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
+		const shown = new Set(verified?.dismissals.map(({ finding }) => finding));
+		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers, shown);
 		const verification =
 			verified === undefined || verificationCheck === undefined
 				? undefined
 				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
 						claims,
-						dismissals: [],
+						dismissals: verified.dismissals,
 						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
 							candidate,
 							outcome: verificationOutcome(outcome),
@@ -3864,7 +4018,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						});
 					});
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
-		await exportRound(
+		unshared = await exportRound(
 			request.records,
 			run,
 			options.checks ?? [],
@@ -3897,6 +4051,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -3906,6 +4061,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -3914,6 +4070,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
-	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }), unshared };
 }

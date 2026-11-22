@@ -1,0 +1,847 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "00fdbf1fcc5ba2560fcabfe92f8a646fbfd26a9b",
+		"head": "c6a12537b50fabc3d8ca638dcd365739950da01b"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/dismiss.ts",
+		"packages/pipeline/src/errors.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 969,
+			"column": 7,
+			"endLine": 969,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "35d815ca7866e96bc8038a9cf4b64c5a7e2122de694464525b2ebd6bcd9dff83",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/cli.test.ts",
+					"path": [
+						"melian dismiss",
+						"exits 1 when the review or the finding is not found"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 969,
+			"column": 7,
+			"endLine": 969,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5e768f26cd574b6779b3d57181b9289ec428d04544d44187187eff46f30401b8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"names the record store melian dismiss --records refused on, and records nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 969,
+			"column": 7,
+			"endLine": 969,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "error.code !== \"storeFailed\"",
+			"status": "generated",
+			"id": "32c262a49dee2e690ff3543e28ec53ffc50ebe66797b3ec4b8de567742f88951",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"names the record store melian dismiss --records refused on, and records nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 969,
+			"column": 22,
+			"endLine": 969,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f66d4f75f59588a803d6f5b2475e4c03226f870fc6164f1bc66201827d454f9b"
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 969,
+			"column": 37,
+			"endLine": 974,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c3cbf790dcf249bc533157b7d4b0ccc5c9d5968f24dd4771e9646fc17ee1e59d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"names the record store melian dismiss --records refused on, and records nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 971,
+			"column": 4,
+			"endLine": 973,
+			"endColumn": 6,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "32381bf4661355101d61db2c7a2d07d722ffa286f47a61e2efb9bbc36cf26a13",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/review-unshared.test.ts",
+					"path": [
+						"names the record store melian dismiss --records refused on, and records nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/commands.ts",
+			"line": 972,
+			"column": 5,
+			"endLine": 972,
+			"endColumn": 123,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "edf951e249108fdd69ebc15c0392eaa73d3114a592d2c0c2ffee109efebba206"
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 145,
+			"column": 18,
+			"endLine": 156,
+			"endColumn": 4,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4711135cb60e55f0f29deae18a89e33bea17886fdf821019165edf531e3921c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 146,
+			"column": 35,
+			"endLine": 156,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c262a2ac50378758c1c8db7ff048a1f2bdf8a41bc407c0d0ba9cd80e45ca5514",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 149,
+			"column": 4,
+			"endLine": 149,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "730887bbf764fd63387c4a83afaabd747475a9a960c67172ea1cc477bbf42b69"
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 150,
+			"column": 4,
+			"endLine": 150,
+			"endColumn": 76,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e682c0079926f694ef49126d5b5cdc5a57b5674aa9e743b410c0a9de68314c4f"
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 151,
+			"column": 4,
+			"endLine": 154,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7a7e3b4cd5cfd9b1f585f6cf52adbf6c71e35f3a3036434e7761f8d5c85fecd8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 158,
+			"column": 17,
+			"endLine": 158,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5ae510779a4237143f471350e29a721056f9f0bf0a426697abe57ea1de338392",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 158,
+			"column": 17,
+			"endLine": 158,
+			"endColumn": 86,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8f201dc9540a738bb3ed7fddd4f2dcb6f5cf5c73db67f984a8189dae187352e6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 158,
+			"column": 17,
+			"endLine": 158,
+			"endColumn": 86,
+			"mutatorName": "LogicalOperator",
+			"replacement": "target || (await refusing(() => target.store.list(target.changeset)))",
+			"status": "generated",
+			"id": "7cd58775f180830506501c859b43090b99aee11e21775ddca5a7bcee6ab23ca7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 158,
+			"column": 43,
+			"endLine": 158,
+			"endColumn": 84,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0e2561f937c828873b7d4fe7543f85a014c1e917ccdb05f67fc2e6c53d9df386",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 159,
+			"column": 39,
+			"endLine": 159,
+			"endColumn": 41,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "338829910a3e7af0052f22dac5825dfa121f819fc3a8da8a690e4231f1b89750",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 208,
+			"column": 6,
+			"endLine": 208,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "aad4089e2204dad84c39c7736368364280f70a56d9841f3c7488768b93ec9810",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes a dismissal made again with the store as superseding the one it replaced, and the next review writes nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 208,
+			"column": 6,
+			"endLine": 208,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bfe36bd7cd9776032f576115592f91997f9769ab11866d6f2953e9c46c67b875",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's add fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 208,
+			"column": 6,
+			"endLine": 208,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "target === undefined",
+			"status": "generated",
+			"id": "154399a861022ef761e7907393d8b3375cb78796b56d61248d4250781d183503",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's add fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 208,
+			"column": 28,
+			"endLine": 222,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a11fc1cabea2f32d6f09c604c569679715016d3698e02074dcf5132df0c1c332",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's add fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 211,
+			"column": 34,
+			"endLine": 211,
+			"endColumn": 36,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "63176018c6c47e699d7095b9493da7f40e49d857a22741821452fa4b72f84d5a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 212,
+			"column": 35,
+			"endLine": 220,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "27e021ce6ddcdb6c51eef466963ed087c32740c6fdcec2800293ce34271beef9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 213,
+			"column": 8,
+			"endLine": 216,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c0e8a0e0de03eb789667cbb3d9421b460400b56f742e75127a482e6a7c02f8f6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 215,
+			"column": 9,
+			"endLine": 215,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a9de0708436232d23dcd3e353259f7622330612ac32869be141184e7b75f99cf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a review that names a record store after a dismissal",
+						"writes no record when a dismissal stored with no sighting is made again with the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 215,
+			"column": 9,
+			"endLine": 215,
+			"endColumn": 29,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "138e8ab73105282565ed67360cc4d1661eb7d5b95a89c056cb0e148fe6bf1271",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 215,
+			"column": 9,
+			"endLine": 215,
+			"endColumn": 29,
+			"mutatorName": "EqualityOperator",
+			"replacement": "record === undefined",
+			"status": "generated",
+			"id": "c63b18af0a3d5d6a330ed94dacb845797dc39cff56332c819fffadf0d322a7a0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 215,
+			"column": 31,
+			"endLine": 215,
+			"endColumn": 58,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "ed8d7ecba319da1293779115f2f10f23534637c7e2a7cb83d820513501bf6e97",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"leaves the record shared and the host undismissed when the host's commit fails after the write, and dismiss again writes the same record"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 216,
+			"column": 20,
+			"endLine": 219,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a3aea53a05936afec1dbe55a2a675371219dcc9e294b134917a38291575cd579",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"is recorded, written to no store, and named by its code"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 9,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "473bcf750f030388b668a5bd9b34aecf35a30af3bf0dc1d0437c69c6a40441b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"is recorded, written to no store, and named by its code"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 9,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "071ce23be77524ac35841cda27f0f66506b8cfcc48c985efa3ac25c383275cab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"rejects with another error that building a record throws, and writes nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 9,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!(error instanceof DismissError) && error.code !== \"unprovenRun\"",
+			"status": "generated",
+			"id": "acfada03bef8baed1a3641e2326372e338acb5d0146019bce96ce1386cc5f80f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"rejects with a dismissal error of another code that building a record throws, and writes nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 9,
+			"endLine": 217,
+			"endColumn": 41,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "error instanceof DismissError",
+			"status": "generated",
+			"id": "194a137480887cdbb9f56969e6a03377fdc6cb21f95a5e7bb2906cd9c9ca9eb8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"is recorded, written to no store, and named by its code"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 45,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2ccf1e3ca8cf22ad6d42521eda65a82883d187c80cdee688ab247cfc406a1d3e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"rejects with a dismissal error of another code that building a record throws, and writes nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 45,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "EqualityOperator",
+			"replacement": "error.code === \"unprovenRun\"",
+			"status": "generated",
+			"id": "d13890e72203c266e0a5b2533bef5b6c9684f9315cc560b35151b1a80dc51f3a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"is recorded, written to no store, and named by its code"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 217,
+			"column": 60,
+			"endLine": 217,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "159e871132fd5a00c799dab094b79f764a372d05d032f62f3420aee1d1a57128"
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 218,
+			"column": 19,
+			"endLine": 218,
+			"endColumn": 56,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3e8e062a8d4a0cc68fcbcfc35bb57a1ee18563417ddad9f9d7699e1051035327",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-unproven-run.test.ts",
+					"path": [
+						"a dismissed static finding, made with the store",
+						"is recorded, written to no store, and named by its code"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/dismiss.ts",
+			"line": 221,
+			"column": 18,
+			"endLine": 221,
+			"endColumn": 46,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "b3f9c63ce9dc94a713d98d5d813432c39fa2c8b7a62681be8bc66187613a396e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's add fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/errors.ts",
+			"line": 155,
+			"column": 17,
+			"endLine": 155,
+			"endColumn": 24,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "166c5129b6a69694e234156820f368b90973e8757746ce01a7d63f8be7fb3404"
+		},
+		{
+			"file": "packages/pipeline/src/errors.ts",
+			"line": 155,
+			"column": 38,
+			"endLine": 155,
+			"endColumn": 62,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "389dbfea752218e55505f6b7077c555f6212d1482f95b3a6e7cb6b4b8504345d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review-records-export.test.ts",
+					"path": [
+						"a dismissal made with a store that fails",
+						"refuses when the store's list fails, and records nothing on the host or in the store"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 40,
+	"omitted": 0,
+	"unmutated": []
+}

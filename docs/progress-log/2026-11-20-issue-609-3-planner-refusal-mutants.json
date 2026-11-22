@@ -1,0 +1,402 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ca67dff70fcf561882a145c1e9d02d9d73f88ea1",
+		"head": "63bdce3d16051fcad49dd0beb7d637c1d5074b04"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 8,
+			"endLine": 851,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "da02e8689a48ae5eae12bd62dd011e45d1de7202f9878b008975508580d913d9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"keeps caller and coverage failures advisory on completed lens records"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 8,
+			"endLine": 851,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "175dd1a86f629ca26b5014dcff7bb92d73beb906cacd28e3938226ba272aadc4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 8,
+			"endLine": 851,
+			"endColumn": 50,
+			"mutatorName": "LogicalOperator",
+			"replacement": "probed !== undefined || \"status\" in probed",
+			"status": "generated",
+			"id": "1ee3da2f1852023449399720aa2b6408d5b2d48f8a9950b4a988e59255641b23",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"keeps caller and coverage failures advisory on completed lens records"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 8,
+			"endLine": 851,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cfa1b6c25681bb94486a4b78ac2648ee5e26b6c2c7e7fdced32b9e75ee627869",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/review.test.ts",
+					"path": [
+						"reviewChangeset",
+						"keeps caller and coverage failures advisory on completed lens records"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 8,
+			"endLine": 851,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "probed === undefined",
+			"status": "generated",
+			"id": "c240279120d26525e88744e1b650a7400b552fd979d781a7bdecde306006d2a6",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 851,
+			"column": 32,
+			"endLine": 851,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1bf8edfe7ac7afb14178d9708aa7a49545a5e280114b8c68cabbca4366a9ee12",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 852,
+			"column": 12,
+			"endLine": 852,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fa55e69bd2f851b586f5998f48f69fb2fd9b491808ff7593e4f135c3de4defb2",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 852,
+			"column": 12,
+			"endLine": 852,
+			"endColumn": 41,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "22cb3e755a3d2eb66976f2383d2c9fb50250ef726725f10d201a2218f4e9fe04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"fails a lens whose prober's every model failed, naming them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 852,
+			"column": 12,
+			"endLine": 852,
+			"endColumn": 41,
+			"mutatorName": "EqualityOperator",
+			"replacement": "planned.refused !== undefined",
+			"status": "generated",
+			"id": "1d7e731047975b32e6e7fec9061845aab02ebafb2ef2d7a8dae43ac4849f314a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 854,
+			"column": 8,
+			"endLine": 854,
+			"endColumn": 82,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3a35b58e80d8a8acd50341cbd7d55e4cb038d3e77cf54c31dc5b3ac6b7f3319c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 854,
+			"column": 30,
+			"endLine": 854,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "beaea1ec5fd6e01c1ae315c7c1a117f4e0a8c786a9577804afcec03a870fcdaf",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2226,
+			"column": 17,
+			"endLine": 2226,
+			"endColumn": 36,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ee74de5a7c2dc895d2f121712f2694bea938e847097803815b87761359cdbb9b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names the planner's refusal when its prober then fails without moving on"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2226,
+			"column": 38,
+			"endLine": 2226,
+			"endColumn": 63,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome?.planner.refused",
+			"status": "generated",
+			"id": "0afb18ed2b6d988a4d648b0139983d62761d9457dd919fcc9fe3119dd176043f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names an earlier refusal when the next model fails in a way that does not move on"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2226,
+			"column": 38,
+			"endLine": 2226,
+			"endColumn": 54,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome.planner",
+			"status": "generated",
+			"id": "46de4ec45cbb8a4af88f79aad44df4989772b8be13269b6a46f9150ea95f5f3d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-wording.test.ts",
+					"path": [
+						"the tests lens at a level that probes",
+						"when its probing wording is gone by the time it resumes",
+						"ends the lens failed, and the review not reviewed, once its planner finishes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2226,
+			"column": 65,
+			"endLine": 2226,
+			"endColumn": 88,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome?.planner.model",
+			"status": "generated",
+			"id": "9fbb0e7632f26ef2e0d36a057ec302ff5918797b40dec9fdd8256531dfd55a7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"names an earlier refusal when the next model fails in a way that does not move on"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2226,
+			"column": 65,
+			"endLine": 2226,
+			"endColumn": 81,
+			"mutatorName": "OptionalChaining",
+			"replacement": "outcome.planner",
+			"status": "generated",
+			"id": "866c1e0214f9222a2f350fa4c2d23fe52fee9516fd59b222feb91a0e0ce62723",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-wording.test.ts",
+					"path": [
+						"the tests lens at a level that probes",
+						"when its probing wording is gone by the time it resumes",
+						"ends the lens failed, and the review not reviewed, once its planner finishes"
+					]
+				}
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		}
+	],
+	"total": 16,
+	"omitted": 0,
+	"unmutated": []
+}

@@ -1,0 +1,77 @@
+{
+ "base": "a6224c89a",
+ "file": "packages/pipeline/src/dismiss.ts",
+ "note": "Hand mutants of the storeFailed message's run-again clause, each run alone against its named test, which passed unmutated.",
+ "runs": [
+  {
+   "from": "(step: () => Promise<T>, wrote = false)",
+   "to": "(step: () => Promise<T>, wrote = true)",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's list fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "const again = wrote ? \"; the store",
+   "to": "const again = true ? \"; the store",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's list fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "const again = wrote ? \"; the store",
+   "to": "const again = false ? \"; the store",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's add fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "\"; the store may hold its record, so run the command again\"",
+   "to": "\"\"",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's add fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "so run the command again\" : \"\"",
+   "to": "so run the command again\" : \"Stryker was here!\"",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's list fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "target.store.add(made), true)",
+   "to": "target.store.add(made), false)",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's add fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  },
+  {
+   "from": "target.store.add(made), true)",
+   "to": "target.store.add(made))",
+   "test": {
+    "file": "packages/pipeline/test/review-records-export.test.ts",
+    "name": "a dismissal made with a store that fails > refuses when the store's add fails, and records nothing on the host or in the store"
+   },
+   "unmutated": "passed",
+   "mutated": "failed"
+  }
+ ]
+}
