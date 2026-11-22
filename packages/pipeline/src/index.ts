@@ -20,6 +20,7 @@ export {
 	ComparisonReader,
 	type ImportedSource,
 } from "./compare.ts";
+export { ComparisonCauses } from "./comparison-causes.ts";
 export { configsFor, type PolicyLookup } from "./configurations.ts";
 export {
 	createReviewModels,
@@ -70,6 +71,7 @@ export {
 } from "./findings.ts";
 export * from "./harness.ts";
 export { type Install, InstalledPackagesError } from "./installed-packages.ts";
+export { MissCause, MissLines } from "./miss-cause.ts";
 export {
 	contextOverflowed,
 	type PlanSources,
