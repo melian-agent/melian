@@ -1,0 +1,63 @@
+{
+	"total": 4,
+	"omitted": 0,
+	"unmutated": [],
+	"mutants": [
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 288,
+			"column": 13,
+			"endLine": 288,
+			"endColumn": 35,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "merged.has(changeset)",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/retire.test.ts > what a retire keeps > keeps a folder whose pull request closed unmerged, reports it as kept, and retires a merged one beside it",
+			"commit": "fa341fa4",
+			"result": "killed",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 288,
+			"column": 13,
+			"endLine": 288,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/retire.test.ts > what a retire keeps > keeps a folder whose pull request closed unmerged, reports it as kept, and retires a merged one beside it",
+			"commit": "fa341fa4",
+			"result": "killed",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 288,
+			"column": 13,
+			"endLine": 288,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/retire.test.ts > what a retire keeps > keeps every folder its caller cannot say is merged, and pushes nothing",
+			"commit": "fa341fa4",
+			"result": "killed",
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/state-git/src/git-record-store.ts",
+			"line": 288,
+			"column": 37,
+			"endLine": 288,
+			"endColumn": 64,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"claim": "killed",
+			"evidence": "packages/state-git/test/retire.test.ts > what a retire keeps > keeps a folder whose pull request closed unmerged, reports it as kept, and retires a merged one beside it",
+			"commit": "fa341fa4",
+			"result": "killed",
+			"survivorClasses": []
+		}
+	]
+}

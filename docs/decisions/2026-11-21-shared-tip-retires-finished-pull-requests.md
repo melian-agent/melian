@@ -12,6 +12,8 @@ The maintainer ruled on 2026-11-21, in the coordinator's session, on [issue #617
 
 He agreed on 2026-11-22, in the coordinator's session, to two more ([comment](https://github.com/melian-agent/melian/pull/639#issuecomment-7071348428)). A retirement keeps any changeset folder that is disposed or holds a cell, and reports it as kept; rule 3 of the shared record decision stands as written. He also agreed to the warning's wording above.
 
+On 2026-11-22 the coordinator directed, in its own session, that a retirement remove a folder only when its pull request is merged, and told the maintainer. That changes the first of the three points above: a pull request closed without merging keeps its records until [issue #641](https://github.com/melian-agent/melian/issues/641)'s carry-over mark exists. Keeping them longer is the safe direction, and the maintainer may overrule it.
+
 The removal-only rule, the tree-ID check and the operation's name are the builder's, from [the plan](https://github.com/melian-agent/melian/issues/617#issuecomment-7049657837) and [its addendum](https://github.com/melian-agent/melian/issues/617#issuecomment-7049676449), which the coordinator read.
 
 ## The problem
@@ -26,15 +28,17 @@ Rule 13 kept the live record on purpose: "the live record is small enough to kee
 
 ### What the tip keeps
 
-The tip keeps the records of every open pull request. It also keeps those of a pull request merged in the last 30 days, or closed without merging in the last 30 days, counted from `merged_at` or `closed_at`. Every other pull request's changeset is retired. Its records stay in the branch's history.
+The tip keeps the records of every open pull request. It also keeps those of a pull request merged in the last 30 days, counted from `merged_at`, and those of every pull request closed without merging, until [issue #641](https://github.com/melian-agent/melian/issues/641)'s carry-over mark exists. Every other merged pull request's changeset is retired. Its records stay in the branch's history.
 
 Closing a pull request still disposes nothing, and `dispose` keeps its meaning: a writer's own command removes a changeset for good and marks it.
 
 ### Retirement
 
-`GitRecordStore.retire(seen)` takes changeset names, each with the tree ID its folder had when the caller decided. In one commit it removes each folder that holds records alone, with no mark. A retired changeset is the same as one never written, so a reopened pull request records again from nothing.
+`GitRecordStore.retire(seen, merged)` takes changeset names, each with the tree ID its folder had when the caller decided, and the set of those names whose pull requests GitHub says are merged. In one commit it removes each folder that is named in `merged` and holds records alone, with no mark. A retired changeset is the same as one never written, so a reopened pull request records again from nothing.
 
 A folder that holds a cell is kept, and reported as kept. A cell holds a lease or a disposal mark. Rule 3 of the shared record decision never recreates a changeset, since that would need an incarnation every record and writer carries, and removing a cell would recreate it. Today no production code writes a cell or disposes, so this keeps nothing yet. [Issue #641](https://github.com/melian-agent/melian/issues/641) designs the mark that would carry a lease and a disposal across a retirement, and blocks the work that first writes either to the shared store.
+
+A folder that `merged` does not name is kept unread, and reported as kept. A caller that cannot say whether a pull request merged leaves its name out, so the folder stays.
 
 A folder is also kept, and reported, when any of these hold:
 
@@ -47,7 +51,7 @@ A retirement judges folders in the order it was given them, and keeps a running 
 
 Every lost race fetches the tip and decides again. So a round's `add` that lands first keeps its folder, and an `add` after a retirement starts the folder afresh.
 
-That has one limit. A retired folder leaves no mark, so nothing refuses a stale host that relays the changeset's ordinary records after the retirement, such as a re-run of an old round's records job. It writes the folder again with those records, and they stay on the tip until the next run retires them. If the pull request has reopened in the meantime, they join its new records. Ordinary records carry no lease, so this touches no publication slot.
+That has one limit. A retired folder leaves no mark, so nothing refuses a stale host that relays the changeset's ordinary records after the retirement, such as a re-run of an old round's records job. It writes the folder again with those records, and they stay on the tip until the next run retires them. Ordinary records carry no lease, so this touches no publication slot. It does touch the gate if the pull request can reopen. Say its changeset held a round that passed and a later round on the same head that replaced it and blocked. A late relay writes back the passing round alone. Reopened at that head, the pull request would read the passing round as standing, and the gate would pass a revision whose last round blocked. A merged pull request cannot reopen, and nothing gates on one, so a late relay of its records passes nothing. That is why a retirement removes only a merged pull request's folder. A closed pull request's folder waits for [issue #641](https://github.com/melian-agent/melian/issues/641), whose mark must refuse such a relay.
 
 ### The removal-only rule
 
@@ -73,7 +77,7 @@ A commit that passes is pushed whatever the tip's totals. A retirement reads onl
 
 ## Who retires, and when
 
-A scheduled workflow on the default branch retires. It runs no pull request's code. It learns which pull requests are open and when each merged or closed from GitHub's API, never from a record. [Issue #617](https://github.com/melian-agent/melian/issues/617) builds it in a later pull request.
+A scheduled workflow on the default branch retires. It runs no pull request's code. It learns which pull requests are open and when each merged or closed from GitHub's API, never from a record. It re-reads each nominee's pull request just before it retires, and names a changeset in `merged` only when GitHub answers that its pull request merged. [Issue #617](https://github.com/melian-agent/melian/issues/617) builds it in a later pull request.
 
 ## What it costs
 
