@@ -174,13 +174,17 @@ export class RecordGate {
 				status: "skipped",
 				reason: short.get(name) ?? `no round of ${gate} that stands as reviewed ran it`,
 			}));
-		return new RecordGate({
-			verdict: RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]),
-			rounds,
-			ended,
-			unjudged,
-			failures,
-		});
+		const verdict = RecordGate.#merged(verdicts, revision.paths(), [...failures.map(asFailure), ...gaps]);
+		// Only a finding the gate holds live needs dismissing again, and two rounds can read one dismissal as ended alike.
+		const live = new Set(
+			Object.values(verdict.findings).flatMap((found) => found.map(({ properties }) => properties.id)),
+		);
+		const once = <T extends { finding: string }>(entries: readonly T[]): T[] => [
+			...new Map(
+				entries.filter(({ finding }) => live.has(finding)).map((each) => [JSON.stringify(each), each]),
+			).values(),
+		];
+		return new RecordGate({ verdict, rounds, ended: once(ended), unjudged: once(unjudged), failures });
 	}
 
 	static #failed(failures: string[]): RecordGate {

@@ -290,6 +290,92 @@ describe("the merge gate over a changeset's records", () => {
 		expect([outcome.passes(), outcome.verdict.status, rule(outcome)]).toEqual([true, "passed", []]);
 	});
 
+	it("names no ended dismissal of a finding the gate's verdict reads as dismissed", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		await at("main", older, () => review(store, "main...feature", blocks("src/b.ts")));
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks("src/b.ts"));
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "b is fine", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.verdict.dismissed.map((each) => each.id), outcome.ended]).toEqual([[id], []]);
+	});
+
+	it("names no dismissal of a stacked parent's finding outside the merge's diff", async () => {
+		const store = exported();
+		const parent = await at("main", older, () => review(store, "main...feature", blocks("src/b.ts")));
+		await at("main", older, () =>
+			recordDismissal({
+				harness: parent.harness,
+				revision: parent.changeset.revision,
+				id: Object.values(parent.verdict.findings).flat()[0]!.properties.id,
+				dismissal: { by: "maintainer", reason: "b is fine", at: "2026-11-20T00:00:00.000Z" },
+				repoRoot: repo,
+				records: { store, changeset: parent.changeset.id },
+			}),
+		);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+
+		expect([rule(outcome), outcome.ended]).toEqual([[], []]);
+	});
+
+	it("names a dismissal once, though two counted rounds read it as ended by the same round", async () => {
+		const store = exported();
+		const parent = await at("main", older, () => review(store, "main...feature", blocks()));
+		const { id } = Object.values(parent.verdict.findings).flat()[0]!.properties;
+		await at("main", older, () =>
+			recordDismissal({
+				harness: parent.harness,
+				revision: parent.changeset.revision,
+				id,
+				dismissal: { by: "maintainer", reason: "a is meant to be 2", at: "2026-11-20T00:00:00.000Z" },
+				repoRoot: repo,
+				records: { store, changeset: parent.changeset.id },
+			}),
+		);
+		await review(store, "main...feature", blocks());
+		const outcome = await gate(await listed(store));
+
+		expect([rule(outcome), outcome.ended.map(({ finding }) => finding)]).toEqual([[["src/a.ts", "block"]], [id]]);
+	});
+
+	// The maintainer ruled on 2026-11-20 that a round at another revision ends a dismissal, and a revision is a base and a
+	// head, so a stacked parent's round of this head, recorded later, ends one made on the merge's own round.
+	it("fails closed on a dismissal of the merge's own round that a later round at an older base ends, naming it", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		const { harness, changeset, verdict } = await review(store, "main...feature", blocks("src/b.ts"));
+		const { id } = Object.values(verdict.findings).flat()[0]!.properties;
+		await recordDismissal({
+			harness,
+			revision: changeset.revision,
+			id,
+			dismissal: { by: "maintainer", reason: "b is fine", at: "2026-11-20T00:00:00.000Z" },
+			repoRoot: repo,
+			records: { store, changeset: changeset.id },
+		});
+		await at("main", older, () => review(store, "main...feature"));
+		const records = await listed(store);
+		const parent = records
+			.map((each) => SharedRecord.parseEnvelope(each))
+			.find(({ kind, revision }) => kind === "round" && revision !== Revision.key(changeset.revision))!;
+		const outcome = await gate(records);
+
+		expect([outcome.passes(), rule(outcome)]).toEqual([false, [["src/b.ts", "acknowledge"]]]);
+		expect(outcome.ended.map(({ finding, madeAt, round, at }) => [finding, madeAt, round, at])).toEqual([
+			[id, Revision.key(changeset.revision), parent.id, parent.revision],
+		]);
+	});
+
 	it("counts no round of an earlier head", async () => {
 		const store = exported();
 		await review(store, "main...feature", blocks());
