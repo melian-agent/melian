@@ -520,9 +520,11 @@ describe("EvidenceStore", () => {
 			const refusal = store.write(two());
 			await expect(refusal).rejects.toMatchObject({ code: "budget" });
 			await expect(refusal).rejects.toThrow(`${join(state, "evidence", changeset)}/ `);
-			await expect(refusal).rejects.toThrow("melian store prune keeps evidence");
 			await expect(refusal).rejects.toThrow(
-				"Raise evidence.budget in your configuration until the prune lands in issue #627 (https://github.com/melian-agent/melian/issues/627)",
+				"melian store prune keeps evidence, and lists what is more than 90 days old",
+			);
+			await expect(refusal).rejects.toThrow(
+				"Raise evidence.budget in your configuration until issue #633 (https://github.com/melian-agent/melian/issues/633) lets prune remove it.",
 			);
 			await expect(refusal).rejects.toThrow("This refusal wrote no file and lost no evidence already kept");
 			await expect(refusal).rejects.not.toThrow("by hand");
