@@ -169,6 +169,7 @@ describe("an exported record keeps what Melian defines", () => {
 		"faulted",
 		"no record",
 		"unexpected",
+		"recordTooLarge",
 	])("keeps the code %s as a failed or skipped check's reason", (code) => {
 		const failed = records.check(
 			"e".repeat(64),

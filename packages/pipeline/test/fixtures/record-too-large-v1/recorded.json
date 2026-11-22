@@ -1,0 +1,389 @@
+{
+	"commit": "6a70c41fc",
+	"changeset": "range-8fb67dfe2bac6ead",
+	"revision": {
+		"head": "11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+		"base": "56388cfdc9ee37f2f59472ddba89488327bdd290",
+		"files": [
+			{
+				"status": "modified",
+				"path": "src/a.ts",
+				"oldMode": "100644",
+				"oldKind": "file",
+				"newMode": "100644",
+				"newKind": "file",
+				"binary": false,
+				"hunks": [
+					{
+						"file": "src/a.ts",
+						"index": 0,
+						"oldStart": 1,
+						"oldLines": 1,
+						"newStart": 1,
+						"newLines": 1,
+						"header": "@@ -1 +1 @@",
+						"text": "-export const a = 1;\n+export const a = 2;"
+					}
+				]
+			}
+		],
+		"policyFiles": []
+	},
+	"status": "not-reviewed",
+	"records": [
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "3493a17a69d731554c76698a8a8ae093bd15b02827de97f416ad2120ccaf8d1e",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"error": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+					"name": "guardrails",
+					"reason": "unexpected",
+					"status": "failed"
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "1499591f96da27a715ed67b57dd3674473a00d77cc4f84359a6935d40264469d",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"error": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+					"name": "static.biome",
+					"reason": "withheld",
+					"status": "failed"
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "28f0e4aacec99ab7dd5f4095c7fedac5fab3a42fe8a391fe6373555d45cfb6b7",
+			"kind": "check",
+			"payload": {
+				"result": {
+					"error": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+					"name": "static.tsc",
+					"reason": "withheld",
+					"status": "failed"
+				},
+				"sightings": [],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "37d0a1e35fa831a68dcda309040a0e982d7a4d755c1395ffa841df5d1aafb727",
+			"kind": "lens",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": "careful",
+					"lineage": null,
+					"name": "lens.contracts",
+					"reason": null,
+					"status": "ran",
+					"version": "dd8fb36095b4"
+				},
+				"delivery": null,
+				"level": "careful",
+				"name": "contracts",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 10303
+					}
+				},
+				"probe": false,
+				"sightings": [
+					{
+						"level": "warning",
+						"locations": [
+							{
+								"physicalLocation": {
+									"artifactLocation": {
+										"uri": "src/a.ts"
+									},
+									"region": {
+										"snippet": {
+											"text": "export const a = 2;"
+										},
+										"startLine": 1
+									}
+								}
+							}
+						],
+						"message": {
+							"text": "a is 2 now."
+						},
+						"partialFingerprints": {
+							"melian/v1": "8f3f919a7c886b44"
+						},
+						"properties": {
+							"cause": "introduced",
+							"evidence": [
+								{
+									"file": "src/a.ts",
+									"proves": true,
+									"revision": "head",
+									"role": "cause",
+									"snippet": "export const a = 2;",
+									"startLine": 1
+								}
+							],
+							"explanation": {
+								"what": "a is 2 now.",
+								"whatToDo": "Restore 1.",
+								"whyHere": "This change rewrote it."
+							},
+							"failureScenario": "A caller that reads a expects 1 and gets 2.",
+							"id": "8f3f919a7c886b44",
+							"occurrence": 0,
+							"path": "src/a.ts",
+							"severity": "P2",
+							"source": {
+								"check": "lens.contracts",
+								"version": "dd8fb36095b4@careful"
+							},
+							"status": "new",
+							"trigger": {
+								"file": "src/a.ts",
+								"hash": "e67f15d229a5a450feb90cda26e50873b3b0a72661d228677edf5eafd5654059",
+								"index": 0,
+								"snippet": "export const a = 2;"
+							}
+						},
+						"ruleId": "changed-return"
+					}
+				],
+				"v": 1,
+				"version": "dd8fb36095b4"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "d60e7b19f1d599283aac56a50bfef46b3e4256e7fe082ae60d46942631a9f745",
+			"kind": "lens",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": "careful",
+					"lineage": null,
+					"name": "lens.correctness",
+					"reason": null,
+					"status": "ran",
+					"version": "18c49f913df8"
+				},
+				"delivery": null,
+				"level": "careful",
+				"name": "correctness",
+				"outcome": {
+					"budgetEnded": null,
+					"capped": null,
+					"escalation": null,
+					"model": "faux/heavy",
+					"status": "done",
+					"usage": {
+						"costMicros": 0,
+						"models": [
+							"faux/heavy"
+						],
+						"tokens": 6989
+					}
+				},
+				"probe": false,
+				"sightings": [],
+				"v": 1,
+				"version": "18c49f913df8"
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "7ea1a1f080fe15fcc236c2c04c1886c9f453d8e368c229e207e8ea2a1553a4d0",
+			"kind": "verification",
+			"payload": {
+				"check": {
+					"budgetEnded": null,
+					"caveats": null,
+					"coverage": null,
+					"error": null,
+					"level": null,
+					"lineage": null,
+					"name": "verifier",
+					"reason": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+					"status": "failed",
+					"version": "a19ab2f7fcb43ecc"
+				},
+				"claims": [],
+				"dismissals": [],
+				"outcomes": [
+					{
+						"candidate": "8f3f919a7c886b44",
+						"outcome": {
+							"reason": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+							"status": "unanswered"
+						}
+					}
+				],
+				"v": 1
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "53789da8acd89bc97d8ef22232b77c59a6b446371758d0cee23d33ce1ad23de2",
+			"kind": "account",
+			"payload": {
+				"allowSkip": [
+					"decisions.fast"
+				],
+				"checks": [
+					"guardrails",
+					"static.biome",
+					"static.tsc",
+					"decisions.fast",
+					"lens.correctness",
+					"lens.contracts",
+					"verifier"
+				],
+				"filled": [
+					{
+						"budgetEnded": null,
+						"caveats": null,
+						"coverage": null,
+						"error": null,
+						"level": null,
+						"lineage": null,
+						"name": "decisions.fast",
+						"reason": "Melian shares none of this text, which the reviewing host's store and terminal hold",
+						"status": "skipped",
+						"version": null
+					}
+				],
+				"producers": [
+					{
+						"check": "decisions.fast",
+						"ids": null,
+						"version": null
+					},
+					{
+						"check": "guardrails",
+						"ids": null,
+						"version": null
+					},
+					{
+						"check": "lens.contracts",
+						"ids": null,
+						"version": "dd8fb36095b4@careful"
+					},
+					{
+						"check": "lens.correctness",
+						"ids": null,
+						"version": "18c49f913df8@careful"
+					},
+					{
+						"check": "static.biome",
+						"ids": null,
+						"version": "2.5.0"
+					},
+					{
+						"check": "static.tsc",
+						"ids": null,
+						"version": "5.9.3"
+					}
+				],
+				"records": [
+					"0cacbd5fea71bbd5d0b7b6beabcc40cf09557a2dfbe44c3b917328fddd8e1c66",
+					"50794a345fb2d09c5ee1f121ed0fc491358c6ccae78112bb3287ed371c582920",
+					"89d7dcda07c2fa6cfb6b828a82c564ed94fe6857f0cb43c41b912795ec1290d6",
+					"b6a71f5f538b999f6432065103a3a4e4f03324bd319421b1bc30ebfbfdc16972",
+					"d1312f24368389f7e60a0844bb4ccc352761de6469922e624b1b3f835001febf",
+					"d846bf0b8f33d2bf7ecffcbbb7542f5b303fe09e8f01949d8028b1c43b99268e"
+				],
+				"resolutionPolicy": null,
+				"v": 2
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		},
+		{
+			"changeset": "range-8fb67dfe2bac6ead",
+			"key": "1bcd9e02a1f1ef9cdd37fff9eede791afaaaa3fe9f1c703e7d742459157b784a",
+			"kind": "round",
+			"payload": {
+				"before": [],
+				"read": [
+					{
+						"id": "0cacbd5fea71bbd5d0b7b6beabcc40cf09557a2dfbe44c3b917328fddd8e1c66",
+						"key": "d60e7b19f1d599283aac56a50bfef46b3e4256e7fe082ae60d46942631a9f745",
+						"kind": "lens"
+					},
+					{
+						"id": "50794a345fb2d09c5ee1f121ed0fc491358c6ccae78112bb3287ed371c582920",
+						"key": "37d0a1e35fa831a68dcda309040a0e982d7a4d755c1395ffa841df5d1aafb727",
+						"kind": "lens"
+					},
+					{
+						"id": "89d7dcda07c2fa6cfb6b828a82c564ed94fe6857f0cb43c41b912795ec1290d6",
+						"key": "3493a17a69d731554c76698a8a8ae093bd15b02827de97f416ad2120ccaf8d1e",
+						"kind": "check"
+					},
+					{
+						"id": "af41662b1f747f347aa2c0c6d0c35f6faa9c6696823fe7d10c166642abe9d936",
+						"key": "53789da8acd89bc97d8ef22232b77c59a6b446371758d0cee23d33ce1ad23de2",
+						"kind": "account"
+					},
+					{
+						"id": "b6a71f5f538b999f6432065103a3a4e4f03324bd319421b1bc30ebfbfdc16972",
+						"key": "7ea1a1f080fe15fcc236c2c04c1886c9f453d8e368c229e207e8ea2a1553a4d0",
+						"kind": "verification"
+					},
+					{
+						"id": "d1312f24368389f7e60a0844bb4ccc352761de6469922e624b1b3f835001febf",
+						"key": "28f0e4aacec99ab7dd5f4095c7fedac5fab3a42fe8a391fe6373555d45cfb6b7",
+						"kind": "check"
+					},
+					{
+						"id": "d846bf0b8f33d2bf7ecffcbbb7542f5b303fe09e8f01949d8028b1c43b99268e",
+						"key": "1499591f96da27a715ed67b57dd3674473a00d77cc4f84359a6935d40264469d",
+						"kind": "check"
+					}
+				],
+				"replaces": [],
+				"walkthrough": null
+			},
+			"revision": "56388cfdc9ee37f2f59472ddba89488327bdd290..11dbf1d9c7a49cd142133c441dc46f9f55dabdff",
+			"v": 1
+		}
+	]
+}

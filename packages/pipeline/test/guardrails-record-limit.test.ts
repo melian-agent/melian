@@ -223,8 +223,7 @@ describe("a guardrails record still past the limit after trimming", { timeout: 9
 		expect(report.localVerdicts).toEqual([{ status: "not-reviewed", blocking: false }]);
 		expect(report.stored).toEqual(["account", "check", "round"]);
 		const check = stored.find((each) => each.kind === "check")!;
-		// A shared record carries a reason only from core's `recordCodes`, which do not list `recordTooLarge`.
-		expect(check.payload).toMatchObject({ result: { name: "guardrails", status: "failed", reason: "unexpected" } });
+		expect(check.payload).toMatchObject({ result: { name: "guardrails", status: "failed", reason: "recordTooLarge" } });
 		expect(canonicalJson(stored)).not.toContain(segment(0));
 	});
 });

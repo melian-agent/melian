@@ -50,6 +50,7 @@ export const recordCodes = [
 	"unexpected",
 	"withheld",
 	"unkeyed",
+	"recordTooLarge",
 ] as const;
 
 /**
