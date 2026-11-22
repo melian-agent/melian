@@ -682,13 +682,13 @@ function environmentFor({
 }: {
 	scratch: string;
 	node: string;
-	git: ProbeGit | undefined;
+	git: ProbeGit;
 	lang: string | undefined;
 }) {
 	const run = join(scratch, "run");
-	const linked = git !== undefined && "program" in git && git.program !== undefined;
+	const linked = "program" in git;
 	const path = [dirname(node), ...(linked ? [join(scratch, gitName)] : []), "/usr/bin", "/bin"].join(":");
-	const noSystem = git !== undefined && "reads" in git && git.noSystem === true;
+	const noSystem = "noSystem" in git;
 	return {
 		PATH: path,
 		HOME: join(run, "home"),
@@ -894,7 +894,7 @@ export class Probe {
 			for (const path of ["probe", "run/home", "run/tmp", "tree"])
 				await mkdir(join(scratch, path), { recursive: true });
 			// The probe's PATH reaches git through this one link, so no neighbour of git's program is on it.
-			if ("program" in git && git.program !== undefined) {
+			if ("program" in git) {
 				await mkdir(join(scratch, gitName));
 				await symlink(git.program, join(scratch, gitName, "git"));
 			}
@@ -999,7 +999,7 @@ export class Probe {
 
 	get #gitReads(): readonly string[] {
 		if (!("reads" in this.#git)) return [];
-		return this.#git.program === undefined ? this.#git.reads : [join(this.#scratch, gitName), ...this.#git.reads];
+		return "program" in this.#git ? [join(this.#scratch, gitName), ...this.#git.reads] : this.#git.reads;
 	}
 
 	/** Runs the probe once, within its time and output limits, and ends every process it started. */

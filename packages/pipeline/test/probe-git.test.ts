@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, w
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type HostAsk, probeGit } from "../src/probe-git.ts";
+import { askHost, type HostAsk, probeGit } from "../src/probe-git.ts";
 
 // The attacking review of what the macOS git lookup lets a probe read. Each case gives the lookup a host whose answers
 // would widen the read past the developer tools and git's own configuration, and expects no read at all.
@@ -35,13 +35,15 @@ afterEach(() => {
 	rmSync(root, { recursive: true, force: true });
 });
 
-// A host that answers only the four questions the lookup asks, each with what `answers` gives it.
+// A host that answers only the four questions the lookup asks, each with what `answers` gives it and the newline a
+// command ends its answer with.
 function host(answers: Partial<Record<"developer" | "git" | "exec" | "config", string | Error>> = {}): {
 	ask: HostAsk;
 	asked: string[];
 } {
 	const asked: string[] = [];
-	const answer = (value: string | Error) => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value));
+	const answer = (value: string | Error) =>
+		value instanceof Error ? Promise.reject(value) : Promise.resolve(`${value}\n`);
 	return {
 		asked,
 		ask: (file, args) => {
@@ -137,7 +139,7 @@ describe("probeGit", () => {
 
 		it("a developer directory at the reviewer's home", async () => {
 			mkdirSync(join(home, "usr", "bin"), { recursive: true });
-			writeFileSync(join(home, "usr", "bin", "git"), "");
+			writeFileSync(join(home, "usr", "bin", "git"), "", { mode: 0o755 });
 			const found = await probeGit(
 				"darwin",
 				host({ developer: home, git: join(home, "usr", "bin", "git") }).ask,
@@ -150,7 +152,7 @@ describe("probeGit", () => {
 		it("a developer directory inside the reviewer's home", async () => {
 			const inside = join(home, "Applications", "Xcode.app", "Contents", "Developer");
 			mkdirSync(join(inside, "usr", "bin"), { recursive: true });
-			writeFileSync(join(inside, "usr", "bin", "git"), "");
+			writeFileSync(join(inside, "usr", "bin", "git"), "", { mode: 0o755 });
 			const ask = host({ developer: inside, git: join(inside, "usr", "bin", "git") }).ask;
 			expect(await probeGit("darwin", ask, home)).toEqual(refused);
 		});
@@ -172,14 +174,14 @@ describe("probeGit", () => {
 		it("a git outside the developer directory, such as one on the reviewer's PATH", async () => {
 			const other = join(root, "opt", "bin", "git");
 			mkdirSync(dirname(other), { recursive: true });
-			writeFileSync(other, "");
+			writeFileSync(other, "", { mode: 0o755 });
 			expect(await probeGit("darwin", host({ git: other }).ask, home)).toEqual(refused);
 		});
 
 		it("a git inside the developer directory that links outside it", async () => {
 			const other = join(root, "opt", "bin", "git");
 			mkdirSync(dirname(other), { recursive: true });
-			writeFileSync(other, "");
+			writeFileSync(other, "", { mode: 0o755 });
 			const link = join(developer, "usr", "bin", "linked-git");
 			symlinkSync(other, link);
 			expect(await probeGit("darwin", host({ git: link }).ask, home)).toEqual(refused);
@@ -187,13 +189,17 @@ describe("probeGit", () => {
 
 		it("a git at the developer directory's top, whose share directory would lie outside it", async () => {
 			const top = join(developer, "git");
-			writeFileSync(top, "");
+			writeFileSync(top, "", { mode: 0o755 });
 			expect(await probeGit("darwin", host({ git: top }).ask, home)).toEqual(refused);
 		});
 
 		it("an exec path outside the developer directory", async () => {
 			expect(await probeGit("darwin", host({ exec: home }).ask, home)).toEqual(refused);
 			expect(await probeGit("darwin", host({ exec: join(root, "etc") }).ask, home)).toEqual(refused);
+		});
+
+		it("an exec path at the developer directory's parent", async () => {
+			expect(await probeGit("darwin", host({ exec: root }).ask, home)).toEqual(refused);
 		});
 
 		it("an exec path inside the developer directory that links outside it", async () => {
@@ -261,11 +267,23 @@ describe("probeGit", () => {
 
 		it("an answer of more than one line", async () => {
 			expect(await probeGit("darwin", host({ config: `${config}\n${home}` }).ask, home)).toEqual(refused);
-			expect(await probeGit("darwin", host({ developer: `${developer}\n/` }).ask, home)).toEqual(refused);
+			expect(await probeGit("darwin", host({ developer: `${developer}\n/` }).ask, home)).toEqual({
+				unavailable: expect.stringContaining(`xcode-select -p answered ${JSON.stringify(`${developer}\n/\n`)}`),
+			});
 		});
 
 		it("an empty answer", async () => {
 			expect(await probeGit("darwin", host({ config: "" }).ask, home)).toEqual(refused);
+		});
+	});
+
+	describe("asks the host with none of the reviewer's variables", () => {
+		it("gives the command only its own PATH and HOME", async () => {
+			expect(await askHost("/usr/bin/env", [])).toBe("PATH=/usr/bin:/bin\nHOME=/var/empty\n");
+		});
+
+		it("passes the command its arguments", async () => {
+			expect(await askHost("/bin/echo", ["one", "two"])).toBe("one two\n");
 		});
 	});
 

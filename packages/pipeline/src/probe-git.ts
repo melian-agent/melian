@@ -9,7 +9,8 @@ import { promisify } from "node:util";
  * or why git cannot run in a probe on this host.
  */
 export type ProbeGit =
-	| { readonly program?: string; readonly reads: readonly string[]; readonly noSystem?: true }
+	| { readonly program: string; readonly reads: readonly string[]; readonly noSystem?: true }
+	| { readonly reads: readonly string[] }
 	| { readonly unavailable: string };
 
 /** Asks the host a question by running `file` with `args`, outside any sandbox, and answers its standard output. */
@@ -18,7 +19,7 @@ export type HostAsk = (file: string, args: readonly string[]) => Promise<string>
 const execFileAsync = promisify(execFile);
 
 // No variable of the reviewer's reaches the answers, GIT_CONFIG_SYSTEM above all, since the probe's git sees none.
-const askHost: HostAsk = async (file, args) =>
+export const askHost: HostAsk = async (file, args) =>
 	(await execFileAsync(file, [...args], { env: { PATH: "/usr/bin:/bin", HOME: "/var/empty" }, timeout: 10_000 }))
 		.stdout;
 
@@ -40,10 +41,10 @@ export async function probeGit(
 	try {
 		const reviewer = realpathSync(home);
 		const developer = real(await answer(ask, "xcode-select", ["-p"]));
-		if (developer === sep || holds(developer, reviewer) || holds(reviewer, developer))
+		if (holds(developer, reviewer) || holds(reviewer, developer))
 			return { unavailable: `the developer directory ${developer} is the root or shares the reviewer's home` };
 		const git = real(await answer(ask, "xcrun", ["--find", "git"]));
-		if (git === developer || !holds(developer, git) || !isExecutableFile(git))
+		if (!holds(developer, git) || !isExecutableFile(git))
 			return {
 				unavailable: `git's program ${git} is not an executable file inside the developer directory ${developer}`,
 			};
@@ -85,7 +86,7 @@ function real(path: string): string {
 // Whether `outer` is `inner` or a directory above it.
 function holds(outer: string, inner: string): boolean {
 	const path = relative(outer, inner);
-	return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
+	return path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path);
 }
 
 function isExecutableFile(path: string): boolean {
@@ -94,7 +95,7 @@ function isExecutableFile(path: string): boolean {
 }
 
 function isDirectory(path: string): boolean {
-	return lstatSync(path, { throwIfNoEntry: false })?.isDirectory() === true;
+	return lstatSync(path).isDirectory();
 }
 
 function message(error: unknown): string {
