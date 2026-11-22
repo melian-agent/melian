@@ -131,7 +131,8 @@ export class RecordGate {
 			const own = (await Changeset.resolve(repoRoot, { base: sides.base, head: sides.head, mode: "twoDot" }))
 				.revision;
 			const under = { revision: own, config: context.config, repoRoot, policy: context.policy };
-			const findings = await read.findingsUnder(under);
+			// A finding a failed verifier never judged counts uncapped: the cap was safe only while its round read as not reviewed.
+			const findings = await read.findingsUnder(under, { failedVerifier: "uncapped" });
 			if ("refused" in findings) {
 				failures.push(`round ${round.id} ${findings.refused}`);
 				continue;

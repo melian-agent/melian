@@ -989,37 +989,70 @@ describe("the merge gate's forged rounds", () => {
 		]);
 	});
 
-	it("takes the coverage of a second round whose verifier ran, beside one whose verifier failed", async () => {
+	// The verifier's reply to every claim it is asked about: `verdict`, with the evidence a judgement needs.
+	const judges = (verdict: "confirmed" | "refuted") => (messages: readonly Message[]) =>
+		messages.some((message) => message.role === "toolResult")
+			? fauxAssistantMessage("Done.")
+			: fauxAssistantMessage(
+					fauxToolCall("report_verdict", {
+						claim: "c1",
+						answers:
+							verdict === "refuted"
+								? { code: "yes", guard: "yes", base: "no" }
+								: { code: "yes", guard: "no", base: "no" },
+						verdict,
+						reason: verdict === "refuted" ? "A guard prevents it." : "Nothing guards it.",
+						evidence: [{ file: "src/a.ts", line: 1, role: "context" }],
+					}),
+					{ stopReason: "toolUse" },
+				);
+	const broken = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "the request was malformed" });
+
+	it("blocks on a finding a failed verifier never judged, beside a clean round that covers every check", async () => {
 		const store = exported();
-		const broken = () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "the request was malformed" });
-		// The second round's verifier judges and refutes its finding, so that round's account names the verifier.
-		const refutes = (messages: readonly Message[]) =>
-			messages.some((message) => message.role === "toolResult")
-				? fauxAssistantMessage("Done.")
-				: fauxAssistantMessage(
-						fauxToolCall("report_verdict", {
-							claim: "c1",
-							answers: { code: "yes", guard: "yes", base: "no" },
-							verdict: "refuted",
-							reason: "A guard prevents it.",
-							evidence: [{ file: "src/a.ts", line: 1, role: "context" }],
-						}),
-						{ stopReason: "toolUse" },
-					);
+		const { verdict } = await review(store, "main...feature", blocks(), checks, config, [
+			broken,
+			broken,
+			broken,
+			broken,
+		]);
+		expect(rule({ verdict } as RecordGate)).toEqual([["src/a.ts", "advisory"]]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
+		expect(outcome.passes()).toBe(false);
+	});
+
+	it("takes the coverage of a second round whose verifier ran, and still blocks on the finding it refuted", async () => {
+		const store = exported();
 		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
+		const refuted = judges("refuted");
 		const second = await review(store, "main...feature", blocks(), checks, config, [
-			refutes,
-			refutes,
-			refutes,
-			refutes,
+			refuted,
+			refuted,
+			refuted,
+			refuted,
 		]);
 		expect((second.verdict.ran ?? []).map(({ name }) => name)).toContain("verifier");
+		expect(rule(second as unknown as RecordGate)).toEqual([]);
 		const outcome = await gate(await listed(store));
 		expect(outcome.verdict.notRun).toEqual([]);
 		expect(outcome.rounds.map(({ covers }) => covers)).toEqual(
 			expect.arrayContaining([{ refused: "did not run its verifier, so not every finding it raised was judged" }]),
 		);
-		expect(outcome.passes()).toBe(true);
+		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
+		expect(outcome.passes()).toBe(false);
+	});
+
+	it("blocks on a finding a failed verifier never judged and a later round's verifier confirmed", async () => {
+		const store = exported();
+		await review(store, "main...feature", blocks(), checks, config, [broken, broken, broken, broken]);
+		const confirmed = judges("confirmed");
+		await review(store, "main...feature", blocks(), checks, config, [confirmed, confirmed, confirmed, confirmed]);
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
 	});
 
 	it("does not count a check that failed as covered, though the policy lets it be skipped", async () => {

@@ -224,13 +224,19 @@ export class RecordedRound {
 	/**
 	 * The round's findings decided under the policy `context` reads, whatever policy the round's account names, or why
 	 * its records cannot stand for it. A reader that counts a round's findings under its own policy takes them from here,
-	 * and takes the round as reviewed only from {@link verdict}.
+	 * and takes the round as reviewed only from {@link verdict}. With `failedVerifier: "uncapped"`, a finding the round's
+	 * verifier was asked about and never judged, because the verifier did not run, keeps the resolution it would have
+	 * without the cap a host sets on it, since that cap holds only while the round reads as not reviewed.
 	 */
-	async findingsUnder(context: RecordedRoundContext): Promise<Verdict | { readonly refused: string }> {
+	async findingsUnder(
+		context: RecordedRoundContext,
+		options: { readonly failedVerifier?: "capped" | "uncapped" } = {},
+	): Promise<Verdict | { readonly refused: string }> {
 		const decided = await this.#decided(context);
 		if ("refused" in decided) return decided;
 		if (decided.policies === undefined) return { refused: "is read with no resolution policy to decide under" };
-		return adjudicated(decided, decided.policies, context);
+		const failed = !decided.pieces.checks.some(({ name, status }) => name === "verifier" && status === "ran");
+		return adjudicated(decided, decided.policies, context, options.failedVerifier === "uncapped" && failed);
 	}
 
 	async #decided(context: RecordedRoundContext): Promise<Merged | { readonly refused: string }> {
@@ -273,6 +279,7 @@ function adjudicated(
 	{ pieces, findings, verifies }: Merged,
 	policies: Policies,
 	context: RecordedRoundContext,
+	uncapAsked = false,
 ): Verdict {
 	return new Adjudication({
 		findings,
@@ -282,7 +289,8 @@ function adjudicated(
 		allowSkip: pieces.account.allowSkip,
 		// The host caps a finding no verifier judged when it asked about it, or when its lens ran only at levels that do
 		// not verify. A finding it dismissed is neither, so a dismissal that does not count here leaves it uncapped.
-		verificationRan: (report, defect) => pieces.asked.has(defect.id) || unverifiedAt(verifies, report),
+		verificationRan: (report, defect) =>
+			(!uncapAsked && pieces.asked.has(defect.id)) || unverifiedAt(verifies, report),
 		...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
 		revision: context.revision,
 	}).adjudicate();
