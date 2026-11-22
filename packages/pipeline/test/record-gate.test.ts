@@ -1040,7 +1040,14 @@ describe("the merge gate's forged rounds", () => {
 			const verdict = await RecordedRound.of(records, id, everyRecordCounts).findingsUnder(under, options);
 			return rule({ verdict } as RecordGate);
 		};
-		expect([await read(), await read({ unjudged: "capped" }), await read({ unjudged: "uncapped" })]).toEqual([
+		const host = await RecordedRound.of(records, id, everyRecordCounts).verdict(under);
+		expect([
+			rule({ verdict: host } as RecordGate),
+			await read(),
+			await read({ unjudged: "capped" }),
+			await read({ unjudged: "uncapped" }),
+		]).toEqual([
+			[["src/a.ts", "advisory"]],
 			[["src/a.ts", "advisory"]],
 			[["src/a.ts", "advisory"]],
 			[["src/a.ts", "block"]],
