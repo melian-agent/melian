@@ -154,15 +154,15 @@ describe("MissCause", () => {
 		expect(cause([lens(1, { shown: ["src/other.ts"] })])).toBe("never shown");
 		// Shown the file whole, but its diff holds none of the lines.
 		expect(cause([lens(1, { shown: [file] })], [], miss(), elsewhere)).toBe("never shown");
-		// A prober runs probes, not a review, so the lines it was shown are not a lens's sight of them.
-		expect(cause([lens(1), lens(2, { role: "prober", shown: [file] })])).toBe("never shown");
-		expect(cause([lens(1, { role: "prober", shown: [file] })])).toBe("not covered");
-		expect(cause([lens(1, { role: "planner", shown: [file] })])).toBe("seen, not reported");
 	});
 
 	it("reads `seen, not reported` when a covering run was shown the lines, and no lens reported there", () => {
 		expect(cause([lens(1, { shown: [file] })])).toBe("seen, not reported");
 		expect(cause([lens(1), lens(2, { shown: [file] })])).toBe("seen, not reported");
+		// At a level that probes, the prober reads the file and reports, so its sight counts as the planner's does.
+		expect(cause([lens(1, { role: "planner" }), lens(2, { role: "prober", shown: [file] })])).toBe(
+			"seen, not reported",
+		);
 		// A run the budget cut that saw them still saw them.
 		expect(cause([lens(1, { outcome: "ended", ended: "tokens", shown: [file] })])).toBe("seen, not reported");
 	});
@@ -233,7 +233,7 @@ describe("MissCause", () => {
 		expect(MissCause.of(miss({ file: undefined }), [], { stages: [lens(1)], revision })).toBeUndefined();
 	});
 
-	it("records each covering run but a prober, and each sighting, as IDs and numbers, once each", () => {
+	it("records each covering run and each sighting as IDs and numbers, once each", () => {
 		const sighting = reported({ verdict: "refuted" });
 		const lowered = reported({ start: 11 });
 		const stored = lowered.toJSON();
@@ -279,6 +279,16 @@ describe("MissCause", () => {
 					ended: "tools",
 					shownWhole: true,
 					read: [[10, 10]],
+				},
+				{
+					lens: "trust-boundary@2",
+					level: "deep",
+					role: "prober",
+					stage: "conversation:2",
+					conversation: 2,
+					ended: "completed",
+					shownWhole: false,
+					read: [],
 				},
 			],
 			sightings: [

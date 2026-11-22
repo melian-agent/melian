@@ -603,6 +603,11 @@ describe("MissEvidence.stagesAt", () => {
 		expect(ids(MissEvidence.stagesAt(stages, [], site))).toEqual(["conversation:1"]);
 	});
 
+	it("keeps a probing level's planner and prober alike, since the prober reads and reports there", () => {
+		const stages = [lens(1, { role: "planner" }), lens(2, { role: "prober" })];
+		expect(ids(MissEvidence.stagesAt(stages, [], site))).toEqual(["conversation:1", "conversation:2"]);
+	});
+
 	it("keeps a verifier of a lens finding whose lines meet the site's at either end, and none past them", () => {
 		const at = (start: number, end: number) => reported({ start, end, snippet: `line ${start}` });
 		const meetsEnd = at(12, 14);
