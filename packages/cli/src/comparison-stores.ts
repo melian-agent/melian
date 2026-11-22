@@ -7,6 +7,7 @@ import {
 	pullRequestChangesetId,
 } from "@melian-agent/core";
 import {
+	ComparisonCauses,
 	ComparisonReader,
 	backgroundContext as context,
 	MembershipReader,
@@ -31,6 +32,7 @@ export class ComparisonStores {
 		ownership?: MembershipCandidate["publication"],
 		histories = ownership !== undefined,
 		exporting = false,
+		causes = false,
 	): Promise<ComparisonStores> {
 		const repoRoot = await git(io.cwd, ["rev-parse", "--show-toplevel"]);
 		const directory = join(await stateDirectory(repoRoot, io.env), ...(isScripted(io.env) ? ["scripted"] : []));
@@ -55,7 +57,10 @@ export class ComparisonStores {
 			const changeset = name.slice(0, -".sqlite".length);
 			const storage = await openStorage(join(directory, name));
 			try {
-				result.entries.push(...(await ComparisonReader.open(storage).read(changeset)));
+				const entries = await ComparisonReader.open(storage).read(changeset);
+				result.entries.push(
+					...(causes ? await ComparisonCauses.open(storage, repoRoot).read(entries, changeset) : entries),
+				);
 				const reader = MembershipReader.open(storage);
 				if (ownership !== undefined) result.candidates.push(...(await reader.candidates(changeset, ownership)));
 				if (histories && (historyChangeset === undefined || changeset === historyChangeset))

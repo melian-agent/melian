@@ -11,7 +11,6 @@ import {
 	Lens,
 	type LensLevels,
 	type LensTier,
-	lensCovers,
 	lensTierSchema,
 	loadConfig,
 	type MelianConfig,
@@ -25,7 +24,13 @@ import {
 	VerificationState,
 	visibleText,
 } from "@melian-agent/core";
-import { type ProbeAvailability, type ReviewModels, StageTelemetry, type WriterTrust } from "@melian-agent/pipeline";
+import {
+	MissLines,
+	type ProbeAvailability,
+	type ReviewModels,
+	StageTelemetry,
+	type WriterTrust,
+} from "@melian-agent/pipeline";
 import Type, { type Static } from "typebox";
 import Value from "typebox/value";
 import {
@@ -430,40 +435,18 @@ export class Miss {
 		location: MissLocation,
 		lenses: readonly string[],
 	): Promise<readonly MissUnseen[] | undefined> {
-		const ranges = location.by === "file and rule" ? undefined : location.ranges;
 		const { revision } = await Changeset.resolve(this.repo, target.range);
-		const diffShows =
-			ranges === undefined ||
-			revision.files
-				.filter((file) => file.path === this.file)
-				.flatMap((file) => file.hunks)
-				.some(
-					({ newStart, newLines }) =>
-						newLines > 0 && ranges.some(([first, last]) => newStart <= last && newStart + newLines - 1 >= first),
-				);
+		const lines = MissLines.of(this.file, location.by === "file and rule" ? undefined : location.ranges, revision);
 		const unseen: MissUnseen[] = [];
 		for (const lens of lenses) {
 			const scoped = run.telemetry.stages.filter(
 				(stage) =>
-					stage.name === "melian.lens" &&
 					stage.subject.startsWith(`${lens}@`) &&
 					stage.role !== "prober" &&
 					stage.outcome === "completed" &&
-					stage.coverage !== undefined &&
-					lensCovers(stage.coverage, this.file),
+					lines.covers(stage),
 			);
-			const seen = scoped.some(
-				(stage) =>
-					(diffShows && stage.shown?.includes(this.file)) ||
-					stage.read?.some(
-						(read) =>
-							read.path === this.file &&
-							(ranges === undefined ||
-								read.ranges.some(([start, end]) =>
-									ranges.some(([first, last]) => start <= last && end >= first),
-								)),
-					),
-			);
+			const seen = scoped.some((stage) => lines.saw(stage));
 			if (seen) return undefined;
 			unseen.push({ lens, why: scoped.length === 0 ? "not run" : "never shown" });
 		}

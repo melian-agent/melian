@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
 	Adjudication,
+	Changeset,
 	Comparison,
 	ComparisonError,
 	ComparisonSet,
@@ -15,6 +16,7 @@ import {
 import {
 	CompareError,
 	CompareHarness,
+	ComparisonCauses,
 	ComparisonReader,
 	backgroundContext as context,
 	createMemoryStorage,
@@ -24,6 +26,7 @@ import {
 	maxReviewerFileBytes,
 	openSqliteStorage,
 	type TaskId,
+	TelemetryReader,
 } from "@melian-agent/pipeline";
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1192,5 +1195,123 @@ describe("stored comparison guards", () => {
 		const read = await harness.read(target);
 		expect(read?.label()).toBe("main...feature");
 		expect(read?.recordedAt()).toBe(judgement.at);
+	});
+});
+
+describe("ComparisonCauses", () => {
+	async function missed(storage = createMemoryStorage()) {
+		const harness = await CompareHarness.open(storage, createFakeModels().review, "change");
+		open.push(harness);
+		await storeReview(harness);
+		const external = codex(90, 0);
+		const noise = codex(120, 1);
+		await harness.importFindings(
+			revision,
+			[{ source: "file:codex.json", imported: imported(external, noise) }],
+			"2026-10-05T00:00:00Z",
+		);
+		return { storage, harness, external, noise };
+	}
+
+	it("leaves the comparison reader's entries without first reads, and an unattributed entry as it is", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "needs-execution",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const [entry] = await ComparisonReader.open(storage).read("change");
+		expect(entry).not.toHaveProperty("causes");
+		const unattributed = { ...entry!, unattributed: Revision.key(revision) };
+		expect(await ComparisonCauses.open(storage, directory).read([entry!, unattributed], "change")).toEqual([
+			{ ...entry, causes: { [external.id]: { firstRead: "no record", runs: [], sightings: [] } } },
+			unattributed,
+		]);
+	});
+
+	it("reads no storage when no entry is attributed", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "needs-execution",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const [entry] = await ComparisonReader.open(storage).read("change");
+		const unattributed = { ...entry!, unattributed: Revision.key(revision) };
+		const find = vi.spyOn(storage, "findDocument");
+		expect(await ComparisonCauses.open(storage, directory).read([unattributed], "change")).toEqual([unattributed]);
+		expect(await ComparisonCauses.open(storage, directory).read([], "change")).toEqual([]);
+		expect(find).not.toHaveBeenCalled();
+	});
+
+	it("reads an entry with no valid miss as having no first reads", async () => {
+		const { storage, harness, noise } = await missed();
+		await harness.adjudicate(revision, noise.id, { verdict: "noise", by: "Ada", at: "2026-10-05T01:00:00Z" });
+		const [entry] = await ComparisonCauses.open(storage, directory).read(
+			await ComparisonReader.open(storage).read("change"),
+			"change",
+		);
+		expect(entry?.causes).toEqual({});
+	});
+
+	it("reads `no record` for each valid miss of a round this storage holds no run of", async () => {
+		const { storage, harness, external, noise } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "needs-execution",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		await harness.adjudicate(revision, noise.id, { verdict: "noise", by: "Ada", at: "2026-10-05T01:00:00Z" });
+		const [entry] = await ComparisonCauses.open(storage, directory).read(
+			await ComparisonReader.open(storage).read("change"),
+			"change",
+		);
+		expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
+	});
+
+	it("reads `no record` for a round whose run it holds when the clone lacks its commits, and rethrows another failure", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "needs-execution",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const entries = await ComparisonReader.open(storage).read("change");
+		const telemetry = await TelemetryReader.open(storage).read("unrelated");
+		const round = vi.spyOn(TelemetryReader.prototype, "round").mockResolvedValue(telemetry);
+		const resolve = vi.spyOn(Changeset, "resolve");
+		try {
+			// The directory holds no repository, so neither of the round's commits resolves.
+			const [entry] = await ComparisonCauses.open(storage, directory).read(entries, "change");
+			expect(round).toHaveBeenCalledTimes(1);
+			expect(resolve).toHaveBeenCalledTimes(1);
+			await expect(resolve.mock.results[0]!.value).rejects.toMatchObject({ name: "ChangesetError" });
+			expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
+			const failure = new Error("git could not start");
+			resolve.mockRejectedValueOnce(failure);
+			await expect(ComparisonCauses.open(storage, directory).read(entries, "change")).rejects.toBe(failure);
+		} finally {
+			round.mockRestore();
+			resolve.mockRestore();
+		}
+	});
+
+	it("reads a valid miss judged out of scope too, though recall leaves it out", async () => {
+		const { storage, harness, external } = await missed();
+		await harness.adjudicate(revision, external.id, {
+			verdict: "valid",
+			reason: "out-of-scope",
+			by: "Ada",
+			at: "2026-10-05T01:00:00Z",
+		});
+		const [entry] = await ComparisonCauses.open(storage, directory).read(
+			await ComparisonReader.open(storage).read("change"),
+			"change",
+		);
+		expect(entry?.causes).toEqual({ [external.id]: { firstRead: "no record", runs: [], sightings: [] } });
 	});
 });

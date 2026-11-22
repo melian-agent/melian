@@ -8,17 +8,17 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/cause.ts": "1e75ff44ddce3c8f244dd812c23972a993c8b7be49f51241316af2a08e858dd8",
 
-	"packages/core/src/changeset.ts": "71d9c60e73dd2cad9dba966d77bbbb863a448a2d1a5cb97dd7f358a271fba0b4",
+	"packages/core/src/changeset.ts": "382c41ccd0e829ff486e8ed5874c2ced43bd4707e11a4ddd2aed15abe989f956",
 
 	"packages/core/src/checks.ts": "e7481774eeb3141a6b9e5f063cffba1e7e04b959a14818594b4ebccb80d45429",
 
 	"packages/core/src/comparison-adjudication.ts": "2c676b0f19c015d52b42b92c905c6d4087f3db0a1ea5d535b04b70794ce7181c",
 
-	"packages/core/src/comparison-export.ts": "9a0ea0a3a7d21a8369922ad19817f43f2cba4132fec59a169afa5f5e8ca4e0c8",
+	"packages/core/src/comparison-export.ts": "30a592164d531675d1f83c6075a3c89914515bc18f2843c038366b39b9cbf240",
 
-	"packages/core/src/comparison-set.ts": "8f56f2e3e5a3846bc66820bf95540f8a77da4cfaf63a402aa43df998a8497ade",
+	"packages/core/src/comparison-set.ts": "32353e88e0e658f3d0e98f73216fd5c8b3fea2bfa969c5b393d609ebeeaf12d6",
 
-	"packages/core/src/comparison.ts": "e86847d78aa8dd6df21dd9dfa4147074b391afaad89b6a1aef806fdae48d74f0",
+	"packages/core/src/comparison.ts": "1dce550182fa4e796ceab922817e24ef9c4f4c20823896ca10dd1e72e6116a7b",
 
 	"packages/core/src/config.ts": "dfffe1fdcc872ee66d8272ad6b03673fb75228f52e3178acba1e5b9878a8cefc",
 
@@ -54,13 +54,15 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "2da5c2d062708ce2ac65d42758e1d72ef134e825924f71c6cb763d0294ae2e02",
+	"packages/core/src/index.ts": "471599ad5beff267ca596d3aad0d254c09466dbbfbf189adef6b60a1cd127bab",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
 	"packages/core/src/lens.ts": "5b9ea9cf0f80d2d183c3bdfacbe5262b5363d55a9ccddf6682a00564edc4b748",
 
 	"packages/core/src/line-map.ts": "119eb57464d532345d3ec58f1e2a6c2f702174afb9e396dd7eafc51b2cf19f41",
+
+	"packages/core/src/miss-cause.ts": "9a6eb40cf2ca3a974382dda220cb35bc9761bc169d89605b8c918eb8f1bbfe05",
 
 	"packages/core/src/models.ts": "6a58c6a77352840074c838045d32e4935cd034cdea0b50ac78bd6b37a9107b41",
 
@@ -296,6 +298,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 
 		"packages/core/src/line-map.ts",
 
+		"packages/core/src/miss-cause.ts",
+
 		"packages/core/src/models.ts",
 
 		"packages/core/src/mutation-inventory.ts",
@@ -527,6 +531,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/core/src/lens.ts",
 
 		"packages/core/src/line-map.ts",
+
+		"packages/core/src/miss-cause.ts",
 
 		"packages/core/src/models.ts",
 
