@@ -1,0 +1,540 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "b2f5a72d6d4fc9a28f8ebc64a4bb375791af74fc",
+		"head": "8d58c8799e256551529106b3293b682b10b0d935"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/review.ts",
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 39,
+			"column": 2,
+			"endLine": 39,
+			"endColumn": 375,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f60da690a8fad9eb72901871c943da7f62b79487b51649bb8f6fc7aec825a2c1"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 41,
+			"column": 2,
+			"endLine": 41,
+			"endColumn": 377,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cda3584a609f02ac06c03ec925d28f589058c879d2fd3857d2493d68a1ebaffb"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 639,
+			"column": 33,
+			"endLine": 639,
+			"endColumn": 51,
+			"mutatorName": "LogicalOperator",
+			"replacement": "state.probes && {}",
+			"status": "generated",
+			"id": "1b7ca77d10dc450cfc74afc6c3070823dc273afe8db3002875fac22776c658d1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 640,
+			"column": 22,
+			"endLine": 641,
+			"endColumn": 62,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a9c36020ef1467ae54b04dbda3ac48cbbeafcab7420d90e793fa64d343c2ab2b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 641,
+			"column": 13,
+			"endLine": 641,
+			"endColumn": 32,
+			"mutatorName": "MethodExpression",
+			"replacement": "probes",
+			"status": "generated",
+			"id": "09245925603b06dca0b0f1232e9bb03094dc1ee7e400371b75b99e3580ce7683",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 641,
+			"column": 37,
+			"endLine": 641,
+			"endColumn": 60,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "d28840cb3992e6d2c01df2b02afe03898a44875e360be2a8dae3b9653dc27989",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 642,
+			"column": 29,
+			"endLine": 642,
+			"endColumn": 65,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "8f6d4be29ce72ab6186a4185a7a780d8c4c879aafa032ced5f5b7c5b904e4889",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"leaves an attack whose probe failed unanswered until a finding rests on it, and asks the prober for it again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 643,
+			"column": 29,
+			"endLine": 643,
+			"endColumn": 69,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "32a8c8772bbde8d191efae7fdfdba7faaa86fbf3ebf2ae08058fc5f329569e04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 644,
+			"column": 43,
+			"endLine": 644,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "state.findings && {}",
+			"status": "generated",
+			"id": "86d195683cc5f4e34d580eccd757885a64f5461316e0f521b7f0b00a62a482ec",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 644,
+			"column": 69,
+			"endLine": 644,
+			"endColumn": 103,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ff8f175daec7fb748fd6afc8ebbbcc4e3bf55f49f965fbb9069289791345d2b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 644,
+			"column": 77,
+			"endLine": 644,
+			"endColumn": 103,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state.probes?.[id].attack",
+			"status": "generated",
+			"id": "459f8a9a32c30e3b7422c78e2ca1d935fd95359c6a5e8d1d93122d93ac5e424b",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "report_finding writes findings[id] only after it finds probe id in the same document, so probes[id] is defined whenever findings names it."
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 644,
+			"column": 77,
+			"endLine": 644,
+			"endColumn": 95,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state.probes[id]",
+			"status": "generated",
+			"id": "4f4813655b3923f82724c2b9f6de061954ec31cc880322b1c638c453cac6130e",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "report_finding writes findings[id] only after it finds probe id in the same document, so probes[id] is defined whenever findings names it."
+			},
+			"survivorClasses": [
+				"optional-chain"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 645,
+			"column": 22,
+			"endLine": 645,
+			"endColumn": 41,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ffcb81f26f7ecf7fc182486ff5997816f8b27797ab672054a7663c44df3f0b8b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 645,
+			"column": 43,
+			"endLine": 645,
+			"endColumn": 66,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "027a60c41024cea32a2062ae165232344970d37f224bce7dc5fc7aa0ef61bf82",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 645,
+			"column": 57,
+			"endLine": 645,
+			"endColumn": 66,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "index - 1",
+			"status": "generated",
+			"id": "68a00957a7d94048fa85883893f78cd31a847438e28545fdd5c638bd2017f70b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 645,
+			"column": 75,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "699bf6fc11daccfcb037986ee556a8c7fce7cdffd5c0d72ae3078620305797e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 647,
+			"column": 8,
+			"endLine": 647,
+			"endColumn": 29,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "reported.has(attack)",
+			"status": "generated",
+			"id": "de908660aae3c57fe911635baa25cb641b762c0627ad5e08eadc8e2191ec7a1e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reports a finding only with a probe that failed, and the verifier judges the probe it ran again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 8,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "011278d70e17cfc13a906fbdeb819298188fc66adfccaf61b94a47eececf5207",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 8,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "405bbd732e695075bb5c3b74995629417ef99c3048dc982ce5dccba246603ada",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 8,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!probed.has(attack) || state.skips?.[String(attack)] === undefined",
+			"status": "generated",
+			"id": "f779013e46b351c3074516c5d273d448413e7a9efdc377b3d09ffda831b817f3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 8,
+			"endLine": 648,
+			"endColumn": 27,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "probed.has(attack)",
+			"status": "generated",
+			"id": "bf60f4bc8e516db48418175fece40dece335a66d65d8a71f030639fd1c2f6986",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"refuses a finding whose probe passed, so a probe that shows nothing reports nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 31,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "610ee7b43fffb1668d8229dcb6acc1f9a2da2751edf85a31f148b18c4bf4b3c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"counts an attack the prober skipped with its reason as answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 31,
+			"endLine": 648,
+			"endColumn": 74,
+			"mutatorName": "EqualityOperator",
+			"replacement": "state.skips?.[String(attack)] !== undefined",
+			"status": "generated",
+			"id": "e29fc3c999f533779e350525b7110f3516140d9637c5665ffbfa122fde37a7cd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 648,
+			"column": 31,
+			"endLine": 648,
+			"endColumn": 60,
+			"mutatorName": "OptionalChaining",
+			"replacement": "state.skips[String(attack)]",
+			"status": "generated",
+			"id": "857be0dbbdcdaf6eb3661a88da5e6e4fcdde980c44e4189f1a4d13391457518b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"reminds a prober once of each attack it left unanswered, and records a lens that still leaves one as ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 2057,
+			"column": 5,
+			"endLine": 2057,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f91b35b2cd40817273e4a66b1ed8e3caa68f274673ff7e14fc133884df066a84"
+		}
+	],
+	"total": 25,
+	"omitted": 0,
+	"unmutated": []
+}

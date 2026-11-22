@@ -1,0 +1,533 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6ee1001be8f59848050e0f7590fe43a48e692bae",
+		"head": "81a3a186954a11973b9b863f5dc20d0491f112f9"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probe.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 26,
+			"column": 2,
+			"endLine": 26,
+			"endColumn": 165,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7a4384f9361d7bab5dc13e877d657e204c2700e3930360e8beae2e88ee62cbe0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 27,
+			"column": 2,
+			"endLine": 27,
+			"endColumn": 34,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a0c51d4dab2570127877d7c5b79a6306d4880a62007136c1d2d04ba5ebe657ae",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 2,
+			"endLine": 28,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "df9d9a3b2b5b9bcbdc5d4b0ff315f811a8a720115956538772bae5708849a7d2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 29,
+			"column": 2,
+			"endLine": 29,
+			"endColumn": 95,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9bfb57de3466eee80ae11e968e7222d3e073bfcfc3e6543158f903adb15a33de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 32,
+			"column": 2,
+			"endLine": 32,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7281eabed151f4704ee2623ee3af884306620ec0b96e2829782d999fe1b66e52",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 33,
+			"column": 2,
+			"endLine": 33,
+			"endColumn": 26,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7d1c465cb5d4b413806f693780f9c5b0bddf533214764d7c0739e347516ffd7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 34,
+			"column": 2,
+			"endLine": 34,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "261a4f10d8311a53a137549fc8fdaac9a1406439695155152d79b08e9b11ed53",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 35,
+			"column": 2,
+			"endLine": 35,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ea0c1c97ffcd20bb7884b16c468791768f522afa319331ae83ba42d1ffceea2f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A second call writes the same record, since the pipe is destroyed and the ending fixed by then, and endingOf reads only the last record line"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 36,
+			"column": 2,
+			"endLine": 36,
+			"endColumn": 23,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "03160f5b76e0120449f28255ed1996a364a082e171a9c5cb3c01ee3d06be4144",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A second call writes the same record, since the pipe is destroyed and the ending fixed by then, and endingOf reads only the last record line"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 37,
+			"column": 2,
+			"endLine": 37,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4f5c824a4b0f6b832555d57b7c47a01080f1e707a7e47c8faec14b0854ce3680",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-endings.test.ts",
+					"path": [
+						"how a probe under sandbox-runtime ended",
+						"records an unknown ending without waiting for a child the probe left holding its exit pipe"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 38,
+			"column": 2,
+			"endLine": 38,
+			"endColumn": 127,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6151c087473aeaead9118c26d637f9864eac93baecde8cb6849ecbe6bedcb9f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 39,
+			"column": 2,
+			"endLine": 39,
+			"endColumn": 37,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e3e49d5a80c5e0b4be190050c173960a2440962334d36559261be9fb58b82ab9",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The host reads the ending only from the record on fd 3, through endingOf, never from the runner exit code"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 40,
+			"column": 2,
+			"endLine": 40,
+			"endColumn": 8,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "80e8fc0d5d18b91578afcf3817acf62790ade734f4100eaf3162ae4436114d88",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 41,
+			"column": 2,
+			"endLine": 41,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "84d5ed487eae452584da80b64246b57104ea4c1ec988cd68633980ea73c7cdec",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The one-second timer still writes the same record; only when the runner writes it changes"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 42,
+			"column": 2,
+			"endLine": 42,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dfa89b30e338e0375ee05dccb285732d0396672b4ca80e952a5223a40f93df24",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The one-second timer still writes the same record; only when the runner writes it changes"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 43,
+			"column": 2,
+			"endLine": 43,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0fd155428a53dec29dc6aa4fdb2b3a6dfa3b0cb72bab49d68edc829747f777ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-endings.test.ts",
+					"path": [
+						"how a probe under sandbox-runtime ended",
+						"records an unknown ending without waiting for a child the probe left holding its exit pipe"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 58,
+			"column": 8,
+			"endLine": 63,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "b28df662a0470b23a50b4abfa1c67645b2b7a7a3bfdcadd31ab2c1190ebb101f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 59,
+			"column": 2,
+			"endLine": 59,
+			"endColumn": 40,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "32cc7d81ece7770191998b136d316e1196ae963e90d7b29a8db9b70bafa48ee9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 60,
+			"column": 2,
+			"endLine": 60,
+			"endColumn": 86,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e4ad7d55d99975faa761beefef16aacf4ba1e9c0f9df12735abb2099fc588f3d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 61,
+			"column": 2,
+			"endLine": 61,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6b8fbeb3b8d9893f53327b19161068c3fbbe31c71cbb880a0050ceef5515cf3c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"Probe.open",
+						"writes the script and its files beside each other, readable and outside the writable directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 62,
+			"column": 2,
+			"endLine": 62,
+			"endColumn": 4,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f731124289bdf08c80b7b0abc779a381e35fce49f59b87d9b144dbab7a783c6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/probe.test.ts",
+					"path": [
+						"melian probe",
+						"under the sandbox",
+						"runs the probe in the checkout with its files and prints how it ended"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 63,
+			"column": 8,
+			"endLine": 63,
+			"endColumn": 12,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7131a5e6d682d224127bed940d8b2e7323509232b7ca2f650a20a7dba8aafdac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"Probe.open",
+						"writes the script and its files beside each other, readable and outside the writable directory"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 22,
+	"omitted": 0,
+	"unmutated": []
+}

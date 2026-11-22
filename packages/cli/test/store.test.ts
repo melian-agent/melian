@@ -165,6 +165,47 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(await exists(`coverage/${name}`)).toBe(false);
 	});
 
+	it("lists each round's evidence older than ninety days and removes none of it with --apply", async () => {
+		const rounds = ["evidence/pull-1111111111111111/r1", "evidence/pull-1111111111111111/r2"];
+		const pointer = (round: string) => `${round}/misses/${"d".repeat(16)}.json`;
+		const age = async (path: string) => {
+			const when = new Date(Date.now() - 100 * day);
+			await utimes(join(state, path), when, when);
+		};
+		await write(pointer(rounds[0]!), "pointer", 100 * day);
+		await age(rounds[0]!);
+		const notice = (count: string, bytes: string) =>
+			`Evidence nothing wrote for more than 90 days: ${count}, ${bytes}. --apply removes none of it until issue #633 (https://github.com/melian-agent/melian/issues/633) makes its removal safe beside a write.`;
+		const one = output();
+		expect(await main(["store", "prune"], one)).toBe(0);
+		expect(one.lines).toEqual([
+			[
+				`State directory: ${state}`,
+				"Would remove 0 entries, freeing 0 B. Nothing is removed without --apply.",
+				"Kept 0 changeset files, 0 B, the evidence of valid misses, 7 B, and scripted/.",
+				notice("1 round", "7 B"),
+				`  evidence  7 B  ${rounds[0]}`,
+				"",
+			].join("\n"),
+		]);
+		await write(pointer(rounds[1]!), "pointers", 100 * day);
+		await age(rounds[1]!);
+		const both = output();
+		expect(await main(["store", "prune", "--apply"], both)).toBe(0);
+		expect(both.lines).toEqual([
+			[
+				`State directory: ${state}`,
+				"Removed 0 entries, freeing 0 B.",
+				"Kept 0 changeset files, 0 B, the evidence of valid misses, 15 B, and scripted/.",
+				notice("2 rounds", "15 B"),
+				`  evidence  7 B  ${rounds[0]}`,
+				`  evidence  8 B  ${rounds[1]}`,
+				"",
+			].join("\n"),
+		]);
+		for (const round of rounds) expect(await exists(pointer(round))).toBe(true);
+	});
+
 	it("prunes the repository it runs in, not one a hook's GIT_DIR and GIT_WORK_TREE name", async () => {
 		const other = createRepository();
 		const otherState = await stateDirectory(other, { MELIAN_STATE_DIR: scratch });

@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
 import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
 import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
-import { homedir, platform, tmpdir } from "node:os";
+import { homedir, constants as osConstants, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
 import type { WriterTrust } from "./checks.ts";
@@ -11,14 +11,57 @@ import { backgroundContext, createNodeExecutionEnv } from "./harness.ts";
 import { linkDependencies } from "./link-dependencies.ts";
 import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
-// Node preloads the watchdog with --import, so it runs before the probe's module links, and a probe that fails to link
-// fails after the start marker, as its own failure. The watchdog exits the probe at `deadline` milliseconds even if
-// nothing outside the sandbox stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a
-// probe that hangs keeps the event loop alive until the timer fires and exits 124.
+// The runner the sandbox executes is the probe's parent. It writes how the probe's own process ended to fd 3, because a
+// sandbox reports a child a signal killed as exit 128+n: bubblewrap read SIGKILL as 137, and a probe can exit 137 itself.
+// The probe never holds fd 3. The record starts on a line of its own, so stray bytes before it cannot join it. The
+// parent signals nothing.
+// Node reports a child that a signal it cannot name killed, such as a real-time one on Linux, as exit 0 with no signal.
+// So the runner records exit 0 only when the probe's own exit handler, which no signal runs, said 0 on fd 4; otherwise
+// it records an ending with no record of how. A probe that writes 0 there itself gains no ending it could not exit with.
+// The runner keeps three characters of fd 4, enough to tell `0\n` from anything longer, so a flood cannot grow it.
+function runnerSource(): string {
+	return [
+		`import { spawn } from "node:child_process";`,
+		`import { writeSync } from "node:fs";`,
+		`import { fileURLToPath } from "node:url";`,
+		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
+		`const exited = probe.stdio[4];`,
+		`let said = "";`,
+		`exited.setEncoding("utf8").on("data", (chunk) => { said = (said + chunk).slice(0, 3); }).on("error", () => {});`,
+		`probe.once("error", () => { process.exitCode = 127; });`,
+		`probe.once("exit", (code, signal) => {`,
+		`\tconst known = () => signal !== null || code !== 0 || said === "0\\n";`,
+		`\tlet written = false;`,
+		`\tconst record = () => {`,
+		`\t\tif (written) return;`,
+		`\t\twritten = true;`,
+		`\t\texited.destroy();`,
+		`\t\ttry { writeSync(3, \`\\n\${JSON.stringify(known() ? { code, signal } : { code: null, signal: null })}\\n\`); } catch {}`,
+		`\t\tprocess.exitCode = code ?? 1;`,
+		`\t};`,
+		`\tif (known() || exited.readableEnded) return record();`,
+		`\texited.once("end", record);`,
+		`\tsetTimeout(record, 1000);`,
+		`});`,
+		"",
+	].join("\n");
+}
+
+// The runner starts the probe's own process with the watchdog preloaded by --import, so it runs before the probe's
+// module links, and a probe that fails to link fails after the start marker, as its own failure. The watchdog sets the
+// exit handler that reports on fd 4, and exits the probe at `deadline` milliseconds even if nothing outside the sandbox
+// stops it. Its timer is unref'd, so a probe that finishes leaves at its own exit code; a probe that hangs keeps the
+// event loop alive until the timer fires and exits 124.
 // The watchdog also leaves a marker, before the probe is imported, that Probe.run reads back: a sandbox or Node that
 // fails to launch exits with a code of its own, which without the marker would read as the probe's.
 function watchdogSource(deadline: number): string {
-	return `import { writeFileSync } from "node:fs";\nsetTimeout(() => process.exit(124), ${deadline}).unref();\nwriteFileSync(new URL("../run/${startedName}", import.meta.url), "");\n`;
+	return [
+		`import { writeFileSync, writeSync } from "node:fs";`,
+		`process.on("exit", (code) => { try { writeSync(4, \`\${code}\\n\`); } catch {} });`,
+		`setTimeout(() => process.exit(124), ${deadline}).unref();`,
+		`writeFileSync(new URL("../run/${startedName}", import.meta.url), "");`,
+		"",
+	].join("\n");
 }
 
 // The backstop past Melian's own deadline, in milliseconds. A probe that never yields never lets the watchdog's timer
@@ -135,7 +178,7 @@ export interface ProbeOptions {
 }
 
 export interface ProbeResult {
-	/** `null` when a signal ended the probe. */
+	/** `null` when a signal ended the probe, or when how it ended went unrecorded. */
 	readonly exitCode: number | null;
 	readonly signal: string | null;
 	/** Standard output and standard error, interleaved as they arrived, at most the output limit. */
@@ -169,6 +212,7 @@ export type CleanupOutcome =
 const segment = /^[A-Za-z0-9_][A-Za-z0-9._-]*$/;
 const scriptName = "probe.mjs";
 const watchdogName = "watchdog.mjs";
+const runnerName = "run.mjs";
 const startedName = "started";
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
@@ -472,7 +516,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName, watchdogName]);
+	const seen = new Set<string>([scriptName, runnerName, watchdogName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -564,11 +608,36 @@ function policyFor(paths: PolicyPaths): ProbePolicy {
 	};
 }
 
+// The most of fd 3 a run keeps, its last bytes: the runner's record is well under this.
+const recordLimit = 256;
+
+// How the probe's own process ended, from the last line its runner wrote to fd 3. A record that is absent, malformed or
+// past the bound leaves both null, which shows nothing.
+export function endingOf(record: Buffer): { exitCode: number | null; signal: string | null } {
+	const unknown = { exitCode: null, signal: null };
+	const lines = record.toString("utf8").split("\n");
+	// The record ends with a newline and starts on a line of its own, so a whole line has a newline on each side of it.
+	if (lines.length < 3 || lines.at(-1) !== "") return unknown;
+	let ending: unknown;
+	try {
+		ending = JSON.parse(lines.at(-2)!);
+	} catch {
+		return unknown;
+	}
+	if (typeof ending !== "object" || ending === null || Object.keys(ending).length !== 2) return unknown;
+	const { code, signal } = ending as { code?: unknown; signal?: unknown };
+	if (Number.isInteger(code) && (code as number) >= 0 && (code as number) <= 255 && signal === null)
+		return { exitCode: code as number, signal: null };
+	if (code === null && typeof signal === "string" && Object.hasOwn(osConstants.signals, signal))
+		return { exitCode: null, signal };
+	return unknown;
+}
+
 // The shell command the sandbox runs for a probe in `scratch`.
 function commandFor({ scratch, node, timeout }: { scratch: string; node: string; timeout: number }): string {
 	const tree = join(scratch, "tree");
 	const run = join(scratch, "run");
-	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} --import ${quote(pathToFileURL(join(scratch, "probe", watchdogName)).href)} ${quote(join(scratch, "probe", scriptName))}`;
+	return `cd ${quote(tree)} && export HOME=${quote(join(run, "home"))} TMPDIR=${quote(join(run, "tmp"))} && ulimit -t ${Math.ceil(backstop(timeout) / 1000)} && exec ${quote(node)} ${quote(join(scratch, "probe", runnerName))}`;
 }
 
 // The environment a probe in `scratch` starts with. spawn leaves out a variable whose value is undefined.
@@ -765,6 +834,7 @@ export class Probe {
 			// and so never stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe
 			// first; a grandchild that reparents away from that process still escapes it, as the decision records.
 			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(backstop(limits.timeout)));
+			await writeFile(join(scratch, "probe", runnerName), runnerSource());
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
@@ -807,11 +877,18 @@ export class Probe {
 			}
 			if (result.error !== undefined)
 				return { available: false, reason: `stopping an empty probe's processes failed: ${result.error}` };
-			if (result.exitCode !== 0)
+			if (result.exitCode !== 0) {
+				const ended =
+					result.exitCode !== null
+						? `exited ${result.exitCode}`
+						: result.signal !== null
+							? `was ended by ${result.signal}`
+							: "ended with no record of how";
 				return {
 					available: false,
-					reason: `an empty probe exited ${result.exitCode ?? result.signal}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
+					reason: `an empty probe ${ended}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
 				};
+			}
 			if (!cleanup.removed)
 				return { available: false, reason: `an empty probe's scratch could not be removed: ${cleanup.reason}` };
 			return { available: true };
@@ -845,6 +922,9 @@ export class Probe {
 		const chunks: Buffer[] = [];
 		let size = 0;
 		let truncated = false;
+		let record = Buffer.alloc(0);
+		// How the sandbox's own process exited, which a launch failure decides, apart from the probe's recorded ending.
+		let launched: number | null = null;
 		let child: ProbeProcess | undefined;
 		let argv: readonly string[] | undefined;
 		let outcome: ProbeResult | undefined;
@@ -873,6 +953,9 @@ export class Probe {
 				cwd: tree,
 				env: environmentFor({ scratch: this.#scratch, node, lang: process.env.LANG }),
 				timeoutMs: this.#timeout,
+				record: (chunk) => {
+					record = Buffer.concat([record, chunk]).subarray(-recordLimit);
+				},
 				output: (chunk) => {
 					if (truncated) return;
 					const room = this.#outputLimit - size;
@@ -888,10 +971,11 @@ export class Probe {
 				},
 			});
 			const exit = await child.wait();
+			launched = exit.code;
 			const bytes = Buffer.concat(chunks);
 			// A cut at the output limit can fall inside a multi-byte character; decode only up to the last whole one.
 			const output = new TextDecoder().decode(truncated ? bytes.subarray(0, completeUtf8(bytes)) : bytes);
-			const result = { exitCode: exit.code, signal: exit.signal, output, truncated, timedOut: exit.timedOut };
+			const result = { ...endingOf(record), output, truncated, timedOut: exit.timedOut };
 			outcome = exit.error === undefined ? result : { ...result, error: exit.error };
 		} finally {
 			const stopped = await child?.stop().then(
@@ -903,7 +987,7 @@ export class Probe {
 			// A run that settled keeps its result, with the failed stop as its error unless it already holds one.
 			if (outcome !== undefined && stopped !== undefined) outcome = { ...outcome, error: outcome.error ?? stopped };
 		}
-		const ended = !outcome.timedOut && !outcome.truncated && outcome.exitCode !== null;
+		const ended = !outcome.timedOut && !outcome.truncated && launched !== null;
 		if (
 			ended &&
 			!(await lstat(join(this.#scratch, "run", startedName)).then(
@@ -913,7 +997,7 @@ export class Probe {
 		)
 			throw new ProbeError(
 				"sandboxUnavailable",
-				`the probe never started: its sandbox exited ${outcome.exitCode}${outcome.output === "" ? "" : `: ${outcome.output.trim()}`}`,
+				`the probe never started: its sandbox exited ${launched}${outcome.output === "" ? "" : `: ${outcome.output.trim()}`}`,
 			);
 		return outcome;
 	}

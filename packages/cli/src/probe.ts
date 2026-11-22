@@ -69,7 +69,12 @@ async function directoryFiles(root: string, at: string, files: ProbeFile[], tota
 function status(result: ProbeResult, timeout: number): string {
 	const seconds = timeout / 1000;
 	if (result.timedOut) return `Probe: timed out after ${seconds} second${seconds === 1 ? "" : "s"}`;
-	const ended = result.exitCode === null ? `ended by ${result.signal}` : `exited ${result.exitCode}`;
+	const ended =
+		result.exitCode !== null
+			? `exited ${result.exitCode}`
+			: result.signal === null
+				? "ended with no record of how"
+				: `ended by ${result.signal}`;
 	const line = result.truncated ? `Probe: ${ended}; its output was cut at its limit` : `Probe: ${ended}`;
 	return result.error === undefined ? line : `${line}; stopping its processes failed: ${visibleText(result.error)}`;
 }

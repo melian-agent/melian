@@ -31,11 +31,13 @@ const keyOf = (...candidates: ReturnType<typeof cutCandidate>[]) =>
 
 describe("verificationRequest's cut of probe evidence", () => {
 	// Issue #357: keys main computed at 10cc833a, before cuts, for these requests, moved once by issue #488's fresh
-	// failover wording. A verification stored under one of them attaches here, so no stored verdict is asked again.
-	it("keys a request with no probe evidence as main did before cuts, and one whose evidence fits with the sandbox release its probe environment names", () => {
-		expect(keyOf(plain).key).toBe("bf47748d0b1122b2aac731b12456274d1cccfe9000be6002b887041b735f257b");
-		expect(keyOf(fitting).key).toBe("5a036c3aca605ce0ffab9c76f319290dd79f4c9d02b0621b9dea3f6a416a3551");
-		expect(keyOf(plain, fitting).key).toBe("e4a9b558b6a80f62bd46baee4cf1218082fd5beb2b5edee6e263984cb9511919");
+	// failover wording. Issue #493 then changed the shared evidence wording on purpose, for a probe that ended with no
+	// record of how and one that exited 125, so a verification stored before it is asked once more. A request whose
+	// evidence fits also holds the sandbox release its probe environment names.
+	it("keys a request with no probe evidence, and one whose evidence fits with the sandbox release its probe environment names", () => {
+		expect(keyOf(plain).key).toBe("9b509e9cd8c5d16c340532510c2f29e2da580ca68b8a8a04340d802b5b1daab8");
+		expect(keyOf(fitting).key).toBe("1f54f199998d2bbab842bc8a7c7dc49bad3bb228294013f188c3c1f4a0f10228");
+		expect(keyOf(plain, fitting).key).toBe("5b12635600ff21aaeb4d6cec1803c15602df01bc1549f269f9d9576fb2df3247");
 		expect(keyOf(plain, fitting).request).not.toHaveProperty("cuts");
 	});
 

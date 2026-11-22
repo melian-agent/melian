@@ -1,0 +1,1161 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "f60228058d8088d88939d0a7333d8009454f5dbb",
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/store-prune.ts",
+    "packages/cli/src/store.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+  "mutants": [
+    {
+      "file": "packages/cli/src/doctor.ts",
+      "line": 390,
+      "column": 12,
+      "endLine": 390,
+      "endColumn": 178,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "106a991594790ddc93f6fa96b4096a97006028d6295227c080cbfe4a2ac45c44"
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 57,
+      "column": 5,
+      "endLine": 57,
+      "endColumn": 20,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "1a32e8425fe0a1035e1f8a07c2a1b37d2c0bb118b324f1a5e78cbdedb5e68fb7",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists what it would remove and the space it frees, and removes nothing without --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 57,
+      "column": 5,
+      "endLine": 57,
+      "endColumn": 20,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "c8bfc96269a0bb03042770f7c12503a1dbb30cbf8ff9d6b7dde10dd1c19b1842",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 57,
+      "column": 5,
+      "endLine": 57,
+      "endColumn": 20,
+      "mutatorName": "EqualityOperator",
+      "replacement": "aged.length >= 0",
+      "status": "generated",
+      "id": "7c3d7076073988184a21c6883368d7da906c84fb35af237727010d61c40eac48",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists what it would remove and the space it frees, and removes nothing without --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 57,
+      "column": 5,
+      "endLine": 57,
+      "endColumn": 20,
+      "mutatorName": "EqualityOperator",
+      "replacement": "aged.length <= 0",
+      "status": "generated",
+      "id": "bf2e87808a3b149994ea8c443bbf43899c9d4ff022f048cf69a31e70786fbb4a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 57,
+      "column": 22,
+      "endLine": 64,
+      "endColumn": 2,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "10466777c81d15cc6999b01a42cf892692aa2b1127fdf26c3fcfcd8c0315441a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 58,
+      "column": 28,
+      "endLine": 58,
+      "endColumn": 61,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "892ff347f0e8a91b3ed4df338244fc5685e83e9132fb8fbe0a70887c0b2ac2ae",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 58,
+      "column": 44,
+      "endLine": 58,
+      "endColumn": 61,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "sum - entry.bytes",
+      "status": "generated",
+      "id": "da1a9cb2145346f393c584b72831393f1c74dd8d10efebe58a2c38dfb0cf449a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 3,
+      "endLine": 60,
+      "endColumn": 277,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c8d535d132c74ac92728e5f4ab4271b450b1de1deecbf7d5d1a1dc543f815f54"
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 83,
+      "endLine": 60,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "adabee3b597b119667902d5b3d82925f86aadce3a67acc2c2a2ddd9d77bb8422",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 83,
+      "endLine": 60,
+      "endColumn": 100,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "028f5cf5ef51d3d03a7a1887446254d3b149b1b9e6b3b542f4937f99fe705d0c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 83,
+      "endLine": 60,
+      "endColumn": 100,
+      "mutatorName": "EqualityOperator",
+      "replacement": "aged.length !== 1",
+      "status": "generated",
+      "id": "4180fcbc1807dfe0e89d2f5e9433b45f60a9a68740ca29b0fef003158ef3bad1",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 103,
+      "endLine": 60,
+      "endColumn": 110,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6083a4bdc0fcc1fde4d26d3cbf65351f32912c9faf713f94658422c390d4049b"
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 60,
+      "column": 113,
+      "endLine": 60,
+      "endColumn": 121,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "cc3533f7c2e6d2f432698947466b12c311059cd2878ccf2c49e1240cd5968204"
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 63,
+      "column": 3,
+      "endLine": 63,
+      "endColumn": 92,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "9320e5ddf4edad1d0ef413bb7fda1f61b5c4a093eaf3ce259653a25f480804f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/cli/test/store.test.ts",
+          "path": [
+            "melian store prune",
+            "lists each round's evidence older than ninety days and removes none of it with --apply"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 63,
+      "column": 14,
+      "endLine": 63,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2420278c3401a855e0a7ef4ffb18b63b781683eaed8a9da7e72faaf4e7757f47"
+    },
+    {
+      "file": "packages/cli/src/store.ts",
+      "line": 63,
+      "column": 80,
+      "endLine": 63,
+      "endColumn": 84,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7139256c267509409592d778fb12abb918d71aaca09af335baaf3149950d140b"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/(?:r[1-9][0-9]*|k[0-9a-f]{16})$/",
+      "status": "generated",
+      "id": "07fac1e1b2a93dc7e2d4d6ca8cbfb1fdf8a7736ac5033df656502752f458a6a0"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[1-9][0-9]*|k[0-9a-f]{16})/",
+      "status": "generated",
+      "id": "05d84745ca5ed30f86ea34516b2542d0f3fa1eaefa263b1ff3791b82e51df2f7"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[^1-9][0-9]*|k[0-9a-f]{16})$/",
+      "status": "generated",
+      "id": "567eb46df5a429d14ec8c89221b4c75883ce85b8fa59e3d6087055223fdaca9b"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[1-9][0-9]|k[0-9a-f]{16})$/",
+      "status": "generated",
+      "id": "cf4247d3e3a5aa25e8e9283797365039aef4dab3f5eccdeed410814c8ddd97bd"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[1-9][^0-9]*|k[0-9a-f]{16})$/",
+      "status": "generated",
+      "id": "9cb4346f01b3fe498019f2142265775dc5d0259e169a165b2fd347d5819b91b1"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[1-9][0-9]*|k[0-9a-f])$/",
+      "status": "generated",
+      "id": "31f1199419e137e859670873fa26fc885b97f9d637afd62826926f1760cebd50"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 27,
+      "column": 29,
+      "endLine": 27,
+      "endColumn": 63,
+      "mutatorName": "Regex",
+      "replacement": "/^(?:r[1-9][0-9]*|k[^0-9a-f]{16})$/",
+      "status": "generated",
+      "id": "1d3f0484f987d7ace1d03de40bd71fe7f0b58380b678d1aa67b8dd2387b554bc"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 231,
+      "column": 4,
+      "endLine": 231,
+      "endColumn": 471,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "c3721966967aef6004bdf76b7e84eb4e65450f9cb3f19c04082c537818d03f59"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 6,
+      "endLine": 306,
+      "endColumn": 32,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "evidenceRound.test(local)",
+      "status": "generated",
+      "id": "ec7982b27cbde613412e3acdcf252eec0c552860498ce049b6884d5f48b30633"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 6,
+      "endLine": 306,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "7a1b5b2122b77e767e96165d94ac2e7cf9f7aeeabe24ed4b52bde8069837261c"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 6,
+      "endLine": 306,
+      "endColumn": 32,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e515dc938fe52dc0863905bab240e16a7d7e3227a0352bd37287ba9a01f43b37"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 34,
+      "endLine": 306,
+      "endColumn": 115,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "0c26e91953511344f6db6e3928f4ceb3363680dff6e31c4a5f0deca442baf5bb"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 58,
+      "endLine": 306,
+      "endColumn": 70,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8bb7f76c3d49cc1acae902fbb00d7e0d5955f5fa1b2dcb093e5b143e9e8aa3b8"
+    },
+    {
+      "file": "packages/pipeline/src/evidence.ts",
+      "line": 306,
+      "column": 72,
+      "endLine": 306,
+      "endColumn": 113,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "9ea31a046a3b8104d588ffa90728865ea7ba35e1d5c1db4fa4dea8b31e0623cf"
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 180,
+      "column": 37,
+      "endLine": 180,
+      "endColumn": 39,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[\"Stryker was here\"]",
+      "status": "generated",
+      "id": "77ac8a0643116d431ac597c4fb2a40fb9de163161b7f85fbc5e9aba6983079c2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a linked evidence directory as not recognised and counts none of it"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 246,
+      "column": 53,
+      "endLine": 246,
+      "endColumn": 63,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2ae91bc7e12fc8f44bd975ccf2f050a06f4b7b1a5d28733af33869afbee74df8"
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 246,
+      "column": 67,
+      "endLine": 259,
+      "endColumn": 4,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "48038ad4a5c82f0169ff4452dab625f9556dbb122b68a8fd1dd8554873db2ec8",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 8,
+      "endLine": 247,
+      "endColumn": 80,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "4b313b2563186493eb7935a7e687e451bcd18939794512328cca813c0861a520",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 8,
+      "endLine": 247,
+      "endColumn": 80,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "431d2a98376e43a1da6d4d67e197b3148ed70b9eef03034a9e0217ee4a1bde97",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 8,
+      "endLine": 247,
+      "endColumn": 80,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(changeset.link || !changeset.directory) && !isChangesetId(changeset.name)",
+      "status": "generated",
+      "id": "25c012930b077182ac9c359807fe2e2ad8d93f442ac00bd306b8aff2f52c60c6",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 8,
+      "endLine": 247,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "af5a279cf5dfc679950637095e9d9e052b88422268b470853247675550e513a2",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 8,
+      "endLine": 247,
+      "endColumn": 46,
+      "mutatorName": "LogicalOperator",
+      "replacement": "changeset.link && !changeset.directory",
+      "status": "generated",
+      "id": "5c416aecbd18cf482d3e0788860b48cd0661bf4e21d11201fd3d7d85e256b699",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 26,
+      "endLine": 247,
+      "endColumn": 46,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "changeset.directory",
+      "status": "generated",
+      "id": "129f331114f17a62e7ca833a6e15c9c6b1f683abebcf18866db8faf7c5a4283b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 50,
+      "endLine": 247,
+      "endColumn": 80,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "isChangesetId(changeset.name)",
+      "status": "generated",
+      "id": "3586e4f7530c7b33857b0a556d62be7d2f667e10857e4a6f3b1a5f9188304b52",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 247,
+      "column": 82,
+      "endLine": 250,
+      "endColumn": 5,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "61c57e0444a8c3442845b27867a2ef29340b9f50abe9e87831df04c74cd4c8f4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 248,
+      "column": 5,
+      "endLine": 248,
+      "endColumn": 41,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "2e7f41a3b85d4dc34377f272412607274d02dd36aa976dc79f2fafc8831ecc52",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 251,
+      "column": 56,
+      "endLine": 258,
+      "endColumn": 5,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "4b12c579aeee8175d338f912c797d62a305337b3db1689197c0caf683eae667c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 9,
+      "endLine": 252,
+      "endColumn": 74,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "8a17cec261afbb52db181405a7cfdd944bc9cc082d107327cd0de712d6192ec9",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 9,
+      "endLine": 252,
+      "endColumn": 74,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "15b91268332166a52b7ff7a7c7cd0a6087e99ff716ab1bc0b7ecbd63970276d4",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 9,
+      "endLine": 252,
+      "endColumn": 74,
+      "mutatorName": "LogicalOperator",
+      "replacement": "(round.link || !round.directory) && !evidenceRound.test(round.name)",
+      "status": "generated",
+      "id": "8ab2b72ecc7f86b68fbdb275f91ed467c8f2e96fe2efca0d1d80552d6547c058",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 9,
+      "endLine": 252,
+      "endColumn": 39,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "27246dc8199b178eb883972593333efd7da8d75a25621a8087797432a88d4191",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 9,
+      "endLine": 252,
+      "endColumn": 39,
+      "mutatorName": "LogicalOperator",
+      "replacement": "round.link && !round.directory",
+      "status": "generated",
+      "id": "e1d78c297fccbda43d57d4532bb46b91f0b9b54af8be16c98c628ca03266f1da",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 23,
+      "endLine": 252,
+      "endColumn": 39,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "round.directory",
+      "status": "generated",
+      "id": "79dd98ee45163b627926390af6b213c7af87ce8c9dc60e7d592c19cc7809518d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 43,
+      "endLine": 252,
+      "endColumn": 74,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "evidenceRound.test(round.name)",
+      "status": "generated",
+      "id": "b58e86783eee4175fedc37dc9c8267a6d0e7f885121d3f574108c810de69c4f0",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 252,
+      "column": 76,
+      "endLine": 252,
+      "endColumn": 108,
+      "mutatorName": "CallExpression",
+      "replacement": ";",
+      "status": "generated",
+      "id": "959f763cbc5d6c310537d0fde4e4ed87d20ad29c45c28e0501e081d227618c00",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "lists a name under evidence it does not recognise, and plans none of it however old"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 253,
+      "column": 10,
+      "endLine": 257,
+      "endColumn": 6,
+      "mutatorName": "BlockStatement",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "beeecfbb99a9d95f44ecb3cc9e7d0fc9f6adf3c24835839ba6a1ad8af5357d5c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 10,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "e931dc2a94de9ea1de485b39cc601728db427ca121ac656ac67712f96e0e6bcf",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 10,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "e933716eebc9491753b1ae940e98a503720ac32360fe3a74829038e92e0b8754",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 10,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "EqualityOperator",
+      "replacement": "now - newest >= evidenceAgeDays * day",
+      "status": "generated",
+      "id": "a502b9c4dd339ad4d8b3d668d17799aa215f3763e968cd6d08382677fa7007d5",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 10,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "EqualityOperator",
+      "replacement": "now - newest <= evidenceAgeDays * day",
+      "status": "generated",
+      "id": "763057fcbffffce510eedc22ebc29a72f7c2ddcd1c9c780c6d948d2c70b1bd5c",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 10,
+      "endLine": 255,
+      "endColumn": 22,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "now + newest",
+      "status": "generated",
+      "id": "22ef16f2f7ede15067b68207867d6edc9bd641a1717919a873adb40c993ba03d",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 255,
+      "column": 25,
+      "endLine": 255,
+      "endColumn": 46,
+      "mutatorName": "ArithmeticOperator",
+      "replacement": "evidenceAgeDays / day",
+      "status": "generated",
+      "id": "f2b58e62f8c9bb713ea35fb1ce1364fdaf85e66bf56238f783897c6c55726f4f",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 256,
+      "column": 25,
+      "endLine": 256,
+      "endColumn": 83,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "e2b800a06d02ddf3a22a2f479727f99e5f2759b38744fb9ba2c96c482d6c1650",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 256,
+      "column": 33,
+      "endLine": 256,
+      "endColumn": 43,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "a011624066bda22a33b2e9509f34a763aa2eeeae1fcc799fb1b2a8da7437a5b5"
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 256,
+      "column": 52,
+      "endLine": 256,
+      "endColumn": 74,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "d341e5c038a51c5ac01b57e07d52651e9225bcbe7b1fc4f5c4c3d4f6cb427e76",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/store-prune.ts",
+      "line": 269,
+      "column": 24,
+      "endLine": 269,
+      "endColumn": 89,
+      "mutatorName": "ObjectLiteral",
+      "replacement": "{}",
+      "status": "generated",
+      "id": "6b3e0f679624f76bad8993ba0b1a23399bc41bea203e109ea37c362ac865e8ec",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/store-prune.test.ts",
+          "path": [
+            "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+          ]
+        }
+      },
+      "survivorClasses": []
+    }
+  ],
+  "total": 63,
+  "omitted": 0,
+  "unmutated": []
+}
