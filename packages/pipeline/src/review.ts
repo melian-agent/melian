@@ -1535,7 +1535,7 @@ interface ReviewSettings {
 	readonly writer?: WriterTrust;
 	/** Run `static.mutation` from nothing in the automatic checks, as a review that may pass must; see `RunChecksInput`. */
 	readonly cold?: boolean;
-	/** The store a review exports its records to as its tasks finish. */
+	/** The store a review exports its records to once it decides. */
 	readonly records?: RecordStore;
 	/** The host's spans, which the review's own steps between tasks join; the host stores them. */
 	readonly spans?: PrepareSpans;

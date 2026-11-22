@@ -181,8 +181,6 @@ export class ReviewRecords {
 			};
 		}
 		const projected = sorted(sightings);
-		const whole = this.#record("check", key, { v: 1, result: checkResult(result), sightings: projected });
-		if (Buffer.byteLength(whole.bytes) <= recordLimit) return { record: whole, trimmed: false };
 		// A canonical array of n items takes 2 + (n - 1) bytes beside them, which the budget counts, so the room is the
 		// limit less the record with an empty array, `[]`, plus those 2.
 		const bare = this.#record("check", key, { v: 1, result: checkResult(result), sightings: [] });

@@ -107,7 +107,7 @@ Options:
                          Review the pull request only at this base and head, as the pull request reports them;
                          refuse before reading a model credential if it moved (review).
   --model <provider/id>  Route every tier to this model, over any route melian.yaml sets (review).
-  --records dir:<path>   Export the review's records to a directory store as its tasks finish, when the base's
+  --records dir:<path>   Export the review's records to a directory store once it decides, when the base's
                          melian.yaml sets trust.writers: true; otherwise say so and export nothing (review). Read
                          the rounds a directory store holds (findings).
   --rerun                Run again the checks and lenses that failed in the last review of this base and head,
