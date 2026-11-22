@@ -1,5 +1,6 @@
 import type { MelianConfig, ModelRoute, ModelTier } from "./config.ts";
 import { ModelRoutingError } from "./errors.ts";
+import { visibleText } from "./render.ts";
 
 /** A model by provider and model ID, the shape pi-ai and Pi Durable select a model by. */
 export interface ModelReference {
@@ -88,7 +89,7 @@ export function parseModelReference(text: string, tier: string, at = `models.${t
 	const provider = text.slice(0, slash).trim();
 	const modelId = text.slice(slash + 1).trim();
 	if (slash === -1 || provider === "" || modelId === "") {
-		throw new ModelRoutingError("invalidModel", `${at}: "${text}" is not provider/model-id`, {
+		throw new ModelRoutingError("invalidModel", visibleText(`${at}: "${text}" is not provider/model-id`), {
 			tier,
 			model: text,
 		});

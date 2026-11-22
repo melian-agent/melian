@@ -1548,6 +1548,29 @@ describe("a route error beside a nearer file", () => {
 	});
 });
 
+describe("a configuration error that quotes a value from the file", () => {
+	const hostile = String.raw`\e[2J\u202Eevil`;
+	it.each([
+		[
+			"a fallback's model",
+			lines(
+				"models:",
+				"  heavy:",
+				"    model: faux/a",
+				`    fallbacks: [{ model: "faux/c${hostile}", thinking: medium }]`,
+			),
+		],
+		["a lens's name", lines("lenses:", `  "design${hostile}":`, "    route: { thinking: low }")],
+		["a glob", lines("lenses:", "  design:", `    paths: ["../${hostile}"]`)],
+	])("writes ESC and U+202E in %s as visible escapes", async (_what, text) => {
+		writeFiles(repo, { "melian.yaml": text });
+		const error = await rejection(loadConfig(repo, { kind: "worktree" }, "a.ts"));
+		expect(error).toMatchObject({ code: "invalidValue", file: "melian.yaml" });
+		expect(error.message).not.toMatch(/[\u001b\u202e]/);
+		expect(error.message).toContain(String.raw`\u001b[2J\u202eevil`);
+	});
+});
+
 describe("a route whose fallback names a level", () => {
 	const levelled = "fallbacks: [faux/b, { model: faux/c, thinking: medium }]";
 	const refused = (key: string, file: string) => ({ code: "invalidValue", file, key: `${key}.thinking` });

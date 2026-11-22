@@ -563,6 +563,12 @@ describe("ReviewPlan.resolve", () => {
 		expect(() => plan({ heavy: { model: "opus" } }, {})).toThrow(ModelRoutingError);
 		expect(() => plan({ verifier: { accept: ["opus"] } }, {})).toThrow(ModelRoutingError);
 	});
+
+	it("writes ESC and U+202E in a model that is not provider/model-id as visible escapes", () => {
+		expect(() => plan({ heavy: { model: "opus\u001b[2J\u202eevil" } }, {})).toThrow(
+			'models.heavy: "opus\\u001b[2J\\u202eevil" is not provider/model-id',
+		);
+	});
 });
 
 describe("a lens two folders define", () => {

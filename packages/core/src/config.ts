@@ -7,6 +7,7 @@ import { type Document, isMap, isScalar, parseDocument } from "yaml";
 import { ConfigError, type ConfigErrorCode } from "./errors.ts";
 import { anchorGlob, directoriesUpToRoot, globShapeProblem, melianPaths, repoPath } from "./paths.ts";
 import { compileGlob, compilePattern, Refused } from "./pattern.ts";
+import { visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 
 const strict = { additionalProperties: false } as const;
@@ -632,7 +633,8 @@ export function configError(
 	detail: string,
 	options: { key?: string; cause?: unknown } = {},
 ): ConfigError {
-	return new ConfigError(code, site.file, `${site.where}: ${detail}`, options);
+	// A message quotes keys, globs and model names from the file, which a change under review may carry.
+	return new ConfigError(code, site.file, visibleText(`${site.where}: ${detail}`), options);
 }
 
 function isPlain(value: unknown): value is Plain {
