@@ -180,20 +180,8 @@ describe("a review that names a record store", () => {
 		const store = new MemoryRecordStore({ payloads: reviewPayloads });
 		const { changeset, stored } = await review(store);
 
-		// Each lens run's early copy, with no check, stays beside the final one the round names.
 		const kinds = stored.map(({ kind }) => kind).sort();
-		expect(kinds).toEqual([
-			"account",
-			"check",
-			"check",
-			"check",
-			"lens",
-			"lens",
-			"lens",
-			"lens",
-			"round",
-			"verification",
-		]);
+		expect(kinds).toEqual(["account", "check", "check", "check", "lens", "lens", "round", "verification"]);
 		const round = stored.find(({ kind }) => kind === "round")!;
 		const read = (round.payload as { read: { kind: string; key: string; id: string }[] }).read;
 		expect(read.map(({ kind }) => kind).sort()).toEqual([
@@ -268,7 +256,7 @@ describe("a review that names a record store", () => {
 		}
 	});
 
-	it("exports each lens run as its lens ends, with no check, which the round's export adds", async () => {
+	it("exports nothing until adjudication decides, then each lens run once, with its check, beside the round", async () => {
 		const adds: RecordEnvelope[][] = [];
 		const store = new (class extends MemoryRecordStore {
 			override async add(records: RecordEnvelope[]) {
@@ -276,21 +264,14 @@ describe("a review that names a record store", () => {
 				return super.add(records);
 			}
 		})({ payloads: reviewPayloads });
-		const { stored } = await review(store);
+		await review(store);
 
-		const last = adds.findIndex((records) => records.some(({ kind }) => kind === "round"));
-		expect(last).toBe(adds.length - 1);
-		const early = adds.slice(0, last).flat();
-		expect(early.map(({ kind }) => kind)).toEqual(["lens", "lens"]);
-		const final = adds[last]!.filter(({ kind }) => kind === "lens");
-		const unchecked = (records: RecordEnvelope[]) =>
-			[...records]
-				.sort((a, b) => a.key.localeCompare(b.key))
-				.map((record) => ({ ...record, payload: { ...(record.payload as object), check: null } }));
-		expect(early.every(({ payload }) => (payload as { check: unknown }).check === null)).toBe(true);
-		expect(final.every(({ payload }) => (payload as { check: unknown }).check !== null)).toBe(true);
-		expect(unchecked(early)).toEqual(unchecked(final));
-		expect(stored.filter(({ kind }) => kind === "lens")).toHaveLength(4);
+		expect(adds).toHaveLength(1);
+		const lenses = adds[0]!.filter(({ kind }) => kind === "lens");
+		expect(lenses.map(({ payload }) => (payload as { check: { name: string } | null }).check?.name).sort()).toEqual([
+			"lens.contracts",
+			"lens.correctness",
+		]);
 	});
 
 	it("exports a host's record that names an absent field as undefined", async () => {

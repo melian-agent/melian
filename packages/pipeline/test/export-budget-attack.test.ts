@@ -14,6 +14,7 @@ import {
 	MemoryRecordStore,
 	pullRequestChangesetId,
 	type RecordStore,
+	Revision,
 	recordLimit,
 	reviewPayloads,
 	type SharedRecord,
@@ -22,6 +23,7 @@ import {
 	TierAccount,
 } from "@melian-agent/core";
 import {
+	ChangeLenses,
 	backgroundContext as context,
 	createMemoryStorage,
 	createReviewRegistry,
@@ -451,8 +453,8 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 					standards: [],
 					models: fake.review,
 					checks: [
-						{ name: "guardrails", status: "ran", findings: 0, notes: [] },
-						{ name: "static.biome", status: "ran", version: "2.5.0", findings: 0, notes: [] },
+						{ name: "guardrails", status: "ran" },
+						{ name: "static.biome", status: "ran", version: "2.5.0" },
 						{ name: "static.tsc", status: "skipped", reason: "no TypeScript project" },
 						{ name: "decisions.fast", status: "skipped", reason: "no decision provider is configured" },
 					],
@@ -485,16 +487,19 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 			const store = await DirectoryRecordStore.open(directory, reviewPayloads);
 			const result = await review(store, size, 2, ["correctness", "contracts"]);
 			await store.close();
-			const tier = TierAccount.of(
-				{ ...defaultConfig, tiers: twoLensTiers, checks: { allowSkip: ["static.tsc", "decisions.fast"] } } as never,
-				"fast",
-				{ loaded: [], selected: [] },
-			);
+			const changeset = await Changeset.resolve(repo, "main...feature");
+			const config = {
+				...defaultConfig,
+				tiers: twoLensTiers,
+				checks: { allowSkip: ["static.tsc", "decisions.fast"] },
+			} as MelianConfig;
+			const lenses = (await Lens.builtins()).filter(({ name }) => ["correctness", "contracts"].includes(name));
+			const selection = await ChangeLenses.read({ changeset, lenses, config, tier: "full", floor: "quick" });
 			const relay = await RelayBatch.read(directory, {
-				changeset: (await Changeset.resolve(repo, "main...feature")).id,
-				revision: "",
+				changeset: changeset.id,
+				revision: Revision.key(changeset.revision),
 				fork: false,
-				tier,
+				tier: TierAccount.of(config, "full", selection.tierLenses()),
 				handedOver: [],
 			}).then(
 				() => "taken",
@@ -513,6 +518,17 @@ describe("lens records no trim can shrink", { timeout: 120_000 }, () => {
 		expect(sizes.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(relayLimits.bytes);
 		expect(verdict?.notRun?.map(({ name }) => name) ?? []).not.toContain("records");
 	});
+
+	it("whose early lens copies would have taken the batch past 8 MiB exports a batch the relay takes", async () => {
+		const { thrown, verdict, sizes, listed, relay } = await relayed(1_047_600);
+		expect(thrown).toBeUndefined();
+		expect(verdict?.notRun?.map(({ name }) => name) ?? []).not.toContain("records");
+		expect(
+			listed.filter(({ kind, payload }) => kind === "lens" && (payload as { check: unknown }).check === null),
+		).toEqual([]);
+		expect(sizes.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(relayLimits.bytes);
+		expect(relay).toBe("taken");
+	}, 60_000);
 
 	it("whose batch passes 8 MiB, each record under 4 MiB, fails the round naming the bound and the batch's size", async () => {
 		const { thrown, verdict, sizes, relay } = await relayed(1_047_600);

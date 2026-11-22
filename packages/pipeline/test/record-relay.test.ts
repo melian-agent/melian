@@ -402,7 +402,7 @@ describe("RelayBatch", () => {
 			expect([found.code, found.recordCode]).toEqual(["tierAccount", "otherSkips"]);
 		});
 
-		// A review exports each lens run as its lens ends, with no check, and again with its check once adjudication decides.
+		// A lens run's copy with no check, as a review once exported as each lens ended.
 		const early = (key: string) =>
 			records().lens(
 				{ name: "correctness", version: "0123456789ab", level: "careful", request: key, probe: false },
@@ -410,26 +410,11 @@ describe("RelayBatch", () => {
 				[],
 			);
 
-		it("takes a lens run's early copy under the key of a run the round reads", async () => {
+		it("refuses a lens run's copy with no check under the key of a run the round reads, which the round does not name", async () => {
 			const written = accounted([check(), lens(), triaged(false)], claim);
-			const batch = await RelayBatch.read(await artefact(...written, early("e".repeat(64))), run);
-			expect(batch.records).toHaveLength(6);
-		});
-
-		it("counts early lens copies the round names against the same bound, with the round's triage", async () => {
-			const counted = [check(), lens(), triaged(false)];
-			const made = account(counted, claim);
-			const named = (copies: SharedRecord[]) => [
-				...counted,
-				made,
-				...copies,
-				records().round([...counted, made, ...copies], undefined, [], []),
-			];
-			const copy = (index: number) => early(index.toString(16).padStart(64, "0"));
-			const at = Array.from({ length: relayLimits.extras - 1 }, (_, index) => copy(index));
-			expect((await RelayBatch.read(await artefact(...named(at)), run)).records).toHaveLength(at.length + 5);
-			const past = [...at, copy(relayLimits.extras)];
-			expect((await refusal(RelayBatch.read(await artefact(...named(past)), run))).code).toBe("tooManyExtras");
+			const stray = early("e".repeat(64));
+			const found = await refusal(RelayBatch.read(await artefact(...written, stray), run));
+			expect([found.code, found.file]).toEqual(["unnamedRecord", `${stray.id}.json`]);
 		});
 
 		it("refuses an early copy under a key the round reads no run of", async () => {

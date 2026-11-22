@@ -75,8 +75,8 @@ const says: Record<RelayRefusalCode, string> = {
 	unresolvedRead: "is a round that reads a record the batch does not hold",
 	roundCount: "leaves a writer's batch with no round, or more than one",
 	roundShape: "is a round that names a walkthrough, or rounds it replaces or follows",
-	unnamedRecord: "is a record the batch's round does not name, and no triage, telemetry or early lens copy of it",
-	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage, telemetry and early lens records`,
+	unnamedRecord: "is a record the batch's round does not name, and no triage or telemetry",
+	tooManyExtras: `takes the batch past the relay's bound of ${relayLimits.extras} triage and telemetry records`,
 	triageCount: "is a second triage decision, and a review decides triage once a round",
 	otherTelemetry: "is another round's telemetry, and a round names no telemetry",
 	accountCount: "is a round that reads no account, or more than one",
@@ -196,8 +196,8 @@ export class RelayBatch {
 	}
 
 	// A writer's batch is one round and what it rests on: every record the round reads, held here at the run's revision,
-	// and a bounded number of triage records, the round's telemetry, and early copies of the lens runs it reads. The
-	// round sets no other round aside, and its account is the one the base's tier gives for the records it counts.
+	// and a bounded number of triage records and the round's telemetry. The round sets no other round aside, and its
+	// account is the one the base's tier gives for the records it counts.
 	static #rests(records: readonly SharedRecord[], tier: TierAccount): void {
 		const rounds = records.filter((record) => record.kind === "round");
 		const round = rounds[0];
@@ -213,13 +213,9 @@ export class RelayBatch {
 				throw new RelayRefusal("unresolvedRead", round.path);
 		}
 		const read = new Set(manifest.read.map((named) => named.id));
-		const lensKeys = new Set(manifest.read.filter((named) => named.kind === "lens").map((named) => named.key));
-		// A lens run's copy exported as the lens ended, with no check, under the key of the run the round reads.
-		const early = (record: SharedRecord) =>
-			record.kind === "lens" && (record.payload as LensPayload).check === null && lensKeys.has(record.key);
-		// Triage, the round's telemetry and early lens copies count against the bound whether or not the round names them.
+		// Triage and the round's telemetry count against the bound whether or not the round names them.
 		const extra = (record: SharedRecord) =>
-			record.kind === "triage" || (record.kind === "telemetry" && record.key === round.id) || early(record);
+			record.kind === "triage" || (record.kind === "telemetry" && record.key === round.id);
 		let extras = 0;
 		for (const record of records) {
 			if (record === round) continue;

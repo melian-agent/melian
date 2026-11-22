@@ -3411,49 +3411,6 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
 		);
 	};
-	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
-	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
-	// round names only that copy, so a failure here costs nothing but the early copy.
-	const exportAsLensesEnd = async (task: number, done: Promise<unknown>) => {
-		const store = request.records;
-		if (store === undefined) return;
-		const record = await harness.getTask(task as TaskId, context);
-		if (record === undefined || record.state.status === "terminal") return;
-		const runs = (record.input as unknown as StoredLensTaskInput).lenses;
-		const watch = await watchWaves(task);
-		if (watch === undefined) return;
-		let wake = () => {};
-		let finished = false;
-		const stop = () => {
-			finished = true;
-			wake();
-		};
-		done.then(stop, stop);
-		watch.start(async () => wake());
-		const exported = new Set<string>();
-		try {
-			for (;;) {
-				const changed = new Promise<void>((resolve) => {
-					wake = resolve;
-				});
-				const ended = VerificationWaves.of(
-					await harness.snapshot(VerificationWavesDocument, root, context),
-					reviewed,
-					task,
-				).ended() as unknown as LensResult;
-				const fresh = Object.fromEntries(Object.entries(ended).filter(([key]) => !exported.has(key)));
-				const made = await lensRecords(runs, fresh);
-				if (made.length > 0) await store.add(made.map(({ record }) => record.toJSON()));
-				for (const key of Object.keys(fresh)) exported.add(key);
-				if (finished) return;
-				await changed;
-			}
-		} catch {
-			return;
-		} finally {
-			await watch.stop();
-		}
-	};
 	// What the host's `lensesStarted` returned, which settles once its walkthrough has, and when the host was called.
 	let walkthrough: { at: number; done: Promise<unknown> } | undefined;
 	const startWalkthrough =
@@ -3485,8 +3442,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 					return judged?.refusal !== undefined;
 				},
 				unlockModels,
-				(task, done) =>
-					Promise.all([verifyAsLensesEnd(task, done), exportAsLensesEnd(task, done)]).then(() => undefined),
+				verifyAsLensesEnd,
 				startWalkthrough,
 			);
 	// Escalation is settled from the runs the task stored, which decided it, never from this call's own computation.
