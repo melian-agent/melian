@@ -212,4 +212,51 @@ describe("a route of several models", () => {
 
 		expect(model?.name).toBe(`${fake.ref("a").provider}/a`);
 	});
+
+	it("is absent when no model of the route holds credentials", async () => {
+		const fake = createFakeModels({ models: [{ id: "a" }] });
+
+		await expect(RouteTextModel.create(fake.review, [{ provider: "absent", modelId: "x" }])).resolves.toBeUndefined();
+	});
+
+	it("passes over a model whose credential check throws", async () => {
+		const fake = createFakeModels({ models: [{ id: "a" }, { id: "b" }] });
+		const checkAuth = vi.spyOn(fake.models, "checkAuth").mockRejectedValueOnce(new Error("store unreadable"));
+		const model = await RouteTextModel.create(fake.review, [fake.ref("a"), fake.ref("b")]);
+		checkAuth.mockRestore();
+
+		expect(model?.name).toBe(`${fake.ref("b").provider}/b`);
+	});
+
+	it("names its models with the route's thinking", async () => {
+		const fake = createFakeModels({ models: [{ id: "a" }] });
+		const model = await RouteTextModel.create(fake.review, [fake.ref("a")], "high");
+
+		expect(model?.name).toBe(`${fake.ref("a").provider}/a thinking=high`);
+	});
+
+	it("answers from the request's tool call after other parts", async () => {
+		const { model, name } = await route([
+			fauxAssistantMessage(
+				[
+					{ type: "text", text: "Choosing." },
+					{ type: "toolCall", id: "other-1", name: "other", arguments: { choice: "skip" } },
+					{ type: "toolCall", id: "answer-1", name: "answer", arguments: { choice: "run" } },
+				],
+				{ stopReason: "toolUse" },
+			),
+		]);
+
+		await expect(model.answer(request)).resolves.toEqual({ arguments: { choice: "run" }, model: name("a") });
+	});
+
+	it("refuses a reply that calls only another tool", async () => {
+		const { model, name } = await route([
+			fauxAssistantMessage([{ type: "toolCall", id: "other-1", name: "other", arguments: {} }], {
+				stopReason: "toolUse",
+			}),
+		]);
+
+		await expect(model.answer(request)).rejects.toThrow(`${name("a")} answered without calling answer`);
+	});
 });

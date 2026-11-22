@@ -206,6 +206,36 @@ describe("the LLM fallback decider", () => {
 		});
 	});
 
+	it("names the model that answered, not the route's head, when it refuses an answer", async () => {
+		const answering = (args: unknown): TextModel => ({
+			name: "faux/light",
+			async answer() {
+				return { arguments: args, model: "faux/fallback" };
+			},
+		});
+		await expect(new FallbackDecider(answering({ answers: "careful" })).decide(request)).rejects.toMatchObject({
+			code: "invalidAnswer",
+			message: "faux/fallback called answer with arguments its schema refuses",
+		});
+		const unknown = {
+			answers: [
+				{
+					question: "unasked",
+					probabilities: [
+						{ option: "skip", probability: 0.4 },
+						{ option: "skip", probability: 0.6 },
+					],
+				},
+			],
+		};
+		const error = await new FallbackDecider(answering(unknown)).decide(request).catch((caught: unknown) => caught);
+		expect(error).toMatchObject({
+			code: "invalidAnswer",
+			message: "faux/fallback weighed one option of a question twice",
+		});
+		expect((error as { question?: string }).question).toBeUndefined();
+	});
+
 	it("passes the model's failure on, so the caller fails closed", async () => {
 		const failing: TextModel = {
 			name: "faux/light",

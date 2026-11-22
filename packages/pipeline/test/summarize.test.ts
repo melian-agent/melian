@@ -507,6 +507,82 @@ describe("walkthrough summaries", () => {
 			expect(JSON.stringify(doc)).not.toContain(limit);
 			expect(await answered()).toEqual({ model: undefined, refused: [name("scripted"), name("other")] });
 		});
+		it("leaves the fixed note when a route of one model is at its limit", async () => {
+			const used = routed([failed(limit), success()]);
+			const revision = Revision.key(changeset.revision);
+			const head = models.ref("scripted");
+			const doc = await summarize({
+				config: { ...config, models: { light: { model: `${head.provider}/${head.modelId}` } } },
+			});
+			expect(used).toEqual(["scripted"]);
+			expect(written(doc, revision)).toBeUndefined();
+			expect(await answered()).toEqual({ model: undefined, refused: [name("scripted")] });
+		});
+		it("asks each model of a longer route in turn", async () => {
+			const used = routed([failed(limit), failed(filtered), success()]);
+			const [head, fallback] = [models.ref("scripted"), models.ref("other")];
+			const doc = await summarize({
+				config: {
+					...config,
+					models: {
+						light: {
+							model: `${head.provider}/${head.modelId}`,
+							fallbacks: [`${fallback.provider}/${fallback.modelId}`, `${head.provider}/${head.modelId}`],
+						},
+					},
+				},
+			});
+			expect(used).toEqual(["scripted", "other", "scripted"]);
+			expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Changes a value.");
+			expect(await answered()).toEqual({ model: name("scripted"), refused: [name("scripted"), name("other")] });
+		});
+		it("stops at the first model when its request faults, whatever the fault says", async () => {
+			const getModel = models.models.getModel.bind(models.models);
+			let asked = 0;
+			vi.spyOn(models.models, "getModel").mockImplementation((provider, modelId) => {
+				if (modelId === "scripted" && ++asked > 1) throw new Error("503 overloaded_error");
+				return getModel(provider, modelId);
+			});
+			const used = routed([success()]);
+			const doc = await summarize({ config: onRoute() });
+			expect(used).toEqual([]);
+			expect(written(doc, Revision.key(changeset.revision))).toBeUndefined();
+		});
+		it("checkpoints the next model it asks, so a resume asks that one", async () => {
+			let resumed: Promise<unknown> | undefined;
+			scriptConversations(models, [
+				{
+					match: "You write Melian's walkthrough",
+					replies: [
+						failed(limit),
+						() => {
+							resumed = (async () => {
+								const root = await harness.root(context);
+								const task = (await harness.snapshot(SummaryIndex, root.id, context))!.tasks[
+									Revision.key(changeset.revision)
+								]!;
+								return (await harness.getTask(task as TaskId, context))!.state.checkpoint;
+							})();
+							return success();
+						},
+					],
+				},
+			]);
+			await summarize({ config: onRoute() });
+			expect(await resumed).toEqual({ phase: "summarize", child: expect.any(Number), attempt: 1 });
+		});
+		it("moves past a model the harness no longer knows", async () => {
+			const getModel = models.models.getModel.bind(models.models);
+			let asked = 0;
+			vi.spyOn(models.models, "getModel").mockImplementation((provider, modelId) =>
+				modelId === "scripted" && ++asked > 1 ? undefined : getModel(provider, modelId),
+			);
+			const used = routed([success()]);
+			const doc = await summarize({ config: onRoute() });
+			expect(used).toEqual(["other"]);
+			expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Changes a value.");
+			expect(await answered()).toEqual({ model: name("other"), refused: [name("scripted")] });
+		});
 	});
 	it("stores fixed notes for provider errors and no tool call, then stops after two attempts", async () => {
 		const revision = Revision.key(changeset.revision);
@@ -528,6 +604,19 @@ describe("walkthrough summaries", () => {
 		expect(captured["You write Melian's walkthrough"]).toHaveLength(0);
 		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
 		expect(written(await summarize({ rerun: true }), revision)?.summary).toBe("Rerun summary.");
+	});
+	it("unlocks the route's providers for a rerun once the attempts are spent", async () => {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			scriptConversations(models, [
+				{ match: "You write Melian's walkthrough", replies: [fauxAssistantMessage("No.")] },
+			]);
+			await summarize();
+		}
+		scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success("Rerun summary.")] }]);
+		const unlock = vi.fn(async () => {});
+		const doc = await summarize({ rerun: true, unlockModels: unlock });
+		expect(written(doc, Revision.key(changeset.revision))?.summary).toBe("Rerun summary.");
+		expect(unlock.mock.calls).toEqual([[[models.ref().provider]]]);
 	});
 	it("summarises once across two reviews and reads the stored walkthrough the second time", async () => {
 		const captured = scriptConversations(models, [{ match: "You write Melian's walkthrough", replies: [success()] }]);
