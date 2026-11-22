@@ -1014,6 +1014,13 @@ export class Comparison {
 		return this.groups().filter((group) => group.melian.length === 0);
 	}
 
+	/** The external findings judged valid that no Melian finding matches, each a miss, in group order. */
+	validMisses(): ExternalFinding[] {
+		return this.externalOnly().flatMap((group) =>
+			group.external.filter((finding) => this.judgement(finding.id)?.verdict === "valid"),
+		);
+	}
+
 	/**
 	 * One miss for each defect no Melian finding matches whose reason is one of `reasons`: the first report of its group
 	 * in site order judged valid with a reason other than `out-of-scope`, as `stats()` files the defect, with the lines it

@@ -484,6 +484,13 @@ export { type HostFacts, hostFacts } from "./host.ts";
 export { Lease, LeaseError, type LeaseHolder, type StoredLease } from "./lease.ts";
 export { LineMap, type LineMapSides, type LineSpan } from "./line-map.ts";
 export {
+	type MissCauseName,
+	type MissCauseRecord,
+	type MissCauseRun,
+	type MissCauseSighting,
+	missCauses,
+} from "./miss-cause.ts";
+export {
 	type MutationReportInput,
 	type MutationSkipCause,
 	mutationNotJudged,
