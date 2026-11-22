@@ -50,7 +50,7 @@ The gate asks again only for a finding its verdict holds live, and names each su
 
 When a round's verifier fails, the host caps each lens finding the verifier was asked about and never judged at advisory, and reads the round as not reviewed. The cap was safe only because the round read as not reviewed. Pooling took that away: the gate refuses the round coverage but counts its findings, so a second clean round of M..H that never raises the finding again covers every check, and a P1 merges as advisory.
 
-So the gate reads each such finding at the resolution it would have without that cap. Only the gate's pooling does this; a host's reading of its own round is unchanged. A copy that a round's verifier did judge counts as that round decided it. The cap a policy sets on a lens level that does not verify stays, since a round whose verifier ran sets it too.
+So the gate reads each such finding at the resolution it would have without that cap. Only the gate's pooling does this; a host's reading of its own round is unchanged. A copy that a round's verifier did judge counts as that round decided it. The gate lifts the cap whatever the round's verifier check says, since a verifier that leaves a claim unjudged fails, and a record claiming otherwise must not bring the cap back. The cap a policy sets on a lens level that does not verify stays, since a round whose verifier ran sets it too.
 
 Each finding counts at its strictest, so a later round's verifier does not clear the uncapped copy, whether it confirms the finding or refutes it. The same holds today for a finding one round's verifier confirmed and another's refuted. A fix, which is a new head, or a dismissal answers such a finding, as it answers any other.
 

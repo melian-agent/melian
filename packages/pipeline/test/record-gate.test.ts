@@ -38,6 +38,7 @@ import {
 	scriptConversations,
 } from "@melian-agent/pipeline/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { RecordedRound } from "../src/recorded-round.ts";
 import { accountKey, ReviewRecords } from "../src/review-records.ts";
 import { provenRun } from "./fixtures/proven-run.ts";
 import { commit, createRepository, gitIn, lines, removeRepository } from "./fixtures/repo.ts";
@@ -1022,6 +1023,28 @@ describe("the merge gate's forged rounds", () => {
 		expect(outcome.verdict.notRun).toEqual([]);
 		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
 		expect(outcome.passes()).toBe(false);
+	});
+
+	it("lifts a failed verifier's cap on a finding it never judged only for the gate", async () => {
+		const store = exported();
+		const { changeset } = await review(store, "main...feature", blocks(), checks, config, [
+			broken,
+			broken,
+			broken,
+			broken,
+		]);
+		const records = await listed(store);
+		const { id } = SharedRecord.parseEnvelope(records.find(({ kind }) => kind === "round")!);
+		const under = { revision: changeset.revision, config, repoRoot: repo, policy: worktree };
+		const read = async (options?: { unjudged: "capped" | "uncapped" }) => {
+			const verdict = await RecordedRound.of(records, id, everyRecordCounts).findingsUnder(under, options);
+			return rule({ verdict } as RecordGate);
+		};
+		expect([await read(), await read({ unjudged: "capped" }), await read({ unjudged: "uncapped" })]).toEqual([
+			[["src/a.ts", "advisory"]],
+			[["src/a.ts", "advisory"]],
+			[["src/a.ts", "block"]],
+		]);
 	});
 
 	it("takes the coverage of a second round whose verifier ran, and still blocks on the finding it refuted", async () => {
