@@ -4,7 +4,9 @@
   "40cb85a9...ba6814f5",
   "ba6814f5...2ec8b0ff"
  ],
+ "total": 97,
  "omitted": 0,
+ "unmutated": [],
  "mutants": [
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -73,7 +75,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "ba6814f5",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the folders at the tip > names each folder with its tree's object ID, a disposed one included",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -156,7 +162,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "ba6814f5",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the removal-only rule > accepts a crafted commit that removes the folder alone, so the crafts below are refused for what they add",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -393,7 +403,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "ba6814f5",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the folders at the tip > names each folder with its tree's object ID, a disposed one included",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -462,7 +476,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "ba6814f5",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the folders at the tip > names each folder with its tree's object ID, a disposed one included",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/git-record-store.ts",
@@ -615,7 +633,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the removal-only rule > accepts retiring every changeset, which leaves no `changesets` tree, and keeps the root's files (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/git-record-store.ts",
@@ -628,7 +650,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the removal-only rule > accepts retiring every changeset, which leaves no `changesets` tree, and keeps the root's files (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/git-record-store.ts",
@@ -683,7 +709,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a retire and strays > pushes nothing when every folder it is given holds a stray (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/git-record-store.ts",
@@ -696,7 +726,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a retire and strays > pushes nothing when every folder it is given holds a stray (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/git-record-store.ts",
@@ -709,7 +743,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > what one retire may judge > judges folders that together list exactly the entry limit, and defers the one that passes it (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -834,7 +872,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a folder too large to judge > keeps a folder whose listing runs past its bytes",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -973,7 +1015,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a folder too large to judge > keeps a folder holding one record a byte past the record limit, or one git gives no size for",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -1042,7 +1088,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a folder too large to judge > removes a folder whose records total exactly the tip's byte limit, and keeps one a record past it",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -1209,7 +1259,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > what one retire may judge > judges folders that together list exactly the entry limit, and defers the one that passes it",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -1320,7 +1374,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a retire and strays > pushes nothing when every folder it is given holds a stray (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -1333,7 +1391,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > a retire and strays > pushes nothing when every folder it is given holds a stray (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   },
   {
    "file": "packages/state-git/src/state-tree.ts",
@@ -1346,7 +1408,11 @@
    "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
    "status": "Ignored",
    "commit": "2ec8b0ff",
-   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred"
+   "note": "ignored by the configuration; equivalent too, since retire files any verdict but clean or stray as deferred",
+   "claim": "killed",
+   "evidence": "packages/state-git/test/retire.test.ts > the removal-only rule > accepts retiring every changeset, which leaves no `changesets` tree, and keeps the root's files (run at 2ec8b0ff, since d82d2c6d rewrote the line)",
+   "result": "killed",
+   "survivorClasses": []
   }
  ]
 }
