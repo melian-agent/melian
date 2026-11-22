@@ -284,7 +284,7 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		await relay(check, account, round);
 		expect(await gate()).toBe(2);
 		expect(err()).toBe(
-			`melian: round ${round.id} counts for its findings and covers no check: it was decided under no resolution policy, so no reader can decide it\n` +
+			`melian: round ${round.id} counts for its findings and covers no check: it was decided under no resolution policy, so no reader can decide it. Its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n` +
 				"melian: no counted round stands as reviewed of the merge's diff as it stands. To review it again: gh workflow run melian-round.yml -f pull_request=7\n",
 		);
 	});

@@ -1036,7 +1036,7 @@ describe("the merge gate's forged rounds", () => {
 		const records = await listed(store);
 		const { id } = SharedRecord.parseEnvelope(records.find(({ kind }) => kind === "round")!);
 		const under = { revision: changeset.revision, config, repoRoot: repo, policy: worktree };
-		const read = async (options?: { unjudged: "capped" | "uncapped" }) => {
+		const read = async (options?: { verifier: "capped" | "uncapped" | "ignored" }) => {
 			const verdict = await RecordedRound.of(records, id, everyRecordCounts).findingsUnder(under, options);
 			return rule({ verdict } as RecordGate);
 		};
@@ -1044,12 +1044,14 @@ describe("the merge gate's forged rounds", () => {
 		expect([
 			rule({ verdict: host } as RecordGate),
 			await read(),
-			await read({ unjudged: "capped" }),
-			await read({ unjudged: "uncapped" }),
+			await read({ verifier: "capped" }),
+			await read({ verifier: "uncapped" }),
+			await read({ verifier: "ignored" }),
 		]).toEqual([
 			[["src/a.ts", "advisory"]],
 			[["src/a.ts", "advisory"]],
 			[["src/a.ts", "advisory"]],
+			[["src/a.ts", "block"]],
 			[["src/a.ts", "block"]],
 		]);
 	});
@@ -1083,6 +1085,79 @@ describe("the merge gate's forged rounds", () => {
 		const outcome = await gate(await listed(store));
 		expect(outcome.verdict.notRun).toEqual([]);
 		expect(rule(outcome)).toEqual([["src/a.ts", "block"]]);
+	});
+
+	// Two P1s in src/a.ts: the verifier answers the one marked `marked` with `answer` and fails on the other, so the
+	// round's verifier fails after judging one claim, as one that finished outside its accepted route does.
+	async function judgedThenFailed(store: MemoryRecordStore, answer: ScriptedReply) {
+		commit(repo, { "src/a.ts": lines("export const a = 2;", "export const a2 = 2;", "export const a3 = 3;") });
+		const one = { ...finding("src/a.ts", "P1", 1), failureScenario: "MARKED a caller reads 2." };
+		const replies = Array.from(
+			{ length: 24 },
+			(): ScriptedReply => (messages) => (JSON.stringify(messages).includes("MARKED") ? answer(messages) : broken()),
+		);
+		return review(store, "main...feature", reportsEach(one, finding("src/a.ts", "P1", 3)), checks, config, replies);
+	}
+	const byLine = (outcome: Pick<RecordGate, "verdict">) =>
+		Object.values(outcome.verdict.findings)
+			.flat()
+			.map((each) => [each.lines()[0], each.properties.resolution])
+			.sort(([left], [right]) => Number(left) - Number(right));
+
+	it("takes no refutation from a round that covers nothing, beside a clean round that covers every check", async () => {
+		const store = exported();
+		const { verdict } = await judgedThenFailed(store, judges("refuted"));
+		expect(byLine({ verdict })).toEqual([[3, "advisory"]]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(byLine(outcome)).toEqual([
+			[1, "block"],
+			[3, "block"],
+		]);
+	});
+
+	it("takes no lowering from a round that covers nothing, beside a clean round that covers every check", async () => {
+		const store = exported();
+		const lowers: ScriptedReply = (messages) =>
+			messages.some((message) => message.role === "toolResult")
+				? fauxAssistantMessage("Done.")
+				: fauxAssistantMessage(
+						fauxToolCall("report_verdict", {
+							claim: "c1",
+							answers: { code: "yes", guard: "no", base: "no" },
+							verdict: "confirmed",
+							lower: { severity: "P2", reason: "Only one caller reaches it, and it validates the input." },
+							reason: "Real but minor.",
+							evidence: [{ file: "src/a.ts", line: 1, role: "context" }],
+						}),
+						{ stopReason: "toolUse" },
+					);
+		const { verdict } = await judgedThenFailed(store, lowers);
+		expect(byLine({ verdict })).toEqual([
+			[1, "acknowledge"],
+			[3, "advisory"],
+		]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(byLine(outcome)).toEqual([
+			[1, "block"],
+			[3, "block"],
+		]);
+	});
+
+	it("takes no refutation from a stacked parent's round, whose verifier ran, of a finding on the merge's diff", async () => {
+		const store = exported();
+		const refuted = judges("refuted");
+		const parent = await at("main", older, () =>
+			review(store, "main...feature", blocks(), checks, config, [refuted, refuted, refuted, refuted]),
+		);
+		expect([(parent.verdict.ran ?? []).some(({ name }) => name === "verifier"), byLine(parent)]).toEqual([true, []]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect(outcome.verdict.notRun).toEqual([]);
+		expect(byLine(outcome)).toEqual([[1, "block"]]);
 	});
 
 	it("does not count a check that failed as covered, though the policy lets it be skipped", async () => {

@@ -74,7 +74,7 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	for (const round of outcome.rounds)
 		io.stderr(
 			"refused" in round.covers
-				? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}\n`
+				? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n`
 				: `melian: round ${visibleText(round.id)} counts, and covers ${round.covers.length} checks\n`,
 		);
 	for (const reason of outcome.failures)

@@ -20,7 +20,7 @@ The gate pools every round of the head whose base the tip holds:
   - every record it names is found, of its own revision, and it replaces no round;
   - its account names the base tip's tier and allows exactly the skips that tier gives;
   - its records stand as reviewed under the base tip's resolution policy;
-  - its verifier ran, when its account names one. The host caps a finding a failed verifier never judged at advisory and reads that round as not reviewed, so the round covers nothing, though its findings still count, uncapped, as the section on them below says.
+  - its verifier ran, when its account names one. The host caps a finding a failed verifier never judged at advisory and reads that round as not reviewed, so the round covers nothing, though its findings still count, as [the section on a round that covers nothing](#a-round-that-covers-nothing-lowers-nothing) says.
 
   A sound round covers a lens only when the level in that lens's own record is at or above the floor the base tip sets for every path the lens covers. A run with no level meets no floor.
 - `replaces` stays empty, as the replaces-none ruling has it. Pooling needs no round to replace another.
@@ -36,7 +36,7 @@ A failure the head itself causes only sometimes, such as a test that hangs on a 
 What bounds it:
 
 - A check's `failed` status says the check did not finish, not that it found something. Anything a check finds is a finding, and findings are pooled at their strictest, so a clean run hides only that another run did not finish.
-- Only a round of exactly M..H covers. A round of an older base contributes findings, never coverage.
+- Only a round of exactly M..H covers. A round of an older base contributes findings, never coverage, and lowers none of them.
 - Only a writer can add a round to `melian/state`, and the gate counts no record of a fork's head.
 - A round whose verifier failed covers nothing, and a lens below the base tip's floor covers nothing. So the round that stands in for a failed check is one the host itself would read as reviewed, at the level the base tip asks for now.
 
@@ -46,15 +46,30 @@ The maintainer chose on 2026-11-20 that a shared dismissal holds only at the rev
 
 The gate asks again only for a finding its verdict holds live, and names each such dismissal once.
 
-## A finding a failed verifier never judged
+## A round that covers nothing lowers nothing
 
-When a round's verifier fails, the host caps each lens finding the verifier was asked about and never judged at advisory, and reads the round as not reviewed. The cap was safe only because the round read as not reviewed. Pooling took that away: the gate refuses the round coverage but counts its findings, so a second clean round of M..H that never raises the finding again covers every check, and a P1 merges as advisory.
+At the gate, a round that covers nothing contributes each of its findings as no verifier judged it, at the resolution it would have without the cap a host sets on an unjudged finding. It contributes no refutation, no lowering by its verifier, and no coverage. A round covers nothing when the gate refuses it coverage, for any reason in the list above, or when it reviewed another revision, such as a stacked parent's.
 
-So the gate reads each such finding at the resolution it would have without that cap. Only the gate's pooling does this; a host's reading of its own round is unchanged. A copy that a round's verifier did judge counts as that round decided it. The gate lifts the cap whatever the round's verifier check says, since a verifier that leaves a claim unjudged fails, and a record claiming otherwise must not bring the cap back. The cap a policy sets on a lens level that does not verify stays, since a round whose verifier ran sets it too.
+Two cases showed why, one in each of two passes:
 
-Each finding counts at its strictest, so a later round's verifier does not clear the uncapped copy, whether it confirms the finding or refutes it. The same holds today for a finding one round's verifier confirmed and another's refuted. A fix, which is a new head, or a dismissal answers such a finding, as it answers any other.
+- A round's verifier fails. The host caps each finding the verifier was asked about and never judged at advisory, and reads the round as not reviewed. The cap was safe only because the round read as not reviewed. The gate refuses the round coverage but counts its findings, so a second clean round of M..H that never raises the finding again covers every check, and a P1 would merge as advisory.
+- A verifier judges some claims and then fails, for example because it finished outside its guarded accepted route, where a model the policy refused may have answered. Its refutation would drop a P1, and its lowering would turn a block into an acknowledgement, once another round covered every check.
 
-The coordinator chose to read these findings uncapped on 2026-11-22, as an answer on approach and not a ruling, and told the maintainer, who may overrule it. That a later verdict does not clear the uncapped copy is the builder's reading of "each finding at its strictest".
+A round that does cover takes its verifier's verdicts as it decided them. Its finding no verifier judged also counts uncapped, whatever its verifier check says. A verifier that leaves a claim unjudged fails, and a record that claimed otherwise must not bring the cap back.
+
+What else a round carries, and whether it can lower a finding at the gate:
+
+- A refutation by its verifier: covered by the rule.
+- A severity its verifier lowered: covered by the rule.
+- The `unverified` cap on a finding its verifier was asked about: covered, and lifted for every round.
+- The `unverified` cap on a lens level that does not verify: not the round's. The base tip's policy sets which levels verify, and a covering round gets the same cap.
+- The `pre-existing` cap, and a cause of pre-existing: the lens reports the cause, and the lens tool marks proving locations from the round's diff when the lens reports. No verifier re-scopes a finding. The base tip's policy sets the cap, as it does for a covering round.
+- The `unproven-cause` cap: read from the lens's own evidence under the base tip's policy, as for a covering round.
+- A dismissal: a maintainer's, not the round's judgement. It holds under the dismissal rules above.
+
+Each finding counts at its strictest, so a later round's verdict does not clear a copy this rule counts, whether that verdict confirms the finding or refutes it. The same holds today for a finding one round's verifier confirmed and another's refuted. A maintainer then answers such a finding in one of two ways: dismiss it, or push a fix, which is a new head. The gate's message for a round that covers nothing says so.
+
+The coordinator chose both parts on 2026-11-22, the uncapped reading and the principle, as answers on approach and not rulings, and told the maintainer, who may overrule them. That a later verdict does not clear the copy is the builder's reading of "each finding at its strictest". The coordinator will put that reading to the maintainer, since it decides how a head gets unstuck.
 
 ## Why
 

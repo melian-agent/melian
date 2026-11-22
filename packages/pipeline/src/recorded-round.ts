@@ -224,21 +224,23 @@ export class RecordedRound {
 	/**
 	 * The round's findings decided under the policy `context` reads, whatever policy the round's account names, or why
 	 * its records cannot stand for it. A reader that counts a round's findings under its own policy takes them from here,
-	 * and takes the round as reviewed only from {@link verdict}. With `unjudged: "uncapped"`, a finding the round's
+	 * and takes the round as reviewed only from {@link verdict}. With `verifier: "uncapped"`, a finding the round's
 	 * verifier was asked about and never judged keeps the resolution it would have without the advisory cap a host sets
 	 * on it. A host sets that cap only on a round it reads as not reviewed, since a claim left unjudged fails the verifier.
+	 * With `verifier: "ignored"`, every finding reads as no verifier judged it, uncapped: no refutation, no lowering.
 	 */
 	async findingsUnder(
 		context: RecordedRoundContext,
-		options: { readonly unjudged?: "capped" | "uncapped" } = {},
+		options: { readonly verifier?: "capped" | "uncapped" | "ignored" } = {},
 	): Promise<Verdict | { readonly refused: string }> {
-		const decided = await this.#decided(context);
+		const { verifier = "capped" } = options;
+		const decided = await this.#decided(context, verifier !== "ignored");
 		if ("refused" in decided) return decided;
 		if (decided.policies === undefined) return { refused: "is read with no resolution policy to decide under" };
-		return adjudicated(decided, decided.policies, context, options.unjudged === "uncapped");
+		return adjudicated(decided, decided.policies, context, verifier !== "capped");
 	}
 
-	async #decided(context: RecordedRoundContext): Promise<Merged | { readonly refused: string }> {
+	async #decided(context: RecordedRoundContext, judged = true): Promise<Merged | { readonly refused: string }> {
 		const contents = this.contents(context.revision);
 		if ("refused" in contents) return contents;
 		// `contents` refuses whatever the pieces refuse.
@@ -250,7 +252,7 @@ export class RecordedRound {
 		}));
 		const findings = mergeSightings(
 			contents.sightings,
-			pieces.claims,
+			judged ? pieces.claims : [],
 			producers,
 			byFinding(contents.dismissals),
 			contents.hunks,

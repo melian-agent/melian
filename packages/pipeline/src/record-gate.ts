@@ -131,8 +131,14 @@ export class RecordGate {
 			const own = (await Changeset.resolve(repoRoot, { base: sides.base, head: sides.head, mode: "twoDot" }))
 				.revision;
 			const under = { revision: own, config: context.config, repoRoot, policy: context.policy };
-			// A finding no verifier judged counts uncapped: the cap was safe only while its round read as not reviewed.
-			const findings = await read.findingsUnder(under, { unjudged: "uncapped" });
+			const covers =
+				round.revision !== gate
+					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
+					: await coverage(set, round, read, { ...under, revision }, context.tier);
+			// A round that covers nothing lowers nothing: its findings count as no verifier judged them, uncapped. Any
+			// round's finding no verifier judged counts uncapped, since the cap was safe only while its round read as not
+			// reviewed.
+			const findings = await read.findingsUnder(under, { verifier: "refused" in covers ? "ignored" : "uncapped" });
 			if ("refused" in findings) {
 				failures.push(`round ${round.id} ${findings.refused}`);
 				continue;
@@ -143,10 +149,6 @@ export class RecordGate {
 				ended.push(...contents.ended);
 				unjudged.push(...contents.unjudged);
 			}
-			const covers =
-				round.revision !== gate
-					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
-					: await coverage(set, round, read, { ...under, revision }, context.tier);
 			const explain = (check: string, why: string) => {
 				if (!short.has(check)) short.set(check, `round ${round.id}${why}`);
 			};
