@@ -1,0 +1,354 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "3c08047e9ebb85c717fa205b7aced29b88bcef22",
+		"head": "71c5f1202771a264de1ffd927d377f1c35184445"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 171,
+			"column": 48,
+			"endLine": 171,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9e6772a5ec9065ff51e13140737e856ecc0e1d0795ca2f9ff2386e8b491c3c46"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 235,
+			"column": 4,
+			"endLine": 235,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a80e70d813da7c66e3e8ecaa7e8c032a1b617fc1fe7e797ac2ae519640498ce9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 235,
+			"column": 4,
+			"endLine": 235,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c9fe87b4a2a9033edde7ccf8cd1c883d1c2b978f112df4be74ae70a48c3d453c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists each copy of one release at its own place"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 235,
+			"column": 4,
+			"endLine": 235,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "entry.name !== \"node_modules\"",
+			"status": "generated",
+			"id": "8fb9dd784180ab8d23481d1b1073ee48a577f43126f810bbba087ab1bd9d6b6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 235,
+			"column": 19,
+			"endLine": 235,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "937a6cae14906554fd12895e186f2b764c11405e7c98112fdfc27e77c3aab7dc"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 236,
+			"column": 7,
+			"endLine": 236,
+			"endColumn": 16,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2abe556e072eb4a43d620fe60c0b967212962ca242215f0e851864fe3e0af114"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 7,
+			"endLine": 237,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ae214a88e7f34abf0d9e929b1b6487db03cae6f6f153aad3713925c386e85a86",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 7,
+			"endLine": 237,
+			"endColumn": 63,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ecba935cdf702386910813266dd9d17ae3036f6a068e023aee46f76a2e475bf6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists a scoped package at its place, and the scope as none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 7,
+			"endLine": 237,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "slot && mode === \"modules\" || entry.name.startsWith(\"@\")",
+			"status": "generated",
+			"id": "9799199d566d7db2adc67739fa6a9bcfba0a294e039ffb09ec08e579a64f37a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 7,
+			"endLine": 237,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "74bfe01c84dd71e64ce4b4a5943d0e135ea59c5ecd6ab35d917ea95eb0c45ff5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a directory named like a scope inside a package as no package"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 7,
+			"endLine": 237,
+			"endColumn": 33,
+			"mutatorName": "LogicalOperator",
+			"replacement": "slot || mode === \"modules\"",
+			"status": "generated",
+			"id": "57f2b92422193aec3e14e756f32c07e84316317e5dd4f39d770ca5338003e7e6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists every copy beneath the root as its place and release, sorted, whether or not anything imports it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 15,
+			"endLine": 237,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d0454dd44295912859d6c125e235de7f1b18b1bd346cba09ebc30dc150be6cce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"keys a slot named like a scope inside a scope as a package"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 15,
+			"endLine": 237,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "mode !== \"modules\"",
+			"status": "generated",
+			"id": "1c28f767c531522ddb967cc6416c79423a3e23fef9c1bb1013f45f9b96bec05f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists a scoped package at its place, and the scope as none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 24,
+			"endLine": 237,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fa9c2e86db6724fd39c5988bdb377d0728bc06bb74956658802618fece9166e6"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 37,
+			"endLine": 237,
+			"endColumn": 63,
+			"mutatorName": "MethodExpression",
+			"replacement": "entry.name.endsWith(\"@\")",
+			"status": "generated",
+			"id": "c71ebd412b9f4745c2c36420bb313bd8a2a816d6ad278712f89b067b71477856",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"Install.read",
+						"lists a scoped package at its place, and the scope as none"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 237,
+			"column": 59,
+			"endLine": 237,
+			"endColumn": 62,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "078bf976d6fa4be6eab9ebce3df27f7d1dc44ce6c902748bb515ae5837a4d65f"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 238,
+			"column": 8,
+			"endLine": 238,
+			"endColumn": 15,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3c1a1cf3410a31b9f30da754cef04c01dd4165725fc606fc3b2af0c3def68142"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 240,
+			"column": 9,
+			"endLine": 240,
+			"endColumn": 18,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4a4a9dbb036d1440f38d6943e80b062df78a7f1562644772423e1e9072c362cf"
+		}
+	],
+	"total": 18,
+	"omitted": 0,
+	"unmutated": []
+}

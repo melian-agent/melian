@@ -605,6 +605,63 @@ describe("doctor clone check", () => {
 	});
 });
 
+describe("doctor packages", () => {
+	const installWith = (outside: string[], unrecognised: string[] = []) =>
+		({
+			outside,
+			unrecognised,
+			identified: outside.length === 0 && unrecognised.length === 0,
+			digest: "e".repeat(64),
+			entries: [],
+		}) as unknown as ReturnType<typeof pipeline.melianInstall>;
+	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}packages\s+/.test(each));
+
+	it("says nothing links outside the install when no link leaves it", async () => {
+		vi.spyOn(pipeline, "melianInstall").mockReturnValue(installWith([]));
+		const { stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^ok {4}packages\s+nothing in Melian's install links outside it$/);
+	});
+
+	it.each([
+		[["node_modules/yaml"], "node_modules/yaml links"],
+		[["node_modules/typescript", "node_modules/yaml"], "node_modules/typescript, node_modules/yaml link"],
+	])("warns, without failing, which places %j leave the install unidentified", async (outside, named) => {
+		vi.spyOn(pipeline, "melianInstall").mockReturnValue(installWith(outside));
+		const { status, stdout } = await run(github());
+		expect(line(stdout)?.replace(/^warn {2}packages {2,}/, "")).toBe(
+			`${named} outside Melian's install, so no review reuses a run`,
+		);
+		expect(status).toBe(0);
+	});
+
+	it.each([
+		[[], [".pnp.cjs"], ".pnp.cjs is not laid out as npm lays out an install"],
+		[[], [".pnp.cjs", "cache/pi.zip"], ".pnp.cjs, cache/pi.zip are not laid out as npm lays out an install"],
+		[
+			["node_modules/yaml"],
+			[".pnp.cjs"],
+			"node_modules/yaml links outside Melian's install; .pnp.cjs is not laid out as npm lays out an install",
+		],
+	])(
+		"warns, without failing, which links %j and layouts %j leave the install unidentified",
+		async (outside, unrecognised, named) => {
+			vi.spyOn(pipeline, "melianInstall").mockReturnValue(installWith(outside, unrecognised));
+			const { status, stdout } = await run(github());
+			expect(line(stdout)?.replace(/^warn {2}packages {2,}/, "")).toBe(`${named}, so no review reuses a run`);
+			expect(status).toBe(0);
+		},
+	);
+
+	it("fails with the reason when a package cannot be read", async () => {
+		vi.spyOn(pipeline, "melianInstall").mockImplementation(() => {
+			throw new pipeline.InstalledPackagesError("Melian cannot read the installed package \u001b[2Jyaml.");
+		});
+		const { status, stdout } = await run(github());
+		expect(line(stdout)).toMatch(/^fail {2}packages\s+Melian cannot read the installed package \\u001b\[2Jyaml\.$/);
+		expect(status).toBe(1);
+	});
+});
+
 describe("doctor probes", () => {
 	const line = (stdout: string) => stdout.split("\n").find((each) => / {2}probes\s+/.test(each));
 

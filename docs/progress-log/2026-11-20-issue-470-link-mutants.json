@@ -1,0 +1,1933 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "9aadf6d3802cddff0aa0ce7aef7b81511f7daf48",
+		"head": "37c82a2b9e150bb677dcaa47562b48d3fc545fe7"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 221,
+			"column": 32,
+			"endLine": 235,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1af559f0f653c4d735e26550f711e76e827a571fdef9b6d32f42d7b2fafb8a46",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"says every package is inside the install when no link leaves it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 223,
+			"column": 5,
+			"endLine": 225,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b164a79361470f6e933aae7fd4ee0e5d1ab00b642608e703b17f9c6ee1a7b10e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"says every package is inside the install when no link leaves it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 225,
+			"column": 17,
+			"endLine": 227,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2cb577a0ad798db9643cc53100eebf200532f03ce5fb25a744783c02a429f1a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"fails with the reason when a package cannot be read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 226,
+			"column": 9,
+			"endLine": 226,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "e03112e01b02aa31eddcf6ed886d84fd376e21a6e3c041c36f19757e3054bb6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"fails with the reason when a package cannot be read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 226,
+			"column": 17,
+			"endLine": 226,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "391a2a57f37e04bdc598004242516d7164b54a61efed8704c8476648c5a2ec62"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 226,
+			"column": 36,
+			"endLine": 226,
+			"endColumn": 42,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5f805766f0b79e1a459524d3cea06705a0100eb1280d88866a5fb6b0b16eaa57"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 228,
+			"column": 8,
+			"endLine": 228,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b7ef718b308c44b91906b9add84f6b41aba83ca2c247e6f4ce9bb752a96dcb69",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"warns, without failing, which releases [\"yaml@2.9.1\"] leave the install unidentified"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 228,
+			"column": 8,
+			"endLine": 228,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d4a355d62d60b705c2d15dc3c13e2d3b7faab8fad6d602e99bfce82b060605d8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"says every package is inside the install when no link leaves it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 228,
+			"column": 8,
+			"endLine": 228,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outside.length !== 0",
+			"status": "generated",
+			"id": "3de5d05b0fa6b4dfe032ad7d9b13658214152c5d9e36ea7083a0ab6f6c21d2f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"says every package is inside the install when no link leaves it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 229,
+			"column": 4,
+			"endLine": 229,
+			"endColumn": 96,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "17e854a544d22bb6afa5cd028981f4f60a94644486b6d2b3e8667e4f03759d2c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"says every package is inside the install when no link leaves it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 229,
+			"column": 12,
+			"endLine": 229,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7fd0da97ea3ae04352f25a7b33069163dbaa06272925c333572407f8160fb817"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 229,
+			"column": 31,
+			"endLine": 229,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1a79641216caf781979de2b2f1012848985f76d8d18bec5a34ac2cee849cf455"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 229,
+			"column": 45,
+			"endLine": 229,
+			"endColumn": 94,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5642d9caec7f87a6f5b766996e554ca3be76b3bc336ee4f659eef238fc5eb530"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 230,
+			"column": 4,
+			"endLine": 234,
+			"endColumn": 4,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b40f668f4af43a64774332e2df75eaf9d3ab7fb96c4938803cb69f30e3206803",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"warns, without failing, which releases [\"yaml@2.9.1\"] leave the install unidentified"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 231,
+			"column": 10,
+			"endLine": 231,
+			"endColumn": 20,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0d0e85c136d638f5dafdf5982aea9adca4444bf18b52317828240f8ff4d34a43"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 232,
+			"column": 11,
+			"endLine": 232,
+			"endColumn": 17,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2650dc460c31c06a511586e3fdd135a9e2a2c5464bee4163df4dbd59470ce76d"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 12,
+			"endLine": 233,
+			"endColumn": 143,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6ca597153f4ddb091a247b76626ea95a30466bec0ae914b110133133c4b9a8a6"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 40,
+			"endLine": 233,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "74ebfd3d61067cac6133fc49194cfd6350603d0048c07dbad0537d769076b7ff"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 50,
+			"endLine": 233,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8bcb90ac9ec4f4984dad39ad80685ff3f220b7fca24c53d72737f352abbc0f94",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"warns, without failing, which releases [\"typescript@6.0.3\",\"yaml@2.9.1\"] leave the install unidentified"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 50,
+			"endLine": 233,
+			"endColumn": 70,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "0f96598221ffde8f72acb4ee165524a129053b73fb7d406dcc48db81a0518687",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"warns, without failing, which releases [\"yaml@2.9.1\"] leave the install unidentified"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 50,
+			"endLine": 233,
+			"endColumn": 70,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outside.length !== 1",
+			"status": "generated",
+			"id": "eef1f51c069a351e271148bc9a9394613cdc940e223730d4838011f05c212beb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/doctor.test.ts",
+					"path": [
+						"doctor packages",
+						"warns, without failing, which releases [\"yaml@2.9.1\"] leave the install unidentified"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 73,
+			"endLine": 233,
+			"endColumn": 80,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "24fdb28fc73f172688342300957fd7a51e67f943770dcdd3ef21745d28ef58e2"
+		},
+		{
+			"file": "packages/cli/src/doctor.ts",
+			"line": 233,
+			"column": 83,
+			"endLine": 233,
+			"endColumn": 89,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f929bc32ab8924fabff7d1695ac0af69500b70299b58aabcca1117eb02378423"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 146,
+			"column": 42,
+			"endLine": 146,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d3c44500b3759b17f8198f8b82597ed8bb70bb02e07b71bdd5c0ac4fb3ed862a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 170,
+			"column": 48,
+			"endLine": 170,
+			"endColumn": 114,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "aeaf6c62071735936946760cac07b6c37d71885f36d6b4666ff0f84c8247d039"
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 42,
+			"column": 1,
+			"endLine": 42,
+			"endColumn": 36,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "62d0a6ad87f859278a0abb68d5ea115d387444e0f5849b2919b68b4db07650b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"packagesVersion",
+						"reads the install once a process"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 50,
+			"column": 49,
+			"endLine": 54,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7d56d75e05b120f1b509080aa456001bcaa0c19d267b7f93c9e97f81308a3d7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"unidentifiedPackages",
+						"names each release a link takes out of the install once, sorted, across every producer"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 51,
+			"column": 8,
+			"endLine": 53,
+			"endColumn": 9,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(Object.values(producerPackages).flatMap(imports => packagesOutsideInstall(rootsOf(imports))))]",
+			"status": "generated",
+			"id": "67f04cfd74b03e87c6821816ac9a1845c81729789c18f20c796d0141fa0a74ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"unidentifiedPackages",
+						"names each release a link takes out of the install once, sorted, across every producer"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 51,
+			"column": 8,
+			"endLine": 53,
+			"endColumn": 2,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "46c8ad4937b2d692a9a3e9d640f565b71b52884dfb6aefedd805967e31a7ca74",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"unidentifiedPackages",
+						"names each release a link takes out of the install once, sorted, across every producer"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 52,
+			"column": 53,
+			"endLine": 52,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "8809eb066ff5b46fa355d6a1d218bfb9ffc0e02233a7ba1a047949bc00ee1054",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"unidentifiedPackages",
+						"names each release a link takes out of the install once, sorted, across every producer"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 28,
+			"column": 15,
+			"endLine": 28,
+			"endColumn": 98,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7864c7597a58dc5f6262cebfb22c1224ed157ce16fac4cf67ded8a946015477b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 28,
+			"column": 94,
+			"endLine": 28,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bbfd3c89bcae513c6ea173a68fb655b83ae16e6a8088ede492a932ff1879354c"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 30,
+			"column": 53,
+			"endLine": 33,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3a51ad32a01b9c4a2ac0a9ba64c398cc9d80e03971022b8971d8e15bbd8500b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 8,
+			"endLine": 32,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a5f7ecd186bed7a8ab3594111de90c48f70633d5fb17d243627b64f881f9455e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 8,
+			"endLine": 32,
+			"endColumn": 51,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d88c76587ab80b0d850e0a77ef235c1819570a6f336b24f088d867fc59749299",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 8,
+			"endLine": 32,
+			"endColumn": 51,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!path.startsWith(\"..\") || !isAbsolute(path)",
+			"status": "generated",
+			"id": "31aec37000df2b617aaddeb517dc2e21448002609ea1ab883b822c37d1baaac6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 8,
+			"endLine": 32,
+			"endColumn": 30,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "path.startsWith(\"..\")",
+			"status": "generated",
+			"id": "84dca01549940bc6eff5fbe1e89ee95111f8a5b5cae61aa7a6d641161f8ea169",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 9,
+			"endLine": 32,
+			"endColumn": 30,
+			"mutatorName": "MethodExpression",
+			"replacement": "path.endsWith(\"..\")",
+			"status": "generated",
+			"id": "9f1edb850e084367a01099c6a77c3197371664a08208b2cdd66eac6969769854",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 25,
+			"endLine": 32,
+			"endColumn": 29,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "05cc531d497c4871797566fd4b42f9d91d1bb924e5fbfdad03edacc1f0be6a74"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 32,
+			"column": 34,
+			"endLine": 32,
+			"endColumn": 51,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "isAbsolute(path)",
+			"status": "generated",
+			"id": "0551fe007b55bcf5c7a9ab84be5eb0e242e097dd42ee3222c21618cabd9dcf53",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 43,
+			"column": 55,
+			"endLine": 43,
+			"endColumn": 57,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "35054e2360550c617faf7d03302f268085fefff5b4d5b8ac14d185e1ca74d770",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 44,
+			"column": 48,
+			"endLine": 44,
+			"endColumn": 50,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "29554ca22a42068788a8a38e20cc36a39967b9c15e702e80c40f4b47bd410fb0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 45,
+			"column": 27,
+			"endLine": 45,
+			"endColumn": 29,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "40d35fa455daad7fc9d0353812898122b396174e0a4b6b70662c76ea16448d17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"names no release outside an install that holds every copy"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 65,
+			"column": 32,
+			"endLine": 65,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a3c139d6dd20a0266a957d14609dc22a1707a4654a8f8730695fc3a6a6e788fa"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 12,
+			"endLine": 70,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b07611adc9f00f44ec68abc2864dfe27d66989b84ed57d976f0069a49d1003b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 12,
+			"endLine": 70,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "10c6e9c75c0d08a9741e321c4aefa8779923692a3453aadeb10d6c8f25111229",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "with no node_modules in the path, realpath of the path's parent, which exists, gives a prefix line 78 never uses, since it throws first"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 12,
+			"endLine": 70,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "modules <= 0",
+			"status": "generated",
+			"id": "e2da3a9e73bc611e06aeaab71eecc715d39273a70d6dc90ac237703fd451a121",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "indexOf gives 0 only when the path's first part is node_modules, and an absolute path's first part is the root"
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 12,
+			"endLine": 70,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "modules >= 0",
+			"status": "generated",
+			"id": "6531dca3e82cf226fe3a8035eeb0baa0f58f69d1b3bacd104719b0b5b79f838a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 26,
+			"endLine": 70,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d0ed226dcb3a56d2fb4ca67f318f34a7f645e9cd35fbd541aeddbb5d4b74cabe"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 44,
+			"endLine": 70,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "88542a403ca864160b9e91e8c3395a75a031ef1682f7be4f19671a999d9c6df3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 44,
+			"endLine": 70,
+			"endColumn": 84,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8b1263f55585cf62cdd159c9dfdf22af1952b72f46515d19ffb1561db47ad68d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 44,
+			"endLine": 70,
+			"endColumn": 84,
+			"mutatorName": "LogicalOperator",
+			"replacement": "found.slice(0, modules).join(sep) && sep",
+			"status": "generated",
+			"id": "002ae1ccd16ad9cbed7230bdceb057106ae6132f35c9520d9e289576a52d24b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 70,
+			"column": 44,
+			"endLine": 70,
+			"endColumn": 67,
+			"mutatorName": "MethodExpression",
+			"replacement": "found",
+			"status": "generated",
+			"id": "eb7c47eac1f63d37f2a07324bb838bc66082d3abf68c893f1dfbf9d97407a6e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 17,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2466b44f3b355084be101993434a962a39b2f54e86700d56f4d5e9246e5fae8a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 17,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "06d0a2a561e0e1545f8ddcd10a981a682ee6793a832348921a0ac7b7e5a32444",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the root, when Node finds it beneath no node_modules, as a package naming itself is"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "modules <= 0",
+			"status": "generated",
+			"id": "07e4cc39583bf9d7b8887b1c4e520ba96909395cb9c91beecb668254f4cacd11",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "indexOf gives 0 only when the path's first part is node_modules, and an absolute path's first part is the root"
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 78,
+			"column": 6,
+			"endLine": 78,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "modules >= 0",
+			"status": "generated",
+			"id": "feaef9b92be6e6997fd6bacb7167104f3d88dc9b162360db238231a5c8fb2375",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 79,
+			"column": 3,
+			"endLine": 81,
+			"endColumn": 5,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "d27b248829d0e5a1a1a1284987fe5baa0d06e6fbd25ef1c603558c839e0ef803",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"fails, naming the root, when Node finds it beneath no node_modules, as a package naming itself is"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 80,
+			"column": 4,
+			"endLine": 80,
+			"endColumn": 123,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a8635284eebcbc00a8d20289b0499e64b26ce501c249c51a5164db6b2da4787e"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 82,
+			"column": 15,
+			"endLine": 82,
+			"endColumn": 44,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a34f98179889f4ba96ac857a403d55d8c75c24d8eaca971fa6a2159e343cdbd7"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 83,
+			"column": 29,
+			"endLine": 83,
+			"endColumn": 49,
+			"mutatorName": "MethodExpression",
+			"replacement": "found",
+			"status": "generated",
+			"id": "e863c6f7a4d7b25457a6bb57bb1b755d39644090079776c265863882791fe85f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 85,
+			"column": 6,
+			"endLine": 85,
+			"endColumn": 33,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "beneath(prefix, directory)",
+			"status": "generated",
+			"id": "325e376f1737782abae328e67d33e327f59e3eac225244e7b1da955bee6ebf63",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 85,
+			"column": 6,
+			"endLine": 85,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a0b8c5dbea85dccd994cdbfe961a70a3290073fad9b35b8b166d3c611df5bfb7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 85,
+			"column": 6,
+			"endLine": 85,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1f7120d23e5a8dc569e3aa04071a8e564a12efb7c68f31c8d0376b50841f5a80",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 85,
+			"column": 35,
+			"endLine": 89,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cc5b3c607ab23d819d5ea74b1012d24fba5aca769bbbf7d235eb635a73fc92ed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 86,
+			"column": 14,
+			"endLine": 86,
+			"endColumn": 26,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3f675acbb849ffd486a13a46a18701b07a1a85ade63b371eada297ca1e56e118",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 87,
+			"column": 3,
+			"endLine": 87,
+			"endColumn": 22,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "eb322b43ff56eff7c0b13c3e712656f237d3259ef0962cbdcf78441105f8f2cf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 90,
+			"column": 6,
+			"endLine": 90,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c20bd26a6f54004cd6c82854bd4382dbf51be90a046607a54cf09d7d2c161f48",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 90,
+			"column": 6,
+			"endLine": 90,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "d0c0e7d89f1c11bcf32b368321e42421ce06797b76a6c7582887b97167eaf472",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"records a package reached through a link at the place it links to, and resolves beneath it from there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 90,
+			"column": 6,
+			"endLine": 90,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "at === directory",
+			"status": "generated",
+			"id": "41bb83e1e37aaf852824075cbc371e99a9fc7901bc62d9799bc5f439ae0a738a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 90,
+			"column": 35,
+			"endLine": 90,
+			"endColumn": 62,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3e1ec4bc92cb40f77ea02829e1b43503146187e958b2cab8ec6e64a86188a689",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"records a package reached through a link at the place it links to, and resolves beneath it from there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 91,
+			"column": 2,
+			"endLine": 91,
+			"endColumn": 34,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "e9555b07076b1acb1aba0d3936a6aed634a735f118f5e69629640fb89af207d6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 94,
+			"column": 14,
+			"endLine": 94,
+			"endColumn": 39,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "91b71a5410601a4c535af2e668f83dea3ee8efaf632d23c6ad825c7997e4986d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 110,
+			"column": 28,
+			"endLine": 110,
+			"endColumn": 93,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8d3ff81795dc508afd94b3cb610feeb8bc2d6c623c651689fd8fae7f0617aa2b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 110,
+			"column": 38,
+			"endLine": 110,
+			"endColumn": 91,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e2bc491a46dadff15227020b58b863266ea207c26ff34989ea327f05a7f655eb"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 113,
+			"column": 3,
+			"endLine": 113,
+			"endColumn": 124,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4d1a2102187509930812717e7eb4ee26c39044ebd4787d23820710e736d7b4f6"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 113,
+			"column": 46,
+			"endLine": 113,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1b715c32b3425853c65d55f723fef49776f6dac18ad6a47d19801e18920d1d49",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"records a package reached through a link at the place it links to, and resolves beneath it from there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 113,
+			"column": 46,
+			"endLine": 113,
+			"endColumn": 67,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8a52ef87cce3d32deedf9ea3f8d5397ea0e29daade297f25930675d4a6c7f168",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 113,
+			"column": 46,
+			"endLine": 113,
+			"endColumn": 67,
+			"mutatorName": "EqualityOperator",
+			"replacement": "link.to !== undefined",
+			"status": "generated",
+			"id": "c0b14477c555b55a77221d0f3f7ae86af7652e1bdd3347a1ee2ae755d4358e02",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"records a package reached through a link at the place it links to, and resolves beneath it from there"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 113,
+			"column": 70,
+			"endLine": 113,
+			"endColumn": 91,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "12f7a00c5eb9d3c9777a78dc7e39f2c071f15f979bcf4e1e1ef0e43a3cee22a7"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 115,
+			"column": 8,
+			"endLine": 115,
+			"endColumn": 75,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "97caa0abdfdaba514a59f75832c35244bed32a6109388a71580c54878b508597",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 115,
+			"column": 17,
+			"endLine": 115,
+			"endColumn": 34,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...lines]",
+			"status": "generated",
+			"id": "67cd453e8874d5ad741fa60651b99dc1151df6518bc621e5d59a441d530e17dd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"moves when two links swap which release each resolves, though the real places hold"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 115,
+			"column": 17,
+			"endLine": 115,
+			"endColumn": 27,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5c51107d4b477381740a16bc8f492b8372fe57b2ac6a6a234e577039533f3843",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 115,
+			"column": 45,
+			"endLine": 115,
+			"endColumn": 73,
+			"mutatorName": "MethodExpression",
+			"replacement": "[...new Set(outside)]",
+			"status": "generated",
+			"id": "c4b8bfb5335da8964cf578e0c318d3c036069fae2213aa6984855e0203269ec9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"names each release outside once, sorted, however the walk meets them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 115,
+			"column": 45,
+			"endLine": 115,
+			"endColumn": 66,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "7151cc4993fbb8b4e378c965bd3e41cebefbc5831613564f63f7b44e3634c4e1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 118,
+			"column": 75,
+			"endLine": 120,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7832faa1ee20f183e64c04ed7706c7ae0385769215569a5c9eb756971ae22325",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"lists each root and every copy beneath it as its place and release, sorted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 123,
+			"column": 80,
+			"endLine": 125,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b38d53e49c373cdd7e22c4d7fe9827f1ed280614a91e42d73c4358fd5a91cd98",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"keys the link, naming no place outside, and names the release it reaches"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 132,
+			"column": 25,
+			"endLine": 132,
+			"endColumn": 33,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "db730a423ac5a145bd60e325bd31d11c5b1460f8d804f02407c78944ce5e2745"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 132,
+			"column": 52,
+			"endLine": 132,
+			"endColumn": 73,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "7b02ab1d4710658dbb8cafd8e074823eca72b8b959e047dc7e7da48dc77070cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackagesDigest",
+						"is a SHA-256 over the sorted lines, each ended by a newline"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 132,
+			"column": 62,
+			"endLine": 132,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ceb129183f01ebaa9d2d5428219cc3e7cc8d7adf605264ff607a16888b36f095"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 132,
+			"column": 80,
+			"endLine": 132,
+			"endColumn": 82,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d2769b25a6d33c8c8cd01313ee13dc37d1946b227e8a015cdd204b56ad83fc2c"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 5,
+			"endLine": 133,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6f5cea2d87396fb6309ae1a751a7e6a28fdb99a3d180a92b5cdac870937ba65f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackagesDigest",
+						"is a SHA-256 over the sorted lines, each ended by a newline"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 5,
+			"endLine": 133,
+			"endColumn": 23,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bb424387729b832c37c914a674bb7e4df74048d683d0448e217f1c8fc8ae7641",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"gives one process one digest, and two processes none in common, so no run is reused"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 5,
+			"endLine": 133,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outside.length >= 0",
+			"status": "generated",
+			"id": "442a8f13de6016c3e918ba2ad8cae2f8988e3c87cad17a510de79a5939908b06",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackagesDigest",
+						"is a SHA-256 over the sorted lines, each ended by a newline"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 5,
+			"endLine": 133,
+			"endColumn": 23,
+			"mutatorName": "EqualityOperator",
+			"replacement": "outside.length <= 0",
+			"status": "generated",
+			"id": "b065546ac051eec553f602f163c04dbba9898530e75888ebd614138ca4e90e10",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackagesDigest",
+						"is a SHA-256 over the sorted lines, each ended by a newline"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 25,
+			"endLine": 133,
+			"endColumn": 71,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "11b42921db031addba57aa6a756fb3e5872bd8c37ec4baf401351075437962b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/installed-packages.test.ts",
+					"path": [
+						"installedPackages",
+						"a link out of the install, as npm link makes",
+						"gives one process one digest, and two processes none in common, so no run is reused"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 133,
+			"column": 37,
+			"endLine": 133,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bec2781b778544ed3dbcda6e687a7fae3f14ae93c3bf94d08ca118c27e776dd9"
+		},
+		{
+			"file": "packages/pipeline/src/installed-packages.ts",
+			"line": 134,
+			"column": 20,
+			"endLine": 134,
+			"endColumn": 25,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b83591f91873c2fbffaa11ef3b69f9ed2325e3092f1bc5985bc89c9f66ae33d1"
+		}
+	],
+	"total": 98,
+	"omitted": 0,
+	"unmutated": []
+}

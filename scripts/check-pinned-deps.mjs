@@ -15,16 +15,20 @@ export function readManifests(root) {
 	return { root: read("package.json"), packages };
 }
 
-// "*" is how one workspace package depends on another; npm links it locally. For any other name it means
-// "whatever the registry has", so it is allowed only for names that belong to this workspace.
+// A workspace package names another at that package's own version, which npm links locally, so a published release
+// fixes which release of each Melian package it runs; the code versions it records cover only that release's source.
 export function findUnpinned({ root, packages }) {
-	const workspaceNames = new Set(packages.map((manifest) => manifest.json.name));
+	const workspaceVersions = new Map(packages.map((manifest) => [manifest.json.name, manifest.json.version]));
 	const problems = [];
 	for (const { path, json } of [root, ...packages]) {
 		for (const field of fields) {
 			for (const [name, version] of Object.entries(json[field] ?? {})) {
-				if (version === "*" && workspaceNames.has(name)) continue;
-				if (!exact.test(version))
+				if (workspaceVersions.has(name)) {
+					if (version !== workspaceVersions.get(name))
+						problems.push(
+							`${path}: ${field}.${name} is "${version}", expected ${workspaceVersions.get(name)}, the workspace package's own version`,
+						);
+				} else if (!exact.test(version))
 					problems.push(`${path}: ${field}.${name} is "${version}", expected an exact version`);
 			}
 		}

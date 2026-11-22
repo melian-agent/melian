@@ -13,6 +13,7 @@ const sample: CheckRequestInput = {
 		digests: { "package-lock.json": "c".repeat(64), "node_modules/.package-lock.json": "d".repeat(64) },
 		identified: true,
 	},
+	packages: { digest: "e".repeat(64), identified: true },
 	mutation: {
 		stryker: { version: "10.0.0", installation: { core: "10.0.0" }, source: { from: "checkout", path: "/repo/x" } },
 		writer: { trusted: true, by: "writer" },
@@ -85,6 +86,7 @@ describe("checkRequest", () => {
 		expect(checkReusable({ ...sample, policy: "unread" })).toBe(false);
 		expect(checkReusable(sample)).toBe(true);
 		expect(checkReusable({ ...sample, install: { ...sample.install, identified: false } })).toBe(false);
+		expect(checkReusable({ ...sample, packages: { ...sample.packages, identified: false } })).toBe(false);
 		expect(checkRequest({ ...sample, policy: "unread" }).key).not.toBe(checkRequest(sample).key);
 		const { policy: _, ...revision } = sample;
 		expect(checkReusable(revision)).toBe(true);

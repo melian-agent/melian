@@ -37,6 +37,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
 import { blindCallers } from "../src/caveats.ts";
+import * as codeVersionModule from "../src/code-version.ts";
+import { Install } from "../src/installed-packages.ts";
 import { lensListedTools } from "../src/lens-tools.ts";
 import { MutationEnumerationError, TypeScriptMutationAdapter } from "../src/mutation-enumeration.ts";
 import { ReviewIndex } from "../src/review-index.ts";
@@ -571,12 +573,67 @@ describe("a repeat review copies a lens run only from a task shown the same call
 	});
 });
 
+describe("a repeat review on an install Melian cannot identify", () => {
+	const unidentified = () =>
+		vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest: "linked",
+			identified: false,
+			outside: ["node_modules/yaml"],
+			entries: [],
+		} as never);
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("keys both reviews alike and attaches to neither, so the second asks every lens again", async () => {
+		unidentified();
+		const first = await review(lenses);
+		const again = await review(lenses);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.task).not.toBe(first.task);
+		expect(again.copied).toBe("none");
+	});
+
+	it("asks every lens again on an install Melian identifies, after a review on one it cannot with the same digest", async () => {
+		unidentified();
+		const first = await review(lenses);
+		vi.spyOn(codeVersionModule, "melianInstall").mockReturnValue({
+			digest: "linked",
+			identified: true,
+			outside: [],
+			entries: [],
+		} as never);
+		const again = await review(lenses);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.task).not.toBe(first.task);
+		expect(again.copied).toBe("none");
+	});
+
+	it("copies no lens run into a review whose other lens changed", async () => {
+		unidentified();
+		await review(lenses);
+		const again = await review(
+			changed("correctness", (lens) => ({ instructions: `${lens.instructions} Look twice.` })),
+		);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toBe("none");
+	});
+});
+
 describe("a repeat review keys the instrumenter that answers list_mutants", () => {
 	const listing: LensToolName[] = ["read_file", "search", "list_mutants"];
-	const instrumenter = (toolVersion: string, source: "checkout" | "melian") =>
-		vi
-			.spyOn(TypeScriptMutationAdapter, "open")
-			.mockResolvedValue({ identity: { toolVersion }, source } as unknown as TypeScriptMutationAdapter);
+	const instrumenter = (
+		toolVersion: string,
+		source: "checkout" | "melian",
+		packages = `packages beneath ${toolVersion}`,
+		identified = true,
+	) =>
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockResolvedValue({
+			identity: { toolVersion },
+			source,
+			install: () => ({ digest: packages, identified }),
+		} as unknown as TypeScriptMutationAdapter);
 
 	afterEach(() => {
 		vi.restoreAllMocks();
@@ -593,6 +650,24 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 		expect((await review(offered)).asked).toEqual(["contracts"]);
 	});
 
+	it("asks only the lens offered list_mutants again when only the packages beneath the instrumenter move", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		instrumenter("10.0.0", "checkout", "babel 7.28.0");
+		await review(offered);
+		expect((await review(offered)).asked).toEqual([]);
+		instrumenter("10.0.0", "checkout", "babel 7.28.1");
+		expect((await review(offered)).asked).toEqual(["contracts"]);
+	});
+
+	it("asks every lens again, list_mutants or not, when the instrumenter's install links outside it", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		instrumenter("10.0.0", "checkout", "linked", false);
+		await review(offered);
+		const again = await review(offered);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toBe("none");
+	});
+
 	it("keys an instrumenter that cannot be found as unavailable, apart from one that can", async () => {
 		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
 		vi.spyOn(TypeScriptMutationAdapter, "open").mockRejectedValue(
@@ -601,6 +676,31 @@ describe("a repeat review keys the instrumenter that answers list_mutants", () =
 		expect((await review(offered)).asked).toEqual(["contracts", "correctness"]);
 		instrumenter("10.0.0", "checkout");
 		expect((await review(offered)).asked).toEqual(["contracts"]);
+	});
+
+	it("reuses every lens run on a repeat review when no instrumenter can be found", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		vi.spyOn(TypeScriptMutationAdapter, "open").mockRejectedValue(
+			new MutationEnumerationError("instrumenter", "Stryker's instrumenter is unavailable"),
+		);
+		const first = await review(offered);
+		const again = await review(offered);
+		expect(again.asked).toEqual([]);
+		expect(again.task).toBe(first.task);
+	});
+
+	it("runs a review whose instrumenter's install is past the bound, and reuses nothing from it", async () => {
+		const offered = changed("contracts", (lens) => ({ tools: [...lens.tools, "list_mutants"] }));
+		// A bound of three stands for a customer's install of more than 50,000 directories.
+		const read = Install.read.bind(Install);
+		vi.spyOn(Install, "read").mockImplementation((from, limit, ...rest) =>
+			read(from, from.includes("@stryker-mutator") ? 3 : limit, ...rest),
+		);
+		const first = await review(offered);
+		expect(first.asked).toEqual(["contracts", "correctness"]);
+		const again = await review(offered);
+		expect(again.asked).toEqual(["contracts", "correctness"]);
+		expect(again.copied).toBe("none");
 	});
 
 	it("fails the review on any other failure to resolve the instrumenter", async () => {

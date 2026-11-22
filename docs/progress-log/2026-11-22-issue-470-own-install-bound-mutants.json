@@ -1,0 +1,56 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "a20f36c68aef47f134e8f758bbbb0dfefeb1c9e4",
+		"head": "a21332d60bd09d3fe39cac3c57239c6595dd310c"
+	},
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 31,
+			"column": 1,
+			"endLine": 31,
+			"endColumn": 81,
+			"mutatorName": "AssignmentOperator",
+			"replacement": "install &&= Install.read(import.meta.url, maxInstallDirectories, \"unidentified\")",
+			"status": "generated",
+			"id": "80c050149775108e94f51f695e645dac0ffcbd33b360766b4e2368ff81e338b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/code-version.test.ts",
+					"path": [
+						"melianInstall",
+						"reads Melian's install from its own module, once a process"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/code-version.ts",
+			"line": 31,
+			"column": 66,
+			"endLine": 31,
+			"endColumn": 80,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2c9be66cc6a922c4193180c5704913b08ced55b8242eb4f67659b80b0f40be44"
+		}
+	],
+	"total": 2,
+	"omitted": 0,
+	"unmutated": []
+}

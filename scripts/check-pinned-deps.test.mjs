@@ -20,10 +20,22 @@ describe("findUnpinned", () => {
 		]);
 	});
 
-	it("accepts * for a workspace package", () => {
-		const a = manifest("packages/a/package.json", { name: "@w/a" });
-		const b = manifest("packages/b/package.json", { name: "@w/b", dependencies: { "@w/a": "*" } });
+	it("accepts a workspace package pinned to its own version", () => {
+		const a = manifest("packages/a/package.json", { name: "@w/a", version: "0.3.0" });
+		const b = manifest("packages/b/package.json", { name: "@w/b", dependencies: { "@w/a": "0.3.0" } });
 		expect(findUnpinned({ root, packages: [a, b] })).toEqual([]);
+	});
+
+	it.each(["*", "^0.3.0", "0.2.0"])("rejects a workspace package declared as %s, not its own version", (version) => {
+		const a = manifest("packages/a/package.json", { name: "@w/a", version: "0.3.0" });
+		const b = manifest("packages/b/package.json", { name: "@w/b", dependencies: { "@w/a": version } });
+		expect(findUnpinned({ root, packages: [a, b] })).toEqual([
+			`packages/b/package.json: dependencies.@w/a is "${version}", expected 0.3.0, the workspace package's own version`,
+		]);
+	});
+
+	it("holds this repository's workspace packages to each other's versions", () => {
+		expect(findUnpinned(readManifests("."))).toEqual([]);
 	});
 
 	it("rejects * for a registry package", () => {
