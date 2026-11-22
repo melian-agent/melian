@@ -22,12 +22,13 @@ afterEach(async () => {
 });
 
 function retirement(found: Partial<Retirement>): Retirement {
-	return { removed: [], changed: [], strays: [], absent: [], deferred: [], ...found };
+	return { removed: [], kept: [], changed: [], strays: [], absent: [], deferred: [], ...found };
 }
 
 function sorted(found: Retirement): Retirement {
 	return {
 		removed: [...found.removed].sort(),
+		kept: [...found.kept].sort(),
 		changed: [...found.changed].sort(),
 		strays: [...found.strays].sort(),
 		absent: [...found.absent].sort(),
@@ -51,11 +52,10 @@ function roots(count: number): Record<string, Planted> {
 	return Object.fromEntries(Array.from({ length: count }, (_, n) => [`noise/${n}`, { bytes: "" }] as const));
 }
 
-// A store holding records and a cell in `changeset`, and a record in `other`.
+// A store holding two records in `changeset` and one in `other`, and no cell, so a retire may remove either folder.
 async function seeded(): Promise<GitRecordStore> {
 	const store = await remote.open();
 	await store.add([check("a"), check("b"), check("kept", other)]);
-	await store.writeCell(changeset, undefined, '"lease"');
 	return store;
 }
 
@@ -575,28 +575,45 @@ describe("the folders at the tip", { timeout: 300_000 }, () => {
 	});
 });
 
-describe("a retired changeset", { timeout: 60_000 }, () => {
-	it("leaves no cell, no record and no mark, so a cell write starts afresh", async () => {
+describe("what a retire keeps", { timeout: 60_000 }, () => {
+	// Rule 3 of the shared record decision: no record carries an incarnation, so a changeset with a cell or a disposal is never recreated.
+	it("keeps a folder that holds a cell, reports it as kept, and retires a record-only folder beside it", async () => {
 		const store = await seeded();
+		await store.writeCell(changeset, undefined, '"lease"');
 		const paths = under(changeset);
 		expect(paths).toContain(cellPath(changeset));
-		expect(paths).toContain(filed(check("a")).path);
-		await store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
-		const files = remote.files();
-		for (const path of paths) expect(files).not.toContain(path);
-		expect(await store.readCell(changeset)).toEqual({});
-		expect(await store.writeCell(changeset, undefined, '"again"')).toBe(true);
-		expect((await store.readCell(changeset)).value).toBe('"again"');
+		expect(await store.retire(await store.folders())).toEqual(retirement({ removed: [other], kept: [changeset] }));
+		expect(under(changeset)).toEqual(paths);
+		expect(under(other)).toEqual([]);
+		expect((await store.readCell(changeset)).value).toBe('"lease"');
 	});
 
-	// Retiring a disposed changeset removes its mark too, so a later add is accepted rather than refused as disposed.
-	it("takes a disposed changeset's mark with it, so an add starts it afresh", async () => {
+	it("keeps a disposed folder, reports it as kept, and its mark still refuses an add", async () => {
 		const store = await seeded();
 		await store.dispose(changeset);
+		const paths = under(changeset);
+		expect(await store.retire(await store.folders())).toEqual(retirement({ removed: [other], kept: [changeset] }));
+		expect(under(changeset)).toEqual(paths);
 		await expect(store.add([check("late")])).rejects.toMatchObject({ code: "disposed" });
-		await store.retire(new Map([[changeset, (await store.folders()).get(changeset)!]]));
+	});
+
+	it("retires a record-only folder whole, so a later add starts it afresh", async () => {
+		const store = await seeded();
+		expect(await store.retire(new Map([[changeset, treeOf(changeset)]]))).toEqual(
+			retirement({ removed: [changeset] }),
+		);
+		expect(under(changeset)).toEqual([]);
 		await store.add([check("late")]);
 		expect(keys(await store.list(changeset))).toEqual(["late"]);
+	});
+
+	it("reports a folder that holds a cell and a stray as holding a stray", async () => {
+		const store = await seeded();
+		await store.writeCell(changeset, undefined, '"lease"');
+		remote.plant({ [`changesets/${changeset}/notes.txt`]: { bytes: "notes" } });
+		expect(await store.retire(new Map([[changeset, treeOf(changeset)]]))).toEqual(
+			retirement({ strays: [changeset] }),
+		);
 	});
 });
 

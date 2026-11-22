@@ -249,8 +249,8 @@ export class StateTree {
 		);
 	}
 
-	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it.
-	// A folder too large to judge whole counts as holding one, so nothing unjudged is removed. One that fits alone but
+	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it,
+	// or else a cell. A folder too large to judge whole counts as holding a stray, so nothing unjudged is removed. One that fits alone but
 	// would take `spent`, what the call has judged so far, past a limit is deferred unread.
 	static async judgeFolder(
 		repository: RecordRepository,
@@ -259,7 +259,7 @@ export class StateTree {
 		judged: Map<string, Judged>,
 		spent: { entries: number; bytes: number },
 		deadline: Deadline,
-	): Promise<"stray" | "clean" | "deferred"> {
+	): Promise<"stray" | "kept" | "clean" | "deferred"> {
 		const listed = await repository.entries(oid, deadline, listingLimit);
 		if (listed === undefined || listed.length > entryLimit) return "stray";
 		const prefix = Buffer.from(`${changesetsName}/${changeset}/`);
@@ -279,7 +279,9 @@ export class StateTree {
 		const wanted = [...new Set(fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const blobs = await repository.blobs(new Map(wanted.map((blob) => [blob, sizes.get(blob) as number])), deadline);
 		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
-		return entries.some((entry) => (judged.get(keyOf(entry)) as Judged).is === "stray") ? "stray" : "clean";
+		const verdicts = entries.map((entry) => (judged.get(keyOf(entry)) as Judged).is);
+		if (verdicts.includes("stray")) return "stray";
+		return verdicts.includes("cell") ? "kept" : "clean";
 	}
 
 	static async #children(repository: RecordRepository, treeish: string, deadline: Deadline): Promise<TreeEntry[]> {

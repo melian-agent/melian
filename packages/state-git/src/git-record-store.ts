@@ -45,11 +45,13 @@ type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
 
 /**
  * What {@link GitRecordStore.retire} did with each changeset it was given: removed its folder, kept it because the
- * folder's tree changed since it was seen, kept it because the folder holds a stray, found no folder there, or kept it
- * unjudged because judging it would take the call past the store's entry or byte limit, for a later call to retire.
+ * folder holds a cell, a lease or a disposal mark, kept it because the folder's tree changed since it was seen, kept it
+ * because the folder holds a stray, found no folder there, or kept it unjudged because judging it would take the call
+ * past the store's entry or byte limit, for a later call to retire.
  */
 export type Retirement = {
 	readonly removed: readonly string[];
+	readonly kept: readonly string[];
 	readonly changed: readonly string[];
 	readonly strays: readonly string[];
 	readonly absent: readonly string[];
@@ -252,7 +254,8 @@ export class GitRecordStore implements RecordStore {
 
 	/**
 	 * Removes in one commit each changeset in `seen` whose folder at the fresh tip still has the tree ID `seen` gives it
-	 * and holds no stray, cell included and with no mark, so a later `add` or `writeCell` starts the changeset afresh. It
+	 * and holds records alone, so a later `add` starts the changeset afresh. A folder with a cell, a lease or a disposal
+	 * mark, is kept, since rule 3 of the shared record decision never recreates such a changeset. It
 	 * pushes only a commit that removes whole changeset folders and changes nothing else, and pushes that whatever the
 	 * tip's totals, so it can bring a tip past the store's limits back under. It judges folders, in `seen`'s order, only
 	 * while their entries and readable bytes together stay within those limits, and defers the rest unread. Every lost
@@ -266,6 +269,7 @@ export class GitRecordStore implements RecordStore {
 				tip === undefined ? new Map<string, string>() : await StateTree.folders(this.#repository, tip, deadline);
 			const value = {
 				removed: [] as string[],
+				kept: [] as string[],
 				changed: [] as string[],
 				strays: [] as string[],
 				absent: [] as string[],
@@ -281,7 +285,7 @@ export class GitRecordStore implements RecordStore {
 				else if (value.deferred.length > 0) value.deferred.push(changeset);
 				else {
 					const verdict = await StateTree.judgeFolder(this.#repository, changeset, now, judged, spent, deadline);
-					value[verdict === "clean" ? "removed" : verdict === "stray" ? "strays" : "deferred"].push(changeset);
+					value[verdict === "clean" ? "removed" : verdict === "stray" ? "strays" : verdict].push(changeset);
 				}
 			}
 			if (tip === undefined || value.removed.length === 0) return { value };
