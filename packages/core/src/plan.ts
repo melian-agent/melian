@@ -372,7 +372,7 @@ export class ReviewPlan {
 			const level = own(model) ?? effective?.thinking ?? "unset";
 			const wanted = committedOwn ?? policy?.thinking ?? "unset";
 			if (level === wanted) return undefined;
-			return { level, wanted, by: (own(model) === committedOwn ? source.thinkingBy : by) ?? "melian.yaml" };
+			return { level, wanted, by: by ?? "melian.yaml" };
 		};
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>

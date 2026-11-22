@@ -424,11 +424,11 @@ describe("the lineage of a fallback a preference file relevelled", () => {
 		thinking: "low",
 		fallbacks: [{ model: "faux/second", thinking: "medium" }],
 	};
-	const planWith = (effective: ModelRoute) =>
+	const planWith = (effective: ModelRoute, policy = committed) =>
 		ReviewPlan.resolve({
 			config: { ...defaultConfig, models: { heavy: effective } },
 			routes: {
-				committed: { heavy: committed },
+				committed: { heavy: policy },
 				overridden: { heavy: "melian.local.yaml" },
 				lensTiers: {},
 				retiered: {},
@@ -451,6 +451,30 @@ describe("the lineage of a fallback a preference file relevelled", () => {
 		expect(plan.lines().map(({ text }) => text)).toContain(
 			"heavy runs faux/second, set by melian.local.yaml; the committed route wants gone/sol; thinking low set by melian.local.yaml; committed policy wants medium",
 		);
+	});
+
+	it("records unset as the committed level of a bare fallback on a route that names none", () => {
+		const plan = planWith(
+			{ model: "gone/sol", thinking: "low", fallbacks: [{ model: "faux/second", thinking: "medium" }] },
+			{ model: "gone/sol", fallbacks: ["faux/second"] },
+		);
+		expect(plan.tier("heavy").models).toEqual([
+			{
+				model: "faux/second",
+				credential: "test",
+				family: "second",
+				thinking: "medium",
+				thinkingOverride: { level: "medium", wanted: "unset", by: "melian.local.yaml" },
+			},
+		]);
+	});
+
+	it("records no level of its own for a bare fallback that runs at the route's changed level", () => {
+		const plan = planWith(
+			{ model: "gone/sol", thinking: "high", fallbacks: ["faux/second"] },
+			{ model: "gone/sol", thinking: "low", fallbacks: ["faux/second"] },
+		);
+		expect(plan.tier("heavy").models).toStrictEqual([{ model: "faux/second", credential: "test", family: "second" }]);
 	});
 
 	it("records no level when the fallback keeps its committed one", () => {
