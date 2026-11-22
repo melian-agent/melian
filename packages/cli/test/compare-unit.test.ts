@@ -152,7 +152,12 @@ describe("comparison command failures", () => {
 
 describe("comparison command guards", () => {
 	const stub = (needsReason: boolean, melian: string[] = []) =>
-		({ needsReason: () => needsReason, render: () => "", melianFindings: () => melian }) as unknown as Comparison;
+		({
+			needsReason: () => needsReason,
+			render: () => "",
+			melianFindings: () => melian,
+			externalFinding: () => undefined,
+		}) as unknown as Comparison;
 	const out = () =>
 		vi
 			.mocked(io.stdout)

@@ -1,0 +1,1081 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "70bf644500af14cc46be1a72a318f72a97499b45",
+		"head": "2874dacabfd5b3837b33ca378771ff784136071a"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/evidence.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 3,
+			"endLine": 121,
+			"endColumn": 153,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9a87b9e9722442f1d10aaa0400fc563fb80c6ad1b01d6e133e5d49f9b8210e64"
+		},
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 98,
+			"endLine": 121,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "37395383946cbf526a6a4707c536587851477be3124783a34b49f01398ecb753"
+		},
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 98,
+			"endLine": 121,
+			"endColumn": 111,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "41f119cafc615f5a32d50a11677ab1454d054f8f27e8cbd7c2663e52c9fde01a"
+		},
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 98,
+			"endLine": 121,
+			"endColumn": 111,
+			"mutatorName": "EqualityOperator",
+			"replacement": "dropped !== 0",
+			"status": "generated",
+			"id": "d4f0919204a59b5615255ed4b89edd163b4578fcfc816553c95c0f5fdccedc1f"
+		},
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 114,
+			"endLine": 121,
+			"endColumn": 116,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "81dedea4a00bb807d38feb5862d47f50319921cbe960c43808794410baca2378"
+		},
+		{
+			"file": "packages/cli/src/evidence.ts",
+			"line": 121,
+			"column": 119,
+			"endLine": 121,
+			"endColumn": 150,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f5f042986317e8f346654663ec88ef243a1bea28c25d44ef86d4415aad321c8c"
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 279,
+			"column": 34,
+			"endLine": 279,
+			"endColumn": 69,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a4a5b014da1f0dde3bac16b6622e802d3667aa754f04d3441ffe0b21a63ac542",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 280,
+			"column": 18,
+			"endLine": 280,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "de57a1867a3350b6462927095f89206f20565016be3cf229659bc6b67f63e0f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 280,
+			"column": 18,
+			"endLine": 280,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3153c23047fdd4f337a442c22f1e884cd701df00cc8b55b4cb7c06284cce2c91",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"counts every entry of a conversation with no reply as leading"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 280,
+			"column": 18,
+			"endLine": 280,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "found !== -1",
+			"status": "generated",
+			"id": "a41a4e1bf58fcd58820c2f92e4ecad84bd183d90052b73ed2396d8747926cbbb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 280,
+			"column": 28,
+			"endLine": 280,
+			"endColumn": 30,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"status": "generated",
+			"id": "d60b737a8957a91e779ebe8a55a1a68b37f1b0910afc946d2d1085951df06a95",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"counts every entry of a conversation with no reply as leading"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 283,
+			"column": 48,
+			"endLine": 290,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "141b717ccbe6a9387e068fbd3458dbb4cdc490d5daecfd81e0cb2713eb93e4ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 284,
+			"column": 16,
+			"endLine": 284,
+			"endColumn": 80,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "a3fa38a8f44a0055d9d755b597e388dd72f638fef6e7e0d6add2749648fa47a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 284,
+			"column": 20,
+			"endLine": 284,
+			"endColumn": 40,
+			"mutatorName": "MethodExpression",
+			"replacement": "sizes",
+			"status": "generated",
+			"id": "e553717de78dec33fe7e0227b5a21d8d72ab22a09770bc5942f289ce8d66b2c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 284,
+			"column": 45,
+			"endLine": 284,
+			"endColumn": 79,
+			"mutatorName": "MethodExpression",
+			"replacement": "sizes",
+			"status": "generated",
+			"id": "b57172e2adc66bfa0ed067623f9409be62dba57f2744ad3eb7b1e982f97e4e5a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 284,
+			"column": 57,
+			"endLine": 284,
+			"endColumn": 78,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + tail",
+			"status": "generated",
+			"id": "06e1c35c7f098faefa670b7fbe19be5a9cbab4eb3efb22d6931df2f8e1d6701c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps a lens's instructions ahead of twenty large tool results"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 286,
+			"column": 4,
+			"endLine": 288,
+			"endColumn": 54,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "Buffer.byteLength(JSON.stringify({\n  version: 1,\n  stage,\n  entries: [],\n  dropped: entries.length - kept.length\n})) - kept.reduce((sum, size) => sum + size + 1, -1)",
+			"status": "generated",
+			"id": "e03196cbb436c213184f434621ddb6628a3501b7f3aee0b46d7c16b1702990b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 287,
+			"column": 20,
+			"endLine": 287,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3aa16233da1f91515ddc87566c069f7b96d1d80b3414b56a2a3268035c29846e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 287,
+			"column": 50,
+			"endLine": 287,
+			"endColumn": 52,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "4f1496768c84173899d901ca59dff64ae8d91e4e2cdfe7f9dfd42cbada5267f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps every entry of a conversation at the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 287,
+			"column": 63,
+			"endLine": 287,
+			"endColumn": 91,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + kept.length",
+			"status": "generated",
+			"id": "ff45e677c3bcc9fb29b36f39c047f71b76c84118fa2c46fc3a8374edfd2d1f7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps every entry of a conversation at the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 288,
+			"column": 20,
+			"endLine": 288,
+			"endColumn": 49,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "6c6770ba2dd90d96cc4947ad2a746e18abecde94386f78c542ef5a78969de23c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 288,
+			"column": 35,
+			"endLine": 288,
+			"endColumn": 49,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "sum + size - 1",
+			"status": "generated",
+			"id": "71b09e215f731fa0342eff4f887311a8d9cbfec44b35fe254a3c805e8a1aef77",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 288,
+			"column": 35,
+			"endLine": 288,
+			"endColumn": 45,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "sum - size",
+			"status": "generated",
+			"id": "ab4e40f287ea1232163481cfaa0fd3b6a515d18dbe71c7869a6602aaac97de6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 288,
+			"column": 51,
+			"endLine": 288,
+			"endColumn": 53,
+			"mutatorName": "UnaryOperator",
+			"replacement": "+1",
+			"status": "generated",
+			"id": "bf0f7d092a46b1e61b740cfaac88c30dbc6c3fecdeafcbc087e601978882adb0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps every entry of a conversation at the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 9,
+			"endLine": 292,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "614d57c291edffa603355ce910157f8632184a888f194bc3c8859dbcf7df69da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 9,
+			"endLine": 292,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "head > 0 || bytes(head, 0) > evidenceLimits.stage",
+			"status": "generated",
+			"id": "08290dcccf2640afe2e555fd226fe37e8f60aeb26202d9bf1db297dc66a0b82f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 9,
+			"endLine": 292,
+			"endColumn": 17,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "25da2a3dc5fd4615405068c88a69c036a944b26a499f6be684cece888966cfe1",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the loop asks only while its count is above 0 or, at 0, about an empty selection, whose bytes are the envelope's alone, which a stage's telemetry record never brings to 16 MiB; so the loop stops at 0 either way"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 9,
+			"endLine": 292,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "head >= 0",
+			"status": "generated",
+			"id": "0e70506ed60b3df69155698cd6b1b2dc2bb99e20928fbdb39544ecc63a8d4009",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the loop asks only while its count is above 0 or, at 0, about an empty selection, whose bytes are the envelope's alone, which a stage's telemetry record never brings to 16 MiB; so the loop stops at 0 either way"
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 9,
+			"endLine": 292,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "head <= 0",
+			"status": "generated",
+			"id": "aceaea765e2878f1526584cf9bafa1617a53e7e474ea7d9f0e618d5a1b27d10c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 21,
+			"endLine": 292,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "254c2e71b3f92118061586d056c061933d419c6c43546c1ad46bc13ebde81556",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 21,
+			"endLine": 292,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, 0) >= evidenceLimits.stage",
+			"status": "generated",
+			"id": "37726ac4375983da6b7faf78f330952b0a4d51edaae0b917f34f80a68122f1a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps every leading entry of a conversation with no reply at the bound"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 21,
+			"endLine": 292,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, 0) <= evidenceLimits.stage",
+			"status": "generated",
+			"id": "f6afdd83c4615f63da742ddbe5873d53bfe1d4dda6c322515da4346bb7b60560",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 292,
+			"column": 60,
+			"endLine": 292,
+			"endColumn": 66,
+			"mutatorName": "UpdateOperator",
+			"replacement": "head++",
+			"status": "generated",
+			"id": "9d7fac4d3e553e9d237ca172d80ef94cbd2ab53c2711b1e26477abba8d8e04ab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the leading entries that fit from the first, then the last that fit, when they alone pass the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 293,
+			"column": 13,
+			"endLine": 293,
+			"endColumn": 37,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + leading",
+			"status": "generated",
+			"id": "fbb8fa6ae334b45f31cd69baaea86f95ae50b874e6a2e31c5aa40b6c841b65b0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 9,
+			"endLine": 294,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6dbe5e274c45ed77fa3b1b2dc0c3d80f980d45f6cce099b44fd1c109b4dbdafe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps a lens's instructions ahead of twenty large tool results"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 9,
+			"endLine": 294,
+			"endColumn": 61,
+			"mutatorName": "LogicalOperator",
+			"replacement": "tail > 0 || bytes(head, tail) > evidenceLimits.stage",
+			"status": "generated",
+			"id": "4070b579c6c43e1f1199467c74d68bdba5916bc98269b33cfbbcf5605e48b002",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 9,
+			"endLine": 294,
+			"endColumn": 17,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e4ab65c1bf0ee1250b622f6f30bf7e65136d1cb0b9fb68522d87af966181a640",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the loop asks only while its count is above 0 or, at 0, about an empty selection, whose bytes are the envelope's alone, which a stage's telemetry record never brings to 16 MiB; so the loop stops at 0 either way"
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 9,
+			"endLine": 294,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tail >= 0",
+			"status": "generated",
+			"id": "9ca4c395601f23e8915c34d6cb131d9bb7ac86cfe0be00d229ab5c832e46d425",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "the loop asks only while its count is above 0 or, at 0, about an empty selection, whose bytes are the envelope's alone, which a stage's telemetry record never brings to 16 MiB; so the loop stops at 0 either way"
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 9,
+			"endLine": 294,
+			"endColumn": 17,
+			"mutatorName": "EqualityOperator",
+			"replacement": "tail <= 0",
+			"status": "generated",
+			"id": "83a30eb70cc0db8bc39a74a28a8bb72a2082c6706ad98bf4804a68e4b824f62a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps a lens's instructions ahead of twenty large tool results"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 21,
+			"endLine": 294,
+			"endColumn": 61,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cde8dc06742d91841bce375e0217b0108d25ab486edef6f6861d5b9e0d6238f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 21,
+			"endLine": 294,
+			"endColumn": 61,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, tail) >= evidenceLimits.stage",
+			"status": "generated",
+			"id": "f5b67cd070573339b7d917a079561010b1ad104eea20c7d3e48fa8b280197ef8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps every entry of a conversation at the bound"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 21,
+			"endLine": 294,
+			"endColumn": 61,
+			"mutatorName": "EqualityOperator",
+			"replacement": "bytes(head, tail) <= evidenceLimits.stage",
+			"status": "generated",
+			"id": "89e62e5874575c7f72dff32a36188f3b7cd4477eb3bfc82214ada403beefe237",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 294,
+			"column": 63,
+			"endLine": 294,
+			"endColumn": 69,
+			"mutatorName": "UpdateOperator",
+			"replacement": "tail++",
+			"status": "generated",
+			"id": "eb04d7928f2bd903f357855805d24a7751b7f70b85f2073d424eee08a44fcb75",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps a lens's instructions ahead of twenty large tool results"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 298,
+			"column": 12,
+			"endLine": 298,
+			"endColumn": 80,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "a01fabaa4bc7255273816f7d9fcdbde1f6e40a85c06b7459feaebff91b2205c3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 298,
+			"column": 16,
+			"endLine": 298,
+			"endColumn": 38,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"status": "generated",
+			"id": "1b75e14febef75ff6da63ffd88749d191bc0e8a0ea72b938be655d63199ff147",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 298,
+			"column": 43,
+			"endLine": 298,
+			"endColumn": 79,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"status": "generated",
+			"id": "703863124d09f999f5b32ad32d919cf87fccf51ff5247dab96f9ffea46671f32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 298,
+			"column": 57,
+			"endLine": 298,
+			"endColumn": 78,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + tail",
+			"status": "generated",
+			"id": "103402e25d4a5aef7b01761871e008ae35f7a9c315c37b8dee33dae8df39e35c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 299,
+			"column": 12,
+			"endLine": 299,
+			"endColumn": 40,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length - head + tail",
+			"status": "generated",
+			"id": "fffa8ca9824e0b1397c212885b40328960ea26fc6b18b79941f35498f6e1e438",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/evidence.ts",
+			"line": 299,
+			"column": 12,
+			"endLine": 299,
+			"endColumn": 33,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "entries.length + head",
+			"status": "generated",
+			"id": "e7acdc3a8b93697eaa1a762426eb15e0b159e2cadb2cc6aed184da3b00bae444",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/evidence.test.ts",
+					"path": [
+						"EvidenceStore",
+						"the 16 MiB stage bound",
+						"keeps the prompt, the instructions and the last that fit, one byte past the bound, and counts the rest"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 49,
+	"omitted": 0,
+	"unmutated": []
+}
