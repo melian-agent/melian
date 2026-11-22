@@ -172,7 +172,7 @@ export class ReviewRecords {
 		check?: CheckRecord,
 	): SharedRecord {
 		const payload: LensPayload = {
-			v: 1,
+			v: 2,
 			name: run.name,
 			version: run.version,
 			level: run.level,
@@ -189,7 +189,7 @@ export class ReviewRecords {
 	/** A verification's record, keyed by its request's key. */
 	verification(key: string, facts: VerificationFacts): SharedRecord {
 		const payload: VerificationPayload = {
-			v: 1,
+			v: 2,
 			claims: [...facts.claims]
 				.sort((a, b) => compare(claimOrder(a), claimOrder(b)))
 				.map(({ id, source, verification }) => ({
@@ -301,7 +301,7 @@ export class ReviewRecords {
 			filled: [
 				...new Map(
 					facts.filled.map((record) => {
-						const entry = { ...decided(record), status: record.status };
+						const entry = { ...legacy(decided(record)), status: record.status };
 						return [canonicalJson(entry), entry] as const;
 					}),
 				),
@@ -689,8 +689,18 @@ function decided(record: CheckRecord): Omit<DecidedCheck, "status"> & { status: 
 						by: lineage.by,
 						moved: lineage.moved === undefined ? null : { ...lineage.moved },
 						outside: lineage.outside,
+						answeredAt: orNull(lineage.answeredAt),
 					},
 	};
+}
+
+// An account's filled check keeps the lineage without `answeredAt`, so one that names a level cannot be written there.
+function legacy<T extends { name: string; lineage: DecidedCheck["lineage"] }>(check: T) {
+	if (check.lineage === null) return { ...check, lineage: null };
+	const { answeredAt, ...lineage } = check.lineage;
+	if (answeredAt !== null)
+		throw new Error(`${check.name}'s lineage names the level its model answered at, which an account cannot hold`);
+	return { ...check, lineage };
 }
 
 function lensOutcome(outcome: LensRunOutcome): LensPayload["outcome"] {

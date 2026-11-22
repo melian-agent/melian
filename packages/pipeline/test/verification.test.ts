@@ -5,8 +5,10 @@ import {
 	defaultConfig,
 	Finding,
 	Lens,
+	MemoryRecordStore,
 	ReviewPlan,
 	Revision,
+	reviewPayloads,
 	type Verification,
 	VerificationState,
 } from "@melian-agent/core";
@@ -1155,6 +1157,132 @@ describe("the verifier", () => {
 		});
 		expect(requests[verifierMarker]).toEqual([]);
 	});
+	// Codex's adversarial review of pull request #489: a refused verifier's check carried the level its fallback would
+	// have answered at, and the version-1 account a record store writes for it cannot hold one, so the export threw.
+	it("exports the round of a verifier refused at a fallback that names its own level", async () => {
+		const locked = fake.withoutCredentials("judge");
+		const backup = `${fake.ref("backup").provider}/backup`;
+		const route = (thinking: "low" | "high") => ({
+			model: `${locked.provider}/${locked.modelId}`,
+			thinking,
+			fallbacks: [{ model: backup, thinking: "medium" as const }],
+		});
+		const config = {
+			...defaultConfig,
+			models: { heavy: { model: `${fake.ref("finder").provider}/finder` }, verifier: route("high") },
+		};
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: ["lens.correctness"],
+			routes: {
+				committed: { heavy: config.models.heavy, verifier: { ...route("low"), acceptOverridden: false } },
+				overridden: { verifier: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		expect(plan.refusal("verifier")).toBeDefined();
+		expect(plan.lineage("verifier")).toMatchObject({ model: backup, answeredAt: "medium" });
+		scripts();
+		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		await expect(
+			reviewChangeset({
+				harness,
+				checks: [],
+				changeset,
+				lenses,
+				standards: [],
+				models: fake.review,
+				plan,
+				records,
+				config: {
+					...defaultConfig,
+					tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+					stages: { "pull-request": "full" },
+					models: plan.routes(),
+				},
+			}),
+		).rejects.toMatchObject({ code: "verifierFailed" });
+		const stored = await records.list(changeset.id);
+		expect(stored.some(({ kind }) => kind === "round")).toBe(true);
+		const { filled } = stored.find(({ kind }) => kind === "account")!.payload as {
+			filled: { name: string; lineage: Record<string, unknown> | null }[];
+		};
+		// The verifier asked no model, so its lineage names none it answered at.
+		expect(filled.find(({ name }) => name === "verifier")?.lineage).toEqual({
+			model: backup,
+			wanted: `${locked.provider}/${locked.modelId}`,
+			by: "melian.local.yaml",
+			outside: false,
+			moved: null,
+			thinking: { level: "high", wanted: "low", by: "melian.yaml" },
+		});
+	});
+	it("exports the round of a lens refused at a fallback that names its own level", async () => {
+		const locked = fake.withoutCredentials("judge");
+		const backup = `${fake.ref("backup").provider}/backup`;
+		const route = (thinking: "low" | "high") => ({
+			model: `${locked.provider}/${locked.modelId}`,
+			thinking,
+			fallbacks: [{ model: backup, thinking: "medium" as const }],
+		});
+		const verifier = { model: `${fake.ref("judge").provider}/judge` };
+		const config = { ...defaultConfig, models: { heavy: route("high"), verifier } };
+		const { catalog, credentials } = await planInputs(fake.review);
+		const plan = ReviewPlan.resolve({
+			config,
+			catalog,
+			credentials,
+			lenses,
+			checks: lenses.map((lens) => `lens.${lens.name}`),
+			routes: {
+				committed: { heavy: { ...route("low"), acceptOverridden: false }, verifier },
+				overridden: { heavy: "melian.local.yaml" },
+				lensTiers: {},
+				retiered: {},
+			},
+		});
+		expect(plan.judge("correctness", "careful").refusal).toBeDefined();
+		expect(plan.judge("correctness", "careful").lineage).toMatchObject({ model: backup, answeredAt: "medium" });
+		const requests = scripts();
+		const records = new MemoryRecordStore({ payloads: reviewPayloads });
+		const result = await reviewChangeset({
+			harness,
+			checks: [],
+			changeset,
+			lenses,
+			standards: [],
+			models: fake.review,
+			plan,
+			records,
+			config: {
+				...defaultConfig,
+				tiers: { full: lenses.map((lens) => `lens.${lens.name}`) },
+				stages: { "pull-request": "full" },
+				models: plan.routes(),
+			},
+		});
+		expect(result.verdict.status).toBe("not-reviewed");
+		expect(requests[verifierMarker]).toEqual([]);
+		const stored = await records.list(changeset.id);
+		expect(stored.some(({ kind }) => kind === "round")).toBe(true);
+		const { filled } = stored.find(({ kind }) => kind === "account")!.payload as {
+			filled: { name: string; lineage: Record<string, unknown> | null }[];
+		};
+		// The lens asked no model, so its lineage names none it answered at.
+		expect(filled.find(({ name }) => name === "lens.correctness")?.lineage).toEqual({
+			model: backup,
+			wanted: `${locked.provider}/${locked.modelId}`,
+			by: "melian.local.yaml",
+			outside: false,
+			moved: null,
+			thinking: { level: "high", wanted: "low", by: "melian.yaml" },
+		});
+	});
 	it("passes over a verifier candidate whose credential check throws, for the next one", async () => {
 		const locked = fake.withoutCredentials("judge");
 		const check = fake.models.checkAuth.bind(fake.models);
@@ -1292,7 +1420,7 @@ describe("the verifier", () => {
 		}, context);
 		const requests = scripts();
 		const result = await review(false, undefined, true);
-		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(8);
+		expect((await root.commit((tx) => tx.task(older), context))!.version).toBe(9);
 		expect(requests[verifierMarker]).toHaveLength(2);
 		expect(result.findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(result.verdict.ran?.find((check) => check.name === "verifier")?.status).toBe("ran");

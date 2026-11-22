@@ -13,6 +13,7 @@ import {
 	evaluateGuardrails,
 	evidenceRevisionSchema,
 	evidenceRoleSchema,
+	type FallbackEntry,
 	type Finding,
 	type FindingSource,
 	FindingsLog,
@@ -328,6 +329,8 @@ export type GoldenMode =
 			readonly thinking?: EvalThinking;
 			/** One combination of a probing measurement, applied after `thinking`. */
 			readonly probing?: ProbingRoute;
+			/** Fallbacks appended to every tier `model` fills, each optionally with its own level. */
+			readonly fallbacks?: readonly FallbackEntry[];
 			/** A new SQLite file to keep the review's store in, so its conversations can be read after it. */
 			readonly store?: string;
 	  };
@@ -395,8 +398,13 @@ export interface GoldenRun extends RangeRun {
 
 const tiers: readonly LensTier[] = ["light", "medium", "heavy"];
 
-function routeEveryTier(config: MelianConfig, model: string, override: boolean): MelianConfig {
-	const route: ModelRoute = { model };
+function routeEveryTier(
+	config: MelianConfig,
+	model: string,
+	override: boolean,
+	fallbacks: readonly FallbackEntry[] = [],
+): MelianConfig {
+	const route: ModelRoute = fallbacks.length === 0 ? { model } : { model, fallbacks: [...fallbacks] };
 	const models = Object.fromEntries(
 		tiers.map((tier) => {
 			const existing = config.models[tier];
@@ -406,7 +414,7 @@ function routeEveryTier(config: MelianConfig, model: string, override: boolean):
 					? route
 					: existing?.model !== undefined || existing?.accept !== undefined
 						? existing
-						: { ...existing, model },
+						: { ...existing, ...route },
 			];
 		}),
 	);
@@ -589,7 +597,7 @@ async function reviewTarget(target: ReviewTarget, mode: GoldenMode, golden: Gold
 		models = fake.review;
 		scriptLenses(fake, lenses, { ...golden!.script, verifier: golden!.verifier ?? {} }, toolMismatches);
 	} else {
-		config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false);
+		config = mode.model === undefined ? loaded : routeEveryTier(loaded, mode.model, false, mode.fallbacks);
 		const verifier = mode.verifierModel ?? mode.model;
 		if (verifier !== undefined)
 			config = {

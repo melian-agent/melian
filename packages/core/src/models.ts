@@ -7,11 +7,74 @@ export interface ModelReference {
 	readonly modelId: string;
 }
 
+/** A model of a route, with the level its entry names in place of the route's own, where it names one. */
+export interface RoutedModel extends ModelReference {
+	readonly thinking?: ModelRoute["thinking"];
+}
+
+/** One fallback of a {@link ModelRoute} as a file writes it: a model, or a model and its own level. */
+export type FallbackEntry = NonNullable<ModelRoute["fallbacks"]>[number];
+
 /** The model a tier routes to, and the models to try, in order, when it is unavailable. */
 export interface ResolvedModelRoute {
 	readonly tier: ModelTier;
 	readonly model: ModelReference;
-	readonly fallbacks: readonly ModelReference[];
+	readonly fallbacks: readonly RoutedModel[];
+}
+
+/** The fallback entry for `model` at `thinking` in place of its route's level, or at the route's when it is absent. */
+export function fallbackEntry(model: string, thinking: ModelRoute["thinking"]): FallbackEntry {
+	return thinking === undefined ? model : { model, thinking };
+}
+
+/** A model of a route, naming the level it runs at where that differs from the route's. */
+export type AtLevel<T> = Omit<T, "thinking"> & { readonly thinking?: ModelRoute["thinking"] };
+
+/**
+ * The route that runs `models`, a route's models at `thinking` that a credential reaches, in order: the level it runs
+ * at, and each model naming its own where it differs. A model that names no level runs at `thinking`, so a route whose
+ * model names one must name its own, as configuration requires; one that does not is refused, never inherited. Every
+ * place that drops a model from a route takes the route that runs from here.
+ */
+export function routeInOrder<T extends { readonly thinking?: ModelRoute["thinking"] }>(
+	models: readonly T[],
+	thinking: ModelRoute["thinking"],
+): { readonly thinking?: ModelRoute["thinking"]; readonly route: AtLevel<T>[] } {
+	if (thinking === undefined && models.some((each) => each.thinking !== undefined))
+		throw new Error("a model names a thinking level on a route that names none; the route must name its own");
+	const level = models[0]?.thinking ?? thinking;
+	const at = ({ thinking: _own, ...model }: T, own: ModelRoute["thinking"]): AtLevel<T> =>
+		own === undefined ? model : { ...model, thinking: own };
+	return {
+		...(level === undefined ? {} : { thinking: level }),
+		route: models.map((each, index) =>
+			at(each, index === 0 ? undefined : (each.thinking ?? (level === thinking ? undefined : thinking))),
+		),
+	};
+}
+
+/** `run`, a route {@link routeInOrder} gives, as a file writes it. */
+export function writtenRoute(run: {
+	readonly thinking?: ModelRoute["thinking"];
+	readonly route: readonly { readonly model: string; readonly thinking?: ModelRoute["thinking"] }[];
+}): ModelRoute {
+	const [first, ...rest] = run.route;
+	return {
+		...(run.thinking === undefined ? {} : { thinking: run.thinking }),
+		...(first === undefined
+			? {}
+			: { model: first.model, fallbacks: rest.map((each) => fallbackEntry(each.model, each.thinking)) }),
+	};
+}
+
+/** The model a fallback entry names. */
+export function fallbackModel(entry: FallbackEntry): string {
+	return typeof entry === "string" ? entry : entry.model;
+}
+
+/** The level a fallback entry names in place of its route's, or `undefined` when it runs at the route's. */
+export function fallbackThinking(entry: FallbackEntry): ModelRoute["thinking"] {
+	return typeof entry === "string" ? undefined : entry.thinking;
 }
 
 /**
@@ -52,7 +115,8 @@ export function resolveModelRoute(
 	at: string,
 	noun: string,
 ): Omit<ResolvedModelRoute, "tier"> {
-	const names = route?.model === undefined ? (route?.accept ?? []) : [route.model, ...(route.fallbacks ?? [])];
+	const names: readonly FallbackEntry[] =
+		route?.model === undefined ? (route?.accept ?? []) : [route.model, ...(route.fallbacks ?? [])];
 	const [first, ...rest] = names;
 	if (first === undefined) {
 		throw new ModelRoutingError(
@@ -64,7 +128,13 @@ export function resolveModelRoute(
 		);
 	}
 	return {
-		model: parseModelReference(first, tier, at),
-		fallbacks: rest.map((fallback) => parseModelReference(fallback, tier, at)),
+		model: parseModelReference(fallbackModel(first), tier, at),
+		fallbacks: rest.map((fallback) => {
+			const thinking = fallbackThinking(fallback);
+			return {
+				...parseModelReference(fallbackModel(fallback), tier, at),
+				...(thinking === undefined ? {} : { thinking }),
+			};
+		}),
 	};
 }

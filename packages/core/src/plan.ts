@@ -8,7 +8,14 @@ import {
 	type RouteLineage,
 } from "./config.ts";
 import { defaultScrutinyLevel, type Lens, type ScrutinyLevel, scrutinyLevels } from "./lens.ts";
-import { parseModelReference } from "./models.ts";
+import {
+	type FallbackEntry,
+	fallbackModel,
+	fallbackThinking,
+	parseModelReference,
+	routeInOrder,
+	writtenRoute,
+} from "./models.ts";
 import { visibleText } from "./render.ts";
 
 /** One chat model of the catalogue the resolver reads: pi-ai's, or a test's. `cost` is dollars per million tokens. */
@@ -48,8 +55,11 @@ export interface PlanInput {
 export type TierStatus = "routed" | "unrouted" | "uncredentialed" | "unavailable" | "refused";
 
 // Type aliases with mutable arrays: the plan is stored as JSON in a durable task's input.
-/** One model of a tier's route, and where its credentials come from, or `none`. */
-export type PlannedModel = { model: string; credential: string; family?: string };
+/**
+ * One model of a tier's route, and where its credentials come from, or `none`. `thinking` is the level its fallback entry
+ * names in place of the route's; absent, it runs at the route's level, as every model of an older plan does.
+ */
+export type PlannedModel = { model: string; credential: string; family?: string; thinking?: ModelRoute["thinking"] };
 
 /** One route of a {@link ReviewPlan}, a tier's or a lens's, as stored. */
 export type PlannedRoute = {
@@ -306,7 +316,9 @@ export class ReviewPlan {
 		const { at, policy, effective, flag } = source;
 		const tier = source.tier;
 		const parse = (name: string) => parseModelReference(name, tier, at);
-		const accept = policy?.accept ?? (policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? [])]);
+		const accept =
+			policy?.accept ??
+			(policy?.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)]);
 		const wanted = policy?.model;
 		let by: string | undefined;
 		let route: readonly string[];
@@ -314,12 +326,22 @@ export class ReviewPlan {
 			route = [flag];
 			by = "--model";
 		} else if (effective?.model !== undefined) {
-			route = [effective.model, ...(effective.fallbacks ?? [])];
+			route = [effective.model, ...(effective.fallbacks ?? []).map(fallbackModel)];
 			by = source.overridden;
 		} else {
-			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? [])])];
+			route = [...new Set([...(effective?.accept ?? []), ...(effective?.fallbacks ?? []).map(fallbackModel)])];
 			by = source.overridden;
 		}
+		// A model's own level is its fallback entry's. `--model` runs every model at the route's.
+		const own = (model: string) => (flag === undefined ? ReviewPlan.ownLevel(effective, model) : undefined);
+		// The level each of `names` runs at when `routed` runs them in that order, as `routeInOrder` gives it.
+		const runsAt = (routed: ModelRoute | undefined, names: readonly string[], ownOf: typeof own) => {
+			const run = routeInOrder(
+				names.map((model) => ({ model, thinking: ownOf(model) })),
+				routed?.thinking,
+			);
+			return new Map(run.route.map((each) => [each.model, each.thinking ?? run.thinking]));
+		};
 		for (const name of [...route, ...accept]) parse(name);
 		const entry = (name: string) => {
 			const { provider, modelId } = parse(name);
@@ -327,14 +349,19 @@ export class ReviewPlan {
 		};
 		const usable = (name: string) => entry(name) !== undefined && Object.hasOwn(credentials, entry(name)!.provider);
 		const planned = (names: readonly string[]) =>
-			names.map((model) => ({
-				model,
-				credential: credentials[parse(model).provider] ?? "none",
-				...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
-			}));
+			names.map(
+				(model): PlannedModel => ({
+					model,
+					credential: credentials[parse(model).provider] ?? "none",
+					...(entry(model) === undefined ? {} : { family: sameModel(entry(model)!.name).split(" ")[0]! }),
+					...(own(model) === undefined ? {} : { thinking: own(model) }),
+				}),
+			);
 		const unknown: UnknownModel[] = [];
 		const committed = (name: string) =>
-			name === policy?.model || policy?.fallbacks?.includes(name) === true || accept.includes(name);
+			name === policy?.model ||
+			policy?.fallbacks?.some((each) => fallbackModel(each) === name) === true ||
+			accept.includes(name);
 		for (const [name, source] of [
 			...route.map((each): [string, string] => [each, committed(each) ? "melian.yaml" : (by ?? "melian.yaml")]),
 			...accept.map((each): [string, string] => [each, "melian.yaml"]),
@@ -406,7 +433,20 @@ export class ReviewPlan {
 			by = "derived";
 		}
 		if (policy?.acceptOverridden === false && accept.length > 0) {
-			const kept = chosen.filter((model) => !thinkingChanged && accept.includes(model));
+			// A model runs outside policy when it would run at another level than committed policy runs it at, over the
+			// same credentials; it is dropped, as one outside accept is.
+			const committedRoute =
+				policy.model === undefined ? [] : [policy.model, ...(policy.fallbacks ?? []).map(fallbackModel)];
+			const committedAt = runsAt(
+				policy,
+				[...new Set([...committedRoute, ...accept])].filter((model) => usable(model) && accepted(model)),
+				(model) => ReviewPlan.ownLevel(policy, model),
+			);
+			const wanted = (model: string) => committedAt.get(model);
+			const runs = runsAt(effective, chosen, own);
+			const kept = thinkingChanged
+				? []
+				: chosen.filter((model) => accept.includes(model) && runs.get(model) === wanted(model));
 			if (kept.length === 0) {
 				return {
 					...base,
@@ -416,7 +456,9 @@ export class ReviewPlan {
 					outside: !accept.includes(chosen[0]!),
 					reason: thinkingChanged
 						? `${at}.acceptOverridden is false, and ${base.thinkingOverride!.by} sets thinking ${effective?.thinking ?? "unset"}; committed policy wants ${policy.thinking ?? "unset"}`
-						: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
+						: accept.includes(chosen[0]!)
+							? `${at}.acceptOverridden is false, and ${by} runs ${chosen[0]} at thinking ${runs.get(chosen[0]!) ?? "unset"}; committed policy wants ${wanted(chosen[0]!) ?? "unset"}`
+							: `${at}.acceptOverridden is false, and ${by ?? "its route"} puts it on ${chosen[0]}, which ${at}.accept does not list`,
 				};
 			}
 			chosen = kept;
@@ -430,6 +472,14 @@ export class ReviewPlan {
 			...(by === undefined ? {} : { by }),
 			...(outside ? { outside } : {}),
 		};
+	}
+
+	// The level `model`'s fallback entry names in `route`, from the first entry that names the model; the route's own
+	// model has none of its own.
+	private static ownLevel(route: ModelRoute | undefined, model: string): ModelRoute["thinking"] {
+		if (route === undefined || route.model === model) return undefined;
+		const entry = (route.fallbacks ?? []).find((each: FallbackEntry) => fallbackModel(each) === model);
+		return entry === undefined ? undefined : fallbackThinking(entry);
 	}
 
 	// The same model from another provider with credentials, by name, preferring a name without a qualifier such as a
@@ -476,8 +526,8 @@ export class ReviewPlan {
 
 	/**
 	 * The route of the lens `name` that the folder `scope` defined, where it names its own, as the plan resolved it. With
-	 * `level`, a route a preference file gave the lens keeps only the models its committed tier at that level accepts,
-	 * where that tier says `acceptOverridden: false`.
+	 * `level`, a route a preference file gave the lens keeps only the models its committed tier at that level accepts, each
+	 * at the level that tier gives it, where that tier says `acceptOverridden: false`.
 	 */
 	lensRoute(name: string, scope: string, level?: ScrutinyLevel): PlannedLensRoute | undefined {
 		const route = this.lensRoutes.find((each) => each.lens === name && each.scope === scope);
@@ -485,9 +535,25 @@ export class ReviewPlan {
 			.find((lens) => lens.name === name && (lens.scope ?? "") === scope)
 			?.levels.find((each) => each.level === level);
 		if (route === undefined || entry?.by === undefined) return route;
-		const { accept = [], acceptOverridden } = this.tier(entry.tier);
+		const policy = this.tier(entry.tier);
+		const { accept = [], acceptOverridden } = policy;
 		if (acceptOverridden !== false) return route;
-		return { ...route, models: route.models.filter(({ model }) => accept.includes(model)) };
+		return {
+			...route,
+			models: route.models.filter(
+				({ model }) => accept.includes(model) && !ReviewPlan.relevelled(policy, route, model),
+			),
+		};
+	}
+
+	// Whether `model` runs on `route` at another level than `policy`, a committed tier's route, gives it. A tier a
+	// preference file, `--model` or a derivation rerouted holds no committed level for a model off its route, so such a
+	// model fails closed.
+	private static relevelled(policy: PlannedRoute, route: PlannedRoute, model: string): boolean {
+		const committed = policy.models.find((each) => each.model === model);
+		if (policy.by !== undefined && (committed === undefined || policy.status !== "routed")) return true;
+		const wanted = committed?.thinking ?? policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset";
+		return (route.models.find((each) => each.model === model)?.thinking ?? route.thinking ?? "unset") !== wanted;
 	}
 
 	/**
@@ -499,9 +565,8 @@ export class ReviewPlan {
 		const routes: Partial<Record<ModelTier, ModelRoute>> = {};
 		for (const { tier, status, models, thinking } of this.tiers) {
 			if (thinking !== undefined) routes[tier] = { thinking };
-			const [first, ...rest] = models.map((each) => each.model);
-			if (first === undefined || (status !== "routed" && status !== "uncredentialed")) continue;
-			routes[tier] = { ...routes[tier], model: first, fallbacks: rest };
+			if (status !== "routed" && status !== "uncredentialed") continue;
+			routes[tier] = writtenRoute(routeInOrder(models, thinking));
 		}
 		return routes;
 	}
@@ -516,7 +581,17 @@ export class ReviewPlan {
 						.map((tier) => this.tier(tier))
 						.filter((tier) => tier.status === "routed")
 				: [own];
-		const models = [...new Map(tiers.flatMap((tier) => tier.models).map((model) => [model.model, model])).values()];
+		// A lens tier's model runs at verifier thinking, so a level its own fallback entry names stays with the lens tier.
+		const models = [
+			...new Map(
+				tiers
+					.flatMap((tier) => tier.models)
+					.map(({ thinking, ...model }) => [
+						model.model,
+						own.status === "unrouted" ? model : { ...model, ...(thinking === undefined ? {} : { thinking }) },
+					]),
+			).values(),
+		];
 		const family = [...this.tiers, ...this.lensRoutes]
 			.flatMap((route) => route.models)
 			.find((model) => model.model === finder)?.family;
@@ -587,12 +662,14 @@ export class ReviewPlan {
 			(model === wanted || (by === undefined && !outside) || (wanted === undefined && !outside))
 		)
 			return undefined;
+		const answeredAt = planned.models.find((each) => each.model === model)?.thinking;
 		return {
 			model,
 			...(wanted === undefined ? {} : { wanted }),
 			by: by ?? thinking?.by ?? "melian.yaml",
 			outside,
 			...(thinking === undefined ? {} : { thinking }),
+			...(answeredAt === undefined ? {} : { answeredAt }),
 		};
 	}
 
@@ -635,8 +712,11 @@ export class ReviewPlan {
 		const left = model === undefined ? undefined : ReviewPlan.leaving(policy, model, by, planned);
 		const lineage: CheckLineage | undefined =
 			left === undefined || moved === undefined ? left : { ...left, by: planned.by ?? "melian.yaml", moved };
+		const relevelled =
+			route !== undefined && !own && model !== undefined && ReviewPlan.relevelled(policy, planned, model);
 		const outside =
-			policy.acceptOverridden === false && (lineage?.outside === true || lineage?.thinking !== undefined);
+			policy.acceptOverridden === false &&
+			(lineage?.outside === true || lineage?.thinking !== undefined || relevelled);
 		const unlisted = `which ${at}.accept does not list`;
 		const why =
 			moved === undefined
@@ -647,9 +727,11 @@ export class ReviewPlan {
 		const refusal =
 			(route === undefined ? this.refusal(entry.tier) : ReviewPlan.refusalOf(route)) ??
 			(outside
-				? lineage?.thinking === undefined
-					? why
-					: `${at}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+				? lineage?.thinking !== undefined
+					? `${at}.acceptOverridden is false, and ${lineage.thinking.by} sets thinking ${lineage.thinking.level}; committed policy wants ${lineage.thinking.wanted}`
+					: lineage?.outside !== true && relevelled
+						? `${at}.acceptOverridden is false, and ${by} runs ${model} at thinking ${planned.models.find((each) => each.model === model)?.thinking ?? planned.thinking ?? "unset"}; committed policy wants ${policy.models.find((each) => each.model === model)?.thinking ?? policy.thinkingOverride?.wanted ?? policy.thinking ?? "unset"}`
+						: why
 				: undefined);
 		return { ...(refusal === undefined ? {} : { refusal }), ...(lineage === undefined ? {} : { lineage }) };
 	}
@@ -793,7 +875,11 @@ export class ReviewPlan {
 				({ model, by, provider }) =>
 					`${label}: ${model}, set by ${by}, is not a model the catalogue holds; ${provider === undefined ? "a newer pi-ai may hold it" : `it knows no provider ${provider}`}`,
 			);
-		const tiers = this.tiers.flatMap((planned) => [...unknown(planned.tier, planned), ...notice(planned)]);
+		const tiers = this.tiers.flatMap((planned) => [
+			...unknown(planned.tier, planned),
+			...notice(planned),
+			...ReviewPlan.inheritedLow(planned.tier, planned),
+		]);
 		return [...tiers, ...moved, ...this.routeMessages(unknown)];
 	}
 
@@ -831,7 +917,25 @@ export class ReviewPlan {
 				standing.refusal === undefined && standing.lineage !== undefined
 					? [`${label} runs ${standing.lineage.model}, ${ReviewPlan.lineageText(standing.lineage)}`]
 					: [];
-			return [...ignored, ...unknown(named, route), ...refused, ...runs];
+			return [...ignored, ...unknown(named, route), ...refused, ...runs, ...ReviewPlan.inheritedLow(named, route)];
+		});
+	}
+
+	// A low level is chosen for the route's first model; a fallback on another provider that names no level of its own
+	// runs at it too. A fallback promoted to first with a level of its own does not run at the route's, so the level
+	// was chosen for the model the committed route names.
+	private static inheritedLow(label: string, { status, models, thinking, wanted }: PlannedRoute): string[] {
+		if (status !== "routed") return [];
+		const first = models[0]!.thinking === undefined ? models[0]!.model : wanted;
+		if (first === undefined) return [];
+		const provider = (model: string) => parseModelReference(model, label).provider;
+		return models.slice(1).flatMap((model) => {
+			const level = model.thinking ?? thinking;
+			if (model.thinking !== undefined || provider(model.model) === provider(first)) return [];
+			if (level !== "off" && level !== "minimal" && level !== "low") return [];
+			return [
+				`${label}: fallback ${model.model} names no thinking level, so it runs at ${level}, which was chosen for ${first}`,
+			];
 		});
 	}
 
@@ -893,7 +997,7 @@ export class ReviewPlan {
 		return messages;
 	}
 
-	private static lineageText({ wanted, by, moved, outside, model, thinking }: CheckLineage): string {
+	private static lineageText({ wanted, by, moved, outside, model, thinking, answeredAt }: CheckLineage): string {
 		const routed = by === "derived" ? "derived since no model of its route has credentials" : `set by ${by}`;
 		const why =
 			moved === undefined
@@ -903,9 +1007,10 @@ export class ReviewPlan {
 			thinking === undefined
 				? ""
 				: `; thinking ${thinking.level} set by ${thinking.by}; committed policy wants ${thinking.wanted}`;
+		const own = answeredAt === undefined ? "" : `; it answers at thinking ${answeredAt}`;
 		if (wanted === undefined)
-			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}`;
-		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}`;
+			return `${why}; the committed route ${outside ? "does not accept" : "accepts"} ${model}${reasoning}${own}`;
+		return `${why}; the committed route wants ${wanted}${outside ? `, and does not accept ${model}` : ""}${reasoning}${own}`;
 	}
 
 	/**
@@ -925,8 +1030,8 @@ export class ReviewPlan {
 			if (status !== "routed") continue;
 			const route = models
 				.map(
-					({ model, credential, family }) =>
-						`${model}${tier === "verifier" ? ` (${family ?? "unknown family"})` : ""} with ${credential}`,
+					({ model, credential, family, thinking }) =>
+						`${model}${tier === "verifier" ? ` (${family ?? "unknown family"})` : ""}${thinking === undefined ? "" : ` at ${thinking}`} with ${credential}`,
 				)
 				.join(", then ");
 			const origin =
@@ -946,7 +1051,12 @@ export class ReviewPlan {
 				});
 			}
 			if (route.status !== "routed") continue;
-			const models = route.models.map(({ model, credential }) => `${model} with ${credential}`).join(", then ");
+			const models = route.models
+				.map(
+					({ model, credential, thinking }) =>
+						`${model}${thinking === undefined ? "" : ` at ${thinking}`} with ${credential}`,
+				)
+				.join(", then ");
 			const origin =
 				route.by === "derived"
 					? "derived, since no model of the committed route has credentials"

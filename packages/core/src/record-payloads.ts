@@ -196,8 +196,20 @@ const budgetEnd = Type.Object(
 	{ budget: Type.Union([Type.Literal("tokens"), Type.Literal("tools")]), limit: count, tokens: count, tools: count },
 	strict,
 );
+const lineageFields = {
+	model: text,
+	thinking: nullable(Type.Object({ level: thinking, wanted: thinking, by: text }, strict)),
+	wanted: nullable(text),
+	by: text,
+	moved: nullable(Type.Object({ by: text, from: text, to: text }, strict)),
+	outside: Type.Boolean(),
+};
+// Version 2 adds `answeredAt`, the level the model's own route entry ran it at, from a closed set of levels.
+const lineage = Type.Object({ ...lineageFields, answeredAt: nullable(thinkingLevelSchema) }, strict);
+const legacyLineage = Type.Object(lineageFields, strict);
+
 // A check record's fields as a review decided them, with `null` where the record leaves one out.
-const decidedFields = {
+const decidedFields = <T extends TSchema>(lineage: T) => ({
 	name: text,
 	reason: nullable(code),
 	error: nullable(code),
@@ -206,24 +218,14 @@ const decidedFields = {
 	budgetEnded: nullable(budgetEnd),
 	caveats: nullable(Type.Array(caveat)),
 	coverage,
-	lineage: nullable(
-		Type.Object(
-			{
-				model: text,
-				thinking: nullable(Type.Object({ level: thinking, wanted: thinking, by: text }, strict)),
-				wanted: nullable(text),
-				by: text,
-				moved: nullable(Type.Object({ by: text, from: text, to: text }, strict)),
-				outside: Type.Boolean(),
-			},
-			strict,
-		),
-	),
-};
+	lineage: nullable(lineage),
+});
 
 // The check record a run decided, with `null` where the record leaves a field out. A reader takes it as the run's
 // result, so a record that must hold one and does not reads as not reviewed.
-const decidedCheckSchema = Type.Object({ ...decidedFields, status: literals(["ran", "ended", "failed"]) }, strict);
+const decidedStatus = literals(["ran", "ended", "failed"]);
+const decidedCheckSchema = Type.Object({ ...decidedFields(lineage), status: decidedStatus }, strict);
+const legacyDecidedCheckSchema = Type.Object({ ...decidedFields(legacyLineage), status: decidedStatus }, strict);
 
 const trigger = Type.Union([
 	Type.Object({ kind: Type.Literal("severity"), severity: severitySchema }, strict),
@@ -267,7 +269,7 @@ export const lensOutcomeSchema = Type.Union([
  */
 export const lensPayloadSchema = Type.Object(
 	{
-		v,
+		v: Type.Literal(2),
 		name: text,
 		version: Type.String({ pattern: lensVersion.source }),
 		level,
@@ -280,6 +282,12 @@ export const lensPayloadSchema = Type.Object(
 	strict,
 );
 
+/** A lens record's payload as version 1 wrote it, whose check's lineage names no `answeredAt`. */
+export const legacyLensPayloadSchema = Type.Object(
+	{ ...lensPayloadSchema.properties, v, check: nullable(legacyDecidedCheckSchema) },
+	strict,
+);
+
 const source = Type.Object({ check: text, version: nullable(text) }, strict);
 
 /**
@@ -288,7 +296,7 @@ const source = Type.Object({ check: text, version: nullable(text) }, strict);
  */
 export const verificationPayloadSchema = Type.Object(
 	{
-		v,
+		v: Type.Literal(2),
 		claims: Type.Array(Type.Object({ id: findingId, source, verification: verificationSchema }, strict)),
 		dismissals: Type.Array(Type.Object({ finding: findingId, record: recordId }, strict)),
 		outcomes: Type.Array(
@@ -309,6 +317,12 @@ export const verificationPayloadSchema = Type.Object(
 		),
 		check: nullable(decidedCheckSchema),
 	},
+	strict,
+);
+
+/** A verification record's payload as version 1 wrote it, whose check's lineage names no `answeredAt`. */
+export const legacyVerificationPayloadSchema = Type.Object(
+	{ ...verificationPayloadSchema.properties, v, check: nullable(legacyDecidedCheckSchema) },
 	strict,
 );
 
@@ -409,7 +423,9 @@ export const dismissalPayloadSchema = Type.Object(
 const accountFields = {
 	checks: Type.Array(text),
 	records: Type.Array(recordId),
-	filled: Type.Array(Type.Object({ ...decidedFields, status: literals(["skipped", "failed"]) }, strict)),
+	filled: Type.Array(
+		Type.Object({ ...decidedFields(legacyLineage), status: literals(["skipped", "failed"]) }, strict),
+	),
 	allowSkip: Type.Array(text),
 	producers: Type.Array(Type.Object({ check: text, version: nullable(text), ids: nullable(findingIds) }, strict)),
 };
@@ -435,7 +451,9 @@ export const legacyAccountPayloadSchema = Type.Object({ v, ...accountFields }, s
 
 export type CheckPayload = Static<typeof checkPayloadSchema>;
 export type LensPayload = Static<typeof lensPayloadSchema>;
+export type LegacyLensPayload = Static<typeof legacyLensPayloadSchema>;
 export type VerificationPayload = Static<typeof verificationPayloadSchema>;
+export type LegacyVerificationPayload = Static<typeof legacyVerificationPayloadSchema>;
 export type WalkthroughPayload = Static<typeof walkthroughPayloadSchema>;
 export type TriagePayload = Static<typeof triagePayloadSchema>;
 export type TelemetryPayload = Static<typeof telemetryPayloadSchema>;
@@ -498,6 +516,9 @@ function ordered<T>(values: readonly T[], compare: (a: T, b: T) => number): bool
 	return values.every((value, index) => index === 0 || compare(values[index - 1] as T, value) < 0);
 }
 
+// The version a payload names, read only to pick its schema, which then checks the whole payload.
+const versioned = (payload: RecordJson) => (payload as { v?: RecordJson } | null)?.v;
+
 const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 // A message names the field and never repeats its value, which may be the very text the record must not hold.
@@ -512,8 +533,9 @@ const namedSource = (source: { check: string; version: string | null }, where: s
 
 /**
  * The payload check of each kind a review writes, and of a dismissal, for {@link SharedRecord.parse} and
- * {@link RecordSet.of}. Each refuses a payload missing any field, holding one more, or of another version than 1,
- * except the account's, which takes version 2 and version 1.
+ * {@link RecordSet.of}. Each refuses a payload missing any field, holding one more, or of a version it does not know:
+ * a lens or verification payload takes version 2 and version 1, whose lineage names no `answeredAt`, and so does an
+ * account, whose version 1 names no resolution policy; every other is version 1.
  */
 export const reviewPayloads: PayloadChecks = {
 	check: (payload) => {
@@ -531,17 +553,20 @@ export const reviewPayloads: PayloadChecks = {
 		return sightingsOf(sightings, result.name, "version" in result ? (result.version ?? undefined) : undefined);
 	},
 	lens: (payload) => {
-		const refused = shape(lensPayloadSchema, payload);
+		const refused = shape(versioned(payload) === 1 ? legacyLensPayloadSchema : lensPayloadSchema, payload);
 		if (refused !== undefined) return refused;
-		const { name, version, level, sightings, check } = payload as LensPayload;
+		const { name, version, level, sightings, check } = payload as LensPayload | LegacyLensPayload;
 		if (check !== null && (check.name !== `lens.${name}` || check.version !== version || check.level !== level))
 			return "holds the check of another lens, version or level than its own";
 		return sightingsOf(sightings, `lens.${name}`, `${version}@${level}`);
 	},
 	verification: (payload) => {
-		const refused = shape(verificationPayloadSchema, payload);
+		const refused = shape(
+			versioned(payload) === 1 ? legacyVerificationPayloadSchema : verificationPayloadSchema,
+			payload,
+		);
 		if (refused !== undefined) return refused;
-		const { claims, dismissals, check } = payload as VerificationPayload;
+		const { claims, dismissals, check } = payload as VerificationPayload | LegacyVerificationPayload;
 		if (check !== null && check.name !== "verifier") return "holds the check of another check than the verifier";
 		// A claim's verification ran under the verifier, so its version is the verifier's.
 		const stamped = claims.findIndex((claim) => !verifierVersion.test(claim.verification.version));

@@ -117,7 +117,7 @@ beforeEach(async () => {
 		},
 		{ "src/user.ts": user("\treturn user.manager.name;") },
 	);
-	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }] });
+	fake = createFakeModels({ models: [{ id: "orchestrator" }, { id: "heavy" }, { id: "backup" }, { id: "spare" }] });
 	const heavy = fake.ref("heavy");
 	config = {
 		...defaultConfig,
@@ -2726,6 +2726,40 @@ describe("reviewChangeset", () => {
 			expect(handover[1]).toContain("from the beginning");
 			expect(handover[1]).not.toMatch(/already recorded|take over|continue/i);
 			expect(requests[contracts]).toHaveLength(1);
+		});
+
+		it("asks a fallback at the level its own entry names, and one without at its tier's", async () => {
+			const asked: [string, string | undefined][] = [];
+			const answer =
+				(reply: ReturnType<typeof fauxAssistantMessage>) =>
+				(_: unknown, model: string, thinking: string | undefined) => {
+					asked.push([model, thinking]);
+					return reply;
+				};
+			const { provider } = fake.ref("heavy");
+			scriptConversations(fake, [
+				{
+					match: correctness,
+					replies: [answer(overloaded), answer(overloaded), answer(fauxAssistantMessage("Done."))],
+				},
+				{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			]);
+			const routed = {
+				...config,
+				models: {
+					heavy: {
+						model: `${provider}/heavy`,
+						thinking: "low" as const,
+						fallbacks: [{ model: `${provider}/backup`, thinking: "high" as const }, `${provider}/spare`],
+					},
+				},
+			};
+			expect(await review({ config: routed })).toEqual([]);
+			expect(asked).toEqual([
+				["heavy", "low"],
+				["backup", "high"],
+				["spare", "low"],
+			]);
 		});
 
 		it("moves a lens whose model failed after a tool call to the next model, which continues the review", async () => {

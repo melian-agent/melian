@@ -46,12 +46,14 @@ const levelBand = Type.Object(
 	{ floor: Type.Optional(Type.Union([Type.Literal("skip"), scrutinyLevel])), ceiling: Type.Optional(scrutinyLevel) },
 	strict,
 );
+// A fallback names its model, or its model and the level it runs at in place of the route's.
+const fallback = Type.Union([name, Type.Object({ model: name, thinking: Type.Optional(thinkingLevelSchema) }, strict)]);
 // `accept`, `unavailable`, and `acceptOverridden` are policy: only a committed melian.yaml may set them.
 const modelRoute = Type.Object(
 	{
 		model: Type.Optional(name),
 		thinking: Type.Optional(thinkingLevelSchema),
-		fallbacks: Type.Optional(Type.Array(name)),
+		fallbacks: Type.Optional(Type.Array(fallback)),
 		accept: Type.Optional(Type.Array(name)),
 		unavailable: Type.Optional(Type.Union([Type.Literal("derive"), Type.Literal("fail")])),
 		acceptOverridden: Type.Optional(Type.Boolean()),
@@ -351,7 +353,8 @@ export const modelTiers: readonly ModelTier[] = ["light", "medium", "heavy", "de
 export type RuleAlias = readonly string[] | { readonly rules: readonly string[]; readonly distinct?: boolean };
 
 /**
- * A model and the models to try, in order, when it fails; with `accept`, the models that satisfy the tier, and what to
+ * A model and the models to try, in order, when it fails, each at the route's `thinking` unless its entry names its own;
+ * with `accept`, the models that satisfy the tier, and what to
  * do when none of them has credentials, `unavailable`, `derive` by default. `acceptOverridden: false` refuses a check
  * that would run on the tier outside `accept`.
  */
@@ -1124,6 +1127,25 @@ function checkFallbacks(sites: readonly RouteSite[], layers: readonly { site: Si
 	}
 }
 
+// A route whose fallback names a level must name its own, so a model that names none runs at the route's and never at
+// a fallback's that a missing credential promoted, by the maintainer's ruling of 2026-11-17 on issue #489.
+function checkRouteLevels(sites: readonly RouteSite[], layers: readonly { site: Site; layer: MelianYaml }[]): void {
+	for (const { key: at, route, of } of sites) {
+		const levelled = route?.fallbacks?.find(
+			(each): each is Exclude<typeof each, string> => typeof each !== "string" && each.thinking !== undefined,
+		);
+		if (levelled === undefined || route?.thinking !== undefined) continue;
+		const site = layers.find(({ layer }) => of(layer)?.fallbacks !== undefined)!.site;
+		const key = `${at}.thinking`;
+		throw configError(
+			"invalidValue",
+			site,
+			`"${at}.fallbacks" names a thinking level for ${levelled.model}, so the route must name its own; set "${key}"`,
+			{ key },
+		);
+	}
+}
+
 // A lens route exists only where it names a model or an accept; one that names neither would run the lens on nothing.
 function checkLensRoutes(lenses: MelianConfig["lenses"], layers: readonly { site: Site; layer: MelianYaml }[]): void {
 	for (const [lens, { route }] of Object.entries(lenses)) {
@@ -1356,6 +1378,12 @@ async function loadLayers(
 	checkLensRoutes(committedLenses, layers.slice(preferences));
 	checkLensRoutes(config.lenses, layers);
 	checkFallbacks(routeSites(config), layers);
+	// Committed policy must hold alone, since a round on Actions reads no preference.
+	checkRouteLevels(
+		routeSites({ models: committed.models as MelianConfig["models"], lenses: committedLenses }),
+		layers.slice(preferences),
+	);
+	checkRouteLevels(routeSites(config), layers);
 	const lensTiers: Record<string, LensTier> = {};
 	for (const [name, settings] of Object.entries(committed.lenses as MelianConfig["lenses"])) {
 		if (settings.tier !== undefined) lensTiers[name] = settings.tier;

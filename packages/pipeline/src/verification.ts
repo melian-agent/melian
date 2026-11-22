@@ -1,10 +1,4 @@
-import type {
-	FindingEvidence,
-	ModelReference,
-	ModelRoute,
-	Severity,
-	StoredVerificationState,
-} from "@melian-agent/core";
+import type { FindingEvidence, ModelRoute, RoutedModel, Severity, StoredVerificationState } from "@melian-agent/core";
 import { KeyedRequest, type RecordJson, Revision, requestJson } from "@melian-agent/core";
 import { clearVerifications, FindingsDocument, sightingIn, sightingVerification } from "./findings.ts";
 import {
@@ -58,7 +52,7 @@ export type VerificationCandidate = {
 	key: string;
 	state: StoredVerificationState;
 	finder: string;
-	route: ModelReference[];
+	route: RoutedModel[];
 	thinking?: ModelRoute["thinking"];
 	budget: { tokens: number; tools: number };
 	decisionsAtBase?: string;
@@ -124,7 +118,9 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 	// build that knows version 3 alone refuses a task whose verifier must hold probes to their reruns. Both fields are
 	// optional, so a version 2 or 3 task reads unchanged. Version 5 names each shown dismissal's record, so a request keys
 	// another host's dismissal; the field is optional, so a version 4 task reads unchanged and attaches to nothing new.
-	version: 5,
+	// Version 6 lets each model of a candidate's route name its own thinking level, so a build that knows version 5 alone,
+	// which would ask every model at the route's, refuses it.
+	version: 6,
 	migrate: (input, checkpoint) => ({
 		input: input as unknown as VerificationInput,
 		checkpoint: checkpoint as Checkpoint,
@@ -191,8 +187,8 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 					const child = await tx.createConversation({ ownership: { kind: "task", taskId: runtime.taskId } });
 					children[candidate.key] = child.id;
 					await configure(tx, child.id, {
-						model: candidate.route[0],
-						thinkingLevel: candidate.thinking,
+						model: { provider: candidate.route[0]!.provider, modelId: candidate.route[0]!.modelId },
+						thinkingLevel: candidate.route[0]!.thinking ?? candidate.thinking,
 						instructions,
 						tools: [...Object.values(lensReadTools), reportVerdict],
 						extensions: [lensExtension],
@@ -280,7 +276,10 @@ export const VerificationTask = defineTask<VerificationInput, Checkpoint, Verifi
 							)
 						)
 							return undefined;
-						await configure(tx, id, { model: next });
+						await configure(tx, id, {
+							model: { provider: next.provider, modelId: next.modelId },
+							thinkingLevel: next.thinking ?? candidate.thinking ?? null,
+						});
 						(await tx.doc(LensDocument, id)).lens!.model = `${next.provider}/${next.modelId}`;
 						const checkpoint = current.state.checkpoint as Extract<Checkpoint, { phase: "verify" }>;
 						return {

@@ -1,0 +1,7 @@
+# Issue 489: lens and verification records name the level that answered
+
+Builder agent. The lens and verification record payloads are version 2. A check's lineage there holds `answeredAt`, the level the model's own route entry ran it at, or `null`. The payload checks still read version 1, whose lineage names no `answeredAt`. The account stays at version 1 until [pull request #525](https://github.com/melian-agent/melian/pull/525) takes it to version 2; this change then takes it to version 3. Until then the writer refuses an account whose lineage names a level, rather than drop the field. The coordinator's answer of 2026-11-16 on [issue #489](https://github.com/melian-agent/melian/issues/489) set this.
+
+`packages/pipeline/test/fixtures/lineage-v1-main/` holds the records main wrote at `8d4190a2`, with a lineage on each lens and verification check. Today's checks read them.
+
+Mutants, in `2026-11-17-issue-489-payload-mutants.json`: every mutant of `d75ee510~1...fc3dc5de` in `record-payloads.ts` and `review-records.ts`, 36 rows. Of those, 30 are generated and claimed killed, and 6 are ignored by configuration. Each ran at `fc3dc5de` against its named test alone: that test passed unmutated and failed mutated. The first run, at `d75ee510`, left six mutants of the version reader alive, because no test gave a check a payload that is not an object. The follow-up commit reduces the reader to one optional chain and adds that test.

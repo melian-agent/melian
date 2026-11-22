@@ -150,7 +150,7 @@ export function describeBudgetEnd({ budget, limit, tokens, tools }: BudgetEnd): 
  * Says what put a check on the model it ran on, for an author: "on openai/gpt-5.5, set by melian.local.yaml, where
  * policy wants anthropic/claude-opus-5-5 and does not accept openai/gpt-5.5".
  */
-export function describeLineage({ model, wanted, by, moved, outside, thinking }: CheckLineage): string {
+export function describeLineage({ model, wanted, by, moved, outside, thinking, answeredAt }: CheckLineage): string {
 	const routed = by === "derived" ? "derived, since no model of its route has credentials" : `set by ${by}`;
 	const why =
 		moved === undefined ? routed : `moved from ${moved.from} to ${moved.to} by ${moved.by}, whose route is ${routed}`;
@@ -159,7 +159,8 @@ export function describeLineage({ model, wanted, by, moved, outside, thinking }:
 		thinking === undefined
 			? ""
 			: `; thinking ${thinking.level} set by ${thinking.by}; policy wants ${thinking.wanted}`;
-	return `on ${model}, ${why}, ${policy} ${outside ? "does not accept" : "accepts"} ${model}${reasoning}`;
+	const own = answeredAt === undefined ? "" : `; it answered at thinking ${answeredAt}`;
+	return `on ${model}, ${why}, ${policy} ${outside ? "does not accept" : "accepts"} ${model}${reasoning}${own}`;
 }
 
 /**
