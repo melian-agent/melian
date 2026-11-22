@@ -892,7 +892,7 @@ describe("the merge gate's forged rounds", () => {
 
 		expect([outcome.passes(), outcome.rounds]).toEqual([
 			false,
-			[{ id: round.id, revision: round.revision, covers: { refused: `replaces ${"0".repeat(64)}` } }],
+			[{ id: round.id, revision: round.revision, covers: { refused: `replaces ${"0".repeat(64)}` }, sound: false }],
 		]);
 	});
 
@@ -933,6 +933,7 @@ describe("the merge gate's forged rounds", () => {
 					id: round.id,
 					revision: round.revision,
 					covers: { refused: `names record ${dismissal.id} of another revision` },
+					sound: false,
 				},
 			],
 		]);
@@ -1173,7 +1174,7 @@ describe("the merge gate's forged rounds", () => {
 		]);
 	});
 
-	it("takes no refutation from a stacked parent's round, whose verifier ran, of a finding on the merge's diff", async () => {
+	it("takes the refutation of a stacked parent's sound round of a finding on the merge's diff", async () => {
 		const store = exported();
 		const refuted = judges("refuted");
 		const parent = await at("main", older, () =>
@@ -1182,8 +1183,24 @@ describe("the merge gate's forged rounds", () => {
 		expect([(parent.verdict.ran ?? []).some(({ name }) => name === "verifier"), byLine(parent)]).toEqual([true, []]);
 		await review(store, "main...feature");
 		const outcome = await gate(await listed(store));
-		expect(outcome.verdict.notRun).toEqual([]);
-		expect(byLine(outcome)).toEqual([[1, "block"]]);
+		expect([outcome.verdict.notRun, byLine(outcome), outcome.passes()]).toEqual([[], [], true]);
+		expect(outcome.rounds.map(({ sound }) => sound)).toEqual([true, true]);
+	});
+
+	it("takes no refutation from a stacked parent's round whose verifier did not finish", async () => {
+		const store = exported();
+		const parent = await at("main", older, () => judgedThenFailed(store, judges("refuted")));
+		expect(byLine(parent)).toEqual([[3, "advisory"]]);
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+		expect([outcome.verdict.notRun, byLine(outcome)]).toEqual([
+			[],
+			[
+				[1, "block"],
+				[3, "block"],
+			],
+		]);
+		expect(outcome.rounds.map(({ sound }) => sound).sort()).toEqual([false, true]);
 	});
 
 	it("does not count a check that failed as covered, though the policy lets it be skipped", async () => {

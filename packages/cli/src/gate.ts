@@ -73,9 +73,11 @@ export async function gate(io: Io, argument: string): Promise<number> {
 	});
 	for (const round of outcome.rounds)
 		io.stderr(
-			"refused" in round.covers
-				? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n`
-				: `melian: round ${visibleText(round.id)} counts, and covers ${round.covers.length} checks\n`,
+			!("refused" in round.covers)
+				? `melian: round ${visibleText(round.id)} counts, and covers ${round.covers.length} checks\n`
+				: round.sound
+					? `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Its verifier's verdicts stand\n`
+					: `melian: round ${visibleText(round.id)} counts for its findings and covers no check: it ${visibleText(round.covers.refused)}. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n`,
 		);
 	for (const reason of outcome.failures)
 		io.stderr(`melian: the records cannot decide the merge: ${visibleText(reason)}\n`);

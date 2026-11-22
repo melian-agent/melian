@@ -43,6 +43,8 @@ export type GateRound = {
 	/** The revision the round reviewed. */
 	readonly revision: string;
 	readonly covers: readonly string[] | { readonly refused: string };
+	/** Whether the host would read the round as reviewed, its verifier having run, so its verifier's verdicts stand. */
+	readonly sound: boolean;
 };
 
 const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "silent"];
@@ -131,14 +133,22 @@ export class RecordGate {
 			const own = (await Changeset.resolve(repoRoot, { base: sides.base, head: sides.head, mode: "twoDot" }))
 				.revision;
 			const under = { revision: own, config: context.config, repoRoot, policy: context.policy };
+			const judged = await coverage(
+				set,
+				round,
+				read,
+				round.revision === gate ? { ...under, revision } : under,
+				context.tier,
+			);
+			const sound = !("refused" in judged) || judged.sound;
 			const covers =
 				round.revision !== gate
-					? { refused: `reviewed ${round.revision}, not this merge's ${gate}` }
-					: await coverage(set, round, read, { ...under, revision }, context.tier);
-			// A round that covers nothing lowers nothing: its findings count as no verifier judged them, uncapped. Any
+					? { refused: `reviewed ${round.revision}, not this merge's ${gate}`, sound }
+					: judged;
+			// A round that is not sound lowers nothing: its findings count as no verifier judged them, uncapped. Any
 			// round's finding no verifier judged counts uncapped, since the cap was safe only while its round read as not
 			// reviewed.
-			const findings = await read.findingsUnder(under, { verifier: "refused" in covers ? "ignored" : "uncapped" });
+			const findings = await read.findingsUnder(under, { verifier: sound ? "uncapped" : "ignored" });
 			if ("refused" in findings) {
 				failures.push(`round ${round.id} ${findings.refused}`);
 				continue;
@@ -167,6 +177,7 @@ export class RecordGate {
 				id: round.id,
 				revision: round.revision!,
 				covers: "refused" in covers ? { refused: covers.refused } : covers.covers,
+				sound,
 			});
 		}
 		if (counted.length === 0) failures.push(`no round reviewed head ${revision.head} at a base the base tip holds`);
@@ -285,24 +296,29 @@ async function coverage(
 	tier: TierAccount,
 ): Promise<
 	| { readonly covers: readonly string[]; readonly below: readonly CheckRecord[] }
-	| { readonly refused: string; readonly would?: readonly string[] }
+	| { readonly refused: string; readonly sound: boolean; readonly would?: readonly string[] }
 > {
 	const manifest = round.manifest()!;
-	if (manifest.replaces.length > 0) return { refused: `replaces ${manifest.replaces.join(", ")}` };
+	if (manifest.replaces.length > 0) return { refused: `replaces ${manifest.replaces.join(", ")}`, sound: false };
 	const byId = new Map(set.records().map((record) => [record.id, record]));
 	const elsewhere = manifest.read.find(({ id }) => byId.get(id)?.revision !== round.revision);
-	if (elsewhere !== undefined) return { refused: `names record ${elsewhere.id} of another revision` };
+	if (elsewhere !== undefined) return { refused: `names record ${elsewhere.id} of another revision`, sound: false };
 	const account = set.account(round);
-	if (account === undefined) return { refused: "names no account, or more than one" };
+	if (account === undefined) return { refused: "names no account, or more than one", sound: false };
 	const claim = account.payload as AccountPayload | LegacyAccountPayload;
 	const facts = roundFacts(
 		claim.records.flatMap((id) => byId.get(id) ?? []),
 		claim,
 	);
-	const refusal = tier.refusal(claim, facts);
-	if (refusal !== undefined) return { refused: `does not account for the base tip's tier (${refusal})` };
 	const reviewed = await read.reviewed(under);
-	if ("refused" in reviewed) return reviewed;
+	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
+	const verified =
+		!("refused" in reviewed) &&
+		(!claim.checks.includes("verifier") || (reviewed.ran ?? []).some(({ name }) => name === "verifier"));
+	const refusal = tier.refusal(claim, facts);
+	if (refusal !== undefined)
+		return { refused: `does not account for the base tip's tier (${refusal})`, sound: verified };
+	if ("refused" in reviewed) return { ...reviewed, sound: false };
 	// A lens's level is the one the check in its standing record holds, which the round's host wrote.
 	const atFloor = ({ name, level }: CheckRecord) =>
 		!name.startsWith("lens.") || tier.meetsFloor(name.slice("lens.".length), level);
@@ -311,9 +327,12 @@ async function coverage(
 		...(reviewed.ran ?? []).filter(atFloor).map(({ name }) => name),
 		...reviewed.notRun.filter(({ status, name }) => status === "skipped" && leave.has(name)).map(({ name }) => name),
 	];
-	// The host caps a finding its failed verifier never judged at advisory, and reads the round as not reviewed.
-	if (claim.checks.includes("verifier") && !(reviewed.ran ?? []).some(({ name }) => name === "verifier"))
-		return { refused: "did not run its verifier, so not every finding it raised was judged", would: covers };
+	if (!verified)
+		return {
+			refused: "did not run its verifier, so not every finding it raised was judged",
+			sound: false,
+			would: covers,
+		};
 	return { covers, below: (reviewed.ran ?? []).filter((check) => !atFloor(check)) };
 }
 

@@ -284,9 +284,30 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		await relay(check, account, round);
 		expect(await gate()).toBe(2);
 		expect(err()).toBe(
-			`melian: round ${round.id} counts for its findings and covers no check: it was decided under no resolution policy, so no reader can decide it. Its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n` +
+			`melian: round ${round.id} counts for its findings and covers no check: it was decided under no resolution policy, so no reader can decide it. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it\n` +
 				"melian: no counted round stands as reviewed of the merge's diff as it stands. To review it again: gh workflow run melian-round.yml -f pull_request=7\n",
 		);
+	});
+
+	it("says a sound round of another revision keeps its verifier's verdicts, and one that is not sound lowers nothing", async () => {
+		const { check, account, round, relay, gate, err } = await pullRequest();
+		await relay(check, account, round);
+		const decide = RecordGate.decide.bind(RecordGate);
+		const refused = { refused: "reviewed base..head, not this merge's tip..head" };
+		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) =>
+			Object.assign(Object.create(RecordGate.prototype), await decide(...args), {
+				rounds: [
+					{ id: "r1", revision: "base..head", covers: refused, sound: true },
+					{ id: "r2", revision: "base..head", covers: refused, sound: false },
+				],
+			}),
+		);
+		await gate();
+		vi.restoreAllMocks();
+		expect(err().split("\n").slice(0, 2)).toEqual([
+			"melian: round r1 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Its verifier's verdicts stand",
+			"melian: round r2 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it",
+		]);
 	});
 
 	it("passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records", async () => {
