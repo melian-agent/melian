@@ -1089,12 +1089,16 @@ describe("the merge gate's forged rounds", () => {
 
 	// Two P1s in src/a.ts: the verifier answers the one marked `marked` with `answer` and fails on the other, so the
 	// round's verifier fails after judging one claim, as one that finished outside its accepted route does.
-	async function judgedThenFailed(store: MemoryRecordStore, answer: ScriptedReply) {
+	async function judgedThenFailed(
+		store: MemoryRecordStore,
+		answer: Extract<ScriptedReply, (...args: never[]) => unknown>,
+	) {
 		commit(repo, { "src/a.ts": lines("export const a = 2;", "export const a2 = 2;", "export const a3 = 3;") });
 		const one = { ...finding("src/a.ts", "P1", 1), failureScenario: "MARKED a caller reads 2." };
 		const replies = Array.from(
 			{ length: 24 },
-			(): ScriptedReply => (messages) => (JSON.stringify(messages).includes("MARKED") ? answer(messages) : broken()),
+			(): ScriptedReply => (messages, modelId) =>
+				JSON.stringify(messages).includes("MARKED") ? answer(messages, modelId) : broken(),
 		);
 		return review(store, "main...feature", reportsEach(one, finding("src/a.ts", "P1", 3)), checks, config, replies);
 	}
