@@ -1,0 +1,4492 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c9f45b7c07b3fc2989c7e5415f614b65dd3d58ba",
+		"head": "0845fce5c0cf979a85f0b797f46cc65bdf5772cc"
+	},
+	"claimsIn": [
+		"packages/core/src/decider.ts",
+		"packages/pipeline/src/models.ts",
+		"packages/decisions/src/fallback.ts",
+		"packages/pipeline/src/summarize.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 26,
+			"endLine": 917,
+			"endColumn": 63,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "6cdeb2cdf48ef69624775ccd7452ab51629ab3ccacfc7aef114951d264f68f86"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 31,
+			"endLine": 917,
+			"endColumn": 45,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.ran && []",
+			"status": "generated",
+			"id": "d6de65c5ce02f077d93003459cab2324c11458158f6927a284a03f9617ebc393"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 43,
+			"endLine": 917,
+			"endColumn": 45,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "b14e494f392fb666b493cde5f3653b8b4e8a0360cacc981157684b9b89027354"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 72,
+			"endLine": 917,
+			"endColumn": 102,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "2af2c87ad8b4f3f8c29b84fb19177066c215fb7fff31735cd63995903e49d5dd"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 83,
+			"endLine": 917,
+			"endColumn": 102,
+			"mutatorName": "LogicalOperator",
+			"replacement": "check.caveats && []",
+			"status": "generated",
+			"id": "8673b4375315f26d983ac92151d638d861c1ce7b41503e866bcbe4e29346b168"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 917,
+			"column": 100,
+			"endLine": 917,
+			"endColumn": 102,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "4a34403576c1fc6b968803555de9363b17e6deb52984dd718185719249643e89"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 918,
+			"column": 16,
+			"endLine": 918,
+			"endColumn": 28,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "5ea2b8c1d9a24b57f4f854d830d1921b222d5d18b7db01ea9a7cd08015b7164b"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 918,
+			"column": 33,
+			"endLine": 918,
+			"endColumn": 77,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "0a3d229fb901d69e17a2385d73523b2193bfe59c3ab15254ed8118b7e806c725"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 918,
+			"column": 45,
+			"endLine": 918,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "690e477989c4ee53957d84d456da6c91ad620a929cbc95cb22f62372a8b4fa53"
+		},
+		{
+			"file": "packages/core/src/adjudication.ts",
+			"line": 918,
+			"column": 69,
+			"endLine": 918,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "052a6d5548ec2f17b162cf18ab8712edf3c473179ed4c875b7c0631428554315"
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 7,
+			"endLine": 223,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "af0495ad8046589694928eb6299d1b70600b0072df3c70df67872c0210d1a0a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 7,
+			"endLine": 223,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a4bcfd27a17f0869667f0191d7c5e5b72a57e7d471345015f5e0c7c03b24a7ad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 7,
+			"endLine": 223,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "answer.refused === undefined && answer.refused.length === 0",
+			"status": "generated",
+			"id": "05ee0e2f3f239da533c2982f3059cfb039b72e7c309457fa2e3010a9e4bca3e0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 7,
+			"endLine": 223,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8d43c6f1a73f491159f2b3f64f849ea0565fc07f3e8b5b21ed8920774a442486",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 7,
+			"endLine": 223,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answer.refused !== undefined",
+			"status": "generated",
+			"id": "55f32065a837af3661b35b33efae00925aa29858d84cbb00d7993edba8729ed1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 39,
+			"endLine": 223,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "226ac1eee495524e2cd2cf9226c06a7a4c0edf8bd48d92c69490a9d57021e79d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"stores none when no model refused"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 223,
+			"column": 39,
+			"endLine": 223,
+			"endColumn": 66,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answer.refused.length !== 0",
+			"status": "generated",
+			"id": "1499c50df892e689fa9e35c000de78b0d2230e03a46f659f104cd28f8010d358",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 225,
+			"column": 6,
+			"endLine": 225,
+			"endColumn": 98,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d82fd8da0e0456c6f7846f39eecd6e462ecf52bc190a0392d25d4306f9424b21",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 225,
+			"column": 36,
+			"endLine": 225,
+			"endColumn": 95,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "e4bd3f27352df7581c9f664936495c810899b6b894ca07fb158a5da9c8f2c198",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 225,
+			"column": 60,
+			"endLine": 225,
+			"endColumn": 94,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b3d81c358e9452ce452ac42633df0bed43f8a9b26ea9ea77bd1988667573dc28",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 7,
+			"endLine": 241,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6e31abaf3d697c7baf04656ee1d84b9749fe979ccaf47356545f8a9623c0ce4f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 7,
+			"endLine": 241,
+			"endColumn": 33,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "18e267946995ed393e3597fb146480dc034dd8d786d87ef57d5afb774a9dc062",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 7,
+			"endLine": 241,
+			"endColumn": 33,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.refused !== undefined",
+			"status": "generated",
+			"id": "8914d14ee2ce2bbc5022c569c414b02997e0eecba48a95630e77690dce645b7e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"keeps the whole distribution, normalised over every option, and chooses the most likely"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 41,
+			"endLine": 241,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ede7e70b1c8c5762b4798c43f521d941a1ac64a3b9acef72ccf32d1df3a41a13",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 69,
+			"endLine": 241,
+			"endColumn": 92,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "1fc740a0de5c9dd52de81339fd52fe376c4a77ab59d4b9526f89b0d8f5e3f60b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 241,
+			"column": 80,
+			"endLine": 241,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "0dcecaaeb78517ca8b452ebd4ffcca9dd9015e5b5e3c14e8a7768846f3c59b36",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 250,
+			"column": 16,
+			"endLine": 251,
+			"endColumn": 94,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "d9ef7c828d68c0aa862c4762bc8995bd6f5df2128c349e9b2ff12a957f9c153a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 1,
+			"endLine": 251,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "16e258da4dbcad67ece265bc82423914dd3e67f75bbf76ee964d314f8746563c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 1,
+			"endLine": 251,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "62259ad898e6466fba54df7709b343047bdf84d43cd1a549ae8783f53ac0e70a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 1,
+			"endLine": 251,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reason.length < maxRefusalReason",
+			"status": "generated",
+			"id": "aefb9e2b6fa2a596458d6630b9f242ad6a083e1f77071f04c9fafd1868ddfa63",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 1,
+			"endLine": 251,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reason.length > maxRefusalReason",
+			"status": "generated",
+			"id": "1647508ce0712eb9f3f7d607a2290e6329cbf7fb6cf6c6f0a0b9438e2e34fc6a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 46,
+			"endLine": 251,
+			"endColumn": 94,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e54e14b9ac6f7a989729ff80d93f811971d865aa40215c53937fe07d6a618a6b"
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 49,
+			"endLine": 251,
+			"endColumn": 86,
+			"mutatorName": "MethodExpression",
+			"replacement": "reason",
+			"status": "generated",
+			"id": "bc40d193ee2bfaa96a73e71e5c7884bef35e02bc6405f7e2bf7cccc478d3509e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/decider.ts",
+			"line": 251,
+			"column": 65,
+			"endLine": 251,
+			"endColumn": 85,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "maxRefusalReason + 1",
+			"status": "generated",
+			"id": "e84fd9b0c797887f05b7dc6d7b6776588fc83eb6e19b1c02df20719b6efebca7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/triage.test.ts",
+					"path": [
+						"a decision",
+						"the models that refused before one answered",
+						"keeps each, its reason held to 200 characters, and reads back as it was kept"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/record-payloads.ts",
+			"line": 24,
+			"column": 24,
+			"endLine": 24,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7bb76f2caa4de9ba32ab21e001b4b8794346315fd4e5e6d814673126614ed04c"
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 92,
+			"column": 41,
+			"endLine": 92,
+			"endColumn": 91,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "aed802e16b7e957d8f0ae21e2ab7977bf54ab393d984d3adeee94bdb93e5fd8e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/decisions/test/deciders.test.ts",
+					"path": [
+						"the LLM fallback decider",
+						"asks every question in one request answered through one tool, and keeps the whole distribution"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 97,
+			"column": 4,
+			"endLine": 97,
+			"endColumn": 80,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2fbe727c4f0814eff6ffd3c96ef5e914d5aef55e00f858525e4a5e393f220c63"
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 108,
+			"column": 4,
+			"endLine": 108,
+			"endColumn": 73,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b35531d60b252ce61acff7de48bace24ad755fb6b6359e8fc4494d9aedbf65cc"
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 108,
+			"column": 44,
+			"endLine": 108,
+			"endColumn": 65,
+			"mutatorName": "LogicalOperator",
+			"replacement": "asked && \"a question\"",
+			"status": "generated",
+			"id": "b051f57b37d1d116af4033d0dcafb64cf0f376f27bef81d4f92f45f2986c6aa1",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/decisions/test/deciders.test.ts",
+					"path": [
+						"the LLM fallback decider",
+						"names the model that answered, not the route's head, when it refuses an answer"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 108,
+			"column": 53,
+			"endLine": 108,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c6237bc29ddf1f64194837694cd1a98207dfe1c5a7c14c28edd284b7d5fad7c7"
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 118,
+			"column": 7,
+			"endLine": 118,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "24f9b16d9c3d7aac3724ca90f18a1af01b1e906cfb2bdfa3a688eade08671a07",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/triage.test.ts",
+					"path": [
+						"the LLM fallback",
+						"on a route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 118,
+			"column": 7,
+			"endLine": 118,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3e146b40a47b24e613ad5e224b462fc361ad773a636923929638e6ca2fae019f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A decision copies `refused` only when it holds an entry, and JSON drops an undefined field, so an answer carrying `refused: undefined` stores and compares as one without it."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 118,
+			"column": 7,
+			"endLine": 118,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reply.refused !== undefined",
+			"status": "generated",
+			"id": "6f7eeb3489d9d26527e5aebc504a329c5cf464bd61666fe3f73955d7cd8663b2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/triage.test.ts",
+					"path": [
+						"the LLM fallback",
+						"on a route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/decisions/src/fallback.ts",
+			"line": 118,
+			"column": 42,
+			"endLine": 118,
+			"endColumn": 68,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "ec1031767986a29dcc29e39d927e975c7d5c2f9119f9fbc0c1a8236b919078b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/triage.test.ts",
+					"path": [
+						"the LLM fallback",
+						"on a route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 109,
+			"column": 15,
+			"endLine": 118,
+			"endColumn": 5,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9fd84a209f906fcabae06c5144b21c19ff843ac585435b07daebe5f07393eef9"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 110,
+			"column": 38,
+			"endLine": 117,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "b5c4dd3ea67650dc4ea202506af708473d308b24941a61d210cfa3b36141f16f"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 112,
+			"column": 10,
+			"endLine": 112,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "a816c3d1e75570aabfa7551fc8f42b4554f87c58fb2c6b4570324bf080de7d42"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 112,
+			"column": 10,
+			"endLine": 112,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9f35b88ff3a0ad55980d9a301f80bda919bdb1798cc00a4b031c51adf65d4d61"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 112,
+			"column": 10,
+			"endLine": 112,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "answer !== undefined",
+			"status": "generated",
+			"id": "d9f0824081d94289bc4607edfbaaf7116190453137564d641160fc6b91d7fc93"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 112,
+			"column": 32,
+			"endLine": 112,
+			"endColumn": 108,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "337f6b54182fe323a6bca928e04ea93128b98f7332c6123709624b5eb61964e7"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 112,
+			"column": 48,
+			"endLine": 112,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2e2da65047e9aee06a3f368676f31cd0ab3350b447587184d72d2bed217b8f26"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 113,
+			"column": 13,
+			"endLine": 116,
+			"endColumn": 7,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "11640b68de19dd30616955721808ef95c429c5689b6be2be5ef03c161ae9012a"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 115,
+			"column": 49,
+			"endLine": 115,
+			"endColumn": 101,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "ad39b3995666dc9cce97754e0b7afe160da2414a156094899578de9b2511e791"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 115,
+			"column": 77,
+			"endLine": 115,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "dd9a1c67f71c042bad7d844118723939e9eb41bf3a2bac754976a66a1c295a8c"
+		},
+		{
+			"file": "packages/evals/src/triage.ts",
+			"line": 119,
+			"column": 11,
+			"endLine": 119,
+			"endColumn": 28,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d31ecdcd6bff664563e79eb4a47f6ae64f3cf5066cc9fd4902fd7cafff54cd2b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 5,
+			"column": 38,
+			"endLine": 5,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "004f10bd86e46e77323294053cfac56c1952be09cc9a053016a11fa5fdb660ba"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 27,
+			"column": 33,
+			"endLine": 27,
+			"endColumn": 99,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7863236f5282292696092bdcb9825ea3ce9718434de690213dc31070d2bfcc4a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 57,
+			"column": 31,
+			"endLine": 57,
+			"endColumn": 97,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3f1aeeae7853514958e8d483fa95b6be8a5c48dc578599f2d6bb19f020b0f906"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 87,
+			"column": 41,
+			"endLine": 87,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "51c6163a172b8973b8b3416ab2d56a1840fb10787c34632c69a161efcb87b169"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 127,
+			"column": 39,
+			"endLine": 127,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e275bf48e5b79c01732463342044d4fbb4f133c8e547f586529228bc6eca819a"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 141,
+			"column": 37,
+			"endLine": 141,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2d88470e784e97920e86879f1117ea593e0c4f30a4e62f4e4936d314546bdc00"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 177,
+			"column": 36,
+			"endLine": 177,
+			"endColumn": 102,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "21a56cee9deb31115a9c3011424f61d47429d3bb76f65f3281de04514503c2a8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 217,
+			"column": 39,
+			"endLine": 217,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be886166fe3e4d0b74c5281607569885324fb67aed7590b7846058b577c9a449"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 153,
+			"column": 31,
+			"endLine": 153,
+			"endColumn": 33,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "5fdd746a86b6f6e08a58cfdaa6586ecd57282424ba8dfeff3f899e6198afa5d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 158,
+			"column": 7,
+			"endLine": 158,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ccfeea29f5dc53098972819ff4e1ebcd4cce59311b0ad5547c1fbb25069ced02",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"passes over a model whose credential check throws"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 158,
+			"column": 7,
+			"endLine": 158,
+			"endColumn": 74,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "23fc6458882aed7bb9099a4f68df38aaa74061bb1330993b5b5d3936d1913590",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 158,
+			"column": 62,
+			"endLine": 158,
+			"endColumn": 73,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c140a6ac6172e805f308373f22fc90a5097e1f0b32130f6c507cfe17bc61f78b",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "`undefined` is as falsy as `false` in the `if` that reads it, so the model is passed over either way."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 158,
+			"column": 68,
+			"endLine": 158,
+			"endColumn": 73,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ab21ac6e1c5b0fa6f768fd0e401b16247e663d946fbbcf75f80e71f6433124a9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"passes over a model whose credential check throws"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 158,
+			"column": 76,
+			"endLine": 158,
+			"endColumn": 95,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "1adbee3d3c60d8db89ae2e4eae0b2ed0e1c81b53ee5953bac1b58c8f929db86c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 160,
+			"column": 9,
+			"endLine": 160,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "dd9178454dcc2cc955b05c0777f4cb11e7227f8e67265802cdb0c45864871ac2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 160,
+			"column": 9,
+			"endLine": 160,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "046988d73c1ba86c26abccf004b604c818d26ab11698a048b930d775a93042ef",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is absent when no model of the route holds credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 160,
+			"column": 9,
+			"endLine": 160,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "usable.length !== 0",
+			"status": "generated",
+			"id": "5859f794cf9321991ac62950c7e3dfa15029827bc7389b2d5fa27740b44a5f22",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 167,
+			"column": 102,
+			"endLine": 191,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "513bfaaf43a7812aefa514aaaa0e2dddf188d79ccd39ab240b4a3e6ce38d3b1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 168,
+			"column": 34,
+			"endLine": 168,
+			"endColumn": 36,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "f222a0a44ce65d4898eaf0fd5cc6f0c91f60e4fbf009a82260e3a1349a1f056b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 169,
+			"column": 51,
+			"endLine": 189,
+			"endColumn": 3,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "9cc202e7dc097d1d528b72501bdafff3ba7df52c5254237d0a45da6d071cdeb9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 7,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "fd2014c4e512e1c3c603f991539ebd38bb207cc6d10392d6efd9c70dc6afe689",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 7,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f10c39e03cbc02a4c1e67fffd9e8239bffba28c6ee8f8b8635e9eded11190539",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 7,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reply.stopReason === \"error\" && reply.stopReason === \"aborted\"",
+			"status": "generated",
+			"id": "1eedd4e877f45d0352f550efc9922d0ec74397dd94eb4fe09d36dbc607c72688",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 7,
+			"endLine": 172,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6ae71c8f6729e80e3b278ade93a578a5c26b797da51a9122388bca6a3bf02944",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 7,
+			"endLine": 172,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reply.stopReason !== \"error\"",
+			"status": "generated",
+			"id": "10b75e7bec06716a21e11b4f91608d138e654dd73e7cafb4a7f2d3b035219b28",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 28,
+			"endLine": 172,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "52e9513713f72d4ae44bce9b391d926ac9ca113b146b8d8a4e7157ebc1b0565a"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 39,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1cdeee370d119804e683a9096499fa53e556071c19dad37b6da95be0619bec46",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 39,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reply.stopReason !== \"aborted\"",
+			"status": "generated",
+			"id": "a8ca700aaae3ffc4658aed72bcbb42fda963fa3cb72d098428fe1e59409f5d60",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 60,
+			"endLine": 172,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "18837c7b5e4fa3793ebf152df917b5a434ef3178c875001e9ae5280db4a04322"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 172,
+			"column": 71,
+			"endLine": 185,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "2ad47d28d2773d66f108e4e8dc0d08364284b20edc808427b77804da82416f6c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 173,
+			"column": 19,
+			"endLine": 173,
+			"endColumn": 57,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reply.errorMessage && reply.stopReason",
+			"status": "generated",
+			"id": "9d4c7eee70e2637b630e3c5a2cd89f951e52df4cfe30f3e714fd010bce4eaff2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"forwards cancellation to the model collection and rejects an aborted reply"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 174,
+			"column": 19,
+			"endLine": 174,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "7cbe799e1554409678d19b3dae40adaea4f1bdea208f6c68bb0c01717dbef9fe"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "eae4c20047e4e4dc31c321426458dd94ec93f6f1a0f3d3f03416f2cd171dc44c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9ebc0c02f8599b448c23adc88ff0ed5bda7d40b9c241595e08ca3e0bbd73374a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 93,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reply.stopReason === \"error\" && !signal?.aborted || isFailoverError(reason)",
+			"status": "generated",
+			"id": "a35ca65d79f6ef97a2627fb4abdca539ddb0c8efa0d6cede0f6afe3d3c81ffe7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1f85e1d2db6acb0e6bd2c7b2c5be651c794d3c1c3980029d153fdb7098f905b3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "reply.stopReason === \"error\" || !signal?.aborted",
+			"status": "generated",
+			"id": "db9e4db542bf79fd7fb5f0e0403fec7c52b844c994daa749a48e256acf8714e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "891540a55a9051cab4acf039a942cf53648808211b954361e5500b1d4136db85",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 18,
+			"endLine": 175,
+			"endColumn": 46,
+			"mutatorName": "EqualityOperator",
+			"replacement": "reply.stopReason !== \"error\"",
+			"status": "generated",
+			"id": "4538ca85db5fd66018db5a3b605f9161bda0ce0db1b9efa0d26dab7c68f6a6e5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 39,
+			"endLine": 175,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3a4c8a176682e98b37addc7860ce65c84c74c405297b5a840b66fd88c4e92477"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 50,
+			"endLine": 175,
+			"endColumn": 66,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "signal?.aborted",
+			"status": "generated",
+			"id": "4aea8741764ba6878fe09ab81c88293bd607781749d9ed70a033fb5796cbf570",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 175,
+			"column": 51,
+			"endLine": 175,
+			"endColumn": 66,
+			"mutatorName": "OptionalChaining",
+			"replacement": "signal.aborted",
+			"status": "generated",
+			"id": "71dc18d42a0e5c7da1f0eabe7e6db2267e87c9c30428a5336c74b569a2e1b853",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 14,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "moves",
+			"status": "generated",
+			"id": "5154f9e9c2a5a4ea0aab75e240b14763875071e0205a9d9b1700981d5af65426",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 14,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "71568ccb4a52de92c4a51a97b253f8e4b9231549eed7d519a8c2d0cf1654bb52",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 176,
+			"column": 8,
+			"endLine": 176,
+			"endColumn": 14,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3d5a7572c9b1a957a4fa1a08852065910b9e475913cd3f0e8d84702de78342e4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 176,
+			"column": 16,
+			"endLine": 176,
+			"endColumn": 40,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "f67564ae71ba01d5c96e38eb824d9354a0727a923df78fa4c58dfc9102e0f022",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"never moves past an aborted reply, whatever it says"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 177,
+			"column": 17,
+			"endLine": 177,
+			"endColumn": 40,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c3571beb26734cf2b39d3061dcdf7141f87cacb150508cb557b83e8e9452eab8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "cee267c63d2dc39f847b43ce7fb2705aa1b21437fac376d6784914fcc37384e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 37,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6ff4c25e3058d4a5eb493df6a2cf8b132779a95ee96d74cbaadebfc3a1c9a668",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names every refusal when the whole route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 178,
+			"column": 8,
+			"endLine": 178,
+			"endColumn": 37,
+			"mutatorName": "EqualityOperator",
+			"replacement": "at !== this.#route.length - 1",
+			"status": "generated",
+			"id": "4aabed0b8bc4dd96b57de5c1abdebdf497a647ead79aa68009bee5e308952ebf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 178,
+			"column": 15,
+			"endLine": 178,
+			"endColumn": 37,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "this.#route.length + 1",
+			"status": "generated",
+			"id": "d8bf2b78b520c476f538a0a915f9416118220fa2fe76d80e82417e249703970b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names every refusal when the whole route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 180,
+			"column": 6,
+			"endLine": 180,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "9b36ca8a4a853f7d25eaa614b3d45d69c5da521ab26f8b022b998106db1c320c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names every refusal when the whole route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 180,
+			"column": 6,
+			"endLine": 180,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f3ac8436415306ae22a9e19793453ecf45133f3bd8bddf118935d0c49a4cedb1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/triage.test.ts",
+					"path": [
+						"the LLM fallback",
+						"fails closed without recording an answer when the model stops with error"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 180,
+			"column": 6,
+			"endLine": 180,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refused.length !== 1",
+			"status": "generated",
+			"id": "f67d171724f0182258fb5074c45ed0c8906dbdbea62dec211180ad67f0291fdc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names every refusal when the whole route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 182,
+			"column": 9,
+			"endLine": 182,
+			"endColumn": 120,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ab2d1a8373c92b11e2368ceb9af69e3f949c7972f883f29159f8e05998d25b58"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 182,
+			"column": 58,
+			"endLine": 182,
+			"endColumn": 106,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "473f7cb4c0a7f213fb178f3feca4b2a9f9cfe374e04b1aae2bbb430dadd20a8d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names every refusal when the whole route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 182,
+			"column": 68,
+			"endLine": 182,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dd45c9f6d9f47852d0e9078c548933b67073f1c25d4b2944bf76336329b7064d"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 182,
+			"column": 113,
+			"endLine": 182,
+			"endColumn": 117,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f19314d8aaf2b4a9561eabad4dfa5cedbff6d58eda946addc57e5a33ae1eef52"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 35,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "646bda2cd6b34006c3048b6b18a7da58ef7b9472d4929ceec09002b2a89a47b7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 45,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "dc5b20ea54f570695cfe05a5bcf726431a0fc394d7e08075e12200f629512cbf",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"answers from the request's tool call after other parts"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 45,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8716c469d88223010ed4cf0b74c756782eeeb0e96d2eb2305604f751b5c821ea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 45,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "LogicalOperator",
+			"replacement": "part.type === \"toolCall\" || part.name === request.tool.name",
+			"status": "generated",
+			"id": "b940c60d031fc4b342bfdec163f85d69ea76a5b6b891269d1586baf44f3a4b0a",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"answers from the request's tool call after other parts"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 45,
+			"endLine": 186,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c4d969448bae07692ed16585e1fe0ad0f34df52f6bf6281a163e066a7cef4519",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Only a `toolCall` part carries a `name`, so a text or thinking part never equals the tool's name and the `type` test after the find still holds."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 45,
+			"endLine": 186,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "part.type !== \"toolCall\"",
+			"status": "generated",
+			"id": "45a16cf73dabcb9c9ab3a33d6665a5cb99b5e4dbbcbecfadc69c32c267ab7888",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 59,
+			"endLine": 186,
+			"endColumn": 69,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9bf81309241501984a4c3125a7fe4cf30b5e9ca2f82f469a162a915bee5a8711"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 73,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "be2a66731ac8a5a7cf5e979d022fbf36c37b3183442ef9106833c136a7b592ae",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"answers from the request's tool call after other parts"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 186,
+			"column": 73,
+			"endLine": 186,
+			"endColumn": 104,
+			"mutatorName": "EqualityOperator",
+			"replacement": "part.name !== request.tool.name",
+			"status": "generated",
+			"id": "b06c8db41129df8042b39a0a1054837989f59b8cd23a6a35f529f1d8c37d9f4d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 7,
+			"endLine": 187,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "0b1f5ccf76ee123ab2c05e6a24e2e5ec57950a413e502cc3b270c9112f1eded0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 7,
+			"endLine": 187,
+			"endColumn": 32,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3e01d2d2be5c6bdf7c0e076c2d2b92c3261a9e7a6f7d93146ba6bc34dd976450",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names the fallback that answered without calling the tool"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 7,
+			"endLine": 187,
+			"endColumn": 32,
+			"mutatorName": "EqualityOperator",
+			"replacement": "call?.type === \"toolCall\"",
+			"status": "generated",
+			"id": "d1366353ab2abfbd221f2e1065f8110c8473e231d60092f56545f548e5608360",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 7,
+			"endLine": 187,
+			"endColumn": 17,
+			"mutatorName": "OptionalChaining",
+			"replacement": "call.type",
+			"status": "generated",
+			"id": "96e1776f72b000c1d8573efec56ea0f82d1311f946646f40cf9d4754ec37352a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names the fallback that answered without calling the tool"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 22,
+			"endLine": 187,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be4d61b992c3b2208fe9e7a3e14a6789e489ffa17a90ca99c3b5ccc45eb6251d"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 34,
+			"endLine": 187,
+			"endColumn": 107,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "c014ce81ff702cd3aed0ba5182fc873809a2cf2b1668385909e7b216a7352500",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names the fallback that answered without calling the tool"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 187,
+			"column": 50,
+			"endLine": 187,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "72863079ad6b888165110f82f6e3579966e2631ff01cf0e37f4237e6ea557730"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 188,
+			"column": 10,
+			"endLine": 188,
+			"endColumn": 98,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a6de87b31703405901ad7ee70a5af49dfeb1b5813f6a1d3fa3a923371d0e7472",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 188,
+			"column": 56,
+			"endLine": 188,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c0332f548deeb29d0549ea03193b4b9abbd0c3ac3982e05324afd353ad392154",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 188,
+			"column": 56,
+			"endLine": 188,
+			"endColumn": 76,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "dcc7ae1b3cd79cee906a621c494ef78e8657c47819dd02580bcdfc7da55b1667",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 188,
+			"column": 56,
+			"endLine": 188,
+			"endColumn": 76,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refused.length !== 0",
+			"status": "generated",
+			"id": "e7bd5f0afb581cb6518f73563c763dfccc408e558ab9ea058c7c39f6c4044f40",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"answers without cancellation when the caller supplies no signal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 188,
+			"column": 84,
+			"endLine": 188,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "810941c11ad2a9213f2ed303da14bde9e980e1306807d7d9100fbca0e4843134",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 190,
+			"column": 2,
+			"endLine": 190,
+			"endColumn": 54,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "57a738ff87625376ec9e1888084f131d14f583dd807da7694068ebd548a43e7d",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Unreachable: `create` returns `undefined` for a route with no usable model and the constructor is private, so the loop always returns or throws first."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 190,
+			"column": 18,
+			"endLine": 190,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "a59a30c8964832062b8135cd9ebae2a228fe4373046bb6c54facf30ed24a9fef"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 193,
+			"column": 36,
+			"endLine": 195,
+			"endColumn": 2,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "3a3d4b8ebefae7fc043820ded132df2a7516903b08679d51e9284abe4bb6bc11",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 9,
+			"endLine": 194,
+			"endColumn": 108,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "80aee729cc8adc3f6f9ec06f0b336a16d9fdf723493f96f9f9fab0ad10249e49"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 41,
+			"endLine": 194,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "7c25e509ebf71339875d6f7bbf96e07d33ebddaf99c53f08d3e7cd8e0a2f42d4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"names its models with the route's thinking"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 41,
+			"endLine": 194,
+			"endColumn": 69,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "4449119705d82be0364f2a73c939ac27938d49160855afd38be3940040252180",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 41,
+			"endLine": 194,
+			"endColumn": 69,
+			"mutatorName": "EqualityOperator",
+			"replacement": "this.#thinking !== undefined",
+			"status": "generated",
+			"id": "0be7ca0be18898e9f73e192dffe66d9a1a49bbc1e2f1d8e22dc7db9671b8289c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/models.test.ts",
+					"path": [
+						"a route of several models",
+						"is named for the route's head and answers on the first model that does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 72,
+			"endLine": 194,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8f372ec24f113badb201bcd0386d48f8c258f5611ae1156c69e41013d146ee32"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 194,
+			"column": 77,
+			"endLine": 194,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6cbb4336715b27d50a25c740fddb264c31e6bc0fcbe39ccda99412c75b67906e"
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 199,
+			"column": 46,
+			"endLine": 199,
+			"endColumn": 77,
+			"mutatorName": "LogicalOperator",
+			"replacement": "this.#thinking && \"unspecified\"",
+			"status": "generated",
+			"id": "d0f7cb441693b14370f727d28c9f5e5723a800e39a37229098e841c81ba88365",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/token-telemetry.test.ts",
+					"path": [
+						"keeps triage usage when the model returns toolUse, including rejected answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/models.ts",
+			"line": 199,
+			"column": 64,
+			"endLine": 199,
+			"endColumn": 77,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3057b54687cadaed1e095b9f43d7c5b05110d335d65092a71aecb634778e3547"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3588,
+			"column": 19,
+			"endLine": 3588,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b82e1b54021241b165b0b1f724d276f55af1591d94e29d0b5b34ad71c96258b6"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3588,
+			"column": 19,
+			"endLine": 3588,
+			"endColumn": 48,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "82569788f4e9c183eb7ca2a809fd253071b3982b791e96ad6dc4ee679cb1db77"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3588,
+			"column": 19,
+			"endLine": 3588,
+			"endColumn": 48,
+			"mutatorName": "EqualityOperator",
+			"replacement": "triaged.failure !== undefined",
+			"status": "generated",
+			"id": "75ced1fa85781ca2625bf0026bd1116ec40aa40836f2668b85d90a14f08a2db0"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3588,
+			"column": 51,
+			"endLine": 3588,
+			"endColumn": 53,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "a4f5c7fd609b9235b7e990a8a4f5d8439de4477138f41b5e18dd709e169a4b57"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3588,
+			"column": 56,
+			"endLine": 3588,
+			"endColumn": 66,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "91ddb14d348cb1a5ce40b6c24ea1893c74402b1572dcb9f807dc424c663fee22"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 17,
+			"endLine": 3645,
+			"endColumn": 100,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "b6ceaa9cff4191ad90bce530b508e3261c3eb2d4657e267e62ba6576c1f66232"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 22,
+			"endLine": 3645,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2d22f20b0c7b76709eae51ca56b530c8a73919d79ddd4685e26124e0448595de"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 22,
+			"endLine": 3645,
+			"endColumn": 50,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2774b6280121c4843abdcb8bbef6cd0e4edcfec7afdd9b3484997926ed46b9f9"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 22,
+			"endLine": 3645,
+			"endColumn": 50,
+			"mutatorName": "EqualityOperator",
+			"replacement": "callers.caveat !== undefined",
+			"status": "generated",
+			"id": "ce377f80f8693c3482968caa5d233037d83eb264243851aec37e9e9f32e412cf"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 53,
+			"endLine": 3645,
+			"endColumn": 55,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "9d5dfab14bc2169bcaea375660ba069f491cc5960c4d5366d5af3010a9d5adb0"
+		},
+		{
+			"file": "packages/pipeline/src/review.ts",
+			"line": 3645,
+			"column": 58,
+			"endLine": 3645,
+			"endColumn": 74,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "c9785658e6d2730c46603a8a00dc0bdd0ff1bc3b1fa1529d2f94b3723d9b61f7"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 122,
+			"column": 18,
+			"endLine": 122,
+			"endColumn": 93,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "801784d4dd3f75c5fabdc85961dc2e24f51ad24397b0cf138a5f945ffd4c9af0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 122,
+			"column": 69,
+			"endLine": 122,
+			"endColumn": 93,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "89b37f3c0cd975e8ebb77778ab4f9617d6795cd1bfdfb9baf3dc624381deb003"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 216,
+			"column": 17,
+			"endLine": 216,
+			"endColumn": 68,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "4e3ae85e1d45c5acd6af0143a29c00dd43be2e424de226b2d6d68c0493e9f2fc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"writes nothing from a walkthrough task the index no longer names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 216,
+			"column": 40,
+			"endLine": 216,
+			"endColumn": 66,
+			"mutatorName": "LogicalOperator",
+			"replacement": "task.input.fallbacks && []",
+			"status": "generated",
+			"id": "8821608ecbb7deb6aae4b3b9cccd10db9df35090707cc4aa12d44f85d5525d8e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"writes nothing from a walkthrough task the index no longer names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 216,
+			"column": 64,
+			"endLine": 216,
+			"endColumn": 66,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "81360796856671178735869ea31bd3d2e22f5134c5cd3d47c2d4941f335abe7d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"leaves the fixed note when a route of one model is at its limit"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 217,
+			"column": 17,
+			"endLine": 217,
+			"endColumn": 40,
+			"mutatorName": "LogicalOperator",
+			"replacement": "checkpoint.attempt && 0",
+			"status": "generated",
+			"id": "df912a09c8b8d581f6e040b0258bde63c5cdee2f1f53713391c01a56c9f0b858",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"writes nothing from a walkthrough task the index no longer names"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 220,
+			"column": 3,
+			"endLine": 244,
+			"endColumn": 4,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "// A model that refuses moves the walkthrough along its route, by the rule a lens follows.\nfor (; false;) {\n  const requestId = attempt === 0 ? \"walkthrough\" : `walkthrough:${attempt}`;\n  settled = await (await child.submit({\n    type: \"input\",\n    content: task.input.prompt,\n    requestId\n  }, context)).wait(context);\n  const reason = typeof settled.detail === \"string\" ? settled.detail : settled.reason ?? \"\";\n  const failover = settled.status !== \"done\" && (settled.reason === \"no_model\" || settled.reason === \"model_error\" && isFailoverError(reason));\n  const next = route[attempt + 1];\n  const refused = route.slice(0, failover ? attempt + 1 : attempt).map(modelName);\n  if (!failover || next === undefined) {\n    await runtime.commit(async tx => {\n      const result = await tx.doc(SummaryResult, child.id);\n      if (settled.status === \"done\") result.model = modelName(route[attempt]!);\n      if (refused.length > 0) result.refused = refused;\n    }, context);\n    break;\n  }\n  attempt++;\n  await runtime.commit(async tx => {\n    await configure(tx, child.id, {\n      model: next\n    });\n    return {\n      status: \"running\",\n      checkpoint: {\n        phase: \"summarize\",\n        child: child.id,\n        attempt\n      }\n    };\n  }, context);\n}",
+			"status": "generated",
+			"id": "3867ecc94052c415dc030e4143618e3ff7503167914eac891839233ee39bc828",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 220,
+			"column": 12,
+			"endLine": 244,
+			"endColumn": 4,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "061870b26b6731e0425dc40c7eb5bb0e30cbb2697dbf9d4efacf42dfbd5e65c8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 221,
+			"column": 22,
+			"endLine": 221,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "d1eb17fd138b5c7b27e0c75dd1e7bf57b95ce2e32190fc0389ba74f3cfa2b1b5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 221,
+			"column": 22,
+			"endLine": 221,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7977f26c593c72c8ba585fcec2bf6ddd0721a5ad032538d7bc4b63d626a7f795",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The request IDs only need to differ from one another within the conversation; `walkthrough:0` differs from every later `walkthrough:N` as `walkthrough` does, and a harness aborts a live walkthrough task when it opens, so no older ID is read back."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 221,
+			"column": 22,
+			"endLine": 221,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "attempt !== 0",
+			"status": "generated",
+			"id": "7f39b0e54995dc16bb5dcb345f24b886a2424ae12c74e58f4ab31f289241ff22",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"asks each model of a longer route in turn"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 221,
+			"column": 38,
+			"endLine": 221,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2c11b8177aeba295e975d9ce7e9b60b10755c45205096978189d1738df48b1ad"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 221,
+			"column": 54,
+			"endLine": 221,
+			"endColumn": 78,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f008ae217e787d884cc8cd93f1d481babc428463c76692415b6136fe31b35cc7"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 223,
+			"column": 24,
+			"endLine": 223,
+			"endColumn": 80,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "755d888510b6c31e09657f978fa8631bef016798519917f6a5e34881f1e9aebf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 223,
+			"column": 32,
+			"endLine": 223,
+			"endColumn": 39,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "703a419a0f0b6b065a1169ecc5e10c46a8f9cd4cd306b6dc6de140de4fb25a1e"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 19,
+			"endLine": 225,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "02bfd28144043e63487b8e519e112fc2ef25ef598179673e0e62893a0c54a32f",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Pi Durable sets a string `detail` on every `model_error` settlement and on `faulted`, and the reason is read only for `model_error`, so the fallback branch of the ternary is never read."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 19,
+			"endLine": 225,
+			"endColumn": 53,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "250c995ab346e2ddd52fa68132761303d27449542ea3dc2fd4b631d463ae2122",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 19,
+			"endLine": 225,
+			"endColumn": 53,
+			"mutatorName": "EqualityOperator",
+			"replacement": "typeof settled.detail !== \"string\"",
+			"status": "generated",
+			"id": "b93b8e041416fe63706e5981fe99494cde9e1ee67600b75ac809e2029c64c27b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 45,
+			"endLine": 225,
+			"endColumn": 53,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dfc59e8d2d0cff757311baa8b1ef0d087b8777c11b5e40b170a61d6f2b3ba8f0"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 74,
+			"endLine": 225,
+			"endColumn": 94,
+			"mutatorName": "LogicalOperator",
+			"replacement": "settled.reason && \"\"",
+			"status": "generated",
+			"id": "5963a05392564c92106e2d220aa263428d05dd494d181443bb0e01eff472e026",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "The fallback is read only when `detail` is not a string, which no `model_error` settlement is, and only a `model_error` reads the reason."
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 225,
+			"column": 92,
+			"endLine": 225,
+			"endColumn": 94,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "be340ecb96e73336fa60a594e320f560ecc63f7a3a1b7380c1e58053378458b9"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 5,
+			"endLine": 228,
+			"endColumn": 101,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "67419f318ebc34177e2692183001aeaa3da111faeceec1f87a9a858ff2dba4a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 5,
+			"endLine": 228,
+			"endColumn": 101,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "119c4bedc9a27d6932d336646556ad1ed938a36e8ea7572a4689efb0b22e0a0e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 5,
+			"endLine": 228,
+			"endColumn": 101,
+			"mutatorName": "LogicalOperator",
+			"replacement": "settled.status !== \"done\" || settled.reason === \"no_model\" || settled.reason === \"model_error\" && isFailoverError(reason)",
+			"status": "generated",
+			"id": "7fba1fa229a43f115bec1234731718c76649136cd4901ddf92d960009b1bbeac",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"stops at the first model on a failure that is not the route's to move past"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 5,
+			"endLine": 227,
+			"endColumn": 30,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "eb821e24a04253d3b45c17fada1672a5964a3221843f1b6d7731a3f38b985706",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A `done` settlement carries no `reason`, so neither `no_model` nor `model_error` holds and the walkthrough does not fail over either way."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 5,
+			"endLine": 227,
+			"endColumn": 30,
+			"mutatorName": "EqualityOperator",
+			"replacement": "settled.status === \"done\"",
+			"status": "generated",
+			"id": "98f8f56ae629fafaf71a33bd38c02c4f6a9ddd49bc5093b52e350fe6b2c8fa1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 227,
+			"column": 24,
+			"endLine": 227,
+			"endColumn": 30,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "434632de34577436effd52aa7aa52ccdbcef76129a2d90515e9ce5791673ab33"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 6,
+			"endLine": 228,
+			"endColumn": 100,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "61aa6235c4288cd55d43db6e4752b295168b34e5fdf957293f4b46a4d168bcc6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"stops at the first model on a failure that is not the route's to move past"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 6,
+			"endLine": 228,
+			"endColumn": 100,
+			"mutatorName": "LogicalOperator",
+			"replacement": "settled.reason === \"no_model\" && settled.reason === \"model_error\" && isFailoverError(reason)",
+			"status": "generated",
+			"id": "bcdd233254336d414871c91d93eee14801dfff9882b0e89a662dd33e7cd19712",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 6,
+			"endLine": 228,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c81e78c09348a069d1464d201b429cab4aed1264adb262ddf57a143726f24eae",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves past a model the harness no longer knows"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 6,
+			"endLine": 228,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "settled.reason !== \"no_model\"",
+			"status": "generated",
+			"id": "dc604a3102221119a7ee6b40c1fb87dcdda41c85e34bdd6f4e77e63ed3fd8d0d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"stops at the first model on a failure that is not the route's to move past"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 25,
+			"endLine": 228,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4fcdd61c6306d65d41a6dc960b8f783b50321f21695d2250482417e059bc5243"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 40,
+			"endLine": 228,
+			"endColumn": 99,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9392c687023b596a978c2e5883bcbf91e37fd82e5d334ad4c84d72a06d5ad2fe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 40,
+			"endLine": 228,
+			"endColumn": 99,
+			"mutatorName": "LogicalOperator",
+			"replacement": "settled.reason === \"model_error\" || isFailoverError(reason)",
+			"status": "generated",
+			"id": "2a3a4d6ae1ca9c0364e71d94ed51ef8e7456afe4f64b448f171b7a1d51987565",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"stops at the first model on a failure that is not the route's to move past"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 40,
+			"endLine": 228,
+			"endColumn": 72,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "c37809d4eba386c72aeb50cef1915e56839e2d9b51d545f5d6b9622dab614952",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"stops at the first model when its request faults, whatever the fault says"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 40,
+			"endLine": 228,
+			"endColumn": 72,
+			"mutatorName": "EqualityOperator",
+			"replacement": "settled.reason !== \"model_error\"",
+			"status": "generated",
+			"id": "f51b69864df393221b8af7973c9a1bf44a42e07c0850a15d4bdf116c76d14f09",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 228,
+			"column": 59,
+			"endLine": 228,
+			"endColumn": 72,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "14241f81f1133341dd9bc7b91afde1eeb002c2d88e5f3f324b5bb69f56cc784b"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 229,
+			"column": 23,
+			"endLine": 229,
+			"endColumn": 34,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "attempt - 1",
+			"status": "generated",
+			"id": "e395733811a97f47a3d9395f572b6eed72a63472a6562558198c4d51b6db6f89",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 230,
+			"column": 20,
+			"endLine": 230,
+			"endColumn": 68,
+			"mutatorName": "MethodExpression",
+			"replacement": "route",
+			"status": "generated",
+			"id": "c24e17ee6dc3de1f594d296344a3db9112ef5d77bea3ac744992d147c19724b6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 230,
+			"column": 46,
+			"endLine": 230,
+			"endColumn": 57,
+			"mutatorName": "ArithmeticOperator",
+			"replacement": "attempt - 1",
+			"status": "generated",
+			"id": "22843a1d4e42a7755fad1f5e18ba0d90f9622e4a6f4c1ccd9e6d7bb231253a6e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"leaves the fixed note when every model of the route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 8,
+			"endLine": 231,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2d460ec502572383f462f4a3f56ce249b77f23daa545ed1d478a19ccb2a32b53",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 8,
+			"endLine": 231,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ee67cd9c2013809e4b420a3cd1cd05a23795a6a994a24444e2562289da79ed30",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 8,
+			"endLine": 231,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!failover && next === undefined",
+			"status": "generated",
+			"id": "44d652ecca31cc906b6c980fdbffb7d16d74243ed114c04372673492c4b40491",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 8,
+			"endLine": 231,
+			"endColumn": 17,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "failover",
+			"status": "generated",
+			"id": "6ad20db275d0bdf6749eb662a5f5e1cb8031dabc252b3f4ea7ec9f236fccbfd0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 21,
+			"endLine": 231,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e1a7f1dd4a4115a56cfcf65a109f69f3c53efb67b390391205d8392af019167c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"leaves the fixed note when a route of one model is at its limit"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 21,
+			"endLine": 231,
+			"endColumn": 39,
+			"mutatorName": "EqualityOperator",
+			"replacement": "next !== undefined",
+			"status": "generated",
+			"id": "26d883b4bcbd7675c67115dbc468003f0d5868c718590b1df4ad339d4252a1a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 231,
+			"column": 41,
+			"endLine": 238,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "beccde885688e1d44234888e74e915c7eb019c79eeccb4be347ef975de53a52d",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 232,
+			"column": 40,
+			"endLine": 236,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "58f19a47dbefc5afe4f172f3236e3169cd8b16965d11683a6c2324b32cf4db10",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 234,
+			"column": 10,
+			"endLine": 234,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6286575e35c490422dce249cea1179445473d5c15a8b2c335e8d3034e46051be",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"leaves the fixed note when every model of the route refuses"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 234,
+			"column": 10,
+			"endLine": 234,
+			"endColumn": 35,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "1012637b553ae740978d817e64dd25b0f2d071c0f94f268bae3eec9ad7ff56f3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 234,
+			"column": 10,
+			"endLine": 234,
+			"endColumn": 35,
+			"mutatorName": "EqualityOperator",
+			"replacement": "settled.status !== \"done\"",
+			"status": "generated",
+			"id": "bf603f35e5a7f50f9ef7a91bbeea00017a885622be0ea059a191d236d5daec3d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 234,
+			"column": 29,
+			"endLine": 234,
+			"endColumn": 35,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b91d33ecfebbb613cf34a77adeb817de67ef984086aa9e1a57a2058c080f3840"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 235,
+			"column": 10,
+			"endLine": 235,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "2c2f3f1f586bb81e66cc0c1c84b5ed36fd1f3aa7c7359a51c1f7531b401dc7ff",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 235,
+			"column": 10,
+			"endLine": 235,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "95f146302842995ced5eefbe33f65d4e30e4028df345883c953a016048e7bb4c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 235,
+			"column": 10,
+			"endLine": 235,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refused.length >= 0",
+			"status": "generated",
+			"id": "f3e5cea6ce7dfa1f3aab5082cc3ec29a545789f5b1dd19bab074115a453173d7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"records only the answering model when the first model answers"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 235,
+			"column": 10,
+			"endLine": 235,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refused.length <= 0",
+			"status": "generated",
+			"id": "83994c59cc6787ab9bb0ed5d89ff2118424b64419f488b70850ea6364f1ad2e7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 239,
+			"column": 4,
+			"endLine": 239,
+			"endColumn": 13,
+			"mutatorName": "UpdateOperator",
+			"replacement": "attempt--",
+			"status": "generated",
+			"id": "56200b810003ea748f64304d4d1e11f6a77860381c8bebc3641a66ef48cfd218",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 240,
+			"column": 39,
+			"endLine": 243,
+			"endColumn": 5,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "d716a1597dc28223a11294b55d913a8390f57e34834cea8b032a28b6db6a5278",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 241,
+			"column": 35,
+			"endLine": 241,
+			"endColumn": 50,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "669021e60b6330f24f40bf9dc16d36ec34b72dcb80e46bef8b8685c119b8fc16",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 242,
+			"column": 12,
+			"endLine": 242,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "352872b4d548df3e2a11062f11da47725feb5ae2462593993249181f1dd8d574",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 242,
+			"column": 22,
+			"endLine": 242,
+			"endColumn": 31,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "c02732fcbd91860246b3e2e6d38093c5c48d7c64ee11bf1dca288d16c3843c2e"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 242,
+			"column": 45,
+			"endLine": 242,
+			"endColumn": 93,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5f4106c27c15e16ea5b567961b68bc6feb3a3a64f9e3c706b28956239441e281",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves past a model the harness no longer knows"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 242,
+			"column": 54,
+			"endLine": 242,
+			"endColumn": 65,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "5da6668e49905cb3a4a809eaf3106376d2687d8f1c73d457ce973d7228faa8d9"
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 463,
+			"column": 41,
+			"endLine": 463,
+			"endColumn": 43,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "0d6bd4f9d509cac6bca12723d0606381f6df033fa4a7e2ef98cd5fd4b73010fe",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 469,
+			"column": 4,
+			"endLine": 469,
+			"endColumn": 33,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "53b2649f1ffbdd45d09232ce7284f8eddd314d4032e0a971ee41277cf41cd184",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"keeps a stored walkthrough and its route, writing only the note, when a rerun ends in a note because no light model is configured"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 472,
+			"column": 20,
+			"endLine": 472,
+			"endColumn": 78,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "a40720f07534b5fbbfbe06f6df2d41748efb5f2d8aa9c9cedbaa0b0f9ee86858",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"unlocks, uses and records a credentialed fallback when the first light model has no credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 472,
+			"column": 49,
+			"endLine": 472,
+			"endColumn": 75,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a3f9ac751cbf295aaeef29fde317537b650adad8a58200edd80952d98f84928b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"unlocks, uses and records a credentialed fallback when the first light model has no credentials"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 7,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "1c46bfc5f2b8c7a832c906dab82a68754e0ffb8ca141d3c1d0497c51992c32f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"runs no credential command at the attempt cap, and one once below it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 7,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5ef9ab5ffca1eed6e2b862238e5161bf1584101be11851c7206d215792a4e60f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"stores the failure note, and runs no second credential command, when its commit fails for another reason"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 7,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(attaches || rerun) && spent < maxWalkthroughAttempts",
+			"status": "generated",
+			"id": "bd0153719f0b128260d4eebdd39b5fb7866d9ac6a619fa72b951e2db661fa844",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"stores the failure note, and runs no second credential command, when its commit fails for another reason"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 7,
+			"endLine": 530,
+			"endColumn": 24,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e7a39f28b2f2511d6b88c514dc7c2a309cf260875cc9f9bd37afa736f5fad6f0",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "A locked read throws `UnlockFirst`, whose handler unlocks the same providers once and decides again, so the rerun still unlocks once before its request; the test `unlocks the route's providers for a rerun once the attempts are spent` holds that."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 7,
+			"endLine": 530,
+			"endColumn": 24,
+			"mutatorName": "LogicalOperator",
+			"replacement": "attaches && rerun",
+			"status": "generated",
+			"id": "1ee121606034b374e88837ddcb1c06cf372b00cd0bb1155f9c4ce781615fd183",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "As the line's other mutant: the `UnlockFirst` handler unlocks the same providers once."
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 28,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "94414e6408017bd34bd101979d9182f6479e833b8840d7532d7a2a43d4c693eb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"stores the failure note, and runs no second credential command, when its commit fails for another reason"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 28,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "spent <= maxWalkthroughAttempts",
+			"status": "generated",
+			"id": "d61f7cc13fe7187e5ead31a92a04f7f8c006eec314b674f5af0dfc7d17f4a0a3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"runs no credential command at the attempt cap, and one once below it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 530,
+			"column": 28,
+			"endLine": 530,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "spent >= maxWalkthroughAttempts",
+			"status": "generated",
+			"id": "189487ad657af9933cf1fe00b3680e4258c42aca18f8f01476453cfe7ae09684",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"runs no credential command at the attempt cap, and one once below it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 575,
+			"column": 9,
+			"endLine": 575,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b41d973d9c76f07bfc675ea93ae19bf336d0b56d23b5083b7602d604ff41b195",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 575,
+			"column": 9,
+			"endLine": 575,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "27dd42d0738d891a4da0c865e8d3cc02ad2e220aea6acc8f8f5108bbfc266238",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "An empty `fallbacks` asks the same route as an absent one, `[model, ...[]]`, and the request key leaves `fallbacks` out."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 575,
+			"column": 9,
+			"endLine": 575,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "fallbacks.length !== 0",
+			"status": "generated",
+			"id": "6dbb22527bd7b905ee29abb31cfdb1454670108a17289060a43f221e5e0c8236",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/summarize.ts",
+			"line": 575,
+			"column": 39,
+			"endLine": 575,
+			"endColumn": 52,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "69e8fd0b7c87ffff426016aab0e4357f70130d94235939af366ddd1b14d96b1c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/summarize.test.ts",
+					"path": [
+						"walkthrough summaries",
+						"on a light route whose first model refuses",
+						"moves to the next model on a usage limit, and records which refused and which answered"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 235,
+	"omitted": 0,
+	"unmutated": []
+}
