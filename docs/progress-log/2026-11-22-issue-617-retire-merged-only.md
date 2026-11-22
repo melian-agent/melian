@@ -11,3 +11,5 @@ The tests came first. Three new tests in `what a retire keeps` failed on fa341fa
 [The retention decision](../decisions/2026-11-21-shared-tip-retires-finished-pull-requests.md) records the coordinator's direction, keeps closed pull requests' records until issue #641, and says in its limit paragraph what a late relay would do to the gate. The guideline and the plan's step 46 bullet say the same.
 
 The [inventory](2026-11-22-issue-617-retire-merged-only-mutants.json) lists fa341fa4a's 4 mutants. Each ran against its named test alone and was killed.
+
+A round at 529e9f7a found that `docs/design.md` still said a pull request closed without merging leaves the tip after 30 days, and that `retire` removes a changeset whole. The next commit corrects both.
