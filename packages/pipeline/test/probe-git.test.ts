@@ -107,9 +107,31 @@ describe("probeGit", () => {
 		});
 	});
 
-	it("grants a system configuration that does not exist, since git reads it only if it is there", async () => {
+	it("grants no system configuration that does not exist, and tells git to skip it", async () => {
 		rmSync(config);
-		expect(await probeGit("darwin", host().ask, home)).toMatchObject({ reads: expect.arrayContaining([config]) });
+		// The sandbox refuses an open of the absent file as not permitted, which git treats as fatal, as no such file is not.
+		expect(await probeGit("darwin", host().ask, home)).toEqual({
+			bin: join(developer, "usr", "bin"),
+			reads: [
+				join(developer, "usr", "bin"),
+				join(developer, "usr", "libexec", "git-core"),
+				join(developer, "usr", "share", "git-core"),
+			],
+			noSystem: true,
+		});
+	});
+
+	it("tells git to skip a system configuration behind a link to nothing, and grants neither path", async () => {
+		rmSync(config);
+		symlinkSync(join(root, "etc", "absent"), config);
+		expect(await probeGit("darwin", host().ask, home)).toMatchObject({
+			reads: [
+				join(developer, "usr", "bin"),
+				join(developer, "usr", "libexec", "git-core"),
+				join(developer, "usr", "share", "git-core"),
+			],
+			noSystem: true,
+		});
 	});
 
 	it("asks nothing on Linux, where git lives among the system's programs", async () => {
@@ -198,8 +220,10 @@ describe("probeGit", () => {
 		});
 
 		it("a system configuration behind a link into the reviewer's home", async () => {
+			writeFileSync(join(home, ".gitconfig"), "");
 			symlinkSync(home, join(root, "etc-link"));
-			expect(await probeGit("darwin", host({ config: join(root, "etc-link", ".ssh") }).ask, home)).toEqual(refused);
+			const ask = host({ config: join(root, "etc-link", ".gitconfig") }).ask;
+			expect(await probeGit("darwin", ask, home)).toEqual(refused);
 		});
 
 		it("a system configuration that links to a file in the reviewer's home", async () => {

@@ -227,10 +227,12 @@ const startedName = "started";
 const installName = "node_modules";
 // Creates a repository in the probe's temporary directory with the git on its PATH, as a probe's own git call would.
 const gitScript = [
-	`import { execFileSync } from "node:child_process";`,
+	`import { spawnSync } from "node:child_process";`,
 	`import { tmpdir } from "node:os";`,
 	`import { join } from "node:path";`,
-	`execFileSync("git", ["init", "--quiet", join(tmpdir(), "repository")], { stdio: ["ignore", "inherit", "inherit"] });`,
+	`const ran = spawnSync("git", ["init", "--quiet", join(tmpdir(), "repository")], { stdio: ["ignore", "inherit", "inherit"] });`,
+	"if (ran.error !== undefined) console.error(ran.error.message);",
+	"process.exit(ran.status ?? 1);",
 	"",
 ].join("\n");
 
@@ -679,12 +681,20 @@ function environmentFor({
 }: {
 	scratch: string;
 	node: string;
-	git: string | undefined;
+	git: ProbeGit | undefined;
 	lang: string | undefined;
 }) {
 	const run = join(scratch, "run");
-	const path = [dirname(node), ...(git === undefined ? [] : [git]), "/usr/bin", "/bin"].join(":");
-	return { PATH: path, HOME: join(run, "home"), TMPDIR: join(run, "tmp"), LANG: lang };
+	const bin = git !== undefined && "bin" in git ? git.bin : undefined;
+	const path = [dirname(node), ...(bin === undefined ? [] : [bin]), "/usr/bin", "/bin"].join(":");
+	const noSystem = git !== undefined && "reads" in git && git.noSystem === true;
+	return {
+		PATH: path,
+		HOME: join(run, "home"),
+		TMPDIR: join(run, "tmp"),
+		LANG: lang,
+		...(noSystem ? { GIT_CONFIG_NOSYSTEM: "1" } : {}),
+	};
 }
 
 /** The parts of sandbox-runtime's manager a probe uses. */
@@ -1028,7 +1038,7 @@ export class Probe {
 				env: environmentFor({
 					scratch: this.#scratch,
 					node,
-					git: "bin" in this.#git ? this.#git.bin : undefined,
+					git: this.#git,
 					lang: process.env.LANG,
 				}),
 				timeoutMs: this.#timeout,

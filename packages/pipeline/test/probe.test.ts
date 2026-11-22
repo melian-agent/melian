@@ -1769,6 +1769,39 @@ describe("a probe's git and Node conditions", () => {
 		expect(plain.result.output).toBe(`${dirname(process.execPath)}:/usr/bin:/bin\n`);
 	});
 
+	it("tells the probe's git to skip the system configuration only when the host has none", async () => {
+		const env = async (git: ProbeGit) => {
+			const probe = await Probe.open(
+				{ script: "console.log(process.env.GIT_CONFIG_NOSYSTEM ?? 'unset');" },
+				options(passthrough({ git: async () => git }).sandbox),
+			);
+			try {
+				return (await probe.run()).output;
+			} finally {
+				await probe.close();
+			}
+		};
+		expect(await env({ ...found, noSystem: true })).toBe("1\n");
+		expect(await env(found)).toBe("unset\n");
+		expect(await env({ unavailable: "no git" })).toBe("unset\n");
+	});
+
+	it("says why git failed in its own words, without Node's stack", async () => {
+		const bin = mkdtempSync(join(tmpdir(), "melian-probe-fake-git-"));
+		try {
+			writeFileSync(join(bin, "git"), "#!/bin/sh\necho 'fatal: unable to access x' >&2\nexit 128\n", {
+				mode: 0o755,
+			});
+			const { sandbox } = passthrough({ git: async () => ({ bin, reads: [] }) });
+			expect(await Probe.gitAvailability(sandbox)).toEqual({
+				available: false,
+				reason: "a probe's git init exited 128: fatal: unable to access x",
+			});
+		} finally {
+			rmSync(bin, { recursive: true, force: true });
+		}
+	});
+
 	it("reads nothing more, and keeps the plain PATH, where git cannot run in a probe", async () => {
 		const plain = await seen(passthrough().sandbox);
 		const { policy, result } = await seen(passthrough({ git: async () => ({ unavailable: "no git" }) }).sandbox);
@@ -1860,7 +1893,7 @@ describe("a probe's git and Node conditions", () => {
 		const found = await Probe.gitAvailability(sandbox);
 		expect(found).toEqual({
 			available: false,
-			reason: expect.stringMatching(/^a probe's git init exited 1: .*ENOENT/s),
+			reason: "a probe's git init exited 1: spawnSync git ENOENT",
 		});
 		expect(asked).toHaveLength(1);
 	});

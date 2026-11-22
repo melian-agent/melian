@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import { CheckError, ToolManifest, type ToolPin } from "@melian-agent/core";
+import { CheckError, ToolManifest, type ToolPin, withoutGitVariables } from "@melian-agent/core";
 import { ToolCache, type ToolFetch } from "./tool-cache.ts";
 
 /** The shared cache and storage directory for one clone. */
@@ -13,7 +13,7 @@ export class CacheLocation {
 	}
 	/** Resolves the existing state-directory rule, clearing git's inherited repository variables. */
 	static async open(repoRoot: string, environment: NodeJS.ProcessEnv = process.env): Promise<CacheLocation> {
-		const env = Object.fromEntries(Object.entries(environment).filter(([key]) => !key.startsWith("GIT_")));
+		const env = withoutGitVariables(environment);
 		const reported = await new Promise<string>((done, fail) =>
 			execFile(
 				"git",

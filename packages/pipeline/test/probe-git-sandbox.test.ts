@@ -50,11 +50,14 @@ async function probed(
 	}
 }
 
-// Runs git in a fresh repository under the probe's temporary directory, with no variable of git's own.
+// Runs git in a fresh repository under the probe's temporary directory, with no variable of git's own but the one
+// Melian's git keeps, GIT_CONFIG_NOSYSTEM, which a probe on a host with no system configuration is given.
 const repository = `import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")));
+const env = Object.fromEntries(
+	Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_") || key === "GIT_CONFIG_NOSYSTEM"),
+);
 export const scratch = mkdtempSync(join(process.env.TMPDIR, "repository-"));
 export const git = (...args) =>
 	execFileSync("git", ["-C", scratch, "-c", "user.name=probe", "-c", "user.email=probe@example.invalid", ...args], {

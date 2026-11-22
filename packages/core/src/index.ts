@@ -460,6 +460,7 @@ export {
 	gitOutput,
 	gitOutputBytes,
 	stderrLimit,
+	withoutGitVariables,
 	withoutReplacements,
 } from "./git.ts";
 export {

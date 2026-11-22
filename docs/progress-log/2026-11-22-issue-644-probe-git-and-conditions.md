@@ -7,3 +7,7 @@ A probe can now import a workspace package by name and, on macOS, run git. `prob
 The tests came first. `packages/pipeline/test/probe-git.test.ts` is the attacking review of the widened read, briefed as unit tests against a fake host, and was written before `probeGit`. The bare-import tests in `probe.test.ts` and `probe-git-sandbox.test.ts` failed with `ERR_MODULE_NOT_FOUND` without the install link, and pass with it. On Linux the git and CLI tests in `probe-git-sandbox.test.ts` passed before the change too, since only macOS lacked git; CI's macOS job runs them.
 
 [The decision](../decisions/2026-11-22-probes-run-git-and-workspace-imports.md) records the checks and what the host run must still show.
+
+## The host run
+
+The coordinator ran the real-sandbox tests on macOS at 63c2e00b2. The bare import passed. git init failed, as did the CLI review it starts, with `fatal: unable to access '/etc/gitconfig': Operation not permitted`: the file does not exist there, and the sandbox refused its open though the probe granted the path. A fix commit gives the probe's git `GIT_CONFIG_NOSYSTEM=1` when the system configuration is absent, and grants no read of it. Melian's git keeps that variable from the caller, through core's `withoutGitVariables`. `melian doctor`'s probes line now carries git's own words, without Node's stack. Each fix started with a failing test: five failed at 63c2e00b2 and pass after.

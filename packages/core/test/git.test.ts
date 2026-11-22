@@ -4,7 +4,15 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ChangesetError } from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { checkGitVersion, git, gitOutput, requireGitVersion, stderrLimit } from "../src/git.ts";
+import {
+	checkGitVersion,
+	git,
+	gitEnvironment,
+	gitOutput,
+	requireGitVersion,
+	stderrLimit,
+	withoutGitVariables,
+} from "../src/git.ts";
 import { type ProcessControl, ProcessTable } from "../src/process-tree.ts";
 import { gitIn, isolatedGitEnv, rejection, removeDirectory, temporaryDirectory } from "./fixtures/repo.ts";
 
@@ -538,4 +546,33 @@ describe("git with a standard error past its limit", () => {
 		expect(out).toBe("gitOutputTooLarge\n");
 		expect(Date.now() - start).toBeLessThan(10_000);
 	}, 30_000);
+});
+
+describe("withoutGitVariables", () => {
+	it("keeps GIT_CONFIG_NOSYSTEM, which only takes configuration away, and drops every other GIT_ variable", () => {
+		expect(
+			withoutGitVariables({
+				PATH: "/bin",
+				GIT_CONFIG_NOSYSTEM: "1",
+				GIT_DIR: "/elsewhere",
+				GIT_CONFIG_SYSTEM: "/tmp/config",
+				GIT_CONFIG_GLOBAL: "/tmp/global",
+				GIT_CONFIG_NOSYSTEMX: "1",
+				XGIT_CONFIG_NOSYSTEM: "1",
+			}),
+		).toEqual({ PATH: "/bin", GIT_CONFIG_NOSYSTEM: "1", XGIT_CONFIG_NOSYSTEM: "1" });
+	});
+});
+
+describe("gitEnvironment and GIT_CONFIG_NOSYSTEM", () => {
+	it("keeps the caller's GIT_CONFIG_NOSYSTEM, so git under it reads no system configuration", async () => {
+		const before = process.env.GIT_CONFIG_NOSYSTEM;
+		process.env.GIT_CONFIG_NOSYSTEM = "1";
+		try {
+			expect(gitEnvironment().GIT_CONFIG_NOSYSTEM).toBe("1");
+		} finally {
+			if (before === undefined) delete process.env.GIT_CONFIG_NOSYSTEM;
+			else process.env.GIT_CONFIG_NOSYSTEM = before;
+		}
+	});
 });

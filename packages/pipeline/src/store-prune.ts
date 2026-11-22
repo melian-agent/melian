@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { isChangesetId, withoutReplacements } from "@melian-agent/core";
+import { isChangesetId, withoutGitVariables, withoutReplacements } from "@melian-agent/core";
 import { running, scratchName } from "./cache-scratch.ts";
 import { evidenceRound } from "./evidence.ts";
 import { GraphCache } from "./graph-cache.ts";
@@ -168,9 +168,7 @@ export class StorePrune {
 			);
 		const now = options.now ?? Date.now();
 		// A ref under refs/replace would resolve a live commit to another tree, and prune would remove the live tree's graph.
-		const env = withoutReplacements(
-			Object.fromEntries(Object.entries(options.env ?? process.env).filter(([name]) => !name.startsWith("GIT_"))),
-		);
+		const env = withoutReplacements(withoutGitVariables(options.env ?? process.env));
 		const { heads, live } = await worktrees(repoRoot, env);
 		const trees = await liveTrees(repoRoot, env, heads);
 		const entries: PruneEntry[] = [];

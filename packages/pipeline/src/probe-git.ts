@@ -1,14 +1,16 @@
 import { execFile } from "node:child_process";
 import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { promisify } from "node:util";
 
 /**
  * Where a probe finds git: the directory put first on its `PATH`, and the paths it must read to run git there, or why
  * git cannot run in a probe on this host.
  */
-export type ProbeGit = { readonly bin?: string; readonly reads: readonly string[] } | { readonly unavailable: string };
+export type ProbeGit =
+	| { readonly bin?: string; readonly reads: readonly string[]; readonly noSystem?: true }
+	| { readonly unavailable: string };
 
 /** Asks the host a question by running `file` with `args`, outside any sandbox, and answers its standard output. */
 export type HostAsk = (file: string, args: readonly string[]) => Promise<string>;
@@ -24,7 +26,9 @@ const askHost: HostAsk = async (file, args) =>
  * Where git lives for a probe on `platform`. On Linux it is among the system's programs, which a probe already reads.
  * On macOS `/usr/bin/git` is a launcher that cannot run in the sandbox, so the host is asked where the developer tools'
  * own git lives before the sandbox starts. A probe may then read that git's programs, its own files and its system
- * configuration, each inside the developer directory but the configuration, and none in the reviewer's home.
+ * configuration, each inside the developer directory but the configuration, and none in the reviewer's home. Where that
+ * configuration does not exist, `noSystem` tells the probe's git to skip it, since the sandbox refuses an open of the
+ * absent file as not permitted, which git treats as fatal.
  */
 export async function probeGit(
 	platform: "darwin" | "linux",
@@ -47,8 +51,9 @@ export async function probeGit(
 		const system = await answer(ask, git, ["var", "GIT_CONFIG_SYSTEM"]).catch((error: unknown) => {
 			throw new Error(`git var GIT_CONFIG_SYSTEM did not answer, as git before 2.42 does not: ${message(error)}`);
 		});
+		if (!existsSync(system)) return { bin, reads: [bin, exec, share], noSystem: true };
 		// A link at the configuration's path is followed to what it names, which the sandbox would read through it.
-		const systemReal = existsSync(system) ? real(system) : join(real(dirname(system)), basename(system));
+		const systemReal = real(system);
 		const where = [system, systemReal].find(
 			(path) => isDirectory(path) || holds(reviewer, path) || holds(path, reviewer),
 		);

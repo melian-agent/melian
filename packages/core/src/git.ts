@@ -74,6 +74,16 @@ export function gitEnvironment(): NodeJS.ProcessEnv {
 }
 
 /**
+ * Returns `env` without git's own variables, but `GIT_CONFIG_NOSYSTEM`, which only takes configuration away: a probe on
+ * a host with no system configuration sets it, since the sandbox refuses git's open of the absent file.
+ */
+export function withoutGitVariables(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+	return Object.fromEntries(
+		Object.entries(env).filter(([name]) => !name.startsWith("GIT_") || name === "GIT_CONFIG_NOSYSTEM"),
+	);
+}
+
+/**
  * Returns `env` with git's replacement objects turned off: a ref under refs/replace puts another object behind an ID, so
  * a commit Melian names could show a different tree. Git 2.40 and 2.41 let `core.useReplaceRefs` in a repository's
  * configuration outrank `GIT_NO_REPLACE_OBJECTS`, so the setting is pinned too, in `GIT_CONFIG_PARAMETERS`, which git
