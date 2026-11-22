@@ -43,9 +43,14 @@ export class MissLines {
 		);
 	}
 
-	/** Whether `stage` is a lens run whose stored coverage holds the file. */
+	/** Whether `stage` is a lens run, other than a prober, whose stored coverage holds the file. */
 	covers(stage: Stage): boolean {
-		return stage.name === "melian.lens" && stage.coverage !== undefined && lensCovers(stage.coverage, this.file);
+		return (
+			stage.name === "melian.lens" &&
+			stage.role !== "prober" &&
+			stage.coverage !== undefined &&
+			lensCovers(stage.coverage, this.file)
+		);
 	}
 
 	/** Whether `stage`'s prompt carried the file's diff whole. */

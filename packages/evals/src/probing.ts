@@ -440,11 +440,7 @@ export class Miss {
 		const unseen: MissUnseen[] = [];
 		for (const lens of lenses) {
 			const scoped = run.telemetry.stages.filter(
-				(stage) =>
-					stage.subject.startsWith(`${lens}@`) &&
-					stage.role !== "prober" &&
-					stage.outcome === "completed" &&
-					lines.covers(stage),
+				(stage) => stage.subject.startsWith(`${lens}@`) && stage.outcome === "completed" && lines.covers(stage),
 			);
 			const seen = scoped.some((stage) => lines.saw(stage));
 			if (seen) return undefined;
