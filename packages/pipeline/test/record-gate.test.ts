@@ -264,6 +264,31 @@ describe("the merge gate over a changeset's records", () => {
 		expect([outcome.passes(), outcome.verdict.status, rule(outcome)]).toEqual([true, "passed", []]);
 	});
 
+	it("holds a pre-existing finding the merge's own round resolves acknowledge, in a file the change leaves alone", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		const { verdict } = await review(store, "main...feature", blocks("src/u.ts"));
+		expect(verdict.findings.acknowledge.map(({ properties }) => properties.path)).toEqual(["src/u.ts"]);
+		const outcome = await gate(await listed(store));
+
+		expect([outcome.passes(), outcome.verdict.status, rule(outcome)]).toEqual([
+			false,
+			"findings",
+			[["src/u.ts", "acknowledge"]],
+		]);
+	});
+
+	it("drops a stacked parent's pre-existing finding in a file the merge's diff leaves alone", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  preExisting:", "    P1: acknowledge"));
+		const store = exported();
+		await at("main", older, () => review(store, "main...feature", blocks("src/u.ts")));
+		await review(store, "main...feature");
+		const outcome = await gate(await listed(store));
+
+		expect(outcome.rounds).toHaveLength(2);
+		expect([outcome.passes(), outcome.verdict.status, rule(outcome)]).toEqual([true, "passed", []]);
+	});
+
 	it("counts no round of an earlier head", async () => {
 		const store = exported();
 		await review(store, "main...feature", blocks());

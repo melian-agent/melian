@@ -49,8 +49,8 @@ const strictness: readonly Resolution[] = ["block", "acknowledge", "advisory", "
 
 /**
  * The merge gate's answer for one head against one base tip, from a changeset's shared records alone. It counts every
- * round at the head whose base the base tip holds, and every such round's findings on the merge's diff, decided under
- * the base tip's policy, so a round that reads not reviewed still hands its findings over. A finding is dismissed only
+ * round at the head whose base the base tip holds, and its findings decided under the base tip's policy: every finding
+ * of a round of the merge's own diff, and of any other round only those on the merge's diff, so a round that reads not reviewed still hands its findings over. A finding is dismissed only
  * when every counted round that sighted it holds a dismissal of it. Coverage comes only from a round of exactly the
  * merge's diff whose records stand as reviewed under the base tip's policy and tier, and whose verifier ran when its
  * account names one, and a lens only when it ran at least at the floor the base tip sets for it. A required check no such round ran leaves the gate not reviewed. A malformed record, a round that names a record the set lacks, and a counted round
@@ -121,7 +121,7 @@ export class RecordGate {
 		const rounds: GateRound[] = [];
 		const ended: EndedDismissal[] = [];
 		const unjudged: UnjudgedDismissal[] = [];
-		const verdicts: Verdict[] = [];
+		const verdicts: { verdict: Verdict; own: boolean }[] = [];
 		const covered = new Set<string>();
 		for (const round of counted) {
 			const read = RecordedRound.of(records, round.id, context.counts);
@@ -134,7 +134,7 @@ export class RecordGate {
 				failures.push(`round ${round.id} ${findings.refused}`);
 				continue;
 			}
-			verdicts.push(findings);
+			verdicts.push({ verdict: findings, own: round.revision === gate });
 			const contents = read.contents(own);
 			if (!("refused" in contents)) {
 				ended.push(...contents.ended);
@@ -178,9 +178,14 @@ export class RecordGate {
 		);
 	}
 
-	// One verdict of every round's findings on `paths`: a finding counts at its strictest resolution in any round, and is
-	// dismissed only when no round holds it live and some round dismissed it.
-	static #merged(verdicts: readonly Verdict[], paths: readonly string[], notRun: CheckRecord[]): Verdict {
+	// One verdict of every round's findings: a finding counts at its strictest resolution in any round, and is dismissed
+	// only when no round holds it live and some round dismissed it. A round of another revision, such as a stacked
+	// parent's, hands over only its findings on `paths`; the merge's own round hands over every finding.
+	static #merged(
+		verdicts: readonly { verdict: Verdict; own: boolean }[],
+		paths: readonly string[],
+		notRun: CheckRecord[],
+	): Verdict {
 		const onDiff = new Set(paths);
 		const proves = ({ properties: { path, trigger } }: ResolvedFinding) =>
 			[
@@ -189,12 +194,13 @@ export class RecordGate {
 			].some((file) => onDiff.has(file));
 		const live = new Map<string, ResolvedFinding>();
 		const dismissed = new Map<string, ResolvedFinding>();
-		for (const verdict of verdicts) {
-			for (const finding of Object.values(verdict.findings).flat().filter(proves)) {
+		for (const { verdict, own } of verdicts) {
+			const counts = (finding: ResolvedFinding) => own || proves(finding);
+			for (const finding of Object.values(verdict.findings).flat().filter(counts)) {
 				const held = live.get(finding.id);
 				if (held === undefined || RecordGate.#stricter(finding, held)) live.set(finding.id, finding);
 			}
-			for (const finding of verdict.dismissed.filter(proves))
+			for (const finding of verdict.dismissed.filter(counts))
 				if (!dismissed.has(finding.id)) dismissed.set(finding.id, finding);
 		}
 		for (const id of live.keys()) dismissed.delete(id);
