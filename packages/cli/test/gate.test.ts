@@ -317,19 +317,23 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		await relay(check, account, round);
 		const decide = RecordGate.decide.bind(RecordGate);
 		const refused = { refused: "reviewed base..head, not this merge's tip..head" };
-		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) =>
-			Object.assign(Object.create(RecordGate.prototype), await decide(...args), {
+		const unverified = { refused: "did not run its verifier, so not every finding it raised was judged" };
+		vi.spyOn(RecordGate, "decide").mockImplementation(async (...args) => {
+			const decided = await decide(...args);
+			return Object.assign(Object.create(RecordGate.prototype), decided, {
 				rounds: [
 					{ id: "r1", revision: "base..head", covers: refused, sound: true },
 					{ id: "r2", revision: "base..head", covers: refused, sound: false },
+					{ id: "r3", revision: decided.rounds[0]!.revision, covers: unverified, sound: false },
 				],
-			}),
-		);
+			});
+		});
 		await gate();
 		vi.restoreAllMocks();
-		expect(err().split("\n").slice(0, 2)).toEqual([
+		expect(err().split("\n").slice(0, 3)).toEqual([
 			"melian: round r1 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Its verifier's verdicts stand",
 			"melian: round r2 counts for its findings and covers no check: it reviewed base..head, not this merge's tip..head. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one. It reviewed another revision of this head, and a dismissal holds only at the revision it was made at, so no dismissal at this head clears one: today only a push, which starts a new head, clears it",
+			"melian: round r3 counts for its findings and covers no check: it did not run its verifier, so not every finding it raised was judged. Like a round whose verifier did not finish, it lowers nothing: its findings count as no verifier judged them, uncapped, and no later round's verdict clears one: to answer one, push a fix or dismiss it",
 		]);
 	});
 
