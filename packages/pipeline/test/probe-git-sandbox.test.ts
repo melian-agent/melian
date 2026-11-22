@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -91,6 +91,32 @@ describe.skipIf(!availability.available && !required)(
 			expect([result.exitCode, result.output]).toEqual([0, "head\nbase\n"]);
 			expect(await Probe.gitAvailability()).toEqual({ available: true });
 		});
+
+		// The probe reads git's exec path alone, so the developer tools' compilers and interpreters stay out of reach.
+		it.skipIf(process.platform !== "darwin")(
+			"cannot run clang, cc, make or python3, by name or from the developer tools",
+			{ timeout: 120_000 },
+			async () => {
+				const developer = execFileSync("xcode-select", ["-p"], { encoding: "utf8" }).trim();
+				const tools = ["clang", "cc", "make", "python3"].filter((tool) =>
+					existsSync(join(developer, "usr", "bin", tool)),
+				);
+				expect(tools).toContain("clang");
+				const commit = committed(worktree);
+				const script = `import { spawnSync } from "node:child_process";
+const ran = ${JSON.stringify(tools.flatMap((tool) => [tool, join(developer, "usr", "bin", tool)]))}.map((file) => {
+	const done = spawnSync(file, ["--version"], { encoding: "utf8" });
+	return [file, done.status === 0 && done.error === undefined];
+});
+console.log(JSON.stringify(ran));
+`;
+				const result = await probed({ script }, { checkout: worktree, commit });
+				expect(result.exitCode, result.output).toBe(0);
+				const ran = JSON.parse(result.output) as [string, boolean][];
+				expect(ran).toHaveLength(tools.length * 2);
+				expect(ran.filter(([, ok]) => ok)).toEqual([]);
+			},
+		);
 
 		it("imports a workspace package by name, from its source under the policy's condition", {
 			timeout: 120_000,

@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -28,8 +28,13 @@ beforeEach(() => {
 	])
 		mkdirSync(path, { recursive: true });
 	writeFileSync(git, "");
+	writeFileSync(join(exec(), "git"), "", { mode: 0o755 });
 	writeFileSync(config, "");
 });
+
+function exec(): string {
+	return join(developer, "usr", "libexec", "git-core");
+}
 
 afterEach(() => {
 	rmSync(root, { recursive: true, force: true });
@@ -63,15 +68,10 @@ function host(answers: Partial<Record<"developer" | "git" | "exec" | "config", s
 }
 
 describe("probeGit", () => {
-	it("grants the developer tools' git, its own files and its system configuration, and nothing else", async () => {
+	it("grants git's exec path, its own files and its system configuration, and nothing else", async () => {
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
-			bin: join(developer, "usr", "bin"),
-			reads: [
-				join(developer, "usr", "bin"),
-				join(developer, "usr", "libexec", "git-core"),
-				join(developer, "usr", "share", "git-core"),
-				config,
-			],
+			bin: exec(),
+			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core"), config],
 		});
 	});
 
@@ -96,9 +96,8 @@ describe("probeGit", () => {
 		symlinkSync(real, join(root, "etc-link"));
 		const found = await probeGit("darwin", host({ config: join(root, "etc-link", "gitconfig") }).ask, home);
 		expect(found).toEqual({
-			bin: join(developer, "usr", "bin"),
+			bin: exec(),
 			reads: [
-				join(developer, "usr", "bin"),
 				join(developer, "usr", "libexec", "git-core"),
 				join(developer, "usr", "share", "git-core"),
 				join(root, "etc-link", "gitconfig"),
@@ -111,12 +110,8 @@ describe("probeGit", () => {
 		rmSync(config);
 		// The sandbox refuses an open of the absent file as not permitted, which git treats as fatal, as no such file is not.
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
-			bin: join(developer, "usr", "bin"),
-			reads: [
-				join(developer, "usr", "bin"),
-				join(developer, "usr", "libexec", "git-core"),
-				join(developer, "usr", "share", "git-core"),
-			],
+			bin: exec(),
+			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
 			noSystem: true,
 		});
 	});
@@ -125,11 +120,7 @@ describe("probeGit", () => {
 		rmSync(config);
 		symlinkSync(join(root, "etc", "absent"), config);
 		expect(await probeGit("darwin", host().ask, home)).toMatchObject({
-			reads: [
-				join(developer, "usr", "bin"),
-				join(developer, "usr", "libexec", "git-core"),
-				join(developer, "usr", "share", "git-core"),
-			],
+			reads: [join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
 			noSystem: true,
 		});
 	});
@@ -208,6 +199,28 @@ describe("probeGit", () => {
 			const link = join(developer, "usr", "libexec", "linked-core");
 			symlinkSync(home, link);
 			expect(await probeGit("darwin", host({ exec: link }).ask, home)).toEqual(refused);
+		});
+
+		it("an exec path with no git of its own", async () => {
+			rmSync(join(exec(), "git"));
+			expect(await probeGit("darwin", host().ask, home)).toEqual({
+				unavailable: expect.stringContaining("holds no git program of its own"),
+			});
+		});
+
+		it("an exec path whose git links to the developer tools' bin, which holds compilers", async () => {
+			rmSync(join(exec(), "git"));
+			symlinkSync(git, join(exec(), "git"));
+			chmodSync(git, 0o755);
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+		});
+
+		it("an exec path whose git is not a program", async () => {
+			chmodSync(join(exec(), "git"), 0o644);
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+			rmSync(join(exec(), "git"));
+			mkdirSync(join(exec(), "git"));
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
 		});
 
 		it("an exec path at the developer directory itself", async () => {

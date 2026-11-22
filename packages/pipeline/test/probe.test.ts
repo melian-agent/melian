@@ -1744,8 +1744,8 @@ describe("RuntimeSandbox", () => {
 describe("a probe's git and Node conditions", () => {
 	const developer = "/Library/Developer/CommandLineTools";
 	const found: ProbeGit = {
-		bin: `${developer}/usr/bin`,
-		reads: [`${developer}/usr/bin`, `${developer}/usr/libexec/git-core`, "/etc/gitconfig"],
+		bin: `${developer}/usr/libexec/git-core`,
+		reads: [`${developer}/usr/libexec/git-core`, `${developer}/usr/share/git-core`, "/etc/gitconfig"],
 	};
 
 	async function seen(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}) {
@@ -1765,7 +1765,7 @@ describe("a probe's git and Node conditions", () => {
 		const own = (read: readonly string[]) =>
 			read.map((path) => path.replace(/\/melian-probe-[A-Za-z0-9]{6}\//, "/scratch/"));
 		expect(own(policy.read)).toEqual([...own(plain.policy.read), ...found.reads]);
-		expect(result.output).toBe(`${dirname(process.execPath)}:${developer}/usr/bin:/usr/bin:/bin\n`);
+		expect(result.output).toBe(`${dirname(process.execPath)}:${developer}/usr/libexec/git-core:/usr/bin:/bin\n`);
 		expect(plain.result.output).toBe(`${dirname(process.execPath)}:/usr/bin:/bin\n`);
 	});
 
