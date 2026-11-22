@@ -6,7 +6,7 @@ import { ChangesetError, type GitResult, git, ProcessTable, RecordError, stderrL
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 import type { Deadline } from "./deadline.ts";
 import { Owner, type Processes } from "./owner.ts";
-import { listingLimit } from "./state-tree.ts";
+import { listingLimit } from "./tip-size.ts";
 
 // Settings that would run a program, set on every command so that no configuration of the user's or this repository's
 // turns them back on. The configuration check covers the keys a command line cannot clear, such as a credential helper
@@ -400,13 +400,22 @@ export class RecordRepository {
 
 	// Every file of `treeish`'s tree, by its raw path, or undefined when the listing runs past `maxBytes`.
 	async entries(treeish: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
+		return (await this.listing(treeish, deadline, maxBytes))?.entries;
+	}
+
+	// Every file of `treeish`'s tree and the bytes git listed them in, or undefined when the listing runs past `maxBytes`.
+	async listing(
+		treeish: string,
+		deadline: Deadline,
+		maxBytes: number,
+	): Promise<{ entries: TreeEntry[]; bytes: number } | undefined> {
 		return this.#list(["ls-tree", "-r", "-z", "--full-tree", treeish], treeish, deadline, maxBytes);
 	}
 
 	// The entries directly inside `treeish`, files and trees, by their raw names, or undefined when the listing runs past
 	// `maxBytes`.
 	async children(treeish: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
-		return this.#list(["ls-tree", "-z", "--full-tree", treeish], treeish, deadline, maxBytes);
+		return (await this.#list(["ls-tree", "-z", "--full-tree", treeish], treeish, deadline, maxBytes))?.entries;
 	}
 
 	async #list(
@@ -414,7 +423,7 @@ export class RecordRepository {
 		treeish: string,
 		deadline: Deadline,
 		maxBytes: number,
-	): Promise<TreeEntry[] | undefined> {
+	): Promise<{ entries: TreeEntry[]; bytes: number } | undefined> {
 		const result = await this.run(args, deadline, { maxBytes });
 		if (result.truncated) return undefined;
 		if (result.code !== 0) throw unreachable(`listing ${treeish} failed in ${this.path}`, result);
@@ -428,7 +437,7 @@ export class RecordRepository {
 			const [mode, type, oid] = line.subarray(0, tab).toString("latin1").split(" ") as [string, string, string];
 			entries.push({ mode, type, oid, path: Buffer.from(line.subarray(tab + 1)) });
 		}
-		return entries;
+		return { entries, bytes: bytes.length };
 	}
 
 	// The parents of `commit`, in order.

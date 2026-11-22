@@ -331,6 +331,19 @@ describe("reading the objects themselves", { timeout: 60_000 }, () => {
 		expect(await repository.entries(tip, time(), listingLimit)).toEqual(genuine);
 	});
 
+	it("answers no entries, children or listing for a tree whose listing runs past its bytes", async () => {
+		const { repository, tip } = await fetched();
+		const listing = await repository.listing(tip, time(), listingLimit);
+		expect(listing?.entries.length).toBeGreaterThan(0);
+		expect(await repository.entries(tip, time(), listingLimit)).toEqual(listing?.entries);
+		expect(await repository.listing(tip, time(), 1)).toBeUndefined();
+		expect(await repository.entries(tip, time(), 1)).toBeUndefined();
+		expect(await repository.children(tip, time(), 1)).toBeUndefined();
+		expect((await repository.children(tip, time(), listingLimit))?.map((entry) => entry.path.toString())).toEqual([
+			"changesets",
+		]);
+	});
+
 	it("answers ancestry from the commits themselves when records.git holds a grafts file", async () => {
 		const { repository, tip } = await fetched();
 		const stranger = forged(repository);

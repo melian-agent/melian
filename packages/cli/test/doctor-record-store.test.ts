@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { ProcessTable } from "@melian-agent/core";
 import * as pipeline from "@melian-agent/pipeline";
-import { GitRecordStore } from "@melian-agent/state-git";
+import { GitRecordStore, TipSize } from "@melian-agent/state-git";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isolatedGitEnv } from "../../core/test/fixtures/repo.ts";
 import { check, Remote } from "../../state-git/test/fixtures/remote.ts";
@@ -356,5 +356,101 @@ describe("doctor's record store line", { timeout: 60_000 }, () => {
 		} as unknown as GitRecordStore);
 		expect(await doctor(io)).toBe(0);
 		expect(line()).toBe(`ok records ${clean}; ${writersTrusted("origin/main", trusted)}`);
+	});
+});
+
+const sizeLine = () =>
+	output
+		.split("\n")
+		.find((row) => /^\S+\s+tip size\s/.test(row))
+		?.replace(/^(\S+)\s+tip size\s+/, "$1 tip size ");
+// Empty files outside every changeset's folder, which count as entries and hold no record bytes.
+const noise = (count: number) =>
+	Object.fromEntries(Array.from({ length: count }, (_, n) => [`noise/${n}`, { bytes: "" }] as const));
+
+describe("doctor's tip size line", { timeout: 300_000 }, () => {
+	it("leaves the line out with no origin", async () => {
+		await doctor(io);
+		expect(sizeLine()).toBeUndefined();
+	});
+
+	it("prints the tip's size beside each limit below half of every one, after the records line", async () => {
+		origin(remote.url);
+		await (await remote.open()).add([check("a")]);
+		expect(await doctor(io)).toBe(0);
+		expect(sizeLine()).toBe(
+			"ok tip size melian/state: 1 of 65,536 entries, 0 MiB of 256 MiB, listing 0 MiB of 64 MiB",
+		);
+		const rows = output.split("\n");
+		expect(rows.findIndex((row) => /^\S+\s+tip size\s/.test(row))).toBe(
+			rows.findIndex((row) => /^\S+\s+records\s/.test(row)) + 1,
+		);
+	});
+
+	it("warns of none at exactly half the entry limit, and names the entries one past it", async () => {
+		origin(remote.url);
+		remote.plant(noise(32_768));
+		await doctor(io);
+		expect(sizeLine()).toMatch(/^ok tip size melian\/state: 32,768 of 65,536 entries, /);
+		remote.plant({ late: { bytes: "" } });
+		output = "";
+		expect(await doctor(io)).toBe(0);
+		expect(sizeLine()).toMatch(
+			/^warn tip size melian\/state: 32,769 of 65,536 entries, \d+ MiB of 256 MiB, listing \d+ MiB of 64 MiB; melian\/state is past half its entry limit: 32,769 of 65,536\. Nothing removes records from melian\/state yet; https:\/\/github\.com\/melian-agent\/melian\/issues\/617 adds the prune\.$/,
+		);
+	});
+
+	it("prints the totals beside the records line's refusal on a tip past a limit", async () => {
+		origin(remote.url);
+		remote.plant(noise(65_537));
+		expect(await doctor(io)).toBe(0);
+		expect(line()).toMatch(
+			/^warn records melian\/state holds 65537 entries at its tip, past the store's limit of 65536; /,
+		);
+		expect(sizeLine()).toMatch(
+			/^warn tip size melian\/state: 65,537 of 65,536 entries, .*; melian\/state is past its entry limit: 65,537 of 65,536\. /,
+		);
+	});
+
+	it("warns, and says why nothing is counted, on a tip whose listing is too large to read", async () => {
+		origin(remote.url);
+		vi.spyOn(GitRecordStore.prototype, "size").mockResolvedValue(TipSize.unlisted());
+		expect(await doctor(io)).toBe(0);
+		expect(sizeLine()).toBe(
+			"warn tip size melian/state: listing more than 64 MiB of 64 MiB, so its entries and bytes are not counted; melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.",
+		);
+	});
+
+	it("warns that the size could not be read when the remote cannot be", async () => {
+		origin(`file://${join(directory, "absent.git")}`);
+		expect(await doctor(io)).toBe(0);
+		expect(sizeLine()).toMatch(
+			/^warn tip size melian\/state's size could not be read: fetching melian\/state from the clone's origin failed, git exit \d+; /,
+		);
+	});
+
+	it("warns that the size could not be read when the store's own repository cannot be opened", async () => {
+		origin(remote.url);
+		const state = await stateDirectory(repo, io.env);
+		mkdirSync(state, { recursive: true });
+		writeFileSync(join(state, "records.git"), "");
+		await doctor(io);
+		expect(sizeLine()).toMatch(
+			/^warn tip size melian\/state's size could not be read: .*records\.git is not a directory/,
+		);
+	});
+
+	it("reads the size when the strays cannot be read, and the strays when the size cannot", async () => {
+		origin(remote.url);
+		const strays = vi.spyOn(GitRecordStore.prototype, "strays").mockRejectedValue(new Error("strays failed"));
+		await doctor(io);
+		expect(line()).toMatch(/^warn records strays failed; /);
+		expect(sizeLine()).toMatch(/^ok tip size melian\/state: 0 of 65,536 entries/);
+		strays.mockRestore();
+		vi.spyOn(GitRecordStore.prototype, "size").mockRejectedValue(new Error("size failed"));
+		output = "";
+		await doctor(io);
+		expect(line()).toMatch(/^ok records /);
+		expect(sizeLine()).toBe("warn tip size melian/state's size could not be read: size failed");
 	});
 });

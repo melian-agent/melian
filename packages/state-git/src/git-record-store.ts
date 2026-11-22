@@ -18,6 +18,7 @@ import { type Clock, Deadline, systemClock } from "./deadline.ts";
 import type { Processes } from "./owner.ts";
 import { RecordRepository, type Sweep, type TreeChange } from "./repository.ts";
 import { type Cell, cellBytes, cellPath, type Judged, StateTree } from "./state-tree.ts";
+import { TipSize } from "./tip-size.ts";
 
 /** Where a {@link GitRecordStore} keeps its repository and which branch of which remote it holds. */
 export type GitRecordStoreOptions = {
@@ -251,6 +252,19 @@ export class GitRecordStore implements RecordStore {
 		const deadline = this.#deadline();
 		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
 		return tip === undefined ? new Map() : StateTree.folders(this.#repository, tip, deadline);
+	}
+
+	/**
+	 * How much the branch's tip holds against the store's three limits, counted from its listing and its blobs' sizes
+	 * without reading a blob, as every read counts it first. It answers on a tip past a limit. Reads and never pushes.
+	 */
+	async size(): Promise<TipSize> {
+		if (this.#closed) throw new RecordError("closed", "the record store is closed");
+		const deadline = this.#deadline();
+		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+		return tip === undefined
+			? TipSize.of({ entries: 0, recordBytes: 0, listingBytes: 0 })
+			: StateTree.size(this.#repository, tip, deadline);
 	}
 
 	/**

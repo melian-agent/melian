@@ -41,7 +41,7 @@ describe("the melian round workflow", () => {
 	it("sets up Node 24 in every job before a step runs node, at the round job's pin", () => {
 		const setups = steps.filter((step) => step.uses?.startsWith("actions/setup-node@"));
 		expect(setups.map((step) => [step.job, step.uses, step.with["node-version"]])).toEqual(
-			["gate", "round", "record", "report"].map((job) => [
+			["gate", "round", "record", "size", "report"].map((job) => [
 				job,
 				"actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
 				24,
@@ -66,7 +66,7 @@ describe("the melian round workflow", () => {
 		expect(drawn.run).toContain('openssl rand -hex 16 > "$RUNNER_TEMP/public/nonce"');
 		// The pending job hands the report the ID of the status it set, as a job output a report-only rerun keeps.
 		expect(workflow.jobs.pending.outputs).toEqual({ status: actions("steps.post.outputs.id") });
-		expect(workflow.jobs.report.needs).toEqual(["gate", "pending", "round"]);
+		expect(workflow.jobs.report.needs).toEqual(["gate", "pending", "round", "size"]);
 		// The status step reads the pull request's base policy, so the report job's checkout holds the history.
 		const checkout = workflow.jobs.report.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
 		expect(checkout.with).toEqual({ "fetch-depth": 0, "persist-credentials": false });
@@ -1099,6 +1099,161 @@ describe("the melian round workflow", () => {
 		}
 	});
 
+	it("reads melian/state's size in a job of its own, with the default branch's build, holding no token", () => {
+		const job = workflow.jobs.size;
+		expect([job.needs, job.if, job.environment, job.permissions, job.outputs]).toEqual([
+			["gate"],
+			"needs.gate.result == 'success'",
+			undefined,
+			{ contents: "read" },
+			{ counts: actions("steps.size.outputs.counts") },
+		]);
+		expect(JSON.stringify(job)).not.toMatch(/secrets\.|github\.token|GH_TOKEN|GITHUB_TOKEN/);
+		const checkout = job.steps.find((step) => step.uses?.startsWith("actions/checkout@"));
+		expect(checkout.with).toEqual({ "persist-credentials": false });
+		const read = job.steps.find((step) => step.name === "Read melian/state's size");
+		expect([read.id, read["continue-on-error"], read["timeout-minutes"], read.env]).toEqual([
+			"size",
+			true,
+			2,
+			undefined,
+		]);
+		expect(job.steps.indexOf(read)).toBeGreaterThan(
+			job.steps.findIndex((step) => step.run === "npm ci --ignore-scripts"),
+		);
+		expect(workflow.jobs.report.needs).toContain("size");
+		const write = workflow.jobs.report.steps.findIndex((step) => step.name === "Write melian/state's size");
+		expect(workflow.jobs.report.steps[write]).toEqual({
+			name: "Write melian/state's size",
+			env: { SIZE: actions("needs.size.outputs.counts") },
+			run: `printf '%s' "$SIZE" > "$RUNNER_TEMP/size.json"`,
+		});
+		expect(workflow.jobs.report.steps[write + 1].name).toBe("Comment on the pull request");
+		expect(workflow.jobs.report.steps[write + 1].run).toContain('--size "$RUNNER_TEMP/size.json"');
+		expect(steps.filter((step) => JSON.stringify(step).includes("records size")).map((step) => step.job)).toEqual([
+			"size",
+		]);
+	});
+
+	it("passes on a line of counts alone from the size step, and nothing a hostile size could print", () => {
+		const { run } = workflow.jobs.size.steps.find((step) => step.name === "Read melian/state's size");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			// A fake node prints what the test names, as `melian records size --json` would.
+			writeFileSync(join(dir, "node"), '#!/bin/sh\nprintf "%s" "$PRINT"\n');
+			chmodSync(join(dir, "node"), 0o755);
+			const output = join(dir, "output");
+			const step = (print) => {
+				writeFileSync(output, "");
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						GITHUB_OUTPUT: output,
+						PRINT: print,
+					},
+				});
+				return [ran.status, ran.stdout, readFileSync(output, "utf8")];
+			};
+			const counts = JSON.stringify({ entries: 1, recordBytes: 2, listingBytes: 3 });
+			expect(step(counts)).toEqual([0, "", `counts=${counts}\n`]);
+			expect(step('{"listingPastLimit":true}')).toEqual([0, "", 'counts={"listingPastLimit":true}\n']);
+			const at = `{"entries":${"1".repeat(200 - 45)},"recordBytes":2,"listingBytes":3}`;
+			expect(at.length).toBe(200);
+			expect(step(at)).toEqual([0, "", `counts=${at}\n`]);
+			const refused = [0, "::error::melian records size wrote something other than a line of counts\n", ""];
+			expect(step(`{"entries":${"1".repeat(201 - 45)},"recordBytes":2,"listingBytes":3}`)).toEqual([
+				1,
+				...refused.slice(1),
+			]);
+			for (const hostile of [
+				`${counts}\nother=injected`,
+				`{"entries":1}\n::notice::injected`,
+				'{"note":"$(touch pwned)"}',
+				'{"note":"$(id)"}',
+				'{"note":"$HOME"}',
+				'{"note":"a b"}',
+				'{"note":"@everyone"}',
+				"",
+			])
+				expect([hostile, ...step(hostile)]).toEqual([hostile, 1, ...refused.slice(1)]);
+			expect(existsSync(join(dir, "pwned"))).toBe(false);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("posts melian/state's size past half a limit, and says when it could not be read, and posts either way", () => {
+		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
+		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
+		try {
+			const base = "b".repeat(40);
+			const head = "1".repeat(40);
+			const mergeBase = "e".repeat(40);
+			// A fake gh answers only the fresh read of the pull request, the comment listing, and the post with the status token,
+			// which it keeps.
+			writeFileSync(
+				join(dir, "gh"),
+				[
+					"#!/bin/sh",
+					'if [ "$*" = "api repos/o/r/pulls/7 --jq .base.sha + \\" \\" + .head.sha" ]; then echo "$NOW"; exit; fi',
+					'[ "$1 $2 $3" = "api --paginate repos/o/r/issues/7/comments?per_page=100" ] && exit 0',
+					'[ "$1 $2 $3 $4 $5" = "api -X POST repos/o/r/issues/7/comments -F" ] && [ "$GH_TOKEN" = status-token ] && cp "$(printf %s "$6" | sed s/^body=@//)" "$POSTED" && exit 0',
+					"exit 1",
+					"",
+				].join("\n"),
+			);
+			chmodSync(join(dir, "gh"), 0o755);
+			const round = join(dir, "round");
+			mkdirSync(round);
+			const verdict = { status: "passed", blocking: false, findings: { block: [], acknowledge: [] }, notRun: [] };
+			writeFileSync(join(round, "verdict.json"), JSON.stringify(verdict));
+			writeFileSync(join(round, "rounds.json"), JSON.stringify([{ base: mergeBase, head }]));
+			writeFileSync(join(round, "exit"), "0\n");
+			writeFileSync(join(round, "merge-base"), `${mergeBase}\n`);
+			writeFileSync(join(round, "nonce"), "0123456789abcdef0123456789abcdef\n");
+			const posted = join(dir, "posted.md");
+			const step = (size) => {
+				rmSync(posted, { force: true });
+				rmSync(join(dir, "size.json"), { force: true });
+				if (size !== undefined) writeFileSync(join(dir, "size.json"), size);
+				const ran = spawnSync("bash", ["-e", "-c", run], {
+					cwd: fileURLToPath(new URL("..", import.meta.url)),
+					encoding: "utf8",
+					env: {
+						PATH: `${dir}:${process.env.PATH}`,
+						HOME: dir,
+						RUNNER_TEMP: dir,
+						REPOSITORY: "o/r",
+						NUMBER: "7",
+						BASE: base,
+						HEAD: head,
+						RUN_URL: "https://example.test/run",
+						RUN_ID: "9",
+						NOW: `${base} ${head}`,
+						POSTED: posted,
+						STATUS_TOKEN: "status-token",
+					},
+				});
+				expect(ran.status, ran.stderr).toBe(0);
+				return readFileSync(posted, "utf8").split("\n").slice(1).join("\n");
+			};
+			const opening = "Melian round on `bbbbbbbbbbbb`...`111111111111`, exit 0: [run](https://example.test/run)\n\n";
+			const passed = "```text\nVerdict: passed\n\nNo findings above advisory.\n```\n";
+			const half = { entries: 32_768, recordBytes: 134_217_728, listingBytes: 33_554_432 };
+			expect(step(JSON.stringify(half))).toBe(`${opening}${passed}`);
+			expect(step(JSON.stringify({ ...half, entries: 32_769 }))).toBe(
+				`${opening}melian/state is past half its entry limit: 32,769 of 65,536. Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.\n\n${passed}`,
+			);
+			for (const size of [undefined, "", "garbage", JSON.stringify({ ...half, entries: 32_769, note: "@everyone" })])
+				expect(step(size)).toBe(`${opening}melian/state's size could not be read\n\n${passed}`);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it("posts the moved notice when the pull request moved during the round, from a fresh read", () => {
 		const { run } = workflow.jobs.report.steps.find((step) => step.name === "Comment on the pull request");
 		const dir = mkdtempSync(join(tmpdir(), "round-workflow-"));
@@ -1128,6 +1283,7 @@ describe("the melian round workflow", () => {
 			writeFileSync(join(round, "exit"), "0\n");
 			writeFileSync(join(round, "merge-base"), `${mergeBase}\n`);
 			writeFileSync(join(round, "nonce"), "0123456789abcdef0123456789abcdef\n");
+			writeFileSync(join(dir, "size.json"), JSON.stringify({ entries: 1, recordBytes: 0, listingBytes: 0 }));
 			const posted = join(dir, "posted.md");
 			const step = (now) => {
 				rmSync(posted, { force: true });
@@ -1506,6 +1662,7 @@ describe("the melian round workflow", () => {
 			["gate", false],
 			["round", false],
 			["record", false],
+			["size", false],
 			["report", false],
 		]);
 	});

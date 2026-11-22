@@ -8,15 +8,9 @@ import {
 } from "@melian-agent/core";
 import type { Deadline } from "./deadline.ts";
 import type { RecordRepository, TreeEntry } from "./repository.ts";
+import { entryLimit, listingLimit, TipSize, tipLimit } from "./tip-size.ts";
 
-// The most bytes of records and cells a tip may hold, since a call holds them all in memory. Provisional until a read
-// that does not hold the whole tip replaces it.
-export const tipLimit = 256 * 1024 * 1024;
-
-// The most entries a tip may hold, since a call holds every one, and the most bytes their listing may run to, a KiB a
-// line on average, so the listing stays bounded before it is counted.
-export const entryLimit = 65_536;
-export const listingLimit = entryLimit * 1024;
+export { entryLimit, listingLimit, tipLimit };
 
 const cellName = "cell.json";
 const changesetsName = "changesets";
@@ -306,17 +300,43 @@ export class StateTree {
 			before
 				? `nothing was pushed, and retiring changesets${strays ? " or removing strays" : ""} makes room`
 				: `every call but a retirement fails, until changesets are retired${strays ? " or a writer removes strays from the branch with git" : ""}`;
-		const entries = await repository.entries(commit, deadline, listingLimit);
-		if (entries === undefined)
+		const listing = await repository.listing(commit, deadline, listingLimit);
+		if (listing === undefined)
 			throw new RecordError(
 				"unreachable",
 				`${branch} ${lists} more than ${listingLimit} bytes of entries at its tip, past the store's limit; ${remedy(true)}`,
 			);
+		const { entries } = listing;
 		if (entries.length > entryLimit)
 			throw new RecordError(
 				"unreachable",
 				`${branch} ${holds} ${entries.length} entries at its tip, past the store's limit of ${entryLimit}; ${remedy(true)}`,
 			);
+		const { small, total } = await StateTree.#sizes(repository, entries, deadline);
+		if (total > tipLimit)
+			throw new RecordError(
+				"unreachable",
+				`${branch} ${holds} ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; ${remedy(false)}`,
+			);
+		return { entries, small };
+	}
+
+	// What `commit` holds against each limit, counted as a read counts it before it reads a blob, and refused at none.
+	static async size(repository: RecordRepository, commit: string, deadline: Deadline): Promise<TipSize> {
+		const listing = await repository.listing(commit, deadline, listingLimit);
+		if (listing === undefined) return TipSize.unlisted();
+		if (listing.entries.length > entryLimit)
+			return TipSize.pastEntryLimit({ entries: listing.entries.length, listingBytes: listing.bytes });
+		const { total } = await StateTree.#sizes(repository, listing.entries, deadline);
+		return TipSize.of({ entries: listing.entries.length, recordBytes: total, listingBytes: listing.bytes });
+	}
+
+	// The sizes of the readable blobs of `entries` no larger than a record may be, and their total over every path.
+	static async #sizes(
+		repository: RecordRepository,
+		entries: readonly TreeEntry[],
+		deadline: Deadline,
+	): Promise<{ small: Map<string, number>; total: number }> {
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const sizes = await repository.sizes(readable, deadline);
 		const small = new Map(
@@ -330,12 +350,7 @@ export class StateTree {
 			(sum, entry) => sum + (StateTree.#readable(entry) ? (small.get(entry.oid) ?? 0) : 0),
 			0,
 		);
-		if (total > tipLimit)
-			throw new RecordError(
-				"unreachable",
-				`${branch} ${holds} ${total} bytes of records and cells at its tip, past the store's limit of ${tipLimit}; ${remedy(false)}`,
-			);
-		return { entries, small };
+		return { small, total };
 	}
 
 	// Only a regular file where a record or cell may sit is worth reading; everything else is a stray by its path alone.

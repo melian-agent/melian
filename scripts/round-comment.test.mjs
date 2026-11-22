@@ -141,6 +141,48 @@ describe("RoundComment", () => {
 		expect(read({ probeGaps: join(directory(), "missing.json") }).body()).toBe(plain);
 	});
 
+	it("carries melian/state's size outside the fence only past half a limit, in the store's own words", () => {
+		const size = (value) => {
+			const path = join(directory(), "size.json");
+			writeFileSync(path, typeof value === "string" ? value : JSON.stringify(value));
+			return path;
+		};
+		const plain = read().body();
+		const noted = (line) => plain.replace(`${header(2)}\n\n`, `${header(2)}\n\n${line}\n\n`);
+		const half = { entries: 32_768, recordBytes: 134_217_728, listingBytes: 33_554_432 };
+		const remedy =
+			"Nothing removes records from melian/state yet; https://github.com/melian-agent/melian/issues/617 adds the prune.";
+		expect(read({ size: size(half) }).body()).toBe(plain);
+		expect(read({ size: size({ ...half, entries: 32_769 }) }).body()).toBe(
+			noted(`melian/state is past half its entry limit: 32,769 of 65,536. ${remedy}`),
+		);
+		expect(read({ size: size({ ...half, recordBytes: 134_217_729 }) }).body()).toBe(
+			noted(`melian/state is past half its record byte limit: 134,217,729 of 268,435,456 bytes. ${remedy}`),
+		);
+		expect(read({ size: size({ ...half, listingBytes: 33_554_433 }) }).body()).toBe(
+			noted(`melian/state is past half its listing limit: 33,554,433 of 67,108,864 bytes. ${remedy}`),
+		);
+		expect(read({ size: size({ listingPastLimit: true }) }).body()).toBe(
+			noted(
+				`melian/state's listing was too large to read, past 67,108,864 bytes, so the store is past its listing limit. ${remedy}`,
+			),
+		);
+		const unread = noted("melian/state's size could not be read");
+		for (const value of [
+			"",
+			"not json",
+			"null",
+			{ ...half, entries: 32_769, note: "@everyone read https://example.test" },
+			{ ...half, entries: "32,769" },
+			{ ...half, recordBytes: -1 },
+			{ entries: 1, recordBytes: 2 },
+			{ listingPastLimit: "true" },
+		])
+			expect(read({ size: size(value) }).body(), JSON.stringify(value)).toBe(unread);
+		expect(read({ size: join(directory(), "missing.json") }).body()).toBe(unread);
+		expect(read({ size: undefined }).body()).toBe(plain);
+	});
+
 	it("reports a not-reviewed verdict as not reviewed, whatever else the run printed", () => {
 		const value = verdict({ status: "not-reviewed", notRun: [{ name: "lens.tests", status: "failed" }] });
 		expect(comment(value, "2")).toBe(
@@ -616,6 +658,13 @@ describe("the command", () => {
 		});
 		expect([probed.status, probed.stdout]).toEqual([0, read({ rounds, probeGaps: gaps }).body()]);
 		expect(probed.stdout).not.toBe(ran.stdout);
+		const size = join(directory(), "size.json");
+		writeFileSync(size, JSON.stringify({ entries: 32_769, recordBytes: 0, listingBytes: 0 }));
+		const sized = spawnSync(process.execPath, [script, ...options, ...commits, ...current, "--size", size], {
+			encoding: "utf8",
+		});
+		expect([sized.status, sized.stdout]).toEqual([0, read({ rounds, size }).body()]);
+		expect(sized.stdout).toContain(`)\n\nmelian/state is past half its entry limit: 32,769 of 65,536. `);
 		const unread = spawnSync(process.execPath, [script, ...options, ...commits], { encoding: "utf8" });
 		expect(unread.stdout).toBe(read({ rounds, current: undefined }).body());
 		const usage =

@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describeLineage, visibleText } from "../packages/core/src/render.ts";
+import { TipSize } from "../packages/state-git/src/tip-size.ts";
 
 // The access token of a Codex login, `~/.codex/auth.json` base64-encoded as this repository's `CODEX_AUTH_B64` holds
 // it. Only the access token leaves: a refresh would rotate the refresh token and break the login's other copies. Each
@@ -196,6 +197,19 @@ function readOr(path, fallback) {
 	}
 }
 
+// The comment's line for melian/state's size, from the counts `melian records size --json` wrote: none below half of
+// every limit, and the store's own warning past it. The counts are read by TipSize.parse, which takes whole numbers and
+// nothing else, so no text the branch holds reaches the comment. Counts that cannot be read get a fixed line.
+export function sizeNote(text) {
+	let size;
+	try {
+		size = TipSize.parse(JSON.parse(text));
+	} catch {
+		return "melian/state's size could not be read";
+	}
+	return size.warning();
+}
+
 // A check's route, by the fields core's CheckLineage names, so a field a later build adds stays in the job until this
 // copies it.
 function routeOf({ model, wanted, by, outside, moved, thinking }) {
@@ -340,8 +354,9 @@ const staticText = "A static check's finding; a local run shows its text.";
 // either is undefined when its read failed. Finding text comes from models that read the head, so everything after
 // the link sits inside one code fence that no backtick run in it can close.
 export class RoundComment {
-	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current, unprobed }) {
+	constructor({ verdict, exitCode, runUrl, runId, nonce, base, head, mergeBase, reviewed, current, unprobed, size }) {
 		this.verdict = verdict;
+		this.size = size;
 		this.unprobed = unprobed ?? new Set();
 		this.runId = runId;
 		this.nonce = nonce;
@@ -354,7 +369,7 @@ export class RoundComment {
 		this.current = current;
 	}
 
-	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current, probeGaps }) {
+	static read({ verdict, rounds, exitCode, runUrl, runId, nonce, base, head, mergeBase, current, probeGaps, size }) {
 		let parsed;
 		try {
 			parsed = publicVerdict(readFileSync(verdict, "utf8"));
@@ -374,13 +389,15 @@ export class RoundComment {
 			reviewed,
 			current,
 			unprobed: probeGapChecks(readOr(probeGaps, "")),
+			size: size === undefined ? undefined : sizeNote(readOr(size, "")),
 		});
 	}
 
 	body() {
 		// The exit code and commits sit outside the fence.
 		const exit = /^(\d{1,3}|none)$/.test(this.exitCode) ? this.exitCode : "unknown";
-		const header = `${marker(this.runId, this.nonce)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})`;
+		// The size line sits outside the fence too: the store's own words around whole numbers.
+		const header = `${marker(this.runId, this.nonce)}\nMelian round on ${commit(this.base)}...${commit(this.head)}, exit ${exit}: [run](${this.runUrl})${this.size === undefined ? "" : `\n\n${this.size}`}`;
 		// A round spent its time and tokens whether or not it may post its findings, so every outcome shows the spend.
 		const spent = this.verdict?.spend === undefined ? [] : [spendLine(this.verdict.spend)];
 		const unposted = (why) => `${header}\n\n${why}\n${spent.length === 0 ? "" : `\n${fenced(spent)}`}`;

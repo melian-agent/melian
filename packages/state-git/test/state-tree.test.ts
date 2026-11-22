@@ -14,7 +14,7 @@ const entry: TreeEntry = {
 function listing(entries: readonly TreeEntry[]): RecordRepository {
 	const bytes = '{"v":1,"value":"1","version":"00000000-0000-4000-8000-000000000000"}';
 	return {
-		entries: async () => [...entries],
+		listing: async () => ({ entries: [...entries], bytes: 0 }),
 		sizes: async (oids: readonly string[]) => new Map(oids.map((oid) => [oid, bytes.length])),
 		blobs: async (sizes: ReadonlyMap<string, number>) =>
 			new Map([...sizes.keys()].map((oid) => [oid, Buffer.from(bytes)])),
