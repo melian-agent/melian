@@ -501,8 +501,43 @@ jobs:
           node packages/cli/bin/melian.js records relay "#$NUMBER" --from "dir:$RUNNER_TEMP/records" \
             --expect-base "$BASE" --expect-head "$HEAD"
 
+  # melian/state's size, read apart from every login: this job declares no Environment and holds no token, since the
+  # branch is public, and it runs the default branch's build, never the head's, which could report any size. The branch
+  # is data a writer's round can grow, so its output is bounded twice: the store reads a listing of at most 64 MiB and
+  # no blob, and the step passes on only a line of JSON characters, which the report job reads as whole numbers.
+  size:
+    needs: [gate]
+    if: needs.gate.result == 'success'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      counts: ${{ steps.size.outputs.counts }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - name: Read melian/state's size
+        id: size
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
+          node packages/cli/bin/melian.js records size --json > "$RUNNER_TEMP/size.json"
+          counts=$(cat "$RUNNER_TEMP/size.json")
+          if ! [[ ${#counts} -le 200 && "$counts" =~ ^[{}\":,A-Za-z0-9]+$ ]]; then
+            echo "::error::melian records size wrote something other than a line of counts"
+            exit 1
+          fi
+          echo "counts=$counts" >> "$GITHUB_OUTPUT"
+
   report:
-    needs: [gate, pending, round]
+    needs: [gate, pending, round, size]
     if: always() && needs.gate.result == 'success'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 5
@@ -572,16 +607,12 @@ jobs:
         with:
           name: ${{ needs.round.outputs.artifact }}
           path: ${{ runner.temp }}/round
-      # The tip's size comes from this job, which runs no head code, with the default branch's build: the round job runs
-      # the head's, which could write any size. The step holds no token, since the branch is public, and its output is
-      # counts alone, which the comment reads as whole numbers and words itself. A size it cannot read leaves no counts,
-      # and the comment says so and still goes out.
-      - name: Read melian/state's size
-        continue-on-error: true
-        timeout-minutes: 2
-        run: |
-          export MELIAN_STATE_DIR="$RUNNER_TEMP/state" XDG_CONFIG_HOME="$RUNNER_TEMP/config"
-          node packages/cli/bin/melian.js records size --json > "$RUNNER_TEMP/size.json"
+      # The size job's counts, which the comment reads as whole numbers through TipSize.parse. Empty when that job failed,
+      # and then the comment says the size could not be read.
+      - name: Write melian/state's size
+        env:
+          SIZE: ${{ needs.size.outputs.counts }}
+        run: printf '%s' "$SIZE" > "$RUNNER_TEMP/size.json"
       - name: Comment on the pull request
         id: comment
         env:
