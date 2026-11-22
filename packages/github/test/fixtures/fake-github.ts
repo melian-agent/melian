@@ -54,6 +54,8 @@ export type FakeState = {
 	activity?: FakeActivity[];
 	failActivity?: boolean;
 	failPermission?: boolean;
+	// The token's own user's roles, as GET /repos/O/R reports them. Unset, that route answers 404.
+	repositoryPermissions?: Record<string, boolean>;
 	pull: { number: number; title: string; base: { ref: string; sha: string }; head: { ref: string; sha: string } };
 	// The lines the pull request's diff adds, which alone take an inline comment.
 	lines: DiffLines;
@@ -193,6 +195,8 @@ export function fakeGitHub(
 		}
 		if (method === "GET" && path === `${repoPath}/rules/branches/main`) return json(state.branchRules ?? []);
 		if (method === "GET" && path === `${repoPath}/activity`) return activity(state, url);
+		if (method === "GET" && path === repoPath && state.repositoryPermissions !== undefined)
+			return json({ full_name: `${state.owner}/${state.repo}`, permissions: state.repositoryPermissions });
 		if (method === "POST" || method === "PATCH") await beforeWrite(call);
 		const collaborator = new RegExp(`^${repoPath}/collaborators/([^/]+)/permission$`).exec(path);
 		if (method === "GET" && collaborator !== null) {

@@ -176,6 +176,20 @@ describe("doctor writer trust", () => {
 		},
 	);
 
+	it("names the viewer's own permission when the collaborator endpoint is refused", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "trust writers");
+		gitIn(repo, "update-ref", "refs/remotes/origin/main", "HEAD");
+		const state = github();
+		state.failPermission = true;
+		state.repositoryPermissions = { admin: true, maintain: true, push: true, triage: true, pull: true };
+		const result = await run(state);
+		expect(result.status).toBe(0);
+		expect(result.trust).toMatch(/^ok /);
+		expect(result.trust).toContain("viewer melian-user (admin)");
+	});
+
 	it.each(["viewer", "permission"])("warns on a refused %s read", async (refusal) => {
 		writeFileSync(join(repo, "melian.yaml"), "trust: { writers: true }\n");
 		gitIn(repo, "add", "melian.yaml");
