@@ -24,7 +24,7 @@ import { type Stage, TelemetryReader } from "./telemetry.ts";
 /** What one stage file holds at most before compression, and the default size of the whole evidence directory. */
 export const evidenceLimits = { stage: 16 * 1024 ** 2, budget: 1024 ** 3 } as const;
 
-const localRound = /^(?:r[1-9][0-9]*|k[0-9a-f]{16})$/;
+export const evidenceRound = /^(?:r[1-9][0-9]*|k[0-9a-f]{16})$/;
 const stageId = /^conversation:([1-9][0-9]*)$/;
 const externalId = /^[0-9a-f]{16}$/;
 
@@ -228,7 +228,7 @@ export class EvidenceStore {
 		if (held + adding > this.budget)
 			throw new EvidenceError(
 				"budget",
-				`${join(this.directory, pointer.changeset)}/ would take the evidence directory past its budget: it holds ${held} bytes, this evidence needs ${adding} more, and evidence.budget is ${this.budget}. melian store prune keeps evidence. Raise evidence.budget in your configuration until the prune lands in issue #627 (https://github.com/melian-agent/melian/issues/627). This refusal wrote no file and lost no evidence already kept`,
+				`${join(this.directory, pointer.changeset)}/ would take the evidence directory past its budget: it holds ${held} bytes, this evidence needs ${adding} more, and evidence.budget is ${this.budget}. melian store prune keeps evidence, and lists what is more than 90 days old. Raise evidence.budget in your configuration until issue #633 (https://github.com/melian-agent/melian/issues/633) lets prune remove it. This refusal wrote no file and lost no evidence already kept`,
 			);
 		planned.push({ components: [...misses, pointerName], bytes: pointerBytes });
 		const created: string[] = [];
@@ -303,7 +303,7 @@ export class EvidenceStore {
 	private static roundPath(changeset: string, round: string): string[] {
 		if (!isChangesetId(changeset)) throw new EvidenceError("unsafeName", `${changeset} is not a changeset ID`);
 		const local = round.startsWith(`${changeset}.`) ? round.slice(changeset.length + 1) : "";
-		if (!localRound.test(local)) throw new EvidenceError("unsafeName", `${round} is not a round of ${changeset}`);
+		if (!evidenceRound.test(local)) throw new EvidenceError("unsafeName", `${round} is not a round of ${changeset}`);
 		return [changeset, local];
 	}
 
