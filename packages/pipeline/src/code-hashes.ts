@@ -20,7 +20,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/comparison.ts": "e86847d78aa8dd6df21dd9dfa4147074b391afaad89b6a1aef806fdae48d74f0",
 
-	"packages/core/src/config.ts": "59a6c568ec0c5e5ef9b71eaa908315e7e6dce4e717a6e94feb25b81d26a3bc15",
+	"packages/core/src/config.ts": "dfffe1fdcc872ee66d8272ad6b03673fb75228f52e3178acba1e5b9878a8cefc",
 
 	"packages/core/src/coverage-artifacts.ts": "e917782d458832146c703ef0e8c35ce8b9eb3fb17d033721fdc28a5ab512aa4a",
 

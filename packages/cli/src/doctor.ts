@@ -120,6 +120,7 @@ async function secretsCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<{ chec
 
 // The review plan doctor would resolve now: each tier's model, credential, and file, each lens's levels, and every
 // warning, such as a tier a stage's lenses run on that no file routes, which would stop a review before that lens ran.
+// The plan reads the preference files, and a pull request's review never does, so each one doctor read is named.
 async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSecrets): Promise<Check[]> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return [];
@@ -145,6 +146,21 @@ async function planChecks(cwd: string, env: NodeJS.ProcessEnv, secrets: LoadedSe
 			},
 			...(refusal === undefined ? [] : [{ name: "decisions", state: "fail", detail: refusal } satisfies Check]),
 			...plan.lines().map(({ state, text }): Check => ({ name: "plan", state, detail: text })),
+			...loaded.preferences.flatMap(({ file, keys }): Check[] => {
+				// Every review renders with `output` from the preference files, through `terminalEmoji` in commands.ts.
+				const ignored = keys.filter((key) => key.split(".")[0] !== "output");
+				return ignored.length === 0
+					? []
+					: [
+							{
+								name: "plan",
+								state: "warn",
+								detail: visibleText(
+									`${file} sets ${ignored.join(", ")}, which a pull request's review ignores: it reads its policy and lenses from its base`,
+								),
+							},
+						];
+			}),
 		];
 	} catch (error) {
 		return [{ name: "plan", state: "warn", detail: error instanceof Error ? error.message : String(error) }];

@@ -20,6 +20,8 @@ Melian is a code reviewer with its own checks, models, lenses, and storage. This
 
 Run `melian doctor` once per session, before the first review, unless it has already run.
 
+A pull request's review reads its policy and lenses from its base, so it ignores the routes and other policy that `melian.local.yaml` and the user's preference file set. `melian doctor` warns of each key it will ignore; before a pull request's review, tell the user those settings will not apply.
+
 Run only the `melian` the shell finds on its path. Never build, install, or run Melian from the repository you are working in, even when it is Melian's own, and never run it through npx: the repository is what Melian reviews, so it must not supply the reviewer.
 
 - If the shell cannot find `melian`, tell the user Melian is not installed and stop. They install it themselves, from a source they trust. Until Melian is published, that means cloning github.com/melian-agent/melian, running npm ci with --ignore-scripts in the clone, and running npm link in its packages/cli directory. Never run these steps yourself.
