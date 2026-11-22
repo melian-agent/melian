@@ -2,7 +2,6 @@ import {
 	Adjudication,
 	canonicalJson,
 	defaultConfig,
-	envelopeAllowance,
 	Finding,
 	RecordError,
 	recordLimit,
@@ -94,13 +93,12 @@ function shuffled<T>(items: readonly T[], seed: number): T[] {
 	return copy;
 }
 
+// A budget the size of the store's whole record, past which one finding cannot fit any record.
+const whole = new SightingBudget(recordLimit);
+
 const findings = Array.from({ length: 12 }, (_, index) => notice(index, { severity: index % 3 === 0 ? "P3" : "P1" }));
 
 describe("a record's sighting budget", () => {
-	it("is the store's record limit less the envelope's allowance", () => {
-		expect(SightingBudget.checkRecord.bytes).toBe(recordLimit - envelopeAllowance);
-	});
-
 	it("leaves findings that fit it exactly as they are", () => {
 		const exact = bytes(findings);
 		expect(new SightingBudget(exact).fit(findings)).toEqual(findings);
@@ -192,7 +190,7 @@ describe("a record's sighting budget", () => {
 
 	it("refuses one finding whose headline alone is past the budget, naming none of its text", () => {
 		const huge = notice(0, { message: `Review ${"m".repeat(5 * 1024 * 1024)}` });
-		const error = refusal(SightingBudget.checkRecord.bytes, [huge]);
+		const error = refusal(whole.bytes, [huge]);
 		expect(error).toBeInstanceOf(RecordError);
 		expect((error as RecordError).code).toBe("recordTooLarge");
 		expect((error as RecordError).message).not.toContain("m".repeat(20));
@@ -200,8 +198,8 @@ describe("a record's sighting budget", () => {
 
 	it("abridges one finding whose What alone is past the budget, and it fits", () => {
 		const huge = notice(0, { what: `Changes it. ${"z".repeat(5 * 1024 * 1024)}` });
-		const fitted = SightingBudget.checkRecord.fit([huge]);
-		expect(bytes(fitted)).toBeLessThanOrEqual(SightingBudget.checkRecord.bytes);
+		const fitted = whole.fit([huge]);
+		expect(bytes(fitted)).toBeLessThanOrEqual(whole.bytes);
 		expect(kept(fitted)).toEqual(kept([huge]));
 	});
 

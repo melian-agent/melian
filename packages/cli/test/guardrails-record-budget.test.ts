@@ -1,14 +1,19 @@
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
 	Changeset,
 	canonicalJson,
-	envelopeAllowance,
 	evaluateGuardrails,
 	loadConfig,
 	type RepositorySource,
 	Revision,
+	recordLimit,
 	reviewPayloads,
-	SightingBudget,
 	type StoredFinding,
+	sharedCopyTrimmed,
 } from "@melian-agent/core";
 import {
 	checksExtension,
@@ -54,7 +59,15 @@ let remote: Remote;
 beforeAll(async () => {
 	repo = createRepository();
 	commit(repo, {
-		"melian.yaml": lines("tiers:", "  fast: [guardrails]"),
+		// Every stage runs the guardrails alone, so a review asks no model, and the base trusts writers, so it exports.
+		"melian.yaml": lines(
+			"tiers:",
+			"  fast: [guardrails]",
+			"  standard: [guardrails]",
+			"  full: [guardrails]",
+			"trust:",
+			"  writers: true",
+		),
 		"package.json": root("vitest --run"),
 		...tree(all),
 	});
@@ -79,15 +92,17 @@ afterAll(async () => {
 const blocking = (each: readonly StoredFinding[]) =>
 	Object.fromEntries(each.map(({ properties }) => [properties.id, [properties.severity, properties.resolution]]));
 const ids = (each: readonly StoredFinding[]) => each.map(({ properties }) => properties.id).sort();
+const explanations = (each: readonly StoredFinding[]) =>
+	Object.fromEntries(each.map(({ properties }) => [properties.id, properties.explanation]));
 
 describe("a guardrails record past the store's limit", { timeout: 600_000 }, () => {
-	it("is trimmed to fit, and the git store takes it whole with every ID, the blocking set and the allowance kept", async () => {
+	it("is trimmed to fit, and the git store takes it whole with every ID and the blocking set kept", async () => {
 		const changeset = await Changeset.resolve(repo, "HEAD~1..HEAD");
 		const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
 		const untrimmed = await evaluateGuardrails({ repoRoot: repo, revision: changeset.revision, source });
 		const notices = untrimmed.findings.map((finding) => finding.toJSON());
 		expect(notices).toHaveLength(packages + 1);
-		expect(Buffer.byteLength(canonicalJson(notices))).toBeGreaterThan(SightingBudget.checkRecord.bytes);
+		expect(Buffer.byteLength(canonicalJson(notices))).toBeGreaterThan(recordLimit);
 
 		const { config } = await loadConfig(repo, source, "");
 		const root = await harness.root(context);
@@ -99,12 +114,20 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 		const state = await harness.snapshot(FindingsDocument, root.id, context);
 		const sightings = producerSightings(state!, Revision.key(changeset.revision), { check: "guardrails" });
 		const result = (await readCheckRecords(harness, root.id, run.identity, context)).guardrails!;
-		const record = ReviewRecords.of(changeset.id, changeset.revision).check(run.request, result, sightings);
+		const { record, trimmed } = ReviewRecords.of(changeset.id, changeset.revision).fittedCheck(
+			run.request,
+			result,
+			sightings,
+		);
 
+		expect(trimmed).toBe(true);
 		expect(Buffer.byteLength(record.bytes)).toBeLessThanOrEqual(relayLimits.fileBytes);
-		expect(ids(sightings)).toEqual(ids(notices));
-		expect(blocking(sightings)).toEqual(blocking(notices));
-		const left = sightings.filter(({ message, properties }) => properties.explanation.what === message.text);
+		// The local findings stay whole; only the shared copy leaves out detail.
+		expect(explanations(sightings)).toEqual(explanations(notices));
+		const shared = (record.payload as { sightings: StoredFinding[] }).sightings;
+		expect(ids(shared)).toEqual(ids(notices));
+		expect(blocking(shared)).toEqual(blocking(notices));
+		const left = shared.filter(({ message, properties }) => properties.explanation.what === message.text);
 		expect(left.length).toBeGreaterThan(0);
 		expect(left.length).toBeLessThan(packages);
 		expect(new Set(left.map(({ properties }) => properties.explanation.whyHere))).toEqual(
@@ -113,7 +136,7 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 			]),
 		);
 		// The root's changed gate script reads, cut, as any other manifest's changed script does.
-		const top = sightings.find(({ properties }) => properties.path === "package.json")!;
+		const top = shared.find(({ properties }) => properties.path === "package.json")!;
 		expect(left).toContain(top);
 		expect(top.message.text).toBe(
 			"Review the change to package.json, which configures the packages Biome and tsc load. The head changes npm scripts.",
@@ -121,12 +144,45 @@ describe("a guardrails record past the store's limit", { timeout: 600_000 }, () 
 		expect(
 			new Set(left.filter((each) => each !== top).map(({ message }) => message.text.replace(/^.* load\. /, ""))),
 		).toEqual(new Set(["The head changes npm scripts and removes npm scripts."]));
-		// The record beside its sightings is the envelope and the check's result, which the allowance must cover.
-		const sighted = Buffer.byteLength(canonicalJson((record.payload as { sightings: unknown }).sightings));
-		expect(Buffer.byteLength(record.bytes) - sighted).toBeLessThanOrEqual(envelopeAllowance);
-		expect(sighted).toBeLessThanOrEqual(SightingBudget.checkRecord.bytes);
 		const store = await remote.open({ payloads: reviewPayloads });
 		await store.add([record.toJSON()]);
 		expect((await store.list(changeset.id)).map((each) => canonicalJson(each))).toEqual([record.bytes]);
+	});
+});
+
+describe("a review whose shared copy was trimmed", { timeout: 900_000 }, () => {
+	const bin = fileURLToPath(new URL("../bin/melian.js", import.meta.url));
+	const scratch = mkdtempSync(join(tmpdir(), "melian-trimmed-"));
+	afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+	const script = join(scratch, "script.json");
+	writeFileSync(script, "{}");
+	const melian = (...args: string[]) => {
+		const { MELIAN_STATE_DIR: _, ...rest } = process.env;
+		const result = spawnSync(process.execPath, [bin, ...args], {
+			cwd: repo,
+			encoding: "utf8",
+			env: {
+				...rest,
+				GIT_CONFIG_GLOBAL: "/dev/null",
+				GIT_CONFIG_NOSYSTEM: "1",
+				GIT_CONFIG_COUNT: "0",
+				NO_COLOR: "1",
+				XDG_CONFIG_HOME: scratch,
+				MELIAN_TEST_SCRIPT: script,
+			},
+			timeout: 600_000,
+			maxBuffer: 256 * 1024 * 1024,
+		});
+		return { status: result.status, stdout: result.stdout.replace(/\s+/g, " "), stderr: result.stderr };
+	};
+
+	it("says so in melian review and melian findings, without --notes", () => {
+		const review = melian("review", "HEAD~1..HEAD", "--records", `dir:${join(scratch, "records")}`);
+		expect(review.stderr).not.toContain("records not exported");
+		expect(review.status).toBe(1);
+		expect(review.stdout).toContain(`guardrails: ${sharedCopyTrimmed}`);
+		const findings = melian("findings", "HEAD~1..HEAD");
+		expect(findings.status).toBe(0);
+		expect(findings.stdout).toContain(`guardrails: ${sharedCopyTrimmed}`);
 	});
 });

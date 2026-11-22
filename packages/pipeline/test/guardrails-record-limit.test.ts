@@ -12,10 +12,10 @@ import {
 	MemoryRecordStore,
 	pullRequestChangesetId,
 	type RepositorySource,
+	Revision,
 	recordLimit,
 	reviewPayloads,
-	type SharedRecord,
-	SightingBudget,
+	SharedRecord,
 	snippetHash,
 	TierAccount,
 } from "@melian-agent/core";
@@ -33,8 +33,9 @@ import {
 import { createFakeModels } from "@melian-agent/pipeline/testing";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { VerdictDocument } from "../src/adjudication.ts";
+import { readFindings } from "../src/findings.ts";
 import { RelayBatch, RelayRefusal } from "../src/record-relay.ts";
-import { ReviewRecords } from "../src/review-records.ts";
+import { ReviewRecords, recordTooLarge } from "../src/review-records.ts";
 import { commit, createRepository, lines, removeRepository } from "./fixtures/repo.ts";
 
 const base = "a".repeat(40);
@@ -66,14 +67,30 @@ function sighting(pad: string): Finding {
 	});
 }
 
-// A guardrails check record of exactly `size` canonical bytes.
+// A guardrails check record of exactly `size` canonical bytes; past the store's limit it comes only from elsewhere,
+// since the record builder trims a check to fit.
 function checkOf(size: number): SharedRecord {
 	const make = (pad: string) =>
 		records().check(request, { name: "guardrails", status: "ran", findings: 1, notes: [] }, [sighting(pad).toJSON()]);
 	const bare = Buffer.byteLength(make("").bytes);
-	const record = make("x".repeat(size - bare));
+	const within = Math.min(size, recordLimit);
+	const record = grown(make("x".repeat(within - bare)), size - within);
 	expect(Buffer.byteLength(record.bytes)).toBe(size);
 	return record;
+}
+
+// A record past the store's limit, which `check` no longer builds: `record` with its first sighting's What `by` bytes longer.
+function grown(record: SharedRecord, by: number): SharedRecord {
+	const payload = record.payload as { sightings: { properties: { explanation: { what: string } } }[] };
+	const [first, ...rest] = payload.sightings;
+	const explanation = {
+		...first!.properties.explanation,
+		what: `${first!.properties.explanation.what}${"x".repeat(by)}`,
+	};
+	return SharedRecord.parseEnvelope({
+		...record.toJSON(),
+		payload: { ...payload, sightings: [{ ...first, properties: { ...first!.properties, explanation } }, ...rest] },
+	});
 }
 
 const accounted = (counted: SharedRecord[]) => {
@@ -164,14 +181,14 @@ describe("a guardrails record still past the limit after trimming", { timeout: 9
 		removeRepository(repo);
 	});
 
-	it("fails the guardrails check, so the review reads not reviewed and its records export", async () => {
+	it("fails the round, so the review reads not reviewed, keeps its findings whole and exports no record", async () => {
 		const changeset = await Changeset.resolve(repo, "HEAD~1..HEAD");
 		const source: RepositorySource = { kind: "revision", commit: changeset.revision.base };
 		const untrimmed = await evaluateGuardrails({ repoRoot: repo, revision: changeset.revision, source });
 		expect(untrimmed.findings).toHaveLength(packages);
-		// Precondition: even abridged with a one-letter note, the sightings pass the budget.
+		// Precondition: even abridged with a one-letter note, the sightings pass the store's limit.
 		const floor = untrimmed.findings.map((finding) => finding.abridged("x").toJSON());
-		expect(Buffer.byteLength(canonicalJson(floor))).toBeGreaterThan(SightingBudget.checkRecord.bytes);
+		expect(Buffer.byteLength(canonicalJson(floor))).toBeGreaterThan(recordLimit);
 
 		const { config } = await loadConfig(repo, source, "");
 		const root = await harness.root(context);
@@ -218,14 +235,11 @@ describe("a guardrails record still past the limit after trimming", { timeout: 9
 		};
 		expect(report.thrown).toBeUndefined();
 		expect(report.status).toBe("not-reviewed");
-		expect(report.notRun).toEqual([{ name: "guardrails", reason: "recordTooLarge" }]);
-		// No verdict of findings stands beside the failed check.
-		expect(report.localVerdicts).toEqual([{ status: "not-reviewed", blocking: false }]);
-		expect(report.stored).toEqual(["account", "check", "round"]);
-		const check = stored.find((each) => each.kind === "check")!;
-		expect(check.payload).toMatchObject({
-			result: { name: "guardrails", status: "failed", reason: "recordTooLarge" },
-		});
-		expect(canonicalJson(stored)).not.toContain(segment(0));
+		expect(report.notRun).toEqual([{ name: "records", reason: recordTooLarge }]);
+		// No verdict of findings stands beside the failed round; the whole local findings still block.
+		expect(report.localVerdicts).toEqual([{ status: "not-reviewed", blocking: true }]);
+		expect(report.stored).toEqual([]);
+		const local = await readFindings(harness, root.id, Revision.key(changeset.revision), context);
+		expect(local.filter((finding) => finding.properties.source.check === "guardrails")).toHaveLength(packages);
 	});
 });

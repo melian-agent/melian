@@ -5,6 +5,7 @@ import {
 	canonicalJson,
 	type DismissalPayload,
 	type EnolaSnapshot,
+	Finding,
 	type FindingSource,
 	hashPattern,
 	isReceipt,
@@ -22,6 +23,7 @@ import {
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
+	SightingBudget,
 	type StoredDecision,
 	type StoredFinding,
 	type StoredRunDetails,
@@ -155,12 +157,43 @@ export class ReviewRecords {
 	 * writes one record per check, and two revisions never share one.
 	 */
 	check(request: string | null, result: CheckRunRecord, sightings: readonly StoredFinding[]): SharedRecord {
+		return this.fittedCheck(request, result, sightings).record;
+	}
+
+	/**
+	 * A check's record, as {@link ReviewRecords.check} builds it, and whether it left out the detail of some of its
+	 * shared sightings to fit the store's limit. The trim measures the projected sightings, which are what the record
+	 * holds, in the room the record leaves beside them, so local findings stay whole.
+	 *
+	 * @throws {RecordError} `recordTooLarge` when the record passes the limit even with every finding's detail left out.
+	 */
+	fittedCheck(
+		request: string | null,
+		result: CheckRunRecord,
+		sightings: readonly StoredFinding[],
+	): { record: SharedRecord; trimmed: boolean } {
 		const key = KeyedRequest.of("check.record", { request, base: this.base, head: this.head, name: result.name }).key;
 		if (result.status === "ran" && result.snapshots?.some((each) => !minted(each))) {
 			const withheld: CheckRunRecord = { name: result.name, status: "failed", reason: "withheld", error: "" };
-			return this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] });
+			return {
+				record: this.#record("check", key, { v: 1, result: checkResult(withheld), sightings: [] }),
+				trimmed: false,
+			};
 		}
-		return this.#record("check", key, { v: 1, result: checkResult(result), sightings: sorted(sightings) });
+		const projected = sorted(sightings);
+		const whole = this.#record("check", key, { v: 1, result: checkResult(result), sightings: projected });
+		if (Buffer.byteLength(whole.bytes) <= recordLimit) return { record: whole, trimmed: false };
+		// A canonical array of n items takes 2 + (n - 1) bytes beside them, which the budget counts, so the room is the
+		// limit less the record with an empty array, `[]`, plus those 2.
+		const bare = this.#record("check", key, { v: 1, result: checkResult(result), sightings: [] });
+		const room = new SightingBudget(recordLimit - Buffer.byteLength(bare.bytes) + 2);
+		const findings = projected.map((each) => Finding.from(each as unknown as StoredFinding));
+		const fitted = room.fit(findings);
+		const shared = fitted.map((each) => each.toJSON() as unknown as RecordJson);
+		return {
+			record: this.#record("check", key, { v: 1, result: checkResult(result), sightings: shared }),
+			trimmed: fitted.some((each, index) => each !== findings[index]),
+		};
 	}
 
 	/**

@@ -1,12 +1,6 @@
 import { RecordError } from "./errors.ts";
 import type { Finding } from "./findings.ts";
-import { canonicalJson, recordLimit } from "./record.ts";
-
-/**
- * What a check record may hold beside its sightings: the envelope, the changeset, revision and key, and the check's
- * result. A test builds a real check record and holds its overhead under this.
- */
-export const envelopeAllowance = 4096;
+import { canonicalJson } from "./record.ts";
 
 function bytes(value: unknown): number {
 	return Buffer.byteLength(canonicalJson(value));
@@ -22,9 +16,6 @@ function note(files: number): string {
 
 /** The bytes one record's sightings may take, and how a check's findings are cut to fit them. */
 export class SightingBudget {
-	/** A check record's budget: the store's record limit less {@link envelopeAllowance}. */
-	static readonly checkRecord = new SightingBudget(recordLimit - envelopeAllowance);
-
 	/** The most bytes the canonical JSON of the sightings, as one array, may take. */
 	readonly bytes: number;
 

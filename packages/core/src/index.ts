@@ -14,6 +14,7 @@ export {
 	type PolicyAt,
 	type StoredCheckRecord,
 	type StoredVerdict,
+	sharedCopyTrimmed,
 	Verdict,
 	type VerdictFields,
 	type VerdictStatus,
@@ -602,7 +603,7 @@ export {
 	type StoredRunDetails,
 	tokenText,
 } from "./run-details.ts";
-export { envelopeAllowance, SightingBudget } from "./sighting-budget.ts";
+export { SightingBudget } from "./sighting-budget.ts";
 export {
 	type ToolArtifact,
 	ToolManifest,

@@ -17,8 +17,7 @@ import {
 	Revision,
 	recordLimit,
 	reviewPayloads,
-	type SharedRecord,
-	SightingBudget,
+	SharedRecord,
 	snippetHash,
 	TierAccount,
 } from "@melian-agent/core";
@@ -56,6 +55,20 @@ const changeset = pullRequestChangesetId("github", { owner: "octo", name: "repo"
 const request = "d".repeat(64);
 const records = () => ReviewRecords.of(changeset, { base, head });
 const bytes = (record: SharedRecord) => Buffer.byteLength(record.bytes);
+
+// A record past the store's limit, which `check` no longer builds: `record` with its first sighting's What `by` bytes longer.
+function grown(record: SharedRecord, by: number): SharedRecord {
+	const payload = record.payload as { sightings: { properties: { explanation: { what: string } } }[] };
+	const [first, ...rest] = payload.sightings;
+	const explanation = {
+		...first!.properties.explanation,
+		what: `${first!.properties.explanation.what}${"x".repeat(by)}`,
+	};
+	return SharedRecord.parseEnvelope({
+		...record.toJSON(),
+		payload: { ...payload, sightings: [{ ...first, properties: { ...first!.properties, explanation } }, ...rest] },
+	});
+}
 const arrayBytes = (findings: readonly Finding[]) => Buffer.byteLength(canonicalJson(findings.map((f) => f.toJSON())));
 
 // A Biome finding as the static runner stores it locally: the tool's short text, which the shared projection replaces
@@ -107,21 +120,21 @@ describe("case 3: a projection larger than the local findings", () => {
 		const projectedOne = bytes(records().check(request, ran("static.biome", 1, "2.5.0"), [biome(0).toJSON()])) - bare;
 		const localOne = arrayBytes([biome(0)]) - 2;
 		expect(projectedOne).toBeGreaterThan(localOne);
-		// As many findings as the local budget allows, every one kept whole.
-		const findings = Array.from(
-			{ length: Math.floor((SightingBudget.checkRecord.bytes - 1) / (localOne + 1)) + 200 },
-			(_, index) => biome(index),
+		// Findings whose projection is a little past the store's limit, while they fit it locally.
+		const findings = Array.from({ length: Math.floor((recordLimit - bare) / (projectedOne + 1)) + 50 }, (_, index) =>
+			biome(index),
 		);
-		while (arrayBytes(findings) > SightingBudget.checkRecord.bytes) findings.pop();
-		const count = findings.length;
-		expect(SightingBudget.checkRecord.fit(findings)).toEqual(findings);
-		const record = records().check(
-			request,
-			ran("static.biome", count, "2.5.0"),
-			findings.map((f) => f.toJSON()),
-		);
-		// The design's promise: what passes the budget is what the store keeps.
-		expect(bytes(record)).toBeLessThanOrEqual(recordLimit);
+		expect(arrayBytes(findings)).toBeLessThan(recordLimit);
+		expect(bytes(records().check(request, ran("static.biome", 0, "2.5.0"), []))).toBe(bare);
+		// The design's promise: the trim measures the record the store keeps. A projected Biome finding holds fixed
+		// sentences that leaving out detail cannot shorten, so the record fails closed rather than pass the limit.
+		expect(() =>
+			records().fittedCheck(
+				request,
+				ran("static.biome", findings.length, "2.5.0"),
+				findings.map((f) => f.toJSON()),
+			),
+		).toThrow(expect.objectContaining({ code: "recordTooLarge" }));
 	});
 });
 
@@ -130,14 +143,13 @@ describe("case 2: a projection smaller than the local findings", () => {
 		const fix = "f".repeat(2048);
 		const findings = Array.from({ length: 3000 }, (_, index) => biome(index, "x", fix));
 		expect(arrayBytes(findings)).toBeGreaterThan(6 * 1024 * 1024);
-		const record = records().check(
+		const { record, trimmed } = records().fittedCheck(
 			request,
 			ran("static.biome", findings.length, "2.5.0"),
 			findings.map((f) => f.toJSON()),
 		);
 		expect(bytes(record)).toBeLessThan(recordLimit);
-		// Today runCheck fits the local findings first, and the local fit fails closed.
-		expect(() => SightingBudget.checkRecord.fit(findings)).not.toThrow();
+		expect(trimmed).toBe(false);
 	});
 });
 
@@ -156,46 +168,35 @@ describe("the room measured from a record with no sightings", () => {
 		expect(full).toBe(bare - 2 + arrayBytes([...findings].sort((a, b) => (a.id < b.id ? -1 : 1))));
 	});
 
-	it("is exact for a host record that leaves out the count, as exportRound fills it from the sightings", () => {
-		// exportRound builds `{ findings: sightings.length, ...given }`; with no count given and no sightings the bare
-		// record says 0, and the real one says 1234, four digits longer.
-		const fill = (sightings: number) =>
-			({ findings: sightings, notes: [], name: "guardrails", status: "ran" }) as never;
-		const bare = bytes(records().check(request, fill(0), []));
-		const full = bytes(
-			records().check(
-				request,
-				fill(findings.length),
-				findings.map((f) => f.toJSON()),
-			),
-		);
-		expect(full).toBe(bare - 2 + arrayBytes([...findings].sort((a, b) => (a.id < b.id ? -1 : 1))));
-	});
-
-	it("fits a record of exactly the limit untrimmed, and trims one a byte past", () => {
-		const bare = bytes(records().check(request, ran("guardrails", findings.length), []));
+	// A host record that leaves out the count has it filled from the sightings, `{ findings: sightings.length, ...given }`,
+	// before its record is built, so the room is measured from the count the record holds.
+	it.each([
+		["with the count it holds", (count: number) => ran("guardrails", count)],
+		[
+			"with the count filled from the sightings",
+			(count: number) => ({ findings: count, notes: [], name: "guardrails", status: "ran" }) as CheckRunRecord,
+		],
+	])("keeps a record of exactly the limit whole, %s, and trims one a byte past to fit", (_, result) => {
+		const bare = bytes(records().check(request, result(findings.length), []));
 		const exact = recordLimit - bare + 2;
-		// Pad the last finding so the whole array is exactly the room.
 		const short = arrayBytes(findings);
 		const padded = [...findings.slice(0, -1), guardrail(findings.length - 1, `pad${"y".repeat(exact - short)}`)];
 		expect(arrayBytes(padded)).toBe(exact);
-		const fitted = new SightingBudget(exact).fit(padded);
-		expect(fitted).toEqual(padded);
-		const at = records().check(
+		const at = records().fittedCheck(
 			request,
-			ran("guardrails", padded.length),
-			fitted.map((f) => f.toJSON()),
+			result(padded.length),
+			padded.map((f) => f.toJSON()),
 		);
-		expect(bytes(at)).toBe(recordLimit);
+		expect(at.trimmed).toBe(false);
+		expect(bytes(at.record)).toBe(recordLimit);
 		const over = [...findings.slice(0, -1), guardrail(findings.length - 1, `pad${"y".repeat(exact - short + 1)}`)];
-		const trimmed = new SightingBudget(exact).fit(over);
-		expect(trimmed).not.toEqual(over);
-		const past = records().check(
+		const past = records().fittedCheck(
 			request,
-			ran("guardrails", over.length),
-			trimmed.map((f) => f.toJSON()),
+			result(over.length),
+			over.map((f) => f.toJSON()),
 		);
-		expect(bytes(past)).toBeLessThanOrEqual(recordLimit);
+		expect(past.trimmed).toBe(true);
+		expect(bytes(past.record)).toBeLessThanOrEqual(recordLimit);
 	});
 });
 
@@ -463,8 +464,11 @@ describe("the relay's sum and the record bytes", () => {
 		const pad = 1 + (recordLimit - bytes(guardrailsOf(1))) / step;
 		expect(bytes(guardrailsOf(pad))).toBe(recordLimit);
 		expect(records().unrecordable([guardrailsOf(pad)])).toBeUndefined();
-		expect(bytes(guardrailsOf(pad + 1))).toBe(recordLimit + step);
-		expect(records().unrecordable([guardrailsOf(pad + 1)])).toBe(recordTooLarge);
+		// The record builder trims a check past the limit to fit, so a record a byte past comes only from elsewhere.
+		expect(bytes(guardrailsOf(pad + 1))).toBeLessThanOrEqual(recordLimit);
+		const past = grown(guardrailsOf(pad), 1);
+		expect(bytes(past)).toBe(recordLimit + 1);
+		expect(records().unrecordable([past])).toBe(recordTooLarge);
 	});
 });
 

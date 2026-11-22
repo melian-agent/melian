@@ -343,6 +343,13 @@ export interface CheckLineage {
 export const noRecord = "no record";
 
 /**
+ * The note a check that ran carries when the round's shared record left out some of its findings' detail. A check's
+ * notes are joined with "; ", so the note holds none.
+ */
+export const sharedCopyTrimmed =
+	"The round's shared record leaves out the detail of some of this check's findings to fit the store's 4 MiB limit. The findings here are whole.";
+
+/**
  * Every check a review's tier names, as `checksOfTier` expands it, with what each check did and the checks whose skip
  * still lets the review pass, such as a tool with no files in its language to check. A check it names with no record
  * is one that never started.
@@ -907,6 +914,12 @@ export class Verdict {
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 		}
+		const trimmed = (this.ran ?? []).filter(({ reason }) => reason?.split("; ").includes(sharedCopyTrimmed));
+		// Two hosts must not read different findings for one round without being told, so this shows without --notes.
+		if (trimmed.length > 0 && !rendering.notes)
+			parts.push(
+				`  ${trimmed.map(({ name }) => visibleText(name)).join(", ")}: ${prose(sharedCopyTrimmed, "    ")}`,
+			);
 		if (rendering.notes)
 			parts.push(
 				...this.lensNotes().map(

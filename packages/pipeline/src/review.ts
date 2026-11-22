@@ -34,6 +34,7 @@ import {
 	ModelRoutingError,
 	parseModelReference,
 	type RecordEnvelope,
+	RecordError,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -47,6 +48,7 @@ import {
 	Standards,
 	StandardsReading,
 	type StandardsSection,
+	sharedCopyTrimmed,
 	TierAccount,
 	triageChoices,
 	triageQuestionSet,
@@ -184,7 +186,7 @@ import {
 	stillOwns,
 	undecided,
 } from "./review-index.ts";
-import { inManifestOrder, ReviewRecords, type VerificationOutcome } from "./review-records.ts";
+import { inManifestOrder, ReviewRecords, recordTooLarge, type VerificationOutcome } from "./review-records.ts";
 import { RoundsDocument, RoundWriter } from "./rounds.ts";
 import { PrepareSpans } from "./spans.ts";
 import { StaticProof } from "./static-proof.ts";
@@ -2088,7 +2090,12 @@ async function callersFor(
 
 // What a round's export measures from the findings adjudication will decide from: what it built, and the failed check
 // adjudication reads in its place when the round cannot be recorded.
-export type Measured<Built> = { readonly built: Built; readonly failure?: CheckRecord };
+export type Measured<Built> = {
+	readonly built: Built;
+	readonly failure?: CheckRecord;
+	// The checks whose shared copy left out some of their findings' detail, which carry core's sharedCopyTrimmed note.
+	readonly trimmed?: readonly string[];
+};
 
 // One adjudication task per head and input. A repeat call with the same input, such as a rerun after a crash, attaches
 // to the task the first call created. A call with other input, such as a static check that has since run, creates a
@@ -2128,6 +2135,15 @@ export async function startAdjudication<Built = undefined>(
 		const measured = measure?.(findings);
 		if (measured?.failure !== undefined)
 			deciding.checks = [...deciding.checks, { ...measured.failure } as AdjudicationTaskInput["checks"][number]];
+		const trimmed = new Set(measured?.trimmed);
+		deciding.checks = deciding.checks.map((check) =>
+			check.status === "ran" && trimmed.has(check.name)
+				? {
+						...check,
+						reason: check.reason === undefined ? sharedCopyTrimmed : `${check.reason}; ${sharedCopyTrimmed}`,
+					}
+				: check,
+		);
 		// A set measured from findings other than the version adjudication decides from stands for no verdict.
 		const built = (findings.versions[revision] ?? 0) === deciding.findingsVersion ? measured?.built : undefined;
 		// The details ride with the verdict but are not part of what it was decided from.
@@ -3317,7 +3333,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		producers: readonly Producer[],
 		state: FindingsState,
 		resolutionPolicy: string | null,
-	): { read: SharedRecord[]; before: string[] } => {
+	): { read: SharedRecord[]; before: string[]; trimmed: string[] } => {
 		const records = ReviewRecords.of(changeset.id, { base, head });
 		const sighted = (source: FindingSource) => producerSightings(state, reviewed, source);
 		const request = run?.request ?? null;
@@ -3331,6 +3347,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				: proof.keyedFully(run.request)
 					? undefined
 					: "unkeyed";
+		const trimmed: string[] = [];
 		const exported = checks.flatMap((handed) => {
 			if (handed.name.startsWith("lens.") || handed.name.startsWith("decisions.")) return [];
 			// A static check is exported as the run stored it: a caller's record beside a genuine run is not its word.
@@ -3361,7 +3378,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				error: "",
 				...given,
 			} as unknown as CheckRunRecord;
-			return [{ name: check.name, record: records.check(request, result, sightings) }];
+			const fitted = records.fittedCheck(request, result, sightings);
+			if (fitted.trimmed) trimmed.push(check.name);
+			return [{ name: check.name, record: fitted.record }];
 		});
 		const lenses = lensRecords(ran.lenses, lensResult ?? {}, decided, state);
 		const counted = [
@@ -3410,7 +3429,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				: stored
 						.filter((each) => each.kind === "round" && each.revision === previous)
 						.map((each) => SharedRecord.parseEnvelope(each).id);
-		return { read, before };
+		return { read, before, trimmed };
 	};
 	// What the host's `lensesStarted` returned, which settles once its walkthrough has, and when the host was called.
 	let walkthrough: { at: number; done: Promise<unknown> } | undefined;
@@ -3877,22 +3896,29 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 									})),
 									check: verificationCheck,
 								});
-					const { read, before } = roundRecords(
-						recording.proof,
-						recording.stored,
-						run,
-						options.checks ?? [],
-						adjudicatedChecks,
-						decided,
-						verification,
-						accounted,
-						producers,
-						state,
-						input.resolutionPolicy ?? null,
-					);
+					let measured: ReturnType<typeof roundRecords>;
+					try {
+						measured = roundRecords(
+							recording.proof,
+							recording.stored,
+							run,
+							options.checks ?? [],
+							adjudicatedChecks,
+							decided,
+							verification,
+							accounted,
+							producers,
+							state,
+							input.resolutionPolicy ?? null,
+						);
+					} catch (error) {
+						if (!(error instanceof RecordError && error.code === "recordTooLarge")) throw error;
+						return { built: undefined, failure: { name: "records", status: "failed", reason: recordTooLarge } };
+					}
+					const { read, before, trimmed } = measured;
 					const reason = recorder.unrecordable(recorder.batch(read, undefined, before));
 					return reason === undefined
-						? { built: { read, before, store: recording.store } }
+						? { built: { read, before, store: recording.store }, trimmed }
 						: { built: undefined, failure: { name: "records", status: "failed", reason } };
 				};
 	spans.end();
