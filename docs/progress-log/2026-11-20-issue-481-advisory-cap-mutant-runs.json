@@ -1,0 +1,849 @@
+{
+ "head": "ad051c71119725086ab2ae4b44c2d19107f3ec8e",
+ "runs": [
+  {
+   "file": "packages/core/src/adjudication.ts",
+   "line": 207,
+   "column": 70,
+   "endLine": 210,
+   "endColumn": 5,
+   "mutatorName": "ObjectLiteral",
+   "replacement": "{}",
+   "replaced": "{\n\t\t\t\t\tunverified: typeof unverified === \"function\" ? unverified(report, this.speaker) : unverified,\n\t\t\t\t\tdefect: this.speaker,\n\t\t\t\t}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/core/src/adjudication.ts",
+   "line": 208,
+   "column": 17,
+   "endLine": 208,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "typeof unverified === \"function\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/core/src/adjudication.ts",
+   "line": 208,
+   "column": 17,
+   "endLine": 208,
+   "endColumn": 49,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "typeof unverified === \"function\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true,
+   "note": "first named the no-store test, which passes mutated; rerun against this test"
+  },
+  {
+   "file": "packages/core/src/adjudication.ts",
+   "line": 208,
+   "column": 17,
+   "endLine": 208,
+   "endColumn": 49,
+   "mutatorName": "EqualityOperator",
+   "replacement": "typeof unverified !== \"function\"",
+   "replaced": "typeof unverified === \"function\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a dismissed finding the host's verifier never judged, beside one it did > blocks on the reader when the dismissal was made with no store, as the host would were it live",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/core/src/adjudication.ts",
+   "line": 208,
+   "column": 39,
+   "endLine": 208,
+   "endColumn": 49,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "replaced": "\"function\"",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true,
+   "note": "first named the no-store test, which passes mutated; rerun against this test"
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 6,
+   "endLine": 202,
+   "endColumn": 52,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "repoRoot === undefined || policy === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 6,
+   "endLine": 202,
+   "endColumn": 52,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "repoRoot === undefined || policy === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round decided under another policy > reads not reviewed when the reader holds a checkout and no policy source",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 6,
+   "endLine": 202,
+   "endColumn": 52,
+   "mutatorName": "LogicalOperator",
+   "replacement": "repoRoot === undefined && policy === undefined",
+   "replaced": "repoRoot === undefined || policy === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round decided under another policy > reads not reviewed when the reader holds a checkout and no policy source",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 6,
+   "endLine": 202,
+   "endColumn": 28,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "repoRoot === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round decided under another policy > reads not reviewed when the reader holds a policy source and no checkout",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 6,
+   "endLine": 202,
+   "endColumn": 28,
+   "mutatorName": "EqualityOperator",
+   "replacement": "repoRoot !== undefined",
+   "replaced": "repoRoot === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 32,
+   "endLine": 202,
+   "endColumn": 52,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "policy === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round decided under another policy > reads not reviewed when the reader holds a checkout and no policy source",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 202,
+   "column": 32,
+   "endLine": 202,
+   "endColumn": 52,
+   "mutatorName": "EqualityOperator",
+   "replacement": "policy !== undefined",
+   "replaced": "policy === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 220,
+   "column": 20,
+   "endLine": 220,
+   "endColumn": 101,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "replaced": "(report, defect) => pieces.asked.has(defect.id) || unverifiedAt(verifies, report)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 220,
+   "column": 40,
+   "endLine": 220,
+   "endColumn": 101,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "pieces.asked.has(defect.id) || unverifiedAt(verifies, report)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a dismissed finding the host's verifier never judged, beside one it did > blocks on the reader when the dismissal was made with no store, as the host would were it live",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 220,
+   "column": 40,
+   "endLine": 220,
+   "endColumn": 101,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "pieces.asked.has(defect.id) || unverifiedAt(verifies, report)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 220,
+   "column": 40,
+   "endLine": 220,
+   "endColumn": 101,
+   "mutatorName": "LogicalOperator",
+   "replacement": "pieces.asked.has(defect.id) && unverifiedAt(verifies, report)",
+   "replaced": "pieces.asked.has(defect.id) || unverifiedAt(verifies, report)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 231,
+   "column": 110,
+   "endLine": 252,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\tlet lenses: Lens[];\n\ttry {\n\t\tlenses = await Lens.everywhere(repoRoot, policy);\n\t} catch (error) {\n\t\tif (error instanceof LensError) return new Map();\n\t\tthrow error;\n\t}\n\tconst tuning = (await loadConfig(repoRoot, policy, \".\")).config.lenses;\n\tconst verifies = new Map<string, boolean>();\n\tfor (const loaded of lenses) {\n\t\tconst settings = Object.hasOwn(tuning, loaded.name) ? tuning[loaded.name] : undefined;\n\t\tfor (const lens of [loaded, loaded.configured(settings)])\n\t\t\tfor (const level of scrutinyLevels) {\n\t\t\t\tconst declared = lens.levels[level];\n\t\t\t\tif (declared === undefined) continue;\n\t\t\t\tconst { check, version } = lensSource(lens.name, lens.version, level);\n\t\t\t\tverifies.set(`${check}@${version}`, declared.verify);\n\t\t\t}\n\t}\n\treturn verifies;\n}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 233,
+   "column": 5,
+   "endLine": 235,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\t\tlenses = await Lens.everywhere(repoRoot, policy);\n\t}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 235,
+   "column": 17,
+   "endLine": 238,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\t\tif (error instanceof LensError) return new Map();\n\t\tthrow error;\n\t}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > reads as the host did when a lens at the policy does not load and no finding came from a lens",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 236,
+   "column": 6,
+   "endLine": 236,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "error instanceof LensError",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > fails when the policy's lenses cannot be read for any reason but a lens file's own",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 236,
+   "column": 6,
+   "endLine": 236,
+   "endColumn": 32,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "error instanceof LensError",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > reads as the host did when a lens at the policy does not load and no finding came from a lens",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 239,
+   "column": 52,
+   "endLine": 239,
+   "endColumn": 55,
+   "mutatorName": "StringLiteral",
+   "replacement": "\"\"",
+   "replaced": "\".\"",
+   "claim": "equivalent",
+   "evidence": "loadConfig reads its path through repoPath, which resolves \"\" and \".\" alike to the root, \"\".",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    1,
+    0
+   ],
+   "killed": false
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 241,
+   "column": 30,
+   "endLine": 250,
+   "endColumn": 2,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\t\tconst settings = Object.hasOwn(tuning, loaded.name) ? tuning[loaded.name] : undefined;\n\t\tfor (const lens of [loaded, loaded.configured(settings)])\n\t\t\tfor (const level of scrutinyLevels) {\n\t\t\t\tconst declared = lens.levels[level];\n\t\t\t\tif (declared === undefined) continue;\n\t\t\t\tconst { check, version } = lensSource(lens.name, lens.version, level);\n\t\t\t\tverifies.set(`${check}@${version}`, declared.verify);\n\t\t\t}\n\t}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 243,
+   "column": 21,
+   "endLine": 243,
+   "endColumn": 58,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "replaced": "[loaded, loaded.configured(settings)]",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 244,
+   "column": 39,
+   "endLine": 249,
+   "endColumn": 4,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\t\t\t\tconst declared = lens.levels[level];\n\t\t\t\tif (declared === undefined) continue;\n\t\t\t\tconst { check, version } = lensSource(lens.name, lens.version, level);\n\t\t\t\tverifies.set(`${check}@${version}`, declared.verify);\n\t\t\t}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 246,
+   "column": 8,
+   "endLine": 246,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "declared === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 246,
+   "column": 8,
+   "endLine": 246,
+   "endColumn": 30,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "declared === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 246,
+   "column": 8,
+   "endLine": 246,
+   "endColumn": 30,
+   "mutatorName": "EqualityOperator",
+   "replacement": "declared !== undefined",
+   "replaced": "declared === undefined",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 248,
+   "column": 4,
+   "endLine": 248,
+   "endColumn": 57,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "replaced": "verifies.set(`${check}@${version}`, declared.verify);",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 248,
+   "column": 17,
+   "endLine": 248,
+   "endColumn": 38,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "replaced": "`${check}@${version}`",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 256,
+   "column": 88,
+   "endLine": 259,
+   "endColumn": 1,
+   "mutatorName": "BlockStatement",
+   "replacement": "{}",
+   "replaced": "{\n\tconst { source, reportedBy = [source] } = report.properties;\n\treturn reportedBy.every(({ check, version }) => verifies.get(`${check}@${version}`) === false);\n}",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 257,
+   "column": 30,
+   "endLine": 257,
+   "endColumn": 38,
+   "mutatorName": "ArrayDeclaration",
+   "replacement": "[]",
+   "replaced": "[source]",
+   "claim": "equivalent",
+   "evidence": "Every finding the reader adjudicates comes from mergeSightings, which sets reportedBy on each (findings.ts:779, 893), so the default never applies.",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    1,
+    0
+   ],
+   "killed": false
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 8,
+   "endLine": 258,
+   "endColumn": 95,
+   "mutatorName": "MethodExpression",
+   "replacement": "reportedBy.some(({\n  check,\n  version\n}) => verifies.get(`${check}@${version}`) === false)",
+   "replaced": "reportedBy.every(({ check, version }) => verifies.get(`${check}@${version}`) === false)",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is not capped when a level that verifies reported it beside one that does not",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 25,
+   "endLine": 258,
+   "endColumn": 94,
+   "mutatorName": "ArrowFunction",
+   "replacement": "() => undefined",
+   "replaced": "({ check, version }) => verifies.get(`${check}@${version}`) === false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 49,
+   "endLine": 258,
+   "endColumn": 94,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "true",
+   "replaced": "verifies.get(`${check}@${version}`) === false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a dismissed finding the host's verifier never judged, beside one it did > blocks on the reader when the dismissal was made with no store, as the host would were it live",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 49,
+   "endLine": 258,
+   "endColumn": 94,
+   "mutatorName": "ConditionalExpression",
+   "replacement": "false",
+   "replaced": "verifies.get(`${check}@${version}`) === false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 49,
+   "endLine": 258,
+   "endColumn": 94,
+   "mutatorName": "EqualityOperator",
+   "replacement": "verifies.get(`${check}@${version}`) !== false",
+   "replaced": "verifies.get(`${check}@${version}`) === false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a dismissed finding the host's verifier never judged, beside one it did > blocks on the reader when the dismissal was made with no store, as the host would were it live",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 62,
+   "endLine": 258,
+   "endColumn": 83,
+   "mutatorName": "StringLiteral",
+   "replacement": "``",
+   "replaced": "`${check}@${version}`",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a lens finding the verifier was never asked about > is capped at advisory on the reader, as on the host, when its lens ran only at a level that does not verify",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 258,
+   "column": 89,
+   "endLine": 258,
+   "endColumn": 94,
+   "mutatorName": "BooleanLiteral",
+   "replacement": "true",
+   "replaced": "false",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a dismissed finding the host's verifier never judged, beside one it did > blocks on the reader when the dismissal was made with no store, as the host would were it live",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  },
+  {
+   "file": "packages/pipeline/src/recorded-round.ts",
+   "line": 322,
+   "column": 41,
+   "endLine": 322,
+   "endColumn": 62,
+   "mutatorName": "CallExpression",
+   "replacement": ";",
+   "replaced": "asked.add(candidate);",
+   "claim": "killed",
+   "evidence": "packages/pipeline/test/recorded-round.test.ts > a round read back from its records > decides as the review did when the verifier failed, leaving a lens's finding unjudged",
+   "unmutated": [
+    1,
+    0
+   ],
+   "mutated": [
+    0,
+    1
+   ],
+   "killed": true
+  }
+ ],
+ "base": "90760b7bd",
+ "note": "Each mutant of the fix commit ran alone against its named test, which passed unmutated (unmutated is [passed, failed] counts), and each killed one failed mutated."
+}

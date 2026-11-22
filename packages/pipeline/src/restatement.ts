@@ -4,6 +4,7 @@ import {
 	LineMap,
 	type LineSpan,
 	type ProvingHunk,
+	type RecordEnvelope,
 	Revision,
 	snippetHash,
 	VerificationState,
@@ -12,6 +13,7 @@ import {
 	type DismissedRoot,
 	dismissedRoots,
 	FindingsDocument,
+	type FindingsState,
 	overlapsSite,
 	proofAt,
 	type Restating,
@@ -19,6 +21,7 @@ import {
 } from "./findings.ts";
 import type { Context, ConversationId, Harness } from "./harness.ts";
 import { overlapping, provingHunk, type ReviewState } from "./lens-tools.ts";
+import { ReviewRecords } from "./review-records.ts";
 import type { DismissedPredecessor } from "./verification.ts";
 
 /**
@@ -31,14 +34,17 @@ export class Predecessors {
 	readonly #roots: readonly DismissedRoot[];
 	readonly #proof: (ids: readonly string[]) => ProvingHunk[];
 	readonly #review: ReviewState;
+	readonly #state: FindingsState;
 	readonly #maps = new Map<string, Promise<LineMap>>();
 
 	private constructor(
 		roots: readonly DismissedRoot[],
 		proof: (ids: readonly string[]) => ProvingHunk[],
 		review: ReviewState,
+		state: FindingsState,
 	) {
 		this.#roots = roots;
+		this.#state = state;
 		this.#proof = proof;
 		this.#review = review;
 	}
@@ -55,7 +61,7 @@ export class Predecessors {
 		// A root dismissed at a revision whose review began after this one's would carry a later ruling backwards.
 		const at = state.revisions.indexOf(revision);
 		const roots = dismissedRoots(state).filter((each) => state.revisions.indexOf(each.revision) <= at);
-		return new Predecessors(roots, (ids) => proofAt(state, ids, revision), review);
+		return new Predecessors(roots, (ids) => proofAt(state, ids, revision), review, state);
 	}
 
 	/**
@@ -74,6 +80,15 @@ export class Predecessors {
 				dismissed: found.map(({ id, dismissal }) => ({ id, dismissal })),
 			},
 		};
+	}
+
+	/**
+	 * The identity of root `id`'s dismissal in `changeset`, from the findings the roots were read from and `held`, the
+	 * review's one listing of its store: the ID of the record a round exports for it, as `dismissalIdentity` gives it.
+	 * Every root froze a sighting, so each has one.
+	 */
+	recordOf(changeset: string, id: string, held: readonly RecordEnvelope[]): string {
+		return ReviewRecords.of(changeset, this.#review).dismissalIdentity(this.#state, id, held)!;
 	}
 
 	static #members(defect: Defect): string[] {

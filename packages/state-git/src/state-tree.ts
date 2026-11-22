@@ -62,6 +62,15 @@ function isChangesets(entry: TreeEntry): boolean {
 }
 
 // Whether two listings of one level hold the same entries, by name, mode, type and object ID.
+// The changeset's name of `entry`, at the top level of `changesets/`, when it is a tree that bears one.
+function folderName(entry: TreeEntry): string | undefined {
+	return entry.type === "tree" ? changesetName(decode(entry.path)) : undefined;
+}
+
+function repeatsName(entries: readonly TreeEntry[]): boolean {
+	return new Set(entries.map((entry) => entry.path.toString("latin1"))).size !== entries.length;
+}
+
 function sameEntries(first: readonly TreeEntry[], second: readonly TreeEntry[]): boolean {
 	const held = new Set(first.map(keyOf));
 	return first.length === second.length && second.every((entry) => held.has(keyOf(entry)));
@@ -172,7 +181,8 @@ export class StateTree {
 	}
 
 	// Whether `commit` has `parent` as its one parent and `parent`'s tree with only whole `changesets/<name>` folders
-	// removed, at least one: each other root entry and each kept folder the same by name, mode, type and object ID.
+	// removed, at least one: each other root entry and each kept folder the same by name, mode, type and object ID, as
+	// `ls-tree` lists them, and no name listed twice in the parent's `changesets/`.
 	static async removesOnly(
 		repository: RecordRepository,
 		parent: string,
@@ -197,12 +207,18 @@ export class StateTree {
 		const folders = await repository.children(was.oid, deadline, listingLimit);
 		const kept = now === undefined ? [] : await repository.children(now.oid, deadline, listingLimit);
 		if (folders === undefined || kept === undefined || kept.length >= folders.length) return false;
+		if (repeatsName(folders)) return false;
 		const held = new Set(folders.map(keyOf));
-		return kept.every((entry) => held.has(keyOf(entry)));
+		const left = new Set(kept.map(keyOf));
+		return (
+			kept.every((entry) => held.has(keyOf(entry))) &&
+			folders.every((entry) => left.has(keyOf(entry)) || folderName(entry) !== undefined)
+		);
 	}
 
 	// Each changeset folder of `commit`, by its name, with its tree's object ID, read from the top level of `changesets/`
-	// alone. An entry there that is no tree or bears no changeset's name is a stray, and no folder.
+	// alone. An entry there that is no tree, bears no changeset's name or shares its name with another is a stray, and
+	// no folder.
 	static async folders(
 		repository: RecordRepository,
 		commit: string,
@@ -211,40 +227,55 @@ export class StateTree {
 		const root = await StateTree.#children(repository, commit, deadline);
 		const folder = root.find(isChangesets);
 		if (folder === undefined) return new Map();
+		const entries = await StateTree.#children(repository, folder.oid, deadline);
+		const seen = new Set<string>();
+		const repeated = new Set<string>();
+		for (const entry of entries) {
+			const key = entry.path.toString("latin1");
+			if (seen.has(key)) repeated.add(key);
+			seen.add(key);
+		}
 		return new Map(
-			(await StateTree.#children(repository, folder.oid, deadline)).flatMap((entry) => {
-				const name = entry.type === "tree" ? changesetName(decode(entry.path)) : undefined;
+			entries.flatMap((entry) => {
+				const name = repeated.has(entry.path.toString("latin1")) ? undefined : folderName(entry);
 				return name === undefined ? [] : [[name, entry.oid] as const];
 			}),
 		);
 	}
 
-	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it.
-	// A folder too large to judge whole counts as holding one, so nothing unjudged is removed.
-	static async holdsStray(
+	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it,
+	// or else a cell. A folder too large to judge whole counts as holding a stray, so nothing unjudged is removed. One that fits alone but
+	// would take `spent`, what the call has judged so far, past a limit is deferred unread.
+	static async judgeFolder(
 		repository: RecordRepository,
 		changeset: string,
 		oid: string,
 		judged: Map<string, Judged>,
+		spent: { entries: number; bytes: number },
 		deadline: Deadline,
-	): Promise<boolean> {
+	): Promise<"stray" | "kept" | "clean" | "deferred"> {
 		const listed = await repository.entries(oid, deadline, listingLimit);
-		if (listed === undefined || listed.length > entryLimit) return true;
+		if (listed === undefined || listed.length > entryLimit) return "stray";
 		const prefix = Buffer.from(`${changesetsName}/${changeset}/`);
 		const entries = listed.map((entry) => ({ ...entry, path: Buffer.concat([prefix, entry.path]) }));
 		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const sizes = await repository.sizes(readable, deadline);
-		if (readable.some((blob) => (sizes.get(blob) ?? Number.POSITIVE_INFINITY) > recordLimit)) return true;
+		if (readable.some((blob) => (sizes.get(blob) ?? Number.POSITIVE_INFINITY) > recordLimit)) return "stray";
 		const total = entries.reduce(
 			(sum, entry) => sum + (StateTree.#readable(entry) ? (sizes.get(entry.oid) as number) : 0),
 			0,
 		);
-		if (total > tipLimit) return true;
+		if (total > tipLimit) return "stray";
+		if (spent.entries + entries.length > entryLimit || spent.bytes + total > tipLimit) return "deferred";
+		spent.entries += entries.length;
+		spent.bytes += total;
 		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
 		const wanted = [...new Set(fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
 		const blobs = await repository.blobs(new Map(wanted.map((blob) => [blob, sizes.get(blob) as number])), deadline);
 		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
-		return entries.some((entry) => (judged.get(keyOf(entry)) as Judged).is === "stray");
+		const verdicts = entries.map((entry) => (judged.get(keyOf(entry)) as Judged).is);
+		if (verdicts.includes("stray")) return "stray";
+		return verdicts.includes("cell") ? "kept" : "clean";
 	}
 
 	static async #children(repository: RecordRepository, treeish: string, deadline: Deadline): Promise<TreeEntry[]> {

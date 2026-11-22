@@ -552,6 +552,25 @@ describe.each(sourceKinds)("a lens's declared resolution, from the %s", (kind) =
 		expect(lens!.version).toBe(plain!.version);
 	});
 
+	// A shared reader caps an unverified finding only when its lens's version says the level it ran at does not verify.
+	it("gives a level's verify setting its own version, and the default the same version as its explicit value", async () => {
+		const at = async (levels: string[]) => {
+			writeFiles(repo, { ".melian/lenses/security/LENS.md": lensFile([...security, ...levels]) });
+			const [lens] = named(await Lens.load(repo, source(), ["."]), "security");
+			return lens!;
+		};
+		const quick = await at(["levels:", "  quick: { tier: light }"]);
+		const verified = await at(["levels:", "  quick: { tier: light, verify: true }"]);
+		const unverified = await at(["levels:", "  quick: { tier: light, verify: false }"]);
+		const careful = await at([]);
+		const carefulUnverified = await at(["levels:", "  careful: { verify: false }"]);
+		expect([quick.level("quick").verify, verified.level("quick").verify]).toEqual([false, true]);
+		expect(verified.version).not.toBe(quick.version);
+		expect(unverified.version).toBe(quick.version);
+		expect([careful.level("careful").verify, carefulUnverified.level("careful").verify]).toEqual([true, false]);
+		expect(carefulUnverified.version).not.toBe(careful.version);
+	});
+
 	it("inherits the declared resolution through extends, and replaces it whole", async () => {
 		writeFiles(repo, {
 			".melian/lenses/security/LENS.md": lensFile([...security, "resolution: { ceiling: advisory, P3: silent }"]),
@@ -1089,7 +1108,7 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 	});
 
 	it("refuses a level that probes in a lens of another name whose `extends` reaches no built-in with probing wording", async () => {
-		for (const [file, files, message] of [
+		for (const [file, files] of [
 			[
 				".melian/lenses/trust-boundary-probes/LENS.md",
 				{
@@ -1099,7 +1118,6 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 						"  deep: { tier: heavy, probe: {} }",
 					]),
 				},
-				"needs",
 			],
 			[
 				".melian/lenses/contracts-probes/LENS.md",
@@ -1111,19 +1129,6 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 						"  deep: { probe: {} }",
 					]),
 				},
-				"needs",
-			],
-			[
-				".melian/lenses/tests-probes/LENS.md",
-				{
-					".melian/lenses/tests-probes/LENS.md": lensFile([
-						"name: tests-probes",
-						"extends: tests",
-						"levels:",
-						"  deep: { probe: {} }",
-					]),
-				},
-				"tests",
 			],
 		] as const) {
 			rmSync(join(repo, ".melian/lenses"), { recursive: true, force: true });
@@ -1137,17 +1142,16 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 				level: "deep",
 			});
 			expect(refused.message, file).toBe(
-				message === "tests"
-					? `${file}: lens ${name}, level deep: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`
-					: `${file}: lens ${name}, level deep: "probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens's words`,
+				`${file}: lens ${name}, level deep: "probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens's words`,
 			);
 		}
 	});
 
-	// An attack of the tests lens's plan counts as answered whatever its probe showed, so a test that fails before any
-	// change would leave the lens clean; issue #493 decides what such an attack counts as.
-	it("refuses a level that probes in the tests lens, at any level, until issue #493", async () => {
+	// An attack counts as answered only by a probe that showed something, so the tests lens may probe, and so may a lens
+	// that extends it, at any level.
+	it("loads a level that probes in the tests lens, and in a lens that extends it, at any level", async () => {
 		for (const level of ["quick", "careful", "deep"] as const) {
+			rmSync(join(repo, ".melian/lenses"), { recursive: true, force: true });
 			writeFiles(repo, {
 				".melian/lenses/tests/LENS.md": lensFile([
 					"name: tests",
@@ -1155,12 +1159,18 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 					"levels:",
 					`  ${level}: { probe: {} }`,
 				]),
+				".melian/lenses/tests-probes/LENS.md": lensFile([
+					"name: tests-probes",
+					"extends: tests",
+					"levels:",
+					`  ${level}: { probe: {} }`,
+				]),
 			});
-			const refused = await rejection(load(["src/index.ts"]), LensError);
-			expect(refused).toMatchObject({ code: "missingField", field: `levels.${level}.probe`, lens: "tests", level });
-			expect(refused.message).toBe(
-				`.melian/lenses/tests/LENS.md: lens tests, level ${level}: "probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`,
-			);
+			const loaded = await load(["src/index.ts"]);
+			expect(named(loaded, "tests")[0]!.level(level).probe, level).toEqual({});
+			const [probes] = named(loaded, "tests-probes");
+			expect(probes!.level(level).probe, level).toEqual({});
+			expect(probes!.probesAs, level).toBe("tests");
 		}
 	});
 
@@ -1170,9 +1180,7 @@ describe.each(sourceKinds)("repository lenses from the %s", (kind) => {
 		const builtin = (name: string) => builtins.find((lens) => lens.name === name)!;
 		expect(builtin("trust-boundary").probeRefusal()).toBeUndefined();
 		expect(builtin("correctness").probeRefusal()).toBeUndefined();
-		expect(builtin("tests").probeRefusal()).toBe(
-			'"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing',
-		);
+		expect(builtin("tests").probeRefusal()).toBeUndefined();
 		expect(builtin("contracts").probeRefusal()).toBe(
 			'"probe" needs the probing wording of a built-in lens it extends, and only the trust-boundary, tests and correctness lenses have it, so no lens probes under another lens\'s words',
 		);

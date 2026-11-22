@@ -979,11 +979,11 @@ export class TelemetryError extends Error {
 	readonly code = "unreadable";
 }
 
-// Integer keys list in ascending order. An attack skipped and then probed was probed.
+// Integer keys list in ascending order. An attack skipped and then probed conclusively was probed.
 function unprobedSkips(skips: Record<string, string> | undefined, probes: [string, ProbeRecord][]): number[] {
 	return Object.keys(skips ?? {})
 		.map(Number)
-		.filter((attack) => !probes.some(([, probe]) => probe.attack === attack));
+		.filter((attack) => !probes.some(([, probe]) => probe.attack === attack && probeConclusive(probe.result)));
 }
 
 // A prober's stage: its probes and how each ended, the size of the plan it was given, and the attacks it skipped.

@@ -2463,7 +2463,7 @@ describe("reviews recorded before levels joined the keys", () => {
 
 		const upgraded = migrate(input, checkpoint, 1);
 
-		expect(definition.version).toBe(7);
+		expect(definition.version).toBe(8);
 		expect(upgraded.input).toMatchObject({
 			root: input.root,
 			revision: input.revision,
@@ -2565,7 +2565,7 @@ describe("reviews recorded before levels joined the keys", () => {
 					rounds: [],
 					trigger: { hash: "a".repeat(64), proof: [] },
 				};
-				expect(() => records.dismissal(dismissal)).not.toThrow();
+				expect(() => records.made(dismissal, [])).not.toThrow();
 			} finally {
 				await current.close(context);
 			}

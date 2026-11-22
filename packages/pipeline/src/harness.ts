@@ -85,6 +85,7 @@ export {
 	type Registry,
 	ROOT_CONVERSATION_ID,
 	type Storage,
+	StorageRejected,
 	type SubmissionId,
 	SystemEntry,
 	section,

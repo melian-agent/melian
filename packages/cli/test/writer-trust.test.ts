@@ -37,6 +37,7 @@ async function open(
 		pushers?: string[];
 		failActivity?: boolean;
 		failPermission?: boolean;
+		repositoryPermissions?: Record<string, boolean>;
 		// A provider that names neither a pusher nor a reason it has none.
 		noPusher?: boolean;
 	} = {},
@@ -70,6 +71,7 @@ echo '{"files":{}}' > reports/mutation/mutation.json`,
 	state.headRepository = identity.repository;
 	state.failActivity = identity.failActivity;
 	state.failPermission = identity.failPermission;
+	state.repositoryPermissions = identity.repositoryPermissions;
 	// The author pushed the head unless the test names its pushers.
 	const pushers =
 		identity.pushers ?? (identity.pusher === undefined ? (author === undefined ? [] : [author]) : [identity.pusher]);
@@ -224,6 +226,24 @@ describe("static.mutation and the writer of a pull request", { timeout: 60_000 }
 	it("records unreadable permission as untrusted", async () => {
 		const { io, output } = await open("maintainer", { maintainer: "admin" }, {}, "static.mutation", {
 			failPermission: true,
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
+		expect(ran()).toBe(false);
+		expect(output()).toContain("maintainer has no known permission");
+	});
+	// A cloud session's proxy refuses the collaborator endpoint, as failPermission does here.
+	it("trusts the viewer's own push from the repository's permissions when the collaborator endpoint is refused", async () => {
+		const { io } = await open("melian-user", {}, {}, "static.mutation", {
+			failPermission: true,
+			repositoryPermissions: { admin: false, maintain: false, push: true, triage: true, pull: true },
+		});
+		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(0);
+		expect(ran()).toBe(1);
+	});
+	it("does not take the viewer's repository permissions for another pusher", async () => {
+		const { io, output } = await open("maintainer", {}, {}, "static.mutation", {
+			failPermission: true,
+			repositoryPermissions: { admin: true, maintain: true, push: true, triage: true, pull: true },
 		});
 		expect(await review(io, "#7", { rerun: false, walkthrough: false })).toBe(notReviewed);
 		expect(ran()).toBe(false);

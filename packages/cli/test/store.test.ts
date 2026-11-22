@@ -64,6 +64,7 @@ async function seed(): Promise<{ pinned: string }> {
 	await write("tools/gone/1.0.0/linux-x64/file", "tool");
 	await write("notes.txt", "mine");
 	await write("todo.txt", "also");
+	await write(`evidence/pull-1111111111111111/r1/misses/${"d".repeat(16)}.json`, "pointer", 400 * day);
 	const pinned = `tools/enola/0.4.40/linux-x64/${hex("e")}/binary`;
 	await write(pinned, "pinned");
 	return { pinned };
@@ -91,7 +92,7 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 				"  unreadable graph: 1, 1 B",
 				"  orphan coverage: 1, 10 B",
 				"  mutation partition: 1, 3 B",
-				"Kept 1 changeset file, 12 B, and scripted/.",
+				"Kept 1 changeset file, 12 B, the evidence of valid misses, 7 B, and scripted/.",
 				"Kept, not recognised: notes.txt, todo.txt",
 				"",
 			].join("\n"),
@@ -113,6 +114,9 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		expect(await readFile(join(state, "pull-1111111111111111.sqlite-wal"), "utf8")).toBe("wal");
 		expect(await readFile(join(state, pinned), "utf8")).toBe("pinned");
 		expect(await readFile(join(state, "notes.txt"), "utf8")).toBe("mine");
+		expect(
+			await readFile(join(state, `evidence/pull-1111111111111111/r1/misses/${"d".repeat(16)}.json`), "utf8"),
+		).toBe("pointer");
 		const again = output();
 		expect(await main(["store", "prune"], again)).toBe(0);
 		expect(again.lines.join("")).toContain("Would remove 0 entries, freeing 0 B.");
@@ -152,13 +156,54 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 						: `Would remove 1 entry, freeing ${shown}. Nothing is removed without --apply.`,
 					`  graph  ${shown}  graphs/${name}, coverage/${name}`,
 					`  graph: 1, ${shown}`,
-					"Kept 2 changeset files, 6 B, and scripted/.",
+					"Kept 2 changeset files, 6 B, the evidence of valid misses, 0 B, and scripted/.",
 					"",
 				].join("\n"),
 			]);
 		}
 		expect(await exists(`graphs/${name}`)).toBe(false);
 		expect(await exists(`coverage/${name}`)).toBe(false);
+	});
+
+	it("lists each round's evidence older than ninety days and removes none of it with --apply", async () => {
+		const rounds = ["evidence/pull-1111111111111111/r1", "evidence/pull-1111111111111111/r2"];
+		const pointer = (round: string) => `${round}/misses/${"d".repeat(16)}.json`;
+		const age = async (path: string) => {
+			const when = new Date(Date.now() - 100 * day);
+			await utimes(join(state, path), when, when);
+		};
+		await write(pointer(rounds[0]!), "pointer", 100 * day);
+		await age(rounds[0]!);
+		const notice = (count: string, bytes: string) =>
+			`Evidence nothing wrote for more than 90 days: ${count}, ${bytes}. --apply removes none of it until issue #633 (https://github.com/melian-agent/melian/issues/633) makes its removal safe beside a write.`;
+		const one = output();
+		expect(await main(["store", "prune"], one)).toBe(0);
+		expect(one.lines).toEqual([
+			[
+				`State directory: ${state}`,
+				"Would remove 0 entries, freeing 0 B. Nothing is removed without --apply.",
+				"Kept 0 changeset files, 0 B, the evidence of valid misses, 7 B, and scripted/.",
+				notice("1 round", "7 B"),
+				`  evidence  7 B  ${rounds[0]}`,
+				"",
+			].join("\n"),
+		]);
+		await write(pointer(rounds[1]!), "pointers", 100 * day);
+		await age(rounds[1]!);
+		const both = output();
+		expect(await main(["store", "prune", "--apply"], both)).toBe(0);
+		expect(both.lines).toEqual([
+			[
+				`State directory: ${state}`,
+				"Removed 0 entries, freeing 0 B.",
+				"Kept 0 changeset files, 0 B, the evidence of valid misses, 15 B, and scripted/.",
+				notice("2 rounds", "15 B"),
+				`  evidence  7 B  ${rounds[0]}`,
+				`  evidence  8 B  ${rounds[1]}`,
+				"",
+			].join("\n"),
+		]);
+		for (const round of rounds) expect(await exists(pointer(round))).toBe(true);
 	});
 
 	it("prunes the repository it runs in, not one a hook's GIT_DIR and GIT_WORK_TREE name", async () => {
@@ -254,7 +299,9 @@ describe("melian store prune", { timeout: 60_000 }, () => {
 		io.env.MELIAN_STATE_DIR = chosen;
 		expect(await main(["store", "prune", "--apply"], io)).toBe(0);
 		expect(io.lines.join("")).toContain(`State directory: ${moved}\nRemoved 3 entries, freeing 14 B.\n`);
-		expect(io.lines.join("")).toContain("Kept 1 changeset file, 12 B, and scripted/.\n");
+		expect(io.lines.join("")).toContain(
+			"Kept 1 changeset file, 12 B, the evidence of valid misses, 7 B, and scripted/.\n",
+		);
 		expect(await readFile(join(moved, "pull-1111111111111111.sqlite"), "utf8")).toBe("changeset");
 	});
 

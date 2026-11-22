@@ -1,0 +1,751 @@
+[
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 57,
+    "column": 5,
+    "endLine": 57,
+    "endColumn": 20,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists what it would remove and the space it frees, and removes nothing without --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 57,
+    "column": 5,
+    "endLine": 57,
+    "endColumn": 20,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 57,
+    "column": 5,
+    "endLine": 57,
+    "endColumn": 20,
+    "mutatorName": "EqualityOperator",
+    "replacement": "aged.length >= 0",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists what it would remove and the space it frees, and removes nothing without --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 57,
+    "column": 5,
+    "endLine": 57,
+    "endColumn": 20,
+    "mutatorName": "EqualityOperator",
+    "replacement": "aged.length <= 0",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 57,
+    "column": 22,
+    "endLine": 64,
+    "endColumn": 2,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 58,
+    "column": 28,
+    "endLine": 58,
+    "endColumn": 61,
+    "mutatorName": "ArrowFunction",
+    "replacement": "() => undefined",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 58,
+    "column": 44,
+    "endLine": 58,
+    "endColumn": 61,
+    "mutatorName": "ArithmeticOperator",
+    "replacement": "sum - entry.bytes",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 60,
+    "column": 83,
+    "endLine": 60,
+    "endColumn": 100,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 60,
+    "column": 83,
+    "endLine": 60,
+    "endColumn": 100,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 60,
+    "column": 83,
+    "endLine": 60,
+    "endColumn": 100,
+    "mutatorName": "EqualityOperator",
+    "replacement": "aged.length !== 1",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/cli/src/store.ts",
+    "line": 63,
+    "column": 3,
+    "endLine": 63,
+    "endColumn": 92,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "test": {
+      "file": "packages/cli/test/store.test.ts",
+      "path": [
+        "melian store prune",
+        "lists each round's evidence older than ninety days and removes none of it with --apply"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 180,
+    "column": 37,
+    "endLine": 180,
+    "endColumn": 39,
+    "mutatorName": "ArrayDeclaration",
+    "replacement": "[\"Stryker was here\"]",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a linked evidence directory as not recognised and counts none of it"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 246,
+    "column": 67,
+    "endLine": 259,
+    "endColumn": 4,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 8,
+    "endLine": 247,
+    "endColumn": 80,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 8,
+    "endLine": 247,
+    "endColumn": 80,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 8,
+    "endLine": 247,
+    "endColumn": 80,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(changeset.link || !changeset.directory) && !isChangesetId(changeset.name)",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 8,
+    "endLine": 247,
+    "endColumn": 46,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 8,
+    "endLine": 247,
+    "endColumn": 46,
+    "mutatorName": "LogicalOperator",
+    "replacement": "changeset.link && !changeset.directory",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 26,
+    "endLine": 247,
+    "endColumn": 46,
+    "mutatorName": "BooleanLiteral",
+    "replacement": "changeset.directory",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 50,
+    "endLine": 247,
+    "endColumn": 80,
+    "mutatorName": "BooleanLiteral",
+    "replacement": "isChangesetId(changeset.name)",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 247,
+    "column": 82,
+    "endLine": 250,
+    "endColumn": 5,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 248,
+    "column": 5,
+    "endLine": 248,
+    "endColumn": 41,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 251,
+    "column": 56,
+    "endLine": 258,
+    "endColumn": 5,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 9,
+    "endLine": 252,
+    "endColumn": 74,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 9,
+    "endLine": 252,
+    "endColumn": 74,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 9,
+    "endLine": 252,
+    "endColumn": 74,
+    "mutatorName": "LogicalOperator",
+    "replacement": "(round.link || !round.directory) && !evidenceRound.test(round.name)",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 9,
+    "endLine": 252,
+    "endColumn": 39,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 9,
+    "endLine": 252,
+    "endColumn": 39,
+    "mutatorName": "LogicalOperator",
+    "replacement": "round.link && !round.directory",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 23,
+    "endLine": 252,
+    "endColumn": 39,
+    "mutatorName": "BooleanLiteral",
+    "replacement": "round.directory",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 43,
+    "endLine": 252,
+    "endColumn": 74,
+    "mutatorName": "BooleanLiteral",
+    "replacement": "evidenceRound.test(round.name)",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 252,
+    "column": 76,
+    "endLine": 252,
+    "endColumn": 108,
+    "mutatorName": "CallExpression",
+    "replacement": ";",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "lists a name under evidence it does not recognise, and plans none of it however old"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 253,
+    "column": 10,
+    "endLine": 257,
+    "endColumn": 6,
+    "mutatorName": "BlockStatement",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 10,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "true",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 10,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "ConditionalExpression",
+    "replacement": "false",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 10,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "EqualityOperator",
+    "replacement": "now - newest >= evidenceAgeDays * day",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 10,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "EqualityOperator",
+    "replacement": "now - newest <= evidenceAgeDays * day",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 10,
+    "endLine": 255,
+    "endColumn": 22,
+    "mutatorName": "ArithmeticOperator",
+    "replacement": "now + newest",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 255,
+    "column": 25,
+    "endLine": 255,
+    "endColumn": 46,
+    "mutatorName": "ArithmeticOperator",
+    "replacement": "evidenceAgeDays / day",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 256,
+    "column": 25,
+    "endLine": 256,
+    "endColumn": 83,
+    "mutatorName": "ObjectLiteral",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 256,
+    "column": 52,
+    "endLine": 256,
+    "endColumn": 74,
+    "mutatorName": "ArrayDeclaration",
+    "replacement": "[]",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  },
+  {
+    "file": "packages/pipeline/src/store-prune.ts",
+    "line": 269,
+    "column": 24,
+    "endLine": 269,
+    "endColumn": 89,
+    "mutatorName": "ObjectLiteral",
+    "replacement": "{}",
+    "test": {
+      "file": "packages/pipeline/test/store-prune.test.ts",
+      "path": [
+        "plans a round's evidence nothing wrote for more than ninety days, judged by its newest file"
+      ]
+    },
+    "head": "d280179cd8953302217ebe2dbeb326976e3fbf33",
+    "unmutated": "passed, 1 collected",
+    "mutated": "failed, 1 collected"
+  }
+]

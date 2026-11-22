@@ -1,0 +1,138 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "4837f70ddc0f4e6413830718b076e6a11de7c920",
+		"head": "69a0f7dd12187934f0348a06441c38a9003c5081"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/findings.ts",
+		"packages/pipeline/src/recorded-round.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4d6074c36228f260c8827a3e549d96f12732b17ef9ac6409af627e446bb1c093",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 810,
+			"column": 12,
+			"endLine": 810,
+			"endColumn": 54,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "975aecc61124ab4f44b775d3d6d2ee03f330667469af2bf18a84bbe9c5fb30d9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings.test.ts",
+					"path": [
+						"the findings document",
+						"lifecycle",
+						"reopens a dismissal the host's accumulated proof no longer holds, as a reader of the shared dismissal does"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 302,
+			"column": 6,
+			"endLine": 302,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ea82778ef10569b2e9b9b43ca3e7025bdcb0a202c207547758205122fb64af61",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"remembers no hunk the round it reads cites, as the host tests each sighting against what it held before"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 302,
+			"column": 6,
+			"endLine": 302,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "6fbfd03ae61508bc99867d1543eceaa3931db87963bd83e73b1de9c4de21dfcd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"reopens a dismissal once a round after it shared a lens record citing a hunk the revision no longer holds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 302,
+			"column": 6,
+			"endLine": 302,
+			"endColumn": 20,
+			"mutatorName": "EqualityOperator",
+			"replacement": "each === round",
+			"status": "generated",
+			"id": "e0f54e4f1d644d49da95764c8f22caa8db8a474b0265ac22399987b52ca9dc47",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"reopens a dismissal once a round after it shared a lens record citing a hunk the revision no longer holds"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 302,
+			"column": 22,
+			"endLine": 302,
+			"endColumn": 39,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "5a4085e32675aca88598be9f788c5238d202d38a506c408284983e2db870a776",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/recorded-round.test.ts",
+					"path": [
+						"the dismissal records a reader applies",
+						"reopens a dismissal once a round after it shared a lens record citing a hunk the revision no longer holds"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

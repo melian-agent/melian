@@ -423,10 +423,6 @@ function probeRefusal(origin: string | undefined): string | undefined {
 		const worded = [...lensProbingWording.keys()];
 		return `"probe" needs the probing wording of a built-in lens it extends, and only the ${worded.slice(0, -1).join(", ")} and ${worded.at(-1)} lenses have it, so no lens probes under another lens's words`;
 	}
-	// An attack the tests prober answers counts as answered whatever its probe showed, so a test that already fails
-	// would leave the lens clean.
-	if (origin === "tests")
-		return `"probe" is refused in the tests lens, and in any lens that extends it, until https://github.com/melian-agent/melian/issues/493 decides what an attack counts as when its probes showed nothing`;
 	return undefined;
 }
 

@@ -17,7 +17,6 @@ import {
 import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, sep } from "node:path";
-import { pathToFileURL } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gitIn } from "../../core/test/fixtures/repo.ts";
 import {
@@ -49,7 +48,7 @@ function passthrough(
 	overrides: {
 		unavailable?: string;
 		open?: () => Promise<void>;
-		wrap?: () => Promise<never>;
+		wrap?: (command: string, policy: ProbePolicy) => Promise<never>;
 		platform?: "darwin" | "linux";
 	} = {},
 ) {
@@ -195,6 +194,7 @@ describe("Probe.open", () => {
 		["probe.mjs"],
 		["PROBE.MJS"],
 		["watchdog.mjs"],
+		["run.mjs"],
 	])("refuses the file path %j", async (path) => {
 		const { sandbox } = passthrough();
 		const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
@@ -231,15 +231,24 @@ describe("Probe.open", () => {
 		);
 		const { policy } = probe;
 		const root = dirname(policy.write[0]!);
-		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "watchdog.mjs"]);
+		expect(readdirSync(join(root, "probe")).sort()).toEqual(["a", "probe.mjs", "run.mjs", "watchdog.mjs"]);
 		expect(readdirSync(join(root, "probe", "a")).sort()).toEqual(["b.json", "c-1_x.txt"]);
 		expect(policy.write).toEqual([join(root, "run")]);
-		// The watchdog exits the probe at its own limit even if nothing outside the sandbox stops it, and is unref'd, so
-		// a probe that finishes keeps its own exit code.
-		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
-		expect(watchdog).toMatch(
-			/^import \{ writeFileSync \} from "node:fs";\nsetTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);\nwriteFileSync\(new URL\("\.\.\/run\/started", import\.meta\.url\), ""\);\n$/,
+		// The runner starts the probe's own process with the watchdog preloaded, so the watchdog is armed first. It exits
+		// the probe at its own limit even if nothing outside the sandbox stops it, and is unref'd, so a probe that finishes
+		// keeps its own exit code. It reports the exit code on fd 4 and leaves the start marker.
+		const runner = readFileSync(join(root, "probe", "run.mjs"), "utf8");
+		expect(runner).toContain(
+			'["--import", new URL("./watchdog.mjs", import.meta.url).href, fileURLToPath(new URL("./probe.mjs", import.meta.url))]',
 		);
+		const watchdog = readFileSync(join(root, "probe", "watchdog.mjs"), "utf8");
+		const lines = watchdog.split("\n");
+		expect(lines).toHaveLength(5);
+		expect(lines[0]).toBe('import { writeFileSync, writeSync } from "node:fs";');
+		expect(lines[1]).toBe(`process.on("exit", (code) => { try { writeSync(4, \`\${code}\\n\`); } catch {} });`);
+		expect(lines[2]).toMatch(/^setTimeout\(\(\) => process\.exit\(124\), \d+\)\.unref\(\);$/);
+		expect(lines[3]).toBe('writeFileSync(new URL("../run/started", import.meta.url), "");');
+		expect(lines[4]).toBe("");
 		await probe.close();
 		expect(existsSync(root)).toBe(false);
 	});
@@ -1148,6 +1157,43 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		}
 	});
 
+	// The run keeps the last 256 bytes of fd 3, so a record whose opening newline falls before them is no record.
+	it.each([
+		["at", 230, { exitCode: 3, signal: null }],
+		["one past", 231, { exitCode: null, signal: null }],
+	])("reads a record %s the 256 bytes a run keeps of fd 3", async (_, pad, expected) => {
+		const { sandbox } = passthrough({
+			wrap: (async (_command: string, policy: ProbePolicy) => [
+				"/bin/sh",
+				"-c",
+				`: > '${policy.write[0]}/started'; printf '\\n%${pad}s%s\\n' '' '{"code":3,"signal":null}' >&3; exit 3`,
+			]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			const result = await probe.run();
+			expect({ exitCode: result.exitCode, signal: result.signal }).toEqual(expected);
+		} finally {
+			await probe.close();
+		}
+	});
+
+	it("reads a short record after a long prefix on fd 3", async () => {
+		const { sandbox } = passthrough({
+			wrap: (async (_command: string, policy: ProbePolicy) => [
+				"/bin/sh",
+				"-c",
+				`: > '${policy.write[0]}/started'; printf '%4000s\\n%s\\n' '' '{"code":3,"signal":null}' >&3; exit 3`,
+			]) as never,
+		});
+		const probe = await Probe.open({ script: "" }, options(sandbox));
+		try {
+			expect((await probe.run()).exitCode).toBe(3);
+		} finally {
+			await probe.close();
+		}
+	});
+
 	it("refuses a run whose sandbox exits before its runner starts, though an earlier run of the probe started", async () => {
 		let runs = 0;
 		const { sandbox } = passthrough({
@@ -1228,17 +1274,14 @@ console.log(JSON.stringify({ marker: readFileSync("marker", "utf8"), home: proce
 		expect(seconds).toBeLessThanOrEqual(probeLimits.timeout.max / 1000);
 	});
 
-	it("starts the probe under Node with the watchdog preloaded by --import", async () => {
+	it("starts the runner under Node, as the sandbox's last command", async () => {
 		const { sandbox, asked } = passthrough();
 		const probe = await Probe.open({ script: "" }, options(sandbox));
 		const root = dirname(probe.policy.write[0]!);
 		await probe.run();
 		await probe.close();
-		const watchdog = pathToFileURL(join(root, "probe", "watchdog.mjs")).href;
 		expect(asked[0]!.command).toMatch(
-			new RegExp(
-				` && exec '[^']+' --import '${watchdog.replaceAll(".", "\\.")}' '${join(root, "probe", "probe.mjs").replaceAll(".", "\\.")}'$`,
-			),
+			new RegExp(` && exec '[^']+' '${join(root, "probe", "run.mjs").replaceAll(".", "\\.")}'$`),
 		);
 	});
 
@@ -1393,7 +1436,10 @@ describe("Probe.availability", () => {
 		expect(await Probe.availability(sandbox)).toEqual({ available: true });
 		expect(asked).toHaveLength(1);
 		expect(sandbox.close).toHaveBeenCalledOnce();
-		const failing = passthrough({ wrap: async () => ["/bin/sh", "-c", "echo broken; exit 4"] as never });
+		const recorded = (ending: string) => `printf '\\n%s\\n' '${ending}' >&3`;
+		const failing = passthrough({
+			wrap: async () => ["/bin/sh", "-c", `echo broken; ${recorded('{"code":4,"signal":null}')}; exit 4`] as never,
+		});
 		expect(await Probe.availability(failing.sandbox)).toEqual({
 			available: false,
 			reason: "the probe never started: its sandbox exited 4: broken",
@@ -1402,6 +1448,28 @@ describe("Probe.availability", () => {
 		expect(await Probe.availability(silent.sandbox)).toEqual({
 			available: false,
 			reason: "the probe never started: its sandbox exited 5",
+		});
+		// A probe that started leaves the watchdog's marker, and then its runner's record says how it ended.
+		const started = (policy: ProbePolicy) => `: > '${policy.write[0]}/started'`;
+		const exited = passthrough({
+			wrap: async (_command, policy) =>
+				["/bin/sh", "-c", `${started(policy)}; ${recorded('{"code":5,"signal":null}')}; exit 5`] as never,
+		});
+		expect(await Probe.availability(exited.sandbox)).toEqual({ available: false, reason: "an empty probe exited 5" });
+		const killed = passthrough({
+			wrap: async (_command, policy) =>
+				["/bin/sh", "-c", `${started(policy)}; ${recorded('{"code":null,"signal":"SIGKILL"}')}; exit 1`] as never,
+		});
+		expect(await Probe.availability(killed.sandbox)).toEqual({
+			available: false,
+			reason: "an empty probe was ended by SIGKILL",
+		});
+		const unrecorded = passthrough({
+			wrap: async (_command, policy) => ["/bin/sh", "-c", `${started(policy)}; echo broken; exit 4`] as never,
+		});
+		expect(await Probe.availability(unrecorded.sandbox)).toEqual({
+			available: false,
+			reason: "an empty probe ended with no record of how: broken",
 		});
 		expect(left()).toEqual([]);
 	});

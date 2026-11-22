@@ -5,6 +5,7 @@
 		"packages/pipeline/test/probe-sandbox.test.ts",
 		"packages/cli/test/probe.test.ts",
 		"packages/pipeline/test/probe-keychain.test.ts",
+		"packages/pipeline/test/probe-endings.test.ts",
 		"packages/state-git/test/sweep.test.ts"
 	],
 	"tag": "macos",

@@ -33,6 +33,7 @@ import {
 	type ModelRoute,
 	ModelRoutingError,
 	parseModelReference,
+	type RecordEnvelope,
 	type RecordStore,
 	type RepositorySource,
 	type ReviewPlan,
@@ -40,6 +41,7 @@ import {
 	type RoundFacts,
 	resolveModelForTier,
 	resolveModelRoute,
+	reviewPayloads,
 	type ScrutinyLevel,
 	type Severity,
 	SharedRecord,
@@ -81,7 +83,7 @@ import {
 	readRecordedDecision,
 } from "./decisions.ts";
 import { cutDiffNote, EnclosingFunctions } from "./enclosing-functions.ts";
-import { ReviewError } from "./errors.ts";
+import { DismissError, ReviewError, type UnsharedCode } from "./errors.ts";
 import {
 	clearSightings,
 	clearVerifications,
@@ -164,6 +166,7 @@ import {
 	plannerInstructions,
 	probeClaimKey,
 	probeConclusive,
+	probeFailed,
 	proberInstructions,
 	probesConclusive,
 	probingHost,
@@ -373,8 +376,6 @@ type Conversed =
 	| { readonly status: "done"; readonly model: string; readonly attempt: number; readonly refused?: readonly string[] }
 	| Exclude<LensOutcome, { status: "done" }>;
 
-// What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
-// the plan's size, the probes it ran and their time, the attacks it skipped, and those it left with neither.
 /**
  * Why a level that probes could not probe, as one of a closed set, so a host decides and prints on it without reading
  * the reason's text, which can name a path in the head.
@@ -401,7 +402,7 @@ export const probeGapSentences: Readonly<Record<ProbeGapCause, string>> = {
 	"prober-tier-unrouted": "the prober's tier reaches no model with credentials",
 	"probe-refused": "a probe the prober asked for could not open, run, stop or clean up",
 	"probe-inconclusive":
-		"every probe the prober ran for an attack timed out, was cut or was ended by a signal, and it did not skip the attack",
+		"every probe the prober ran for an attack showed nothing, by timing out, being cut, being ended by a signal, ending with no record of how or exiting 125, and it did not skip the attack",
 };
 
 /** A level that probes and could not, under {@link ReviewSettings.requireProbes}: its check, level and cause. */
@@ -413,6 +414,9 @@ export interface ProbeGap {
 
 type ProbeGapReason = { readonly cause: ProbeGapCause; readonly reason: string };
 
+// What a probing run's prober did: its conversation and the model it finished on, absent when the plan held no attack,
+// the plan's size, the probes it ran and their time, the attacks it skipped, the failed probes it closed with why, and
+// those it left with neither a skip nor a probe that showed anything. A version 7 task stored `skipped` as a count.
 type ProbingOutcome = {
 	readonly prober?: ConversationId;
 	readonly model?: string;
@@ -421,8 +425,9 @@ type ProbingOutcome = {
 	readonly attacks: number;
 	readonly probes: number;
 	readonly milliseconds: number;
-	readonly skipped: number;
+	readonly skipped: number | readonly number[];
 	readonly unanswered: readonly number[];
+	readonly closed?: readonly { readonly attack: number; readonly probe: string; readonly reason: string }[];
 };
 
 type StoredTrigger = { kind: "severity"; severity: Severity } | { kind: "budget"; budget: "tokens" | "tools" };
@@ -618,8 +623,11 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 	// prober's conversation in the checkpoint under `<key>/prober` and what it did in the outcome's `probing`; an older
 	// task's runs probe nothing. Version 7 keys each run by its request and lets the input name the lenses it copies, in
 	// `reused`, with each copied outcome naming the task that asked it and each copy that task's nonce; an older task's
-	// runs have no request key, so no later task copies them, and it copies none.
-	version: 7,
+	// runs have no request key, so no later task copies them, and it copies none. Version 8 answers an attack only with a
+	// skip or a probe that showed something, or, once a probe of it failed, with a finding on such a probe, and lists the
+	// skipped attacks in the outcome's `probing.skipped`, which an older task stored as a count; an older task's input and
+	// checkpoint are unchanged.
+	version: 8,
 	initial: () => ({ phase: "spawn" }),
 	migrate: (input, checkpoint, from) => ({
 		input: LensTaskInput.upgrade(input, from),
@@ -738,12 +746,25 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 				if (reminded.status !== "unanswered") return reminded;
 				return { ...reminded, reason: `${which} did not finish: ${reminded.reason}` };
 			};
-			// The attack numbers the prober answered with neither a probe nor a skip.
+			// The attack numbers the prober left unanswered. A probe that failed showed its attack's defect, so only a finding
+			// resting on one answers that attack, or closing every failed probe of it as one that never exercised it; otherwise
+			// a probe that showed anything, or a skip, does.
 			const unanswered = async (prober: ConversationId, attacks: number): Promise<number[]> => {
 				const state = (await runtime.snapshot(ProbingDocument, prober, context)) ?? {};
-				const probed = new Set(Object.values(state.probes ?? {}).map((probe) => probe.attack));
-				return Array.from({ length: attacks }, (_, index) => index + 1).filter(
-					(attack) => !probed.has(attack) && state.skips?.[String(attack)] === undefined,
+				const probes = Object.values(state.probes ?? {});
+				const attacksOf = (keep: (probe: (typeof probes)[number]) => boolean) =>
+					new Set(probes.filter(keep).map((probe) => probe.attack));
+				const failed = new Set(
+					Object.entries(state.probes ?? {})
+						.filter(([id, probe]) => probeFailed(probe.result) && state.closed?.[id] === undefined)
+						.map(([, probe]) => probe.attack),
+				);
+				const probed = attacksOf((probe) => probeConclusive(probe.result));
+				const reported = new Set(state.answered);
+				return Array.from({ length: attacks }, (_, index) => index + 1).filter((attack) =>
+					failed.has(attack)
+						? !reported.has(attack)
+						: !probed.has(attack) && state.skips?.[String(attack)] === undefined,
 				);
 			};
 			// A probing run after its planner finished: the plan it recorded, then the prober's answer to it.
@@ -786,7 +807,7 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 						};
 					}, context);
 				}
-				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: 0, unanswered: [] };
+				if (plan.length === 0) return { attacks: 0, probes: 0, milliseconds: 0, skipped: [], unanswered: [] };
 				const plain = renderPlan(plan, input.revision.nonce);
 				let answered = await converse(
 					key,
@@ -817,11 +838,19 @@ const LensTask = defineTask<StoredLensTaskInput, LensCheckpoint, LensResult>({
 					attacks: plan.length,
 					probes: probes.length,
 					milliseconds: probes.reduce((sum, each) => sum + each.milliseconds, 0),
-					// An attack skipped and then probed was probed.
-					skipped: Object.keys(state.skips ?? {}).filter(
-						(attack) => !probes.some((probe) => probe.attack === Number(attack)),
-					).length,
+					// An attack skipped and then probed by a probe that showed something was probed. Integer keys list in order.
+					skipped: Object.keys(state.skips ?? {})
+						.map(Number)
+						.filter(
+							(attack) => !probes.some((probe) => probe.attack === attack && probeConclusive(probe.result)),
+						),
 					unanswered: open,
+					// skip_attack closes only a probe it read from this document, so every closed ID names a stored probe.
+					closed: Object.entries(state.closed ?? {}).map(([id, reason]) => ({
+						attack: state.probes![id]!.attack,
+						probe: id,
+						reason,
+					})),
 				};
 			};
 			// One run: its conversation, and for a level that probes, its planner's then its prober's.
@@ -1558,7 +1587,12 @@ export interface Review {
 	readonly verdict: Verdict;
 	/** The long-log warning for the decision index this review gave its design lens or verifier; absent when it gave none or the index is short. */
 	readonly decisionIndexWarning?: string;
+	/** Each dismissal the review's record export left out, and the code that says why; empty when it left none out. */
+	readonly unshared: readonly UnsharedDismissal[];
 }
+
+/** A dismissal a review's record export left out: the finding's ID and the {@link DismissError} code that refused it. */
+export type UnsharedDismissal = { readonly finding: string; readonly code: UnsharedCode };
 
 // Why a conversation's request ended without finishing: the model's own message where it gave one.
 function unsettled(settled: { readonly detail?: unknown; readonly reason?: string }): string {
@@ -2201,13 +2235,25 @@ function lensCheck(
 }
 
 // What a probing run did, for its record: the plan's size, the probes and their time, and the attacks it skipped.
-function probingNote(probing: ProbingOutcome): string {
+export function probingNote(probing: ProbingOutcome): string {
 	if (probing.attacks === 0) return "its planner found no attack to probe";
 	// A probe that ran took some time, however fast the machine: never "0.0 s".
 	const seconds = (probing.milliseconds / 1000).toFixed(1);
 	const time = probing.probes > 0 && seconds === "0.0" ? "under 0.1" : seconds;
-	const skipped = probing.skipped === 0 ? "" : `, and skipped ${plural(probing.skipped, "attack")}`;
-	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}`;
+	const { skipped: listed } = probing;
+	const count = typeof listed === "number" ? listed : listed.length;
+	const which =
+		typeof listed === "number"
+			? plural(count, "attack")
+			: `${count === 1 ? "attack" : "attacks"} ${listed.join(", ")}`;
+	const skipped = count === 0 ? "" : `, and skipped ${which}`;
+	const closed = (probing.closed ?? [])
+		.map(
+			({ attack, probe, reason }) =>
+				`, and closed attack ${attack} with no finding, since probe ${probe} never exercised it: "${visibleText(reason)}"`,
+		)
+		.join("");
+	return `it planned ${plural(probing.attacks, "attack")} and ran ${plural(probing.probes, "probe")} in ${time} s${skipped}${closed}`;
 }
 
 function lensRecord(
@@ -2233,23 +2279,26 @@ function lensRecord(
 	if (!completed) return { name, status: "failed", level, reason: failed("the lens task did not complete") };
 	if (outcome?.status === "done") {
 		const { budgetEnded } = outcome;
-		// An attack with neither a probe nor a skip is one the review never tried.
+		// An attack with neither a skip nor a probe that showed anything is one the review never answered.
 		const open = probing?.unanswered ?? [];
+		const lost =
+			outcome.capped === undefined
+				? undefined
+				: handedBy.length === 0
+					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
+					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
 		if (open.length > 0) {
 			const attacks = `${open.length === 1 ? "attack" : "attacks"} ${open.join(", ")}`;
+			const left = `its prober left ${attacks} with no finding on a probe that failed, nor a probe that passed or a skip`;
 			return {
 				name,
 				status: "ended",
 				level,
 				...(budgetEnded === undefined ? {} : { budgetEnded }),
-				reason: failed(`its prober left ${attacks} with neither a probe nor a skip`),
+				reason: failed(lost === undefined ? left : `${lost}; ${left}`),
 			};
 		}
-		if (outcome.capped !== undefined) {
-			const lost =
-				handedBy.length === 0
-					? `its findings budget of ${outcome.capped} ran out, so defects may be unreported`
-					: `its findings budget of ${outcome.capped} ran out while ${handedBy.map((name) => `\`${name}\``).join(", ")} could have handed it defects, so one may be unreported`;
+		if (lost !== undefined) {
 			return {
 				name,
 				status: "ended",
@@ -2289,6 +2338,20 @@ function refusalNote(whose: string, refused: readonly string[] | undefined, mode
 	return refused === undefined || model === undefined
 		? []
 		: [`${whose}${refused.join(", ")} refused the content, so ${model} answered`];
+}
+
+// The IDs of the held rounds a round of `reviewed` follows: those of `previous`, the revision this host reviewed
+// before, and every held round of another revision that no such round names, so a round keeps the store's chain,
+// another host's rounds since this host's own included.
+function predecessors(held: readonly RecordEnvelope[], reviewed: string, previous: string | undefined): string[] {
+	const rounds = held
+		.filter((each) => each.kind === "round" && each.revision !== reviewed)
+		.map((each) => SharedRecord.parse(each, reviewPayloads));
+	const named = new Set(rounds.flatMap((each) => each.manifest()!.before));
+	return rounds
+		.filter(({ id, revision }) => revision === previous || !named.has(id))
+		.map(({ id }) => id)
+		.sort();
 }
 
 // A verification outcome as its record holds it, with the budget's end's fields alone.
@@ -2557,6 +2620,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	const run = checked ?? request.checkRun;
 	const options = planned({ ...request, checkRun: undefined, checks: run?.records ?? supplied ?? [] });
 	const { changeset, config, standards, models } = options;
+	// The one listing the review fills each dismissal's `supersedes` from, in verification and export alike; a store
+	// that cannot be listed fails the review, as a failed export does.
+	const held = request.records === undefined ? [] : await request.records.list(changeset.id);
 	// A host that keeps no spans gets a recorder nobody stores, on a clock that reads nothing.
 	const spans = options.spans ?? PrepareSpans.start("review", 0, () => 0);
 	spans.step("standards.trust");
@@ -3170,7 +3236,10 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				...(restatement === undefined
 					? {}
 					: {
-							dismissed: restatement.dismissed,
+							dismissed: restatement.dismissed.map((each) => ({
+								...each,
+								record: predecessors.recordOf(changeset.id, each.id, held),
+							})),
 							dismissals: Object.fromEntries(
 								restatement.restating.dismissed.map(({ id, dismissal }) => [id, dismissal]),
 							),
@@ -3392,24 +3461,31 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			producers,
 			resolutionPolicy,
 		});
+		const dismissals: SharedRecord[] = [];
+		const unsharedDismissals: UnsharedDismissal[] = [];
+		// A dismissal's record is written once: a store that holds it already gets nothing again.
+		const stored = new Set(held.map((each) => SharedRecord.parseEnvelope(each).id));
+		for (const id of state === undefined ? [] : Object.keys(state.items)) {
+			try {
+				const record = records.dismissalOf(state!, id, held, proof);
+				if (record !== undefined && !stored.has(record.id)) dismissals.push(record);
+			} catch (error) {
+				if (!(error instanceof DismissError) || (error.code !== "unprovenRun" && error.code !== "madeWithoutStore"))
+					throw error;
+				unsharedDismissals.push({ finding: id, code: error.code });
+			}
+		}
 		const read = [...counted.map(({ record }) => record), ...triageRecord, account];
-		const stored = await store.list(changeset.id);
 		const previous = state?.revisions.filter((each) => each !== reviewed).at(-1);
 		// A round replaces none: records are immutable, and a list naming rounds this writer never read would hand
-		// issue #395 data it had to distrust.
-		const round = records.round(
-			read,
-			walkthrough,
-			[],
-			previous === undefined
-				? []
-				: stored
-						.filter((each) => each.kind === "round" && each.revision === previous)
-						.map((each) => SharedRecord.parseEnvelope(each).id),
-		);
+		// issue #395 data it had to distrust. `before` names only rounds of the one listing `held`, which this writer read.
+		const round = records.round(read, walkthrough, [], predecessors(held, reviewed, previous));
 		await store.add(
-			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round].map((record) => record.toJSON()),
+			[...read, ...(walkthrough === undefined ? [] : [walkthrough]), round, ...dismissals].map((record) =>
+				record.toJSON(),
+			),
 		);
+		return unsharedDismissals;
 	};
 	// Exports each lens run's record as its lens ends, from the outcomes the lens task writes at each end, with no check:
 	// only adjudication decides what a run stands for. The final export writes each record again with its check, and the
@@ -3658,7 +3734,9 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		);
 	let verificationCheck: CheckRecord | undefined;
 	// The verification task's request key and the outcomes it reached, which its record carries.
-	let verified: { key: string; result: VerificationResult } | undefined;
+	let verified:
+		| { key: string; result: VerificationResult; dismissals: { finding: string; record: string }[] }
+		| undefined;
 	let verificationRefused = false;
 	let verifying: TaskId<VerificationResult> | undefined;
 	if (candidates.length === 0) {
@@ -3770,7 +3848,23 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 				const results = finished.status === "completed" ? (finished.result as VerificationResult) : {};
 				// The index names the request key the task attached under, which its record is keyed by.
 				const attachedAs = (await harness.snapshot(ReviewIndex, root, context))?.reviews[reviewed]?.verification;
-				if (attachedAs?.task === verifying) verified = { key: attachedAs.input, result: results };
+				if (attachedAs?.task === verifying) {
+					// The dismissals the task's verifier was shown, each once; a task version 4 stored names no record.
+					const shown = new Map(
+						(
+							(await harness.getTask(verifying, context))!.input as unknown as VerificationInput
+						).candidates.flatMap((candidate) =>
+							(candidate.dismissed ?? []).flatMap(({ id, record }) =>
+								record === undefined ? [] : [[id, record] as const],
+							),
+						),
+					);
+					verified = {
+						key: attachedAs.input,
+						result: results,
+						dismissals: [...shown].map(([finding, record]) => ({ finding, record })),
+					};
+				}
 				const ended = Object.values(results).find((result) => result.status === "ended");
 				const failed = candidates
 					.map((candidate) => results[candidate.key])
@@ -3933,15 +4027,17 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 	// adjudication reached; so this review exports none, and the review that replaced it exports its own.
 	const owned =
 		decision?.task === adjudication && decision.findingsVersion === (findingsDecided?.versions[reviewed] ?? 0);
+	let unshared: readonly UnsharedDismissal[] = [];
 	if (request.records !== undefined && owned) {
 		const findings = findingsDecided;
-		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers);
+		const shown = new Set(verified?.dismissals.map(({ finding }) => finding));
+		const claims = findings === undefined ? [] : verificationClaims(findings, reviewed, producers, shown);
 		const verification =
 			verified === undefined || verificationCheck === undefined
 				? undefined
 				: ReviewRecords.of(changeset.id, { base, head }).verification(verified.key, {
 						claims,
-						dismissals: [],
+						dismissals: verified.dismissals,
 						outcomes: Object.entries(verified.result).map(([candidate, outcome]) => ({
 							candidate,
 							outcome: verificationOutcome(outcome),
@@ -3964,7 +4060,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						});
 					});
 		const summary = written === true ? await exportedWalkthrough(harness, root, reviewed, context) : undefined;
-		await exportRound(
+		unshared = await exportRound(
 			request.records,
 			run,
 			options.checks ?? [],
@@ -3997,6 +4093,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	const failed = settled.filter(({ outcome }) => outcome?.status !== "done").map(({ run }) => run.name);
@@ -4006,6 +4103,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
 	}
 	if (verificationCheck !== undefined && verificationCheck.status !== "ran")
@@ -4014,6 +4112,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			findings,
 			verdict,
 			...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }),
+			unshared,
 		});
-	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }) };
+	return { findings, verdict, ...(decisionIndexWarning === undefined ? {} : { decisionIndexWarning }), unshared };
 }

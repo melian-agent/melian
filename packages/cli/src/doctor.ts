@@ -27,8 +27,10 @@ import {
 } from "@melian-agent/pipeline";
 import { GitRecordStore, type Sweep, sweepBound } from "@melian-agent/state-git";
 import type { Io } from "./commands.ts";
+import { CloneEvidence } from "./evidence.ts";
 import { decisionProviderRefusal, reviewModels } from "./models.ts";
 import { fromCheckout, git, stateDirectory, stateDirectoryVariable } from "./repository.ts";
+import { size } from "./store.ts";
 import { ToolInventory } from "./tools.ts";
 
 type Check = { readonly name: string; readonly state: "ok" | "warn" | "fail"; readonly detail: string };
@@ -368,6 +370,27 @@ async function stateCheck(cwd: string, env: NodeJS.ProcessEnv): Promise<Check | 
 	}
 }
 
+async function evidenceCheck(io: Io): Promise<Check | undefined> {
+	const root = await git(io.cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
+	if (root === undefined) return undefined;
+	let store: CloneEvidence["store"];
+	let held: number;
+	try {
+		({ store } = await CloneEvidence.open(io, root));
+		held = await store.size();
+	} catch (error) {
+		return { name: "evidence", state: "warn", detail: `unreadable: ${visibleText((error as Error).message)}` };
+	}
+	const detail = `${visibleText(store.directory)}, ${size(held)} of its budget of ${size(store.budget)}`;
+	return held < store.budget
+		? { name: "evidence", state: "ok", detail }
+		: {
+				name: "evidence",
+				state: "warn",
+				detail: `${detail}; a valid miss keeps no more evidence until evidence.budget is raised in your configuration, since melian store prune keeps evidence until issue #633 lands`,
+			};
+}
+
 async function repositoryCheck(cwd: string): Promise<Check> {
 	const root = await git(cwd, ["rev-parse", "--show-toplevel"]).catch(() => undefined);
 	if (root === undefined) return { name: "repository", state: "warn", detail: "not inside a git repository" };
@@ -652,6 +675,7 @@ export async function doctor(io: Io, options: { readonly fetch?: typeof globalTh
 			await executableCheck(io.cwd, io.executable),
 			await cloneCheck(io.executable),
 			await stateCheck(io.cwd, io.env),
+			await evidenceCheck(io),
 			...(await recordStoreChecks(io.cwd, io.env)),
 			await levelsCheck(io.cwd, io.env),
 			await staticCheck(io.cwd),

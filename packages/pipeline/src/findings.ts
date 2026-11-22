@@ -605,14 +605,17 @@ export async function dismissFinding(
 		...Object.values(atRevision).flatMap((each) => proofOf(each.properties.cause, each.properties.trigger)),
 	]);
 	const dismissedTrigger = { hash: triggerCode(trigger), proof };
-	// Repeating the same dismissal of the same content under the same run changes nothing, so the severity it was made
-	// at stands. A new run is taken, since the run is what proves a static sighting.
+	// Repeating the same dismissal of the same content at the same revision under the same run changes nothing, so the
+	// severity it was made at stands. A new run is taken, since the run is what proves a static sighting, and so is a new
+	// revision, since a shared dismissal holds only at the revision its sighting names.
 	if (
 		status === "dismissed" &&
 		dismissedBy === by &&
 		dismissedReason === why &&
 		JSON.stringify(record.lifecycle.dismissedTrigger) === JSON.stringify(dismissedTrigger) &&
-		(severity === undefined || record.lifecycle.dismissedSighting?.run === run)
+		(severity === undefined ||
+			(record.lifecycle.dismissedSighting?.run === run &&
+				(record.lifecycle.dismissedSighting?.revision ?? accepting) === accepting))
 	)
 		return undefined;
 	const replaced =
@@ -783,13 +786,14 @@ export async function readFindings(
 export type VerificationClaim = { id: string; source: FindingSource; verification: Verification };
 
 /**
- * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, with the
- * dismissals the verifier matched left out: a shared record carries no dismissal it does not name.
+ * The latest verification of each sighting `producers` select at `revision`, in ID then producer order, keeping only
+ * the matches against a dismissal in `shown`: a shared record carries no dismissal it does not name.
  */
 export function verificationClaims(
 	state: FindingsState,
 	revision: string,
 	producers: readonly Producer[],
+	shown: ReadonlySet<string>,
 ): VerificationClaim[] {
 	const counts = selected(producers);
 	return Object.keys(state.items)
@@ -802,20 +806,58 @@ export function verificationClaims(
 				.flatMap(([key, sighting]) => {
 					const latest = Object.values(verifications?.[revision]?.[key] ?? {}).at(-1);
 					if (latest === undefined) return [];
-					const { matches: _, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
-					return [{ id, source: { ...sighting.properties.source }, verification }];
+					const { matches, ...verification } = JSON.parse(JSON.stringify(latest)) as Verification;
+					const named = Object.entries(matches ?? {}).filter(([root]) => shown.has(root));
+					return [
+						{
+							id,
+							source: { ...sighting.properties.source },
+							verification:
+								named.length === 0 ? verification : { ...verification, matches: Object.fromEntries(named) },
+						},
+					];
 				});
 		});
 }
 
+/** A dismissal shared as a record: who made it, why, when, and the trigger it accepted. */
+export type SharedDismissal = Readonly<Pick<FindingDismissal, "by" | "reason" | "at">> & {
+	readonly trigger: { readonly hash: string; readonly proof: readonly ProvingHunk[] };
+};
+
+/**
+ * Whether `shared` still holds for a finding sighted as `sightings` at the revision it was made at, of `hunks`, by the
+ * rule that reopens a dismissal on the host, tested against the trigger it accepted alone. A host also remembers each
+ * sighting's hunks and tests later sightings against them, so a sighting citing a hunk the revision lacks reopens it
+ * here at once; any other hunk it remembers is the revision's own, which reopens nothing.
+ */
+export function sharedDismissalHolds(
+	shared: SharedDismissal,
+	sightings: Iterable<{ readonly properties: Pick<StoredFinding["properties"], "cause" | "trigger"> }>,
+	hunks: readonly ProvingHunk[],
+): boolean {
+	return [...sightings].every(
+		({ properties: { cause, trigger } }) =>
+			!reopens(shared.trigger.hash, shared.trigger.proof, cause, triggerCode(trigger), hunks) &&
+			proofOf(cause, trigger).every((each) =>
+				hunks.some((hunk) => hunk.file === each.file && hunk.hash === each.hash),
+			),
+	);
+}
+
 /**
  * The findings `sightings` make once `claims` judge them, merged as {@link readFindings} merges one revision's, among
- * the sightings `producers` select. Each reads `new`: the sightings carry no lifecycle, so no dismissal reaches them.
+ * the sightings `producers` select. A finding reads `dismissed` when `dismissals` holds one for its ID that every one
+ * of its sightings still meets at a revision of `hunks`, by the rule that reopens a dismissal on the host, and `new`
+ * otherwise: the sightings carry no lifecycle of their own. Of several that hold, the finding carries the latest, and
+ * of two made at one time the one listed last.
  */
 export function mergeSightings(
 	sightings: readonly StoredFinding[],
 	claims: readonly VerificationClaim[],
 	producers: readonly Producer[],
+	dismissals: ReadonlyMap<string, readonly SharedDismissal[]>,
+	hunks: readonly ProvingHunk[],
 ): Finding[] {
 	const at = "revision";
 	const items: Record<string, Pick<FindingRecord, "sightings" | "verifications">> = {};
@@ -839,7 +881,16 @@ export function mergeSightings(
 			const atHead = judgedAt(items[id]!, at, counts);
 			if (Object.keys(atHead).length === 0) return [];
 			const { winner, reportedBy } = adjudicate(atHead, true);
-			return [Finding.from({ ...winner, properties: { ...winner.properties, status: "new", reportedBy } })];
+			const sighted = Object.values(items[id]!.sightings[at]!);
+			let shared: SharedDismissal | undefined;
+			for (const each of dismissals.get(id) ?? [])
+				if (sharedDismissalHolds(each, sighted, hunks) && (shared === undefined || shared.at <= each.at))
+					shared = each;
+			const status =
+				shared === undefined
+					? { status: "new" as const }
+					: { status: "dismissed" as const, dismissal: { by: shared.by, reason: shared.reason, at: shared.at } };
+			return [Finding.from({ ...winner, properties: { ...winner.properties, ...status, reportedBy } })];
 		});
 }
 
@@ -1077,7 +1128,8 @@ export type DismissedRoot = {
 };
 
 // Every finding a maintainer dismissed with a recorded severity and accepted content, in ID order. An inherited
-// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one.
+// dismissal lives only in a revision's links, never in a lifecycle, so none of these is one. A static check's finding is
+// never one: its dismissal may be unshareable (`unprovenRun`), and a restatement's record must name a shared one.
 export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 	return Object.keys(state.items)
 		.sort()
@@ -1089,6 +1141,7 @@ export function dismissedRoots(state: FindingsState): DismissedRoot[] {
 			if (dismissedSighting === undefined) return [];
 			const { revision, sighting } = dismissedSighting;
 			const finding = Finding.from({ ...sighting, properties: { ...sighting.properties, status: "new" } });
+			if (finding.properties.source.check.startsWith("static.")) return [];
 			const [line, endLine] = finding.lines();
 			const { failureScenario, evidence } = finding.properties;
 			return [
