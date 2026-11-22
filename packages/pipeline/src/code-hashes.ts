@@ -146,7 +146,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/checks.ts": "387328e3315d23fc51fbf27a405081c6a97ee4657bbd86de694f587def7a3768",
 
-	"packages/pipeline/src/code-version.ts": "fbb022e81dab46ca2cc047fb9ecadba57428a66149c656e062c54e39601c6527",
+	"packages/pipeline/src/code-version.ts": "33d7bb4753e279e20fdcad6423862597632b389fe1b7b33a6f38615a202f1cff",
 
 	"packages/pipeline/src/compare.ts": "99e347ec6633b9f161c160176402fbe9478b42878188cd9bb5b961a510195e97",
 
