@@ -3,16 +3,18 @@ import { lstat, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { isChangesetId, withoutReplacements } from "@melian-agent/core";
 import { running, scratchName } from "./cache-scratch.ts";
+import { evidenceRound } from "./evidence.ts";
 import { GraphCache } from "./graph-cache.ts";
 
 const day = 86_400_000;
 export const graphAgeDays = 7;
 export const unreadableGraphAgeDays = 1;
 export const mutationAgeDays = 14;
+export const evidenceAgeDays = 90;
 const key = /^[0-9a-f]{64}$/;
 
 /** What kind of rebuildable cache a removal takes, as the store retention decision names it. */
-export type PruneKind = "graph" | "unreadable graph" | "orphan coverage" | "mutation partition";
+export type PruneKind = "graph" | "unreadable graph" | "orphan coverage" | "mutation partition" | "evidence";
 
 /** One removal: the paths it takes, relative to the state directory, and the bytes they hold. */
 export type PruneEntry = { kind: PruneKind; paths: string[]; bytes: number };
@@ -124,13 +126,18 @@ export class StorePrune {
 	readonly changesets: { files: number; bytes: number };
 	/** The evidence directory, `evidence/`, which prune keeps whole as durable: the conversations behind valid misses. */
 	readonly evidence: { bytes: number };
+	/**
+	 * Each round's evidence nothing wrote for more than `evidenceAgeDays`, judged by its newest file. Evidence is durable,
+	 * so `apply` removes none of it until issue #633 builds the exclusion the retention decision requires first.
+	 */
+	readonly agedEvidence: readonly PruneEntry[];
 	/** Live static runs; while any holds a lock, apply removes nothing. */
 	readonly live: readonly LiveRun[];
 	readonly #repoRoot: string;
 	readonly #env: NodeJS.ProcessEnv;
 	readonly #now: number;
 	private constructor(
-		fields: Pick<StorePrune, "root" | "entries" | "kept" | "changesets" | "evidence" | "live">,
+		fields: Pick<StorePrune, "root" | "entries" | "kept" | "changesets" | "evidence" | "agedEvidence" | "live">,
 		repoRoot: string,
 		env: NodeJS.ProcessEnv,
 		now: number,
@@ -140,6 +147,7 @@ export class StorePrune {
 		this.kept = fields.kept;
 		this.changesets = fields.changesets;
 		this.evidence = fields.evidence;
+		this.agedEvidence = fields.agedEvidence;
 		this.live = fields.live;
 		this.#repoRoot = repoRoot;
 		this.#env = env;
@@ -169,6 +177,7 @@ export class StorePrune {
 		const kept: string[] = [];
 		const changesets = { files: 0, bytes: 0 };
 		const evidence = { bytes: 0 };
+		const agedEvidence: PruneEntry[] = [];
 		const relative = (path: string) => path.slice(root.length + 1);
 		const add = async (kind: PruneKind, paths: string[]) => {
 			let bytes = 0;
@@ -234,6 +243,20 @@ export class StorePrune {
 				else if (now - (await measure(node.path)).newest > mutationAgeDays * day)
 					await add("mutation partition", [`mutation/${node.name}`]);
 			}
+			for (const changeset of await children(join(root, "evidence"))) {
+				if (changeset.link || !changeset.directory || !isChangesetId(changeset.name)) {
+					kept.push(relative(changeset.path));
+					continue;
+				}
+				for (const round of await children(changeset.path)) {
+					if (round.link || !round.directory || !evidenceRound.test(round.name)) kept.push(relative(round.path));
+					else {
+						const { bytes, newest } = await measure(round.path);
+						if (now - newest > evidenceAgeDays * day)
+							agedEvidence.push({ kind: "evidence", paths: [relative(round.path)], bytes });
+					}
+				}
+			}
 		} catch (error) {
 			throw new StorePruneError(
 				"unreadable",
@@ -243,7 +266,7 @@ export class StorePrune {
 				},
 			);
 		}
-		return new StorePrune({ root, entries, kept, changesets, evidence, live }, repoRoot, env, now);
+		return new StorePrune({ root, entries, kept, changesets, evidence, agedEvidence, live }, repoRoot, env, now);
 	}
 
 	/**

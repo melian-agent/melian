@@ -6,6 +6,7 @@ import { ChangesetError, type GitResult, git, ProcessTable, RecordError, stderrL
 import { checkConfiguration, writeConfiguration } from "./configuration.ts";
 import type { Deadline } from "./deadline.ts";
 import { Owner, type Processes } from "./owner.ts";
+import { listingLimit } from "./state-tree.ts";
 
 // Settings that would run a program, set on every command so that no configuration of the user's or this repository's
 // turns them back on. The configuration check covers the keys a command line cannot clear, such as a credential helper
@@ -301,7 +302,7 @@ export class RecordRepository {
 	async run(
 		args: readonly string[],
 		deadline: Deadline,
-		options: { input?: string; index?: string; maxBytes?: number } = {},
+		options: { input?: string | Uint8Array; index?: string; maxBytes?: number } = {},
 	) {
 		await checkConfiguration(this.path);
 		const left = deadline.left();
@@ -324,7 +325,7 @@ export class RecordRepository {
 	async #succeed(
 		args: readonly string[],
 		deadline: Deadline,
-		options: { input?: string; index?: string } = {},
+		options: { input?: string | Uint8Array; index?: string } = {},
 	): Promise<string> {
 		const result = await this.run(args, deadline, options);
 		if (result.code !== 0) throw unreachable(`git ${args[0]} failed in ${this.path}`, result);
@@ -397,11 +398,26 @@ export class RecordRepository {
 		}
 	}
 
-	// Every file of `commit`'s tree, by its raw path, or undefined when the listing runs past `maxBytes`.
-	async entries(commit: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
-		const result = await this.run(["ls-tree", "-r", "-z", "--full-tree", commit], deadline, { maxBytes });
+	// Every file of `treeish`'s tree, by its raw path, or undefined when the listing runs past `maxBytes`.
+	async entries(treeish: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
+		return this.#list(["ls-tree", "-r", "-z", "--full-tree", treeish], treeish, deadline, maxBytes);
+	}
+
+	// The entries directly inside `treeish`, files and trees, by their raw names, or undefined when the listing runs past
+	// `maxBytes`.
+	async children(treeish: string, deadline: Deadline, maxBytes: number): Promise<TreeEntry[] | undefined> {
+		return this.#list(["ls-tree", "-z", "--full-tree", treeish], treeish, deadline, maxBytes);
+	}
+
+	async #list(
+		args: readonly string[],
+		treeish: string,
+		deadline: Deadline,
+		maxBytes: number,
+	): Promise<TreeEntry[] | undefined> {
+		const result = await this.run(args, deadline, { maxBytes });
 		if (result.truncated) return undefined;
-		if (result.code !== 0) throw unreachable(`listing ${commit} failed in ${this.path}`, result);
+		if (result.code !== 0) throw unreachable(`listing ${treeish} failed in ${this.path}`, result);
 		const entries: TreeEntry[] = [];
 		const bytes = result.stdoutBytes;
 		for (let start = 0; start < bytes.length; ) {
@@ -413,6 +429,12 @@ export class RecordRepository {
 			entries.push({ mode, type, oid, path: Buffer.from(line.subarray(tab + 1)) });
 		}
 		return entries;
+	}
+
+	// The parents of `commit`, in order.
+	async parents(commit: string, deadline: Deadline): Promise<string[]> {
+		const line = await this.#succeed(["rev-list", "--parents", "-n", "1", "--end-of-options", commit], deadline);
+		return line.trim().split(" ").slice(1);
 	}
 
 	// The sizes of the blobs `oids` name.
@@ -483,6 +505,39 @@ export class RecordRepository {
 			await rm(index, { force: true });
 			await rm(`${index}.lock`, { force: true });
 		}
+	}
+
+	// Builds one commit on `parent` whose tree is the parent's with the folders `changesets/<name>` of `names` removed, and
+	// with no `changesets` at all when none is left.
+	async withoutFolders(parent: string, names: readonly string[], deadline: Deadline): Promise<string> {
+		const root = await this.#childrenWithin(parent, deadline);
+		const folder = root.find((entry) => entry.path.toString("latin1") === "changesets" && entry.type === "tree");
+		if (folder === undefined) throw unreachable(`${parent} holds no changesets folder in ${this.path}`);
+		const gone = new Set(names);
+		const kept = (await this.#childrenWithin(folder.oid, deadline)).filter(
+			(entry) => !gone.has(entry.path.toString("latin1")),
+		);
+		const changesets = kept.length === 0 ? undefined : await this.#mktree(kept, deadline);
+		const top = root.flatMap((entry) =>
+			entry !== folder ? [entry] : changesets === undefined ? [] : [{ ...entry, oid: changesets }],
+		);
+		const tree = await this.#mktree(top, deadline);
+		return (await this.#succeed(["commit-tree", tree, "-p", parent, "-m", "melian: retire"], deadline)).trim();
+	}
+
+	async #childrenWithin(treeish: string, deadline: Deadline): Promise<TreeEntry[]> {
+		const entries = await this.children(treeish, deadline, listingLimit);
+		if (entries === undefined) throw unreachable(`listing ${treeish} ran past ${listingLimit} bytes in ${this.path}`);
+		return entries;
+	}
+
+	async #mktree(entries: readonly TreeEntry[], deadline: Deadline): Promise<string> {
+		const input = Buffer.concat(
+			entries.map((entry) =>
+				Buffer.concat([Buffer.from(`${entry.mode} ${entry.type} ${entry.oid}\t`), entry.path, Buffer.from([0])]),
+			),
+		);
+		return (await this.#succeed(["mktree", "-z"], deadline, { input })).trim();
 	}
 
 	// Pushes `commit` to `branch` at `url`, leased on `expected`, the tip it was built on, or on no branch at all. A push

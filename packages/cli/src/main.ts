@@ -79,7 +79,7 @@ Commands:
                          coverage held its file, and each verifier that judged a lens sighting on its lines. Kept in
                          the clone alone, never published or exported. When keeping it would pass evidence.budget,
                          adjudicate writes no evidence file and loses none already kept; melian store prune keeps
-                         <state>/evidence/<changeset>/, so raise evidence.budget until issue #627 builds its prune.
+                         <state>/evidence/<changeset>/, so raise evidence.budget until issue #633 lets it remove any.
   compare stats [--since <date>|--last <n>]
                          Show recall, precision, pending findings, miss reasons, candidate checks, and drain due.
   compare backlog [--markdown]
@@ -104,7 +104,9 @@ Commands:
                          Node and the system alone. Exits 0 when it exits 0, 1 when it fails, times out or floods its output,
                          2 when it cannot run here.
   store prune [--apply]  Print the rebuildable cache Melian's state directory holds past its retention, and the space
-                         removing it frees; --apply removes it. Changeset files are never removed. Exits 0, or 1
+                         removing it frees; --apply removes it. Changeset files are never removed. It lists each
+                         round's evidence nothing wrote for more than 90 days; the maintainer agreed on 2026-11-21
+                         to its removal under --apply, which waits for an exclusion, issue #633. Exits 0, or 1
                          when a static check is running, which stops prune removing anything, or when the state
                          directory is a link, which prune does not follow.
   doctor                 Check Node, git, credentials, model routes, tool readiness, the probe sandbox, GitHub

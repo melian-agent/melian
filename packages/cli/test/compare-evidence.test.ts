@@ -202,10 +202,8 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 		expect(refused.stdout).toContain(`Adjudicated ${external(30)} as valid`);
 		expect(refused.stderr).toContain("the adjudication is recorded, but no evidence was kept");
 		expect(refused.stderr).toMatch(new RegExp(`${evidence.replaceAll(".", "\\.")}/range-[0-9a-f]+/ `));
-		expect(refused.stderr).toContain("melian store prune keeps evidence");
-		expect(refused.stderr).toContain(
-			"Raise evidence.budget in your configuration until the prune lands in issue #627",
-		);
+		expect(refused.stderr).toContain("melian store prune keeps evidence, and lists what is more than 90 days old");
+		expect(refused.stderr).toContain("Raise evidence.budget in your configuration until issue #633");
 		expect(refused.stderr).toContain("This refusal wrote no file and lost no evidence already kept");
 		expect(refused.stderr).not.toContain("by hand");
 		expect(stored(evidence)).toEqual([]);
@@ -224,7 +222,7 @@ describe("melian compare evidence", { timeout: 120_000 }, () => {
 
 		expect(full).toMatch(
 			new RegExp(
-				`^warn {2}evidence +${evidence.replaceAll(".", "\\.")}, [0-9.]+ KiB of its budget of 1\\.0 KiB; a valid miss keeps no more evidence until evidence\\.budget is raised in your configuration, since melian store prune keeps evidence until issue #627 lands$`,
+				`^warn {2}evidence +${evidence.replaceAll(".", "\\.")}, [0-9.]+ KiB of its budget of 1\\.0 KiB; a valid miss keeps no more evidence until evidence\\.budget is raised in your configuration, since melian store prune keeps evidence until issue #633 lands$`,
 			),
 		);
 	});
