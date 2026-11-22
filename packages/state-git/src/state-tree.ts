@@ -19,6 +19,7 @@ export const entryLimit = 65_536;
 export const listingLimit = entryLimit * 1024;
 
 const cellName = "cell.json";
+const changesetsName = "changesets";
 const version = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
@@ -60,6 +61,25 @@ function parseCell(text: string): Cell | undefined {
 // Every field git listed, the path as its raw bytes, so a field an entry gains joins the key.
 function keyOf(entry: TreeEntry): string {
 	return JSON.stringify({ ...entry, path: entry.path.toString("latin1") });
+}
+
+function isChangesets(entry: TreeEntry): boolean {
+	return entry.type === "tree" && entry.path.toString("latin1") === changesetsName;
+}
+
+// Whether two listings of one level hold the same entries, by name, mode, type and object ID.
+// The changeset's name of `entry`, at the top level of `changesets/`, when it is a tree that bears one.
+function folderName(entry: TreeEntry): string | undefined {
+	return entry.type === "tree" ? changesetName(decode(entry.path)) : undefined;
+}
+
+function repeatsName(entries: readonly TreeEntry[]): boolean {
+	return new Set(entries.map((entry) => entry.path.toString("latin1"))).size !== entries.length;
+}
+
+function sameEntries(first: readonly TreeEntry[], second: readonly TreeEntry[]): boolean {
+	const held = new Set(first.map(keyOf));
+	return first.length === second.length && second.every((entry) => held.has(keyOf(entry)));
 }
 
 function changesetName(name: string | undefined): string | undefined {
@@ -166,6 +186,111 @@ export class StateTree {
 		await StateTree.#measure(repository, branch, commit, deadline, true);
 	}
 
+	// Whether `commit` has `parent` as its one parent and `parent`'s tree with only whole `changesets/<name>` folders
+	// removed, at least one: each other root entry and each kept folder the same by name, mode, type and object ID, as
+	// `ls-tree` lists them, and no name listed twice in the parent's `changesets/`.
+	static async removesOnly(
+		repository: RecordRepository,
+		parent: string,
+		commit: string,
+		deadline: Deadline,
+	): Promise<boolean> {
+		const parents = await repository.parents(commit, deadline);
+		if (parents.length !== 1 || parents[0] !== parent) return false;
+		const before = await repository.children(parent, deadline, listingLimit);
+		const after = await repository.children(commit, deadline, listingLimit);
+		if (before === undefined || after === undefined) return false;
+		const was = before.find(isChangesets);
+		const now = after.find((entry) => entry.path.toString("latin1") === changesetsName);
+		if (was === undefined || (now !== undefined && now.type !== "tree")) return false;
+		if (
+			!sameEntries(
+				before.filter((entry) => entry !== was),
+				after.filter((entry) => entry !== now),
+			)
+		)
+			return false;
+		const folders = await repository.children(was.oid, deadline, listingLimit);
+		const kept = now === undefined ? [] : await repository.children(now.oid, deadline, listingLimit);
+		if (folders === undefined || kept === undefined || kept.length >= folders.length) return false;
+		if (repeatsName(folders)) return false;
+		const held = new Set(folders.map(keyOf));
+		const left = new Set(kept.map(keyOf));
+		return (
+			kept.every((entry) => held.has(keyOf(entry))) &&
+			folders.every((entry) => left.has(keyOf(entry)) || folderName(entry) !== undefined)
+		);
+	}
+
+	// Each changeset folder of `commit`, by its name, with its tree's object ID, read from the top level of `changesets/`
+	// alone. An entry there that is no tree, bears no changeset's name or shares its name with another is a stray, and
+	// no folder.
+	static async folders(
+		repository: RecordRepository,
+		commit: string,
+		deadline: Deadline,
+	): Promise<Map<string, string>> {
+		const root = await StateTree.#children(repository, commit, deadline);
+		const folder = root.find(isChangesets);
+		if (folder === undefined) return new Map();
+		const entries = await StateTree.#children(repository, folder.oid, deadline);
+		const seen = new Set<string>();
+		const repeated = new Set<string>();
+		for (const entry of entries) {
+			const key = entry.path.toString("latin1");
+			if (seen.has(key)) repeated.add(key);
+			seen.add(key);
+		}
+		return new Map(
+			entries.flatMap((entry) => {
+				const name = repeated.has(entry.path.toString("latin1")) ? undefined : folderName(entry);
+				return name === undefined ? [] : [[name, entry.oid] as const];
+			}),
+		);
+	}
+
+	// Whether the folder of `changeset` at tree `oid` holds anything the store did not write, judged as a read judges it,
+	// or else a cell. A folder too large to judge whole counts as holding a stray, so nothing unjudged is removed. One that fits alone but
+	// would take `spent`, what the call has judged so far, past a limit is deferred unread.
+	static async judgeFolder(
+		repository: RecordRepository,
+		changeset: string,
+		oid: string,
+		judged: Map<string, Judged>,
+		spent: { entries: number; bytes: number },
+		deadline: Deadline,
+	): Promise<"stray" | "kept" | "clean" | "deferred"> {
+		const listed = await repository.entries(oid, deadline, listingLimit);
+		if (listed === undefined || listed.length > entryLimit) return "stray";
+		const prefix = Buffer.from(`${changesetsName}/${changeset}/`);
+		const entries = listed.map((entry) => ({ ...entry, path: Buffer.concat([prefix, entry.path]) }));
+		const readable = [...new Set(entries.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
+		const sizes = await repository.sizes(readable, deadline);
+		if (readable.some((blob) => (sizes.get(blob) ?? Number.POSITIVE_INFINITY) > recordLimit)) return "stray";
+		const total = entries.reduce(
+			(sum, entry) => sum + (StateTree.#readable(entry) ? (sizes.get(entry.oid) as number) : 0),
+			0,
+		);
+		if (total > tipLimit) return "stray";
+		if (spent.entries + entries.length > entryLimit || spent.bytes + total > tipLimit) return "deferred";
+		spent.entries += entries.length;
+		spent.bytes += total;
+		const fresh = entries.filter((entry) => !judged.has(keyOf(entry)));
+		const wanted = [...new Set(fresh.filter((entry) => StateTree.#readable(entry)).map((entry) => entry.oid))];
+		const blobs = await repository.blobs(new Map(wanted.map((blob) => [blob, sizes.get(blob) as number])), deadline);
+		for (const entry of fresh) judged.set(keyOf(entry), StateTree.#judge(entry, blobs.get(entry.oid)));
+		const verdicts = entries.map((entry) => (judged.get(keyOf(entry)) as Judged).is);
+		if (verdicts.includes("stray")) return "stray";
+		return verdicts.includes("cell") ? "kept" : "clean";
+	}
+
+	static async #children(repository: RecordRepository, treeish: string, deadline: Deadline): Promise<TreeEntry[]> {
+		const entries = await repository.children(treeish, deadline, listingLimit);
+		if (entries === undefined)
+			throw new RecordError("unreachable", `one level of ${treeish} lists more than ${listingLimit} bytes`);
+		return entries;
+	}
+
 	// The entries of `commit` and the sizes of its readable blobs, once both are within the limits. A write's commit, which
 	// `before` says is not yet pushed, is refused in words that say so.
 	static async #measure(
@@ -176,11 +301,11 @@ export class StateTree {
 		before: boolean,
 	): Promise<{ entries: TreeEntry[]; small: Map<string, number> }> {
 		const [holds, lists] = before ? ["would hold", "would list"] : ["holds", "lists"];
-		// Past a limit every call fails, dispose included, so only git can bring the tip back under.
+		// Past a limit every call but a retirement fails, so retiring changesets brings the tip back under; strays need git.
 		const remedy = (strays: boolean) =>
 			before
-				? `nothing was pushed, and disposing changesets${strays ? " or removing strays" : ""} makes room`
-				: `every call fails, dispose included, until a writer removes changesets${strays ? " or strays" : ""} from the branch with git`;
+				? `nothing was pushed, and retiring changesets${strays ? " or removing strays" : ""} makes room`
+				: `every call but a retirement fails, until changesets are retired${strays ? " or a writer removes strays from the branch with git" : ""}`;
 		const entries = await repository.entries(commit, deadline, listingLimit);
 		if (entries === undefined)
 			throw new RecordError(

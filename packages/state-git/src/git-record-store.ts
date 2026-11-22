@@ -44,6 +44,22 @@ const lastBackoffMs = 8_000;
 type Write<T> = { readonly changes: readonly TreeChange[]; readonly value: T };
 
 /**
+ * What {@link GitRecordStore.retire} did with each changeset it was given: removed its folder, kept it because the
+ * folder holds a cell, a lease or a disposal mark, or because its pull request is not known to be merged, kept it
+ * because the folder's tree changed since it was seen, kept it because the folder holds a stray, found no folder
+ * there, or kept it unjudged because judging it would take the call past the store's entry or byte limit, for a later
+ * call to retire.
+ */
+export type Retirement = {
+	readonly removed: readonly string[];
+	readonly kept: readonly string[];
+	readonly changed: readonly string[];
+	readonly strays: readonly string[];
+	readonly absent: readonly string[];
+	readonly deferred: readonly string[];
+};
+
+/**
  * The record store of rule 12 of [the shared record
  * decision](../../../docs/decisions/2026-11-13-shared-record-behind-a-store-port.md), on a branch of a git remote. A
  * record is a plain JSON file at its `record.path` and a changeset's cell is `changesets/<changeset>/cell.json`. Every
@@ -116,15 +132,31 @@ export class GitRecordStore implements RecordStore {
 
 	// Reads the tip, lets `decide` say what to change, and pushes one commit, until it lands or the deadline passes.
 	async #write<T>(decide: (tree: StateTree) => Write<T>): Promise<T> {
+		return this.#land(async (tip, deadline) => {
+			const tree =
+				tip === undefined
+					? StateTree.empty()
+					: await StateTree.read(this.#repository, this.#branch, tip, this.#judged, deadline);
+			const { changes, value } = decide(tree);
+			if (changes.length === 0) return { value };
+			const commit = await this.#repository.commit(tip, changes, deadline);
+			await StateTree.measure(this.#repository, this.#branch, commit, deadline);
+			return { commit, value };
+		});
+	}
+
+	// Fetches the tip, lets `build` make a commit on it, and pushes it leased on that tip, until it lands or the deadline
+	// passes. A lost race fetches and builds again.
+	async #land<T>(
+		build: (tip: string | undefined, deadline: Deadline) => Promise<{ commit?: string; value: T }>,
+	): Promise<T> {
 		const deadline = this.#deadline();
 		for (let bound = firstBackoffMs; ; bound = Math.min(bound * 2, lastBackoffMs)) {
 			if (deadline.left() <= 0)
 				throw new RecordError("unreachable", `no write to ${this.#branch} landed within its deadline`);
-			const { tip, tree } = await this.#tree(deadline);
-			const { changes, value } = decide(tree);
-			if (changes.length === 0) return value;
-			const commit = await this.#repository.commit(tip, changes, deadline);
-			await StateTree.measure(this.#repository, this.#branch, commit, deadline);
+			const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+			const { commit, value } = await build(tip, deadline);
+			if (commit === undefined) return value;
 			// A push ends by three quarters of what is left, inside the call's deadline, so the landed check keeps the rest.
 			const push = deadline.within((deadline.left() * 3) / 4);
 			const outcome = await this.#repository.push(this.#remote, this.#branch, commit, tip, push);
@@ -207,6 +239,67 @@ export class GitRecordStore implements RecordStore {
 				? []
 				: [cellChange(changeset, { value: disposalMark, version: randomUUID() })];
 			return { changes: [...mark, ...removals], value: undefined };
+		});
+	}
+
+	/**
+	 * Each changeset folder at the branch's tip, by its name, with its tree's object ID. It reads only the top level of
+	 * `changesets/`, so it answers on a tip past the store's limits. Reads and never pushes.
+	 */
+	async folders(): Promise<Map<string, string>> {
+		if (this.#closed) throw new RecordError("closed", "the record store is closed");
+		const deadline = this.#deadline();
+		const tip = await this.#repository.fetch(this.#remote, this.#branch, deadline);
+		return tip === undefined ? new Map() : StateTree.folders(this.#repository, tip, deadline);
+	}
+
+	/**
+	 * Removes in one commit each changeset in `seen` whose folder at the fresh tip still has the tree ID `seen` gives it,
+	 * whose name `merged` holds, and which holds records alone, so a later `add` starts the changeset afresh. `merged`
+	 * names the changesets whose pull requests GitHub says are merged; any other is kept unread, since a pull request
+	 * that can reopen would read a late relay's old round as standing. A folder with a cell, a lease or a disposal mark,
+	 * is kept, since rule 3 of the shared record decision never recreates such a changeset. It
+	 * pushes only a commit that removes whole changeset folders and changes nothing else, and pushes that whatever the
+	 * tip's totals, so it can bring a tip past the store's limits back under. It judges folders, in `seen`'s order, only
+	 * while their entries and readable bytes together stay within those limits, and defers the rest unread. Every lost
+	 * race re-decides on the new tip.
+	 */
+	async retire(seen: ReadonlyMap<string, string>, merged: ReadonlySet<string>): Promise<Retirement> {
+		if (this.#closed) throw new RecordError("closed", "the record store is closed");
+		for (const changeset of seen.keys()) checkChangeset(changeset);
+		return this.#land(async (tip, deadline) => {
+			const folders =
+				tip === undefined ? new Map<string, string>() : await StateTree.folders(this.#repository, tip, deadline);
+			const value = {
+				removed: [] as string[],
+				kept: [] as string[],
+				changed: [] as string[],
+				strays: [] as string[],
+				absent: [] as string[],
+				deferred: [] as string[],
+			};
+			// A call's own judgements and totals, so what it holds stays within one call's limits and outlives it in nothing.
+			const judged = new Map<string, Judged>();
+			const spent = { entries: 0, bytes: 0 };
+			for (const [changeset, oid] of seen) {
+				const now = folders.get(changeset);
+				if (now === undefined) value.absent.push(changeset);
+				else if (now !== oid) value.changed.push(changeset);
+				else if (!merged.has(changeset)) value.kept.push(changeset);
+				else if (value.deferred.length > 0) value.deferred.push(changeset);
+				else {
+					const verdict = await StateTree.judgeFolder(this.#repository, changeset, now, judged, spent, deadline);
+					value[verdict === "clean" ? "removed" : verdict === "stray" ? "strays" : verdict].push(changeset);
+				}
+			}
+			if (tip === undefined || value.removed.length === 0) return { value };
+			const commit = await this.#repository.withoutFolders(tip, value.removed, deadline);
+			if (!(await StateTree.removesOnly(this.#repository, tip, commit, deadline)))
+				throw new RecordError(
+					"unreachable",
+					`the commit retiring ${value.removed.join(", ")} changes more of ${this.#branch} than it removes; nothing was pushed`,
+				);
+			return { commit, value };
 		});
 	}
 
