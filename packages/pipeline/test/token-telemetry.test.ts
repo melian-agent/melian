@@ -549,7 +549,7 @@ it.each(["absent", "response-only"] as const)("lets a TextModel caller use an %s
 			undefined,
 			observer === "absent" ? undefined : vi.fn<UsageObserver>(),
 		),
-	).resolves.toEqual({ value: 1 });
+	).resolves.toEqual({ arguments: { value: 1 }, model: model.name });
 });
 
 it("carries every unmeasured request into the run total, even without any usage receipts", () => {

@@ -2,7 +2,7 @@
 // A blank line parts every entry, so two pull requests that change different modules merge without a conflict.
 
 export const moduleHashes: Readonly<Record<string, string>> = {
-	"packages/core/src/adjudication.ts": "5c0c39453b7aaadba9d01b55b0e70b012c59228612c84be6f77b295dccf67e8e",
+	"packages/core/src/adjudication.ts": "62cd4dd176694ad539f8cadf881a75f883d3ca18a762463d80d388f862953d61",
 
 	"packages/core/src/analyser.ts": "ff7133210e79be3fe940c0e00c6b2721da26bb3091afc35cd6e677c82d57ff70",
 
@@ -24,7 +24,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/coverage-artifacts.ts": "e917782d458832146c703ef0e8c35ce8b9eb3fb17d033721fdc28a5ab512aa4a",
 
-	"packages/core/src/decider.ts": "5aaa0bbfb9a044e360ccc94d920adaab7448710a8481a7a4ec84e33579802ce2",
+	"packages/core/src/decider.ts": "5e0881ae6e9361604844b5777d83bf674592656ef64aea4675eb94b178992a60",
 
 	"packages/core/src/diff.ts": "ab5040f505ee8aead0760d463f00dc9e4fb440663528b23f4f8ec631cc06b296",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "2da5c2d062708ce2ac65d42758e1d72ef134e825924f71c6cb763d0294ae2e02",
+	"packages/core/src/index.ts": "455537007cfbd98a895afee9e9408aff88884e7394f51843cef72cff5b86da04",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -84,7 +84,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/pull-request-rounds.ts": "7c9d6332e8acd3abe68c144e73b9ba8d9a47c68e15abb87a343f3f9b78309af9",
 
-	"packages/core/src/record-payloads.ts": "67d30a19f07afdbe389c1a750b3e0847ab10fbdb25e54f18599577b0282b5d2c",
+	"packages/core/src/record-payloads.ts": "9568eef7a97d74e6c4d5679d05a44cf40879f3e0ed3699a3b86ecadc08e2a367",
 
 	"packages/core/src/record-store.ts": "cf22d37a4f0b82f5e63ee9b0661df3b5a32b0af9287de86dc1629ede2705fc13",
 
@@ -124,7 +124,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/decisions/src/design-sections.ts": "7d165a6b479ac9ade45c6c966b80d45a5242db02268764b0a50e411346c2b33b",
 
-	"packages/decisions/src/fallback.ts": "fe52b10d7c08f50d1ea37c58b743ce572dc9207d0141f6eaa613439c6c0f496c",
+	"packages/decisions/src/fallback.ts": "bc89fc345182852c5a56b7706dbff3f143143afcd7dd125af5daa28030c8ddbc",
 
 	"packages/decisions/src/index.ts": "00d7b9d607382a2b6065e6eea04911de7ef380570a56e15c653cfa59f92c16a6",
 
@@ -138,7 +138,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/callers.ts": "206f88d3a7e93898600a5410581110af923ed4133c8cd17c7c8a65d25bb26c21",
 
-	"packages/pipeline/src/caveats.ts": "d99cc92e5c6e7a74a9d422c437715859674e83bbf744a517a931fc7a8f92908e",
+	"packages/pipeline/src/caveats.ts": "a3febc6a61106a2661287965bb5d01fc19219572a48f376810f248e152e1724c",
 
 	"packages/pipeline/src/check-request.ts": "2ad781fb7992637b2607a65d2f76fdee0eefdfce03e3312c629b7f292adb5581",
 
@@ -174,7 +174,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/link-dependencies.ts": "81e454dfff8c83528569ad7da7da8172c0f5c64db3ed8f45d77121c2fcff39b2",
 
-	"packages/pipeline/src/models.ts": "8210870d9595dadc01201984b1889e7b208ad98462ecf0671bea33b52ea5359e",
+	"packages/pipeline/src/models.ts": "7123f26d536badac2429f64213a2397472a32147f62a5fee0324e89c9854b4ba",
 
 	"packages/pipeline/src/mutant-listing.ts": "ca5b3845bab4f5d22359cecbfef214c5453a9b5a090505d01b0ed02d42747335",
 

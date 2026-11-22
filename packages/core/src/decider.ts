@@ -40,10 +40,20 @@ export interface ChoiceAnswer {
 	readonly distribution: Readonly<Record<string, number>>;
 }
 
-/** What a decider returns: an answer to each question, and the model that gave them, where a model did. */
+/** A model of a route that failed in a way that moves the request to the route's next model, and the provider's reason. */
+export interface ModelRefusal {
+	readonly model: string;
+	readonly reason: string;
+}
+
+/**
+ * What a decider returns: an answer to each question, the model that gave them, where a model did, and the models
+ * before it that refused.
+ */
 export interface DeciderAnswer {
 	readonly answers: readonly ChoiceAnswer[];
 	readonly model?: string;
+	readonly refused?: readonly ModelRefusal[];
 }
 
 /**
@@ -70,15 +80,21 @@ export interface ToolRequest {
 	readonly tool: { readonly name: string; readonly description: string; readonly parameters: TSchema };
 }
 
+/** A text model's answer: the tool call's arguments, unvalidated, the model that made it, and the models that refused first. */
+export interface TextAnswer {
+	readonly arguments: unknown;
+	readonly model: string;
+	readonly refused?: readonly ModelRefusal[];
+}
+
 /**
- * A text model the LLM fallback adapter asks: it answers a {@link ToolRequest} by calling the tool, and returns the
- * call's arguments, unvalidated. It throws when the model fails or calls no tool. The pipeline builds one over a
- * review's models.
+ * A text model the LLM fallback adapter asks: it answers a {@link ToolRequest} by calling the tool. It throws when the
+ * model fails or calls no tool. The pipeline builds one over a review's models.
  */
 export interface TextModel {
-	/** The model, as `provider/model-id`. */
+	/** The model, as `provider/model-id`: the head of its route, which names what is asked whichever model answers. */
 	readonly name: string;
-	answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown>;
+	answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<TextAnswer>;
 }
 
 /** Provider-reported counters, in Pi's units. Reasoning is a subset of output; the one-hour cache is a subset of cacheWrite. */
@@ -121,6 +137,8 @@ export type StoredDecision = {
 	decider: string;
 	calibrated: boolean;
 	model?: string;
+	// Absent on a decision stored before triage moved along its route, and on one whose first model answered.
+	refused?: { model: string; reason: string }[];
 	answers: { question: string; distribution: Record<string, number>; chosen: string }[];
 };
 
@@ -141,6 +159,7 @@ export class Decision {
 	readonly decider: string;
 	readonly calibrated: boolean;
 	readonly model?: string;
+	readonly refused?: readonly ModelRefusal[];
 	readonly answers: readonly DecidedAnswer[];
 
 	private constructor(stored: StoredDecision) {
@@ -148,6 +167,7 @@ export class Decision {
 		this.decider = stored.decider;
 		this.calibrated = stored.calibrated;
 		this.model = stored.model;
+		this.refused = stored.refused;
 		this.answers = stored.answers;
 	}
 
@@ -200,6 +220,9 @@ export class Decision {
 			decider: decider.name,
 			calibrated: decider.calibrated,
 			...(answer.model === undefined ? {} : { model: answer.model }),
+			...(answer.refused === undefined || answer.refused.length === 0
+				? {}
+				: { refused: answer.refused.map(({ model, reason }) => ({ model, reason: bounded(reason) })) }),
 			answers,
 		});
 	}
@@ -215,10 +238,17 @@ export class Decision {
 			decider: this.decider,
 			calibrated: this.calibrated,
 			...(this.model === undefined ? {} : { model: this.model }),
+			...(this.refused === undefined ? {} : { refused: this.refused.map((each) => ({ ...each })) }),
 			answers: this.answers.map((answer) => ({ ...answer, distribution: { ...answer.distribution } })),
 		};
 	}
 }
+
+// The longest refusal reason a decision keeps: a provider's error is outside text, and can quote what a model said.
+const maxRefusalReason = 200;
+
+const bounded = (reason: string): string =>
+	reason.length <= maxRefusalReason ? reason : `${reason.slice(0, maxRefusalReason - 1)}\u2026`;
 
 function normalized(
 	question: ChoiceQuestion,

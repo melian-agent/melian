@@ -913,6 +913,9 @@ export class Verdict {
 			);
 			parts.push([`${plural(lenses.length, "lens", "lenses")} ran:`, ...checks].join("\n"));
 		}
+		// A caveat narrows the whole review, so it shows without the lenses' notes, as a publication shows it.
+		const caveats = new Set([...(this.ran ?? []), ...this.notRun].flatMap((check) => check.caveats ?? []));
+		parts.push(...[...caveats].map((caveat) => `Reach: ${prose(caveat, "  ")}.`));
 		if (rendering.notes)
 			parts.push(
 				...this.lensNotes().map(

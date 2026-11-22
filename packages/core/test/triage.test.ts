@@ -79,6 +79,45 @@ describe("a decision", () => {
 		expect(decision.chosen("contracts")).toBeUndefined();
 	});
 
+	describe("the models that refused before one answered", () => {
+		const answers = [
+			{ question: "correctness", distribution: { careful: 1 } },
+			{ question: "tests", distribution: { careful: 1 } },
+		];
+
+		it("keeps each, its reason held to 200 characters, and reads back as it was kept", () => {
+			const refused = [
+				{ model: "faux/a", reason: "x".repeat(200) },
+				{ model: "faux/b", reason: "y".repeat(201) },
+			];
+			const decision = Decision.parse(request, { answers, model: "faux/c", refused }, triager);
+
+			expect(decision.toJSON().refused).toEqual([
+				{ model: "faux/a", reason: "x".repeat(200) },
+				{ model: "faux/b", reason: `${"y".repeat(199)}…` },
+			]);
+			expect(Decision.from(decision.toJSON()).toJSON()).toEqual(decision.toJSON());
+		});
+
+		it("stores none when no model refused", () => {
+			for (const refused of [undefined, []]) {
+				const decision = Decision.parse(
+					request,
+					{ answers, model: "faux/a", ...(refused === undefined ? {} : { refused }) },
+					triager,
+				);
+				expect(decision.toJSON()).not.toHaveProperty("refused");
+				expect(decision.refused).toBeUndefined();
+			}
+		});
+
+		it("reads a decision stored before Melian kept them as having none", () => {
+			const stored = Decision.parse(request, { answers, model: "faux/a" }, triager).toJSON();
+
+			expect(Decision.from(structuredClone(stored)).toJSON()).toEqual(stored);
+		});
+	});
+
 	it("normalises finite weights whose sum would overflow", () => {
 		const decision = Decision.parse(
 			request,

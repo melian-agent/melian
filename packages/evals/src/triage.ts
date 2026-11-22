@@ -106,14 +106,17 @@ function scriptedModel(golden: TriageGolden): TextModel {
 		answer: async (request) => {
 			const asked = [...request.prompt.matchAll(/^### (.+)$/gm)].map((match) => match[1]!);
 			return {
-				answers: asked.map((question) => {
-					const answer = golden.script.answers[question];
-					if (answer === undefined) throw new Error(`${golden.name}: the script has no answer for ${question}`);
-					return {
-						question,
-						probabilities: Object.entries(answer).map(([option, probability]) => ({ option, probability })),
-					};
-				}),
+				arguments: {
+					answers: asked.map((question) => {
+						const answer = golden.script.answers[question];
+						if (answer === undefined) throw new Error(`${golden.name}: the script has no answer for ${question}`);
+						return {
+							question,
+							probabilities: Object.entries(answer).map(([option, probability]) => ({ option, probability })),
+						};
+					}),
+				},
+				model: "scripted/triage",
 			};
 		},
 	};

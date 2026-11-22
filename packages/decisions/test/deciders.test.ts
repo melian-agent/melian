@@ -84,7 +84,7 @@ function model(args: unknown): TextModel & { readonly asked: ToolRequest[] } {
 		asked,
 		async answer(toolRequest) {
 			asked.push(toolRequest);
-			return args;
+			return { arguments: args, model: "faux/light" };
 		},
 	};
 }
@@ -229,7 +229,7 @@ describe("the LLM fallback decider", () => {
 			async answer(_request, signal) {
 				received = signal;
 				started();
-				if (signal === undefined) return answered;
+				if (signal === undefined) return { arguments: answered, model: "faux/light" };
 				return new Promise<never>((_resolve, reject) => {
 					signal.addEventListener("abort", () => reject(signal.reason), { once: true });
 				});

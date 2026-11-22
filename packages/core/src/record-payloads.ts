@@ -20,6 +20,9 @@ export const blindCallers =
 export const lightTriage =
 	"triage chose quick for every lens, so the whole review looked lightly, at a change that can steer triage";
 
+/** The caveat of a review in which triage was asked and no model answered it, so every lens ran at its default level. */
+export const noTriage = "triage answered on no model, so every lens ran at its default level";
+
 /**
  * The codes a record carries as they are, where a reason or an error would otherwise be text: a check error's, a task
  * outcome's, a manifest's and the export's own.

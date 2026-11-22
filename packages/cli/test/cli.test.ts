@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+	blindCallers,
 	type Decider,
 	type DecisionRequest,
 	DirectoryRecordStore,
@@ -681,8 +682,10 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		const [round] = JSON.parse(
 			melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--json"], env).stdout,
 		) as { round: string }[];
+		// A record keeps a caveat's fixed sentence, never the detail the host kept after it.
+		const caveat = `${blindCallers}: Enola executable not-fetched`;
 		const shown = (options: { all?: boolean; notes?: boolean }) =>
-			`Round ${round!.round}\n${host.render(new Rendering({ ids: true, decided: true, target: "trusting", ...options }))}`;
+			`Round ${round!.round}\n${host.render(new Rendering({ ids: true, decided: true, target: "trusting", ...options })).replace(caveat, blindCallers)}`;
 
 		const plain = melian(repo, ["findings", "trusting", "--records", `dir:${store}`], env);
 		const all = melian(repo, ["findings", "trusting", "--records", `dir:${store}`, "--all"], env);
@@ -694,6 +697,7 @@ describe("melian review and findings", { timeout: 60_000 }, () => {
 		// A record holds a fixed sentence in place of the note the host kept, and the reader shows it.
 		const note = "Callers unavailable: Enola executable not-fetched";
 		expect(shown({ notes: true })).toContain(note);
+		expect(host.render(new Rendering())).toContain(`Reach: ${caveat}.`);
 		expect(notes.stdout).toBe(shown({ notes: true }).replace(note, withheld));
 		expect(all.stdout).not.toBe(plain.stdout);
 		expect(notes.stdout).not.toBe(plain.stdout);

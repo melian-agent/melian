@@ -68,7 +68,7 @@ import {
 	VerdictDocument,
 } from "./adjudication.ts";
 import { CallerContext, type CoverageSource } from "./callers.ts";
-import { blindCallers, callersWithLegacyCaveat, lightTriage } from "./caveats.ts";
+import { blindCallers, callersWithLegacyCaveat, lightTriage, noTriage } from "./caveats.ts";
 import { ChangeLenses } from "./change-lenses.ts";
 import { type CheckRun, type CheckRunRecord, checksExtensionFor, runChecks, type WriterTrust } from "./checks.ts";
 import { configsFor } from "./configurations.ts";
@@ -3542,6 +3542,8 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		settling.every(({ run }) => run.level === "quick")
 			? [lightTriage]
 			: [];
+	// Its note names why on each lens; the caveat tells a reader of the verdict.
+	const untriaged = triaged.failure === undefined ? [] : [noTriage];
 	spans.step("callers.coverage");
 	// The task's own input says what its lenses read, so a call that attached to another's task records that call's.
 	const rendered = ran.callers;
@@ -3598,7 +3600,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 			],
 		};
 	});
-	const caveats = [...(callers.caveat === undefined ? [] : [callers.caveat]), ...light];
+	const caveats = [...(callers.caveat === undefined ? [] : [callers.caveat]), ...light, ...untriaged];
 	const records = [
 		...settled.map(({ run, outcome, notes: noted }) =>
 			lensCheck(run, outcome, lensResult !== undefined, noted, handedBy.get(run.name) ?? [], caveats),

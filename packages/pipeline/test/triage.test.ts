@@ -2260,6 +2260,93 @@ describe("the LLM fallback", () => {
 		});
 	});
 
+	describe("on a route whose first model refuses", () => {
+		const limit = "You have hit your ChatGPT usage limit (plus plan). Try again in ~5 min.";
+		const filtered = "The model refused to complete the request";
+		const noTriage = "triage answered on no model, so every lens ran at its default level";
+		const failed = (errorMessage: string) => fauxAssistantMessage("", { stopReason: "error", errorMessage });
+		const answer = call("answer", {
+			answers: [{ question: "correctness", probabilities: [{ option: "deep", probability: 1 }] }],
+		});
+		const light = () => `${fake.ref("light").provider}/light`;
+		const medium = () => `${fake.ref("medium").provider}/medium`;
+
+		// Triage on light, then medium; each reply records the model the request reached.
+		async function triageOn(replies: readonly (() => ReturnType<typeof fauxAssistantMessage>)[]) {
+			const decider = new FallbackDecider(
+				(await RouteTextModel.create(fake.review, [fake.ref("light"), fake.ref("medium")]))!,
+			);
+			await open(decider);
+			const reached: string[] = [];
+			scriptConversations(fake, [
+				{
+					match: fallback,
+					replies: replies.map((reply) => (_messages: readonly Message[], model: string) => {
+						reached.push(model);
+						return reply();
+					}),
+				},
+				{ match: correctness, replies: [done] },
+			]);
+			const reviewed = await review({ decider });
+			const root = (await harness.root(context)).id;
+			const stored = await readRecordedDecision(harness, root, revision(), "triage", context);
+			return { decider, reviewed, reached, stored };
+		}
+
+		it.each([
+			["a usage limit", limit],
+			["a content filter", filtered],
+		])("moves to the next model on %s, and records which refused and which answered", async (_, message) => {
+			const { decider, reviewed, reached, stored } = await triageOn([() => failed(message), () => answer]);
+
+			expect(reached).toEqual(["light", "medium"]);
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "deep" });
+			expect(stored!.failure).toBeUndefined();
+			expect(stored!.decision!.toJSON()).toEqual({
+				questionSet: expect.any(Object),
+				decider: `llm-fallback:${light()}`,
+				calibrated: false,
+				model: medium(),
+				refused: [{ model: light(), reason: message }],
+				answers: [{ question: "correctness", distribution: { quick: 0, careful: 0, deep: 1 }, chosen: "deep" }],
+			});
+			// The route's head names the question, so a failover keeps the decider, and so the decision's key.
+			expect(decider.name).toBe(`llm-fallback:${light()}`);
+		});
+
+		it("stops at the first model on a failure that is no reason to move", async () => {
+			const { reached, stored, reviewed } = await triageOn([
+				() => failed("400 invalid_request_error"),
+				() => answer,
+			]);
+
+			expect(reached).toEqual(["light"]);
+			expect(stored!.decision).toBeUndefined();
+			expect(stored!.failure).toBe(`${light()} failed: 400 invalid_request_error`);
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful", caveats: [noTriage] });
+		});
+
+		it("says in the verdict that triage answered on no model when every model refuses", async () => {
+			const { reached, stored, reviewed } = await triageOn([() => failed(limit), () => failed(filtered)]);
+
+			expect(reached).toEqual(["light", "medium"]);
+			expect(stored!.decision).toBeUndefined();
+			expect(stored!.failure).toBe(
+				`every model of the route refused: ${light()} failed: ${limit}; ${medium()} failed: ${filtered}`,
+			);
+			expect(lensRecord(reviewed)).toMatchObject({ status: "ran", level: "careful", caveats: [noTriage] });
+			expect(reviewed.verdict.render(new Rendering())).toContain(`\n\nReach: ${noTriage}.\n\n`);
+		});
+
+		it("adds no such line when triage answered", async () => {
+			const { reviewed } = await triageOn([() => failed(limit), () => answer]);
+
+			expect(lensRecord(reviewed)?.caveats ?? []).not.toContain(noTriage);
+			expect(reviewed.verdict.render(new Rendering())).not.toContain(noTriage);
+		});
+	});
+
 	describe("across reviews", () => {
 		const answer = call("answer", {
 			answers: [{ question: "correctness", probabilities: [{ option: "careful", probability: 1 }] }],

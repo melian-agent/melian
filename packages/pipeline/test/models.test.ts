@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { RouteTextModel } from "@melian-agent/pipeline";
 import { createFakeModels, fauxAssistantMessage } from "@melian-agent/pipeline/testing";
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Type } from "../src/harness.ts";
 
 it("forwards cancellation to the model collection and rejects an aborted reply", async () => {
@@ -118,8 +118,98 @@ it("answers without cancellation when the caller supplies no signal", async () =
 	]);
 	const complete = vi.spyOn(fake.models, "complete");
 	const model = await RouteTextModel.create(fake.review, [fake.ref()]);
-	expect(await model!.answer({ system: "Use the answer tool.", prompt: "Choose.", tool })).toEqual({ choice: "run" });
+	expect(await model!.answer({ system: "Use the answer tool.", prompt: "Choose.", tool })).toEqual({
+		arguments: { choice: "run" },
+		model: model!.name,
+	});
 	expect(fake.provider.state.callCount).toBe(1);
 	expect(complete.mock.calls[0]![2]).not.toHaveProperty("signal");
 	complete.mockRestore();
+});
+
+describe("a route of several models", () => {
+	const tool = { name: "answer", description: "Answer", parameters: Type.Object({}) };
+	const request = { system: "Use the answer tool.", prompt: "Choose.", tool };
+	const answered = fauxAssistantMessage(
+		[{ type: "toolCall", id: "answer-1", name: "answer", arguments: { choice: "run" } }],
+		{
+			stopReason: "toolUse",
+		},
+	);
+	const limit = "Monthly usage limit reached";
+
+	// A route of a, b and c whose replies come in order, each recording the model it reached.
+	async function route(replies: readonly ReturnType<typeof fauxAssistantMessage>[]) {
+		const fake = createFakeModels({ models: [{ id: "a" }, { id: "b" }, { id: "c" }] });
+		const reached: string[] = [];
+		fake.provider.setResponses(
+			replies.map((reply) => (_context: unknown, _options: unknown, _state: unknown, model: { id: string }) => {
+				reached.push(model.id);
+				return reply;
+			}),
+		);
+		const model = (await RouteTextModel.create(fake.review, [fake.ref("a"), fake.ref("b"), fake.ref("c")]))!;
+		const name = (id: string) => `${fake.ref(id).provider}/${id}`;
+		return { model, reached, name };
+	}
+	const failed = (errorMessage: string, stopReason: "error" | "aborted" = "error") =>
+		fauxAssistantMessage("", { stopReason, errorMessage });
+
+	it("is named for the route's head and answers on the first model that does", async () => {
+		const { model, reached, name } = await route([failed(limit), failed("503 overloaded_error"), answered]);
+
+		await expect(model.answer(request)).resolves.toEqual({
+			arguments: { choice: "run" },
+			model: name("c"),
+			refused: [
+				{ model: name("a"), reason: limit },
+				{ model: name("b"), reason: "503 overloaded_error" },
+			],
+		});
+		expect(reached).toEqual(["a", "b", "c"]);
+		expect(model.name).toBe(name("a"));
+	});
+
+	it("records no refusal when the head answers", async () => {
+		const { model, reached, name } = await route([answered]);
+
+		await expect(model.answer(request)).resolves.toEqual({ arguments: { choice: "run" }, model: name("a") });
+		expect(reached).toEqual(["a"]);
+	});
+
+	it("never moves past an aborted reply, whatever it says", async () => {
+		const { model, reached, name } = await route([failed(limit, "aborted"), answered]);
+
+		await expect(model.answer(request)).rejects.toThrow(`${name("a")} failed: ${limit}`);
+		expect(reached).toEqual(["a"]);
+	});
+
+	it("stops where a later model fails in a way that moves nothing", async () => {
+		const { model, reached, name } = await route([failed(limit), failed("400 invalid_request_error"), answered]);
+
+		await expect(model.answer(request)).rejects.toThrow(`${name("b")} failed: 400 invalid_request_error`);
+		expect(reached).toEqual(["a", "b"]);
+	});
+
+	it("names the fallback that answered without calling the tool", async () => {
+		const { model, name } = await route([failed(limit), fauxAssistantMessage("No.")]);
+
+		await expect(model.answer(request)).rejects.toThrow(`${name("b")} answered without calling answer`);
+	});
+
+	it("names every refusal when the whole route refuses", async () => {
+		const { model, reached, name } = await route([failed(limit), failed(limit), failed(limit)]);
+
+		await expect(model.answer(request)).rejects.toThrow(
+			`every model of the route refused: ${[name("a"), name("b"), name("c")].map((each) => `${each} failed: ${limit}`).join("; ")}`,
+		);
+		expect(reached).toEqual(["a", "b", "c"]);
+	});
+
+	it("skips a model of the route that has no credentials", async () => {
+		const fake = createFakeModels({ models: [{ id: "a" }] });
+		const model = await RouteTextModel.create(fake.review, [{ provider: "absent", modelId: "x" }, fake.ref("a")]);
+
+		expect(model?.name).toBe(`${fake.ref("a").provider}/a`);
+	});
 });

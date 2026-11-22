@@ -1,6 +1,6 @@
-import { blindCallers, lightTriage, type StoredVerdict } from "@melian-agent/core";
+import { blindCallers, lightTriage, noTriage, type StoredVerdict } from "@melian-agent/core";
 
-export { blindCallers, lightTriage };
+export { blindCallers, lightTriage, noTriage };
 
 const unavailable = "Callers unavailable: ";
 

@@ -1,13 +1,22 @@
 import type {
 	CatalogModel,
 	ModelReference,
+	ModelRefusal,
 	ModelRoute,
+	TextAnswer,
 	TextModel,
 	ToolRequest,
 	UsageObserver,
 } from "@melian-agent/core";
 import type { MelianCredentialStore } from "./credentials.ts";
-import { type Api, isContextOverflow, type Model, type Models, type MutableModels } from "./harness.ts";
+import {
+	type Api,
+	isContextOverflow,
+	isFailoverError,
+	type Model,
+	type Models,
+	type MutableModels,
+} from "./harness.ts";
 import { ReasoningCapture } from "./reasoning.ts";
 
 /** Whether a model failure's recorded text is pi-ai's reading of a request too long for the model's context window. */
@@ -116,43 +125,78 @@ export async function unlockCredentials(models: ReviewModels, providers: readonl
 }
 
 /**
- * Core's {@link TextModel} over a review's models: one model, asked one request that it must answer by calling the
- * request's tool. The decision adapters ask a model through it without importing Pi.
+ * Core's {@link TextModel} over a review's models: a route's models that hold credentials, asked one request that the
+ * model must answer by calling the request's tool. A model that fails as a lens's would move it, by
+ * {@link isFailoverError}, passes the request to the next; the decision adapters ask a model through it without
+ * importing Pi.
  */
 export class RouteTextModel implements TextModel {
 	readonly name: string;
 	readonly #models: Models;
-	readonly #model: Model<Api>;
+	readonly #route: readonly Model<Api>[];
 	readonly #thinking: ModelRoute["thinking"];
 
-	private constructor(models: Models, model: Model<Api>, thinking: ModelRoute["thinking"]) {
+	private constructor(models: Models, route: readonly Model<Api>[], thinking: ModelRoute["thinking"]) {
 		this.#models = models;
-		this.#model = model;
+		this.#route = route;
 		this.#thinking = thinking;
-		this.name = `${model.provider}/${model.id}${thinking === undefined ? "" : ` thinking=${thinking}`}`;
+		this.name = this.#nameOf(route[0]!);
 	}
 
-	/** The first model of `route` that `models` knows and holds credentials for, or `undefined` when there is none. */
+	/** The models of `route` that `models` knows and holds credentials for, in order, or `undefined` when there is none. */
 	static async create(
 		models: ReviewModels,
 		route: readonly ModelReference[],
 		thinking?: ModelRoute["thinking"],
 	): Promise<RouteTextModel | undefined> {
 		const collection = modelsOf(models);
+		const usable: Model<Api>[] = [];
 		for (const reference of route) {
 			const model = collection.getModel(reference.provider, reference.modelId);
 			if (model === undefined) continue;
 			// A store that cannot be read passes the provider over, so a later tier with its own credential still serves.
-			if (await hasCredentials(models, reference.provider).catch(() => false))
-				return new RouteTextModel(collection, model, thinking);
+			if (await hasCredentials(models, reference.provider).catch(() => false)) usable.push(model);
 		}
-		return undefined;
+		return usable.length === 0 ? undefined : new RouteTextModel(collection, usable, thinking);
 	}
 
-	/** The arguments of the model's call to `request.tool`. Throws when the request fails or the model calls no tool. */
-	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<unknown> {
+	/**
+	 * The model's call to `request.tool`, from the first model of the route that answers. Throws when a model fails in a
+	 * way that moves no request, when every model refuses, or when the model that answers calls no tool.
+	 */
+	async answer(request: ToolRequest, signal?: AbortSignal, usage?: UsageObserver): Promise<TextAnswer> {
+		const refused: ModelRefusal[] = [];
+		for (const [at, model] of this.#route.entries()) {
+			const name = this.#nameOf(model);
+			const reply = await this.#ask(model, request, signal, usage);
+			if (reply.stopReason === "error" || reply.stopReason === "aborted") {
+				const reason = reply.errorMessage ?? reply.stopReason;
+				const failed = `${name} failed: ${reason}`;
+				const moves = reply.stopReason === "error" && !signal?.aborted && isFailoverError(reason);
+				if (!moves) throw new Error(failed);
+				refused.push({ model: name, reason });
+				if (at === this.#route.length - 1)
+					throw new Error(
+						refused.length === 1
+							? failed
+							: `every model of the route refused: ${refused.map((each) => `${each.model} failed: ${each.reason}`).join("; ")}`,
+					);
+				continue;
+			}
+			const call = reply.content.find((part) => part.type === "toolCall" && part.name === request.tool.name);
+			if (call?.type !== "toolCall") throw new Error(`${name} answered without calling ${request.tool.name}`);
+			return { arguments: call.arguments, model: name, ...(refused.length === 0 ? {} : { refused }) };
+		}
+		throw new Error(`${this.name} has no model to ask`);
+	}
+
+	#nameOf(model: Model<Api>): string {
+		return `${model.provider}/${model.id}${this.#thinking === undefined ? "" : ` thinking=${this.#thinking}`}`;
+	}
+
+	async #ask(model: Model<Api>, request: ToolRequest, signal: AbortSignal | undefined, usage?: UsageObserver) {
 		if (usage?.started !== undefined) await usage.started();
-		const capture = new ReasoningCapture(this.#model, this.#thinking ?? "unspecified");
+		const capture = new ReasoningCapture(model, this.#thinking ?? "unspecified");
 		const input = {
 			systemPrompt: request.system,
 			messages: [{ role: "user" as const, content: request.prompt, timestamp: Date.now() }],
@@ -161,17 +205,12 @@ export class RouteTextModel implements TextModel {
 		const options = { ...capture.options(), ...(signal === undefined ? {} : { signal }) };
 		const reply =
 			this.#thinking === undefined
-				? await this.#models.complete(this.#model, input, options)
-				: await this.#models.completeSimple(this.#model, input, {
+				? await this.#models.complete(model, input, options)
+				: await this.#models.completeSimple(model, input, {
 						...options,
 						...(this.#thinking === "off" ? {} : { reasoning: this.#thinking }),
 					});
 		usage?.(`${reply.provider}/${reply.model}`, reply.usage, capture.finish(reply));
-		if (reply.stopReason === "error" || reply.stopReason === "aborted") {
-			throw new Error(`${this.name} failed: ${reply.errorMessage ?? reply.stopReason}`);
-		}
-		const call = reply.content.find((part) => part.type === "toolCall" && part.name === request.tool.name);
-		if (call?.type !== "toolCall") throw new Error(`${this.name} answered without calling ${request.tool.name}`);
-		return call.arguments;
+		return reply;
 	}
 }

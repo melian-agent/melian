@@ -89,11 +89,12 @@ export class FallbackDecider implements Decider {
 				].join(separator),
 			),
 		].join(separator);
-		const called = await this.#model.answer({ system: instructions, prompt, tool: answerTool }, signal, usage);
+		const reply = await this.#model.answer({ system: instructions, prompt, tool: answerTool }, signal, usage);
+		const called = reply.arguments;
 		if (!Value.Check(answerParameters, called)) {
 			throw new DecisionError(
 				"invalidAnswer",
-				`${this.#model.name} called ${answerTool.name} with arguments its schema refuses`,
+				`${reply.model} called ${answerTool.name} with arguments its schema refuses`,
 			);
 		}
 		const { answers } = called as Static<typeof answerParameters>;
@@ -104,7 +105,7 @@ export class FallbackDecider implements Decider {
 			const asked = request.questions.find((each) => each.id === question)?.id;
 			throw new DecisionError(
 				"invalidAnswer",
-				`${this.#model.name} weighed one option of ${asked ?? "a question"} twice`,
+				`${reply.model} weighed one option of ${asked ?? "a question"} twice`,
 				asked === undefined ? {} : { question: asked },
 			);
 		}
@@ -113,7 +114,8 @@ export class FallbackDecider implements Decider {
 				question,
 				distribution: Object.fromEntries(probabilities.map(({ option, probability }) => [option, probability])),
 			})),
-			model: this.#model.name,
+			model: reply.model,
+			...(reply.refused === undefined ? {} : { refused: reply.refused }),
 		};
 	}
 }
