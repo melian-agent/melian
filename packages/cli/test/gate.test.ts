@@ -215,7 +215,7 @@ describe("melian gate", { timeout: 60_000 }, () => {
 		expect(err()).toBe(
 			[
 				`melian: round ${round.id} counts, and covers 1 checks`,
-				'melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two. To dismiss it at this head: melian dismiss "#7" 0123456789abcdef --reason "<text>" --records git:melian/state',
+				`melian: finding 0123456789abcdef is live: it was dismissed at revision base..one, and round r2 reviewed base..two since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. To dismiss it at this head: melian dismiss "#7" 0123456789abcdef --reason "<text>" --records git:melian/state`,
 				'melian: finding fedcba9876543210 is live: dismissal r3 cannot be judged, since round r4 names a record or round the store does not hold. To dismiss it again: melian dismiss "#7" fedcba9876543210 --reason "<text>" --records git:melian/state',
 				"",
 			].join("\n"),

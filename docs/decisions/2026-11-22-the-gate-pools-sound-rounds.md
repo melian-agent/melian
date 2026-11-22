@@ -40,6 +40,12 @@ What bounds it:
 - Only a writer can add a round to `melian/state`, and the gate counts no record of a fork's head.
 - A round whose verifier failed covers nothing, and a lens below the base tip's floor covers nothing. So the round that stands in for a failed check is one the host itself would read as reviewed, at the level the base tip asks for now.
 
+## A dismissal a pooled round ends
+
+The maintainer chose on 2026-11-20 that a shared dismissal holds only at the revision it was made at, and ends once any round is written at another revision. A revision is a base and a head. So a round of the same head at another base, a stacked parent's included, ends a dismissal made on the merge's own round when it is written later, even if it found nothing. The finding is then live, and the gate asks for the dismissal again. That fails closed. The gate's message names the round that ended the dismissal and the revision it reviewed, so a maintainer can see why a dismissed finding came back.
+
+The gate asks again only for a finding its verdict holds live, and names each such dismissal once.
+
 ## Why
 
 Immutable records and an empty `replaces` make worst-of a one-way door: any round that failed for any reason blocks its head for good. Pooling keeps every finding, which is what review is for, and asks only that each check has run once, soundly, on the exact merge.

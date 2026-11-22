@@ -83,7 +83,7 @@ export async function gate(io: Io, argument: string): Promise<number> {
 		command("melian", "dismiss", argument, finding, "--reason", "<text>", "--records", "git:melian/state");
 	for (const ended of outcome.ended)
 		io.stderr(
-			`melian: finding ${visibleText(ended.finding)} is live: it was dismissed at revision ${visibleText(ended.madeAt)}, and round ${visibleText(ended.round)} reviewed ${visibleText(ended.at)}. To dismiss it at this head: ${dismiss(ended.finding)}\n`,
+			`melian: finding ${visibleText(ended.finding)} is live: it was dismissed at revision ${visibleText(ended.madeAt)}, and round ${visibleText(ended.round)} reviewed ${visibleText(ended.at)} since, which ends it: any round of another revision does, a round of this head at another base included, such as a stacked parent's. To dismiss it at this head: ${dismiss(ended.finding)}\n`,
 		);
 	for (const unjudged of outcome.unjudged)
 		io.stderr(
