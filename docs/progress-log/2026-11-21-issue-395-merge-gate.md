@@ -71,3 +71,16 @@ The coordinator narrowed the rule on 2026-11-22, as an answer on approach that i
 - A round of the merge's revision resolves to that revision, so e8814b286 reads every round's coverage under its own revision and drops the branch.
 
 Their mutants are in `2026-11-22-issue-395-merge-gate-sound-parent-mutants.json`, over `cff85c2d9...e8814b286`, run at e8814b286. Each ran against its named test alone, after that test passed unmutated. Of 50, 47 were killed, 36 of them by the tests these commits add, and 3 are equivalent, each with its reason in the inventory.
+
+## No dismiss command that cannot clear the finding
+
+The coordinator asked on 2026-11-22, as an answer on approach, that the gate never print a dismiss command that cannot clear the finding. It has put the rule underneath to the maintainer: whether a dismissal at the merge's own revision should answer a finding in every pooled round of the same head. Nothing is built for that.
+
+A round of another revision of the head reads every dismissal of its own copy of a finding as ended, whatever the order, so a finding such a round holds live stays live whatever is dismissed at this head. The gate now records, for each ended or unjudged dismissal, the first round of another revision that holds its finding live. Where one does, the message names that round and its revision and says only a push, which starts a new head, clears it, in place of the command. A round that is not sound, of another revision, says the same.
+
+Writing the test that the command still works found a second trap. The same dismissal made again, by the same dismisser for the same reason, records nothing new, so its record keeps the old frontier and the later round still ends it. The command now says to give a reason other than the earlier one. One test holds that the same reason leaves the finding live, and another that a new reason clears it.
+
+- The tests failed first at 74cf1117e: the gate named no round holding the finding (`expected [ [ '8f3f919a7c886b44', undefined ] ] to deeply equal [ [ '8f3f919a7c886b44', { …(2) } ] ]`), and both CLI messages printed the old command. All pass at 6bdc989a8. The test that a new reason clears the finding passes at both heads, since the gate's reading of that case did not change.
+- The decision said a stacked parent's round ends a dismissal made on the merge's own round "when it is written later". That is true only of the merge's own round's reading. The parent's round ends the dismissal of its own copy whatever the order. The decision now says both.
+
+Their mutants are in `2026-11-22-issue-395-merge-gate-held-mutants.json`, over `74cf1117e...6bdc989a8`, run at 6bdc989a8. Each ran against its named test alone, after that test passed unmutated. Of 32, 30 were killed and 2 are equivalent, each with its reason in the inventory. 28 fell to tests this pass adds or changes. One of them, the remedy for a round that is not sound at the merge's own revision, survived the first run; 8e195cd2d adds its case to the CLI test, and it fails there. Of the 2 killed by older tests, one, in the verdict of a set that cannot decide, was run by hand against the test that fails such a set.

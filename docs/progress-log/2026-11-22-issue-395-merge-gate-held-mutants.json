@@ -1,0 +1,925 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "74cf1117e4dbc919251a44efd30565b067ebbd96",
+		"head": "6bdc989a85071a89be17ee2a399ec4122f41a6a8"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/record-gate.ts",
+		"packages/cli/src/gate.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 77,
+			"column": 18,
+			"endLine": 78,
+			"endColumn": 157,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "10429c70aa4d10e0598ad30cbb82d6c784af723353e3fe260fd67112107e54e4",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"prints no dismiss command for a finding a pooled round of another revision holds live, and says only a push clears it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 78,
+			"column": 2,
+			"endLine": 78,
+			"endColumn": 157,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "ff167219a78c29365e0469fd55e967d0bc884141456459b4799080f3780587f1"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 79,
+			"column": 17,
+			"endLine": 82,
+			"endColumn": 74,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "4d53f305119241f81e2012b820e1b4a55f4e7895002a8cbfc6c270410012f9ea",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"says a sound round of another revision keeps its verifier's verdicts, and one that is not sound lowers nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 80,
+			"column": 2,
+			"endLine": 80,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "09acc81948779358eb6393f9a3a2378936b559b932706fb8ca458055d71ca232",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"says a sound round of another revision keeps its verifier's verdicts, and one that is not sound lowers nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 80,
+			"column": 2,
+			"endLine": 80,
+			"endColumn": 43,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e56782bed81f9adf23bb22319c7451232ff5ef14fd4bf7c0cbd2e9803a9704b0",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"says a sound round of another revision keeps its verifier's verdicts, and one that is not sound lowers nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 80,
+			"column": 2,
+			"endLine": 80,
+			"endColumn": 43,
+			"mutatorName": "EqualityOperator",
+			"replacement": "round.revision !== Revision.key(revision)",
+			"status": "generated",
+			"id": "01f7685b05844840551ad15275ee966b5150635d7de2fa26e5c42489319a5e3b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"says a sound round of another revision keeps its verifier's verdicts, and one that is not sound lowers nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 81,
+			"column": 5,
+			"endLine": 81,
+			"endColumn": 48,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "edcb33ba95decb354af2bbf792019e7c34cc14fad42ca5c1fd2ea3f2afec4bd4"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 82,
+			"column": 5,
+			"endLine": 82,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1678e4921722f3c499b56f4a3971180bfbf98b2898d9e6ebd2b8ee7855e74231"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 82,
+			"column": 66,
+			"endLine": 82,
+			"endColumn": 71,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "695c6c549388877478112643b97d881738f6ba56a2b25a0cd06b5f3c1a8ef9f0"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 89,
+			"column": 7,
+			"endLine": 89,
+			"endColumn": 312,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dde9fae19e26d68380ad9f05023255fb2600bc6105edd51d1ca8a56c75a45818"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 94,
+			"column": 17,
+			"endLine": 97,
+			"endColumn": 151,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "89f309378dcc34e8beb69f8ed3a1f56cbcce027f29d4185e6670fb76e9fe3fa5",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"prints no dismiss command for a finding a pooled round of another revision holds live, and says only a push clears it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 95,
+			"column": 2,
+			"endLine": 95,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "f720b9a7ef5ebf08b429b10862598e01f5de37f2902f1cc1bb33ee48860029bd",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"prints no dismiss command for a finding a pooled round of another revision holds live, and says only a push clears it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 95,
+			"column": 2,
+			"endLine": 95,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "a37717e32948e750ac6ec4204b919af8305dc5f8289d5690a1a700fe956cb2fc",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"names each dismissal a round ended or cannot judge, and the command that dismisses it again"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 95,
+			"column": 2,
+			"endLine": 95,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "heldBy !== undefined",
+			"status": "generated",
+			"id": "58f2ab6664ddc8c16e5e60a463d6957b8a84cf872c2926e8eb2806585770d897",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"prints no dismiss command for a finding a pooled round of another revision holds live, and says only a push clears it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 5,
+			"endLine": 96,
+			"endColumn": 253,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "96ab54b85cf5d77b48ea6199669c1836a5068e004b6da18fd7bca8a9da1c5019"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 157,
+			"endLine": 96,
+			"endColumn": 165,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6acf07b4f065a13a203d5da26ea1a5e858f817c0c52aa385df6d1e6a1df30404"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 167,
+			"endLine": 96,
+			"endColumn": 176,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0a1a59dfa8a96b9ef16c94422d306e2007d4bf567e3f74d6379ef76dd33018db"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 197,
+			"endLine": 96,
+			"endColumn": 207,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dd6b9cc3f4b3d8ec5e027d01e712e18a170e8f8c1d98b05fa7a0f4ddeb70a300"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 209,
+			"endLine": 96,
+			"endColumn": 217,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fa4ed8fdcf262d3160b95006bc0100b37f2b2bd187c9fe3a10939aa8d3a49193"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 219,
+			"endLine": 96,
+			"endColumn": 230,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "34526ec5415b04ed06929ca6cdff5713a5070e3ebcc72114e5a98c52f2fcfacd"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 96,
+			"column": 232,
+			"endLine": 96,
+			"endColumn": 250,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dfd0ab95928ff99d22654f744474dbadd4a94bff756c7abc441d342cffe2b427"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 97,
+			"column": 5,
+			"endLine": 97,
+			"endColumn": 151,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2718486fe397bf49789720cad6bed26723e7270e4ef7d88f0cfc13c115108b3e"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 97,
+			"column": 144,
+			"endLine": 97,
+			"endColumn": 148,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "dfb8695dc015e1a177f607ee486ddde00a31e81c83331cc253274a500af12140"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 100,
+			"column": 3,
+			"endLine": 100,
+			"endColumn": 365,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4fa48295f95807a4f1ecca892449645316dfc242ad3dd8411bf663e851fb4448"
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 104,
+			"column": 3,
+			"endLine": 104,
+			"endColumn": 262,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9aa3db2da49349919b4a5a87b3cee429515cb2aaa02c32e544dd7e9459687e2f"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 135,
+			"column": 29,
+			"endLine": 135,
+			"endColumn": 31,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "0e32470fdc287fb623570d676cab4793fd3e7c8798825c370829da891df89786",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 159,
+			"column": 17,
+			"endLine": 159,
+			"endColumn": 112,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "cbc481c6eed4d863946e474ebb7c01fe1cca087eb266e178f8b9c9aa9290ab5c",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 159,
+			"column": 43,
+			"endLine": 159,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b24b10cd3bd2d6276f7e0d41579157618e1a18a9fe23fdc048e8bf3553b91d7b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 159,
+			"column": 43,
+			"endLine": 159,
+			"endColumn": 66,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "afef5ef8fcd5ae1be6681de2837cdb98e6d7748f1d5ea4feadad59f431dcd228",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"fails closed on a dismissal of the merge's own round that a later round at an older base ends, naming it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 159,
+			"column": 43,
+			"endLine": 159,
+			"endColumn": 66,
+			"mutatorName": "EqualityOperator",
+			"replacement": "round.revision !== gate",
+			"status": "generated",
+			"id": "a3c7a76e300ab53b76eb7ed42450f3a057abd418d0f0b4268a5572b6b4daf85f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 194,
+			"column": 77,
+			"endLine": 194,
+			"endColumn": 114,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "438d5b828c2cdf0025f415462bd487b31182923fea1ac349001d837a931c15b9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"counts the findings of a round at an older base of the tip and takes no coverage from it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 201,
+			"column": 4,
+			"endLine": 202,
+			"endColumn": 48,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"status": "generated",
+			"id": "92a5b2dab91dc037fccd5491a7c66374fcad22e537b1a4ec88d1426cea89b2b8",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"clears a finding by a dismissal again at this head, when no pooled round of another revision holds it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 202,
+			"column": 13,
+			"endLine": 202,
+			"endColumn": 47,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a28fd246efc17007b5fd3fdbb39d0093d7c4f1591803a5119b05406d3b034700",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 203,
+			"column": 20,
+			"endLine": 206,
+			"endColumn": 6,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4d7c09512b4f41bb814e5620b97d56792fcf5dc2e0219ab5ee07adbb49a27c3f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 205,
+			"column": 13,
+			"endLine": 205,
+			"endColumn": 90,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "375aac169c26d725bea1a66e093c1f511e2cc4d92cc29b0cd3e8061374b35588",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 205,
+			"column": 36,
+			"endLine": 205,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5557c7a9bdf8eb260b26a9688dbe5aeeb9b997dcaa8e0e9768d57f05fe6bb2a7",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 205,
+			"column": 36,
+			"endLine": 205,
+			"endColumn": 54,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "abd6918a7a5eb8f3f701446c67335272ef7c15e8d474abe6cc184723d95a890e",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "Every reader of an asked-again entry tests `heldBy === undefined`, and `toEqual` and JSON drop a key whose value is undefined, so an entry carrying `heldBy: undefined` reads as one with no `heldBy`."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 205,
+			"column": 36,
+			"endLine": 205,
+			"endColumn": 54,
+			"mutatorName": "EqualityOperator",
+			"replacement": "held !== undefined",
+			"status": "generated",
+			"id": "6478dad923317faf3701169d153af7aeb29d607d8cf07d1d3583c6df86a0f078",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 205,
+			"column": 64,
+			"endLine": 205,
+			"endColumn": 89,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "91400168ac6c54dc186e705412a56d50f7a83a9897ec9085185703fc5042b18f",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 214,
+			"column": 31,
+			"endLine": 214,
+			"endColumn": 33,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "29c68ae8b1695cfd718a0e1e00ba78486c45606a9f34a7cc49d72b1187f02c81",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"fails the whole set when a counted round names a record the store does not hold"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 214,
+			"column": 35,
+			"endLine": 214,
+			"endColumn": 37,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "76b2e77676fa0ca7827db3805a704c14dea38b6384ea5f602fb85e4f78584d8c",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "With no verdict to merge, `#merged` reads its paths only to test a finding's file, and there is none, so the path list is never read."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 8,
+			"endLine": 253,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "3fe5e9f879184467ba58d9b3d7c7f75e75ed9ae3cb7708d5e468002b33132d04",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"fails closed on a dismissal of the merge's own round that a later round at an older base ends, naming it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 8,
+			"endLine": 253,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "51a22537726a0528b1f3f4819e13e0959eb197c51a3b9647db27dfe8eb15197b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 8,
+			"endLine": 253,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!own || !heldBy.has(finding.id)",
+			"status": "generated",
+			"id": "74dec0e22b4c3da50f3f16ce98551b9e500d915d70e21642afe9be6da041b1ce",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"fails closed on a dismissal of the merge's own round that a later round at an older base ends, naming it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 8,
+			"endLine": 253,
+			"endColumn": 12,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "own",
+			"status": "generated",
+			"id": "394a8977e9cdb31e6e335ae34d8316ae8f26762b2098f77cf4172193ae8dd32b",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 16,
+			"endLine": 253,
+			"endColumn": 39,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "heldBy.has(finding.id)",
+			"status": "generated",
+			"id": "bc43c4a7d153010d5e642e669e7e787c41eb997f14364e6c6429f4864a1965a9",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 253,
+			"column": 64,
+			"endLine": 253,
+			"endColumn": 83,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "29bd9a7ee288ac9a47bbc26209018c1c3eca8477541b5cc5e4207b5cb1e95fed",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 275,
+			"column": 9,
+			"endLine": 275,
+			"endColumn": 28,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "1d0f0d2355f57fd85bf5054a33048f2a0809335aac5c501912e3c633c6976f14",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"keeps a finding live when one counted round holds its dismissal and another, at another base, does not"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 48,
+	"omitted": 0,
+	"unmutated": []
+}
