@@ -99,12 +99,14 @@ export {
 	readPublished,
 	type SupersededPublication,
 } from "./publish.ts";
+export { type GateRound, RecordGate, type RecordGateContext } from "./record-gate.ts";
 export {
 	type EndedDismissal,
 	RecordedRound,
 	type RecordedRoundContents,
 	type RecordedRoundContext,
 	type SharedDismissalRecord,
+	type UnjudgedDismissal,
 } from "./recorded-round.ts";
 export {
 	ChangePrompt,

@@ -1,0 +1,548 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "2357f8b66b13176ea33addc6682e78c503e2c1eb",
+		"head": "694c82292e8ae085580ca4119daff7a69e34d23c"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/record-gate.ts",
+		"packages/pipeline/src/recorded-round.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 86,
+			"column": 3,
+			"endLine": 86,
+			"endColumn": 379,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e48bc115dfce1e8faf3073b18ae0146435c80194088fdf527d541e868a4dec68"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 135,
+			"column": 52,
+			"endLine": 135,
+			"endColumn": 76,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c6204a6e68e76402c33a868e79b0a0b62f5b06eb102d53733f51984216bc52da",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 135,
+			"column": 64,
+			"endLine": 135,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "672e5d73019a8b99f5239ab4d6051c62b675bdb59950fa5aa0de58cc2358a0d3"
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 178,
+			"column": 65,
+			"endLine": 178,
+			"endColumn": 102,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "db696ac2c6d602d4cf41195c79a0bc20210c88b973bc11bb55024a4fcc1685d0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"covers nothing for a round whose verifier failed, so a finding it never judged does not pass"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 181,
+			"column": 43,
+			"endLine": 181,
+			"endColumn": 98,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "f6cc84681ab115537f8b3288509c1537394c0370395764f65a93a085ef30ab2a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 181,
+			"column": 64,
+			"endLine": 181,
+			"endColumn": 97,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "5aa3ffc6b7f0534d017168cdac6e375634ea6c34fa9afa5afb9d4836dd9ce6a9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 183,
+			"column": 15,
+			"endLine": 187,
+			"endColumn": 3,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "db4efd3b2d38e1041d21f59892384096f6badddc677c6577eb00230e63013d78",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names no ended dismissal of a finding the gate's verdict reads as dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 183,
+			"column": 78,
+			"endLine": 187,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "e276e601017d5fb86bba348e513e5498c22d0c4978164cf722919dba1aac3dcc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 185,
+			"column": 4,
+			"endLine": 185,
+			"endColumn": 54,
+			"mutatorName": "MethodExpression",
+			"replacement": "entries",
+			"status": "generated",
+			"id": "e02c86c758856622967c2d828418f8973cf04a07cc0f9673579c21d6a3c03636",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names no ended dismissal of a finding the gate's verdict reads as dismissed"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 185,
+			"column": 19,
+			"endLine": 185,
+			"endColumn": 53,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "46f6ffe783fb0c02a9b046ec7d0506c9513bf333e9478b04f5d95ae16c86f0df",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 185,
+			"column": 59,
+			"endLine": 185,
+			"endColumn": 97,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "a680acd85018a0fb78a0d5b5b13e1acec1b946b8d20998305a6aa81fd64b118a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 185,
+			"column": 69,
+			"endLine": 185,
+			"endColumn": 97,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "9eecbf279148fedba212441805020deb568d029e45228fc860081fef3c289e83",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate over a changeset's records",
+						"names a dismissal once, though two counted rounds read it as ended by the same round"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/record-gate.ts",
+			"line": 188,
+			"column": 24,
+			"endLine": 188,
+			"endColumn": 99,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "39585b5edb799f706e3946d374ea2befa80e0d105533d9e005e2d8cb7d2ade6b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 238,
+			"column": 57,
+			"endLine": 238,
+			"endColumn": 88,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b0b1fbd4f3ac271fe34d70934ba4183bef4dc2618b9e67286dd91fd756be23a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 238,
+			"column": 57,
+			"endLine": 238,
+			"endColumn": 88,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "5ed0c2055dcf6f39b8ca9258e44eea2b7e37c33577e22443578ab06ae7d2be7c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 238,
+			"column": 57,
+			"endLine": 238,
+			"endColumn": 88,
+			"mutatorName": "EqualityOperator",
+			"replacement": "options.unjudged !== \"uncapped\"",
+			"status": "generated",
+			"id": "4595657f5cfe2671b1367fc12d7b07eda13ef146b34847323caa52efda12f25e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 238,
+			"column": 78,
+			"endLine": 238,
+			"endColumn": 88,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "662a2f88f5652e05e60452bfcc07a7aa7b7825ffdec32f18e7fec50d74fba929"
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 281,
+			"column": 14,
+			"endLine": 281,
+			"endColumn": 19,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ba3d287e1cdca34057efbc3314c29f4715590c6f4664a4fc9db5ea67b899fc12",
+			"claim": "new-test",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 291,
+			"column": 19,
+			"endLine": 292,
+			"endColumn": 81,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "70924d43d60979770611846d86af423a927a181a75755d1ee552e6148288bf32",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 3,
+			"endLine": 292,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "866a58597f6d121205c4b18022f468af4efc9894da359ade8479fe30f296898d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 3,
+			"endLine": 292,
+			"endColumn": 81,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2f5ea2d158a9615d046d28a1453da1a2423f45a84a4ba73339f2ab328e899832",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 3,
+			"endLine": 292,
+			"endColumn": 81,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!uncapAsked && pieces.asked.has(defect.id) && unverifiedAt(verifies, report)",
+			"status": "generated",
+			"id": "9152920735983b0b5c9c6a196656fb9834edc8f66042551bb48b35c63287cddd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 4,
+			"endLine": 292,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "47da8c6f0ace3fd70a8c73dc6c2ef19729c574fbf5dc1bae731a066ab08b1973",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"lifts a failed verifier's cap on a finding it never judged only for the gate"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 4,
+			"endLine": 292,
+			"endColumn": 46,
+			"mutatorName": "LogicalOperator",
+			"replacement": "!uncapAsked || pieces.asked.has(defect.id)",
+			"status": "generated",
+			"id": "53157f2fee69cc713160bec2180b15d642e2e77a38eb558e2b7cbe3d6f31e685",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/recorded-round.ts",
+			"line": 292,
+			"column": 4,
+			"endLine": 292,
+			"endColumn": 15,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "uncapAsked",
+			"status": "generated",
+			"id": "cba876dc69412bf04af56a785c3465ecb2fc2a06287b77064ab1f2adbda9e774",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/record-gate.test.ts",
+					"path": [
+						"the merge gate's forged rounds",
+						"blocks on a finding a failed verifier never judged, beside a clean round that covers every check"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 25,
+	"omitted": 0,
+	"unmutated": []
+}

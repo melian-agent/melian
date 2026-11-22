@@ -23,6 +23,7 @@ import {
 	parseImportSource,
 } from "./compare.ts";
 import { doctor } from "./doctor.ts";
+import { gate } from "./gate.ts";
 import { MergeGroupStatus } from "./merge-group.ts";
 import { listMutants, sampleMutants } from "./mutants.ts";
 import { probe } from "./probe.ts";
@@ -53,6 +54,9 @@ Commands:
                          Add the records a round of the pull request left in a directory store to melian/state,
                          refusing the whole batch unless the head's job may hand over every record in it. --check
                          checks the batch the same way and writes nothing.
+  gate <#pr>             Decide whether the pull request's head may merge into its base tip now, from the shared
+                         records on melian/state alone, under the base tip's policy. Writes nothing. Exits 0 when it
+                         may merge, 1 when a finding blocks or awaits an answer, 2 when the records do not review it.
   telemetry <range|#pr>  Read durable stage timings without running tasks. --json prints JSON.
   dismiss <range|#pr> <id> --reason <text> [--only] [--records dir:<path>]
                          Dismiss a finding of the stored review, with a reason, and decide its verdict again. It
@@ -352,6 +356,8 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 					},
 				);
 			}
+			case "gate":
+				return await gate(scoped, one(rest, name, "pull request"));
 			case "records": {
 				const [subcommand, ...targets] = rest;
 				if (subcommand !== "relay") throw new UsageError("records takes a subcommand: relay");
@@ -568,6 +574,6 @@ export async function main(args: readonly string[], io: Io): Promise<number> {
 			io.stdout(
 				`${JSON.stringify({ error: { message: error instanceof Error ? error.message : String(error) }, telemetry: null })}\n`,
 			);
-		return command === "review" ? reviewExitCodes.notReviewed : 1;
+		return command === "review" || command === "gate" ? reviewExitCodes.notReviewed : 1;
 	}
 }

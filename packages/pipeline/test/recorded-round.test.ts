@@ -758,6 +758,30 @@ describe("a lens finding the verifier was never asked about", () => {
 	});
 });
 
+describe("a round read beside the findings earlier rounds showed", () => {
+	it("lists a pre-existing important finding as carried when an earlier round showed it, and as new otherwise", async () => {
+		rmSync(repo, { recursive: true, force: true });
+		repo = baseAndHead(
+			{ "src/a.ts": lines("export const a = 1;", "export const b = 1;") },
+			{ "src/a.ts": lines("export const a = 2;", "export const b = 1;") },
+		);
+		const old = { ...blocks, line: 2, evidence: [{ file: "src/a.ts", line: 2, role: "cause" }] };
+		const reviewed = await review(exported(), { contracts: [reports(old)] });
+		const under = (seenBefore?: readonly string[]) =>
+			RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts).verdict({
+				revision: reviewed.changeset.revision,
+				config: reviewed.config,
+				repoRoot: repo,
+				policy: worktree,
+				...(seenBefore === undefined ? {} : { seenBefore }),
+			});
+		const fresh = await under();
+		const [id] = (fresh.preExistingImportant ?? []).map((member) => member.id);
+		expect([id, fresh.importance(id!)]).toEqual([expect.any(String), "new"]);
+		expect((await under([id!])).importance(id!)).toBe("carried");
+	});
+});
+
 describe("what a round's records hold", () => {
 	it("hands over the round's revision, its sightings, the revision's proving hunks and each dismissal record whole", async () => {
 		const { reviewed, id } = await dismissedAndReviewedAgain(blocks);
@@ -785,6 +809,7 @@ describe("what a round's records hold", () => {
 				},
 			],
 			ended: [],
+			unjudged: [],
 		});
 		expect((contents as RecordedRoundContents).hunks).toHaveLength(1);
 		expect(seen.revision).toBe(Revision.key(reviewed.changeset.revision));
@@ -1249,6 +1274,20 @@ describe("the dismissal records a reader applies", () => {
 		const unknown = roundAt("1", "2", [], []);
 		const since = again([], [unknown]);
 		expect(standingOf(await readAfter([first], [first, since], [first]))).toEqual([[id, "new", undefined]]);
+	});
+
+	it("reports a dismissal it cannot judge past a round since that follows a round neither the set nor the writer held", async () => {
+		const { id, first, roundAt, again, after, handedAfter } = await citedAcross("lens");
+		const unknown = roundAt("1", "2", [], []);
+		const since = again([], [unknown]);
+		const [records] = after([first], [first, since], [first]);
+		const dismissal = SharedRecord.parseEnvelope(records.at(-1)).id;
+		const contents = await handedAfter([first], [first, since], [first]);
+		expect([contents.dismissals, contents.ended, contents.unjudged]).toEqual([
+			[],
+			[],
+			[{ finding: id, record: dismissal, round: since.id }],
+		]);
 	});
 
 	it("ends a dismissal at a round of another revision its writer never met, though a round of its frontier names it", async () => {
@@ -1736,6 +1775,61 @@ describe("a round decided under another policy", () => {
 			roundOf(reviewed.stored),
 			`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${readsUnder}`,
 		);
+	});
+
+	it("decides the round's findings under the policy the reader holds, while its verdict refuses that policy", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: block"));
+		const reviewed = await review(exported(), { policy: worktree });
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: advisory"));
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const context = {
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: worktree,
+		};
+		expect((await round.verdict(context)).status).toBe("not-reviewed");
+		const decided = (await round.findingsUnder(context)) as Verdict;
+		expect(decided.findings.block).toEqual([]);
+		expect(decided.findings.advisory.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+	});
+
+	it("decides the findings of a round that read no policy source under the reader's", async () => {
+		writeFileSync(join(repo, "melian.yaml"), lines("resolution:", "  P2: block"));
+		const reviewed = await review(exported(), { policy: null });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const decided = (await round.findingsUnder({
+			revision: reviewed.changeset.revision,
+			config: reviewed.config,
+			repoRoot: repo,
+			policy: worktree,
+		})) as Verdict;
+		expect(decided.findings.block.map(({ ruleId }) => ruleId)).toEqual(["changed-return"]);
+	});
+
+	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>]>([
+		["no checkout", { policy: worktree }],
+		["no policy source", { repoRoot: "." }],
+	])("decides no findings for a reader with %s", async (_, given) => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		expect(
+			await round.findingsUnder({
+				revision: reviewed.changeset.revision,
+				config: reviewed.config,
+				...(given.repoRoot === undefined ? {} : { repoRoot: repo }),
+				...(given.policy === undefined ? {} : { policy: given.policy }),
+			}),
+		).toEqual({ refused: "is read with no resolution policy to decide under" });
+	});
+
+	it("decides no findings for a round its records cannot stand for at the revision asked", async () => {
+		const reviewed = await review(exported(), { policy: worktree });
+		const round = RecordedRound.of(reviewed.stored, roundOf(reviewed.stored), everyRecordCounts);
+		const other = Revision.from({ base: "a".repeat(40), head: "b".repeat(40), files: [] });
+		expect(
+			await round.findingsUnder({ revision: other, config: reviewed.config, repoRoot: repo, policy: worktree }),
+		).toEqual({ refused: `reviewed ${Revision.key(reviewed.changeset.revision)}, not ${Revision.key(other)}` });
 	});
 
 	it.each<[string, Partial<{ repoRoot: string; policy: RepositorySource }>, boolean]>([

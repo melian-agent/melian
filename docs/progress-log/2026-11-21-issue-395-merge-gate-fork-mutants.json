@@ -1,0 +1,136 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "c1558877a4d3db90cb9cfc4d3e0fa4ded021b9d7",
+		"head": "087bcb5ecffa73a0326895f7a4f39022d6716824"
+	},
+	"claimsIn": [
+		"packages/cli/src/gate.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "6cbefebedd4847ccbec473193b98eff7aa6373d4bad44f6e562e23e2c45904e1",
+	"mutants": [
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 38,
+			"column": 5,
+			"endLine": 38,
+			"endColumn": 20,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "writer.trusted",
+			"status": "generated",
+			"id": "01b072d0224fd527e741bb9a3571ecc888fe7c0e683a8643685da401f0f6a7c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 38,
+			"column": 5,
+			"endLine": 38,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "8ffeeb19bb7125f90cd719af14fe1ef05607c3ace02eeb6f1eea94495e5a68a2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"lets a head merge that a round on melian/state reviewed whole"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 38,
+			"column": 5,
+			"endLine": 38,
+			"endColumn": 20,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "ab1105356c9d8455ce1cee3f7deeaca0d28e04d657d7c1bc90b7304c54a198b4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 39,
+			"column": 2,
+			"endLine": 41,
+			"endColumn": 4,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "8cdf54ab480347fcc7b786a9ae6f4c1e96235e3ee5624597bf0f75461f5176d2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/cli/src/gate.ts",
+			"line": 40,
+			"column": 3,
+			"endLine": 40,
+			"endColumn": 181,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "53aaa5e56eee65386282c7df7041e497bfe8c1106633613ca8588b843ec8b9cb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/cli/test/gate.test.ts",
+					"path": [
+						"melian gate",
+						"passes no fork's head, though a round of it in melian/state found nothing, until a pinned key signs its records"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 5,
+	"omitted": 0,
+	"unmutated": []
+}

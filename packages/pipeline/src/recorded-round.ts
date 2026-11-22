@@ -80,9 +80,25 @@ export type RecordedRoundContents = {
 	readonly dismissals: readonly SharedDismissalRecord[];
 	/** Every such dismissal a round at another revision than the one it was made at ended, in record ID order. */
 	readonly ended: readonly EndedDismissal[];
+	/**
+	 * Every such dismissal that counts for nothing because a round of the changeset names a record or an earlier round
+	 * that neither the set nor the dismissal's frontier holds, so what that round cited is unknown, in record ID order.
+	 * Its finding reads as live, as for a dismissal that no longer holds.
+	 */
+	readonly unjudged: readonly UnjudgedDismissal[];
 };
 
-/** A shared dismissal that a round at another revision ended, as a push does, until someone dismisses again. */
+/** A shared dismissal no reader can judge, since a round of its changeset names what the store does not hold. */
+export type UnjudgedDismissal = {
+	/** The ID of the finding it dismissed. */
+	readonly finding: string;
+	/** The dismissal record's ID. */
+	readonly record: string;
+	/** The round that names a record or round the store does not hold. */
+	readonly round: string;
+};
+
+/** A shared dismissal that a round at another revision ended, until someone dismisses again. */
 export type EndedDismissal = {
 	/** The ID of the finding it dismissed. */
 	readonly finding: string;
@@ -116,7 +132,8 @@ type Decided = Exclude<Pieces, { readonly refused: string }>;
 // the round since it that reviewed another revision and so ended it.
 type PendingDismissal =
 	| { readonly dismissal: SharedDismissalRecord; readonly sightings: readonly StoredFinding[] }
-	| { readonly ended: EndedDismissal };
+	| { readonly ended: EndedDismissal }
+	| { readonly unjudged: UnjudgedDismissal };
 
 /**
  * One round of a changeset as its shared records hold it, read without the store of the review that wrote them. Its
@@ -170,16 +187,62 @@ export class RecordedRound {
 		const hunks = hunksOf(revision.files);
 		const dismissals: SharedDismissalRecord[] = [];
 		const ended: EndedDismissal[] = [];
+		const unjudged: UnjudgedDismissal[] = [];
 		for (const pending of pieces.dismissals)
 			if ("ended" in pending) ended.push(pending.ended);
+			else if ("unjudged" in pending) unjudged.push(pending.unjudged);
 			else if (sharedDismissalHolds(pending.dismissal, pending.sightings, hunks)) dismissals.push(pending.dismissal);
-		return { revision: asked, sightings: pieces.sightings, hunks, dismissals, ended };
+		return { revision: asked, sightings: pieces.sightings, hunks, dismissals, ended, unjudged };
 	}
 
 	/** The verdict the round's records decide under `context`, as the review's adjudication would decide it. */
 	async verdict(context: RecordedRoundContext): Promise<Verdict> {
+		const reviewed = await this.reviewed(context);
+		return "refused" in reviewed ? notReviewed(this.id, reviewed.refused, context) : reviewed;
+	}
+
+	/**
+	 * The verdict {@link verdict} gives when the round's records can stand for a review under `context`, or why they
+	 * cannot, where {@link verdict} gives a verdict of not reviewed that says it.
+	 */
+	async reviewed(context: RecordedRoundContext): Promise<Verdict | { readonly refused: string }> {
+		const decided = await this.#decided(context);
+		if ("refused" in decided) return decided;
+		const { pieces, policies } = decided;
+		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
+		const decidedUnder = pieces.account.resolutionPolicy;
+		if (decidedUnder === null)
+			return { refused: "was decided under no resolution policy, so no reader can decide it" };
+		if (policies === undefined) return { refused: "is read with no resolution policy to decide under" };
+		if (decidedUnder !== policies.fingerprint)
+			return {
+				refused: `was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
+			};
+		return adjudicated(decided, policies, context);
+	}
+
+	/**
+	 * The round's findings decided under the policy `context` reads, whatever policy the round's account names, or why
+	 * its records cannot stand for it. A reader that counts a round's findings under its own policy takes them from here,
+	 * and takes the round as reviewed only from {@link verdict}. With `verifier: "uncapped"`, a finding the round's
+	 * verifier was asked about and never judged keeps the resolution it would have without the advisory cap a host sets
+	 * on it. A host sets that cap only on a round it reads as not reviewed, since a claim left unjudged fails the verifier.
+	 * With `verifier: "ignored"`, every finding reads as no verifier judged it, uncapped: no refutation, no lowering.
+	 */
+	async findingsUnder(
+		context: RecordedRoundContext,
+		options: { readonly verifier?: "capped" | "uncapped" | "ignored" } = {},
+	): Promise<Verdict | { readonly refused: string }> {
+		const { verifier = "capped" } = options;
+		const decided = await this.#decided(context, verifier !== "ignored");
+		if ("refused" in decided) return decided;
+		if (decided.policies === undefined) return { refused: "is read with no resolution policy to decide under" };
+		return adjudicated(decided, decided.policies, context, verifier !== "capped");
+	}
+
+	async #decided(context: RecordedRoundContext, judged = true): Promise<Merged | { readonly refused: string }> {
 		const contents = this.contents(context.revision);
-		if ("refused" in contents) return notReviewed(this.id, contents.refused, context);
+		if ("refused" in contents) return contents;
 		// `contents` refuses whatever the pieces refuse.
 		const pieces = this.#pieces as Decided;
 		const producers: Producer[] = pieces.account.producers.map(({ check, version, ids }) => ({
@@ -189,39 +252,49 @@ export class RecordedRound {
 		}));
 		const findings = mergeSightings(
 			contents.sightings,
-			pieces.claims,
+			judged ? pieces.claims : [],
 			producers,
 			byFinding(contents.dismissals),
 			contents.hunks,
 		);
 		const { repoRoot, policy } = context;
-		// A null fingerprint stands for no policy, never for any policy, so it matches nothing on either side.
-		const decidedUnder = pieces.account.resolutionPolicy;
-		if (decidedUnder === null)
-			return notReviewed(this.id, "was decided under no resolution policy, so no reader can decide it", context);
-		if (repoRoot === undefined || policy === undefined)
-			return notReviewed(this.id, "is read with no resolution policy to decide under", context);
-		const policies = await configsFor(repoRoot, policy, findings);
-		if (decidedUnder !== policies.fingerprint)
-			return notReviewed(
-				this.id,
-				`was decided under resolution policy ${decidedUnder}, and this checkout's reads ${policies.fingerprint}`,
-				context,
-			);
-		const verifies = await verifyingAt(repoRoot, policy);
-		return new Adjudication({
-			findings,
-			manifest: pieces.account.checks,
-			checks: pieces.checks,
-			config: policies,
-			allowSkip: pieces.account.allowSkip,
-			// The host caps a finding no verifier judged when it asked about it, or when its lens ran only at levels that do
-			// not verify. A finding it dismissed is neither, so a dismissal that does not count here leaves it uncapped.
-			verificationRan: (report, defect) => pieces.asked.has(defect.id) || unverifiedAt(verifies, report),
-			...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
-			revision: context.revision,
-		}).adjudicate();
+		const policies =
+			repoRoot === undefined || policy === undefined ? undefined : await configsFor(repoRoot, policy, findings);
+		const verifies = repoRoot === undefined || policy === undefined ? undefined : await verifyingAt(repoRoot, policy);
+		return { pieces, findings, policies, verifies: verifies ?? new Map() };
 	}
+}
+
+// A round's findings merged from its records, with the policy the reader's checkout reads for them, if any, and which
+// lens levels that policy verifies at.
+type Merged = {
+	readonly pieces: Decided;
+	readonly findings: ReturnType<typeof mergeSightings>;
+	readonly policies: Policies | undefined;
+	readonly verifies: ReadonlyMap<string, boolean>;
+};
+
+type Policies = Awaited<ReturnType<typeof configsFor>>;
+
+function adjudicated(
+	{ pieces, findings, verifies }: Merged,
+	policies: Policies,
+	context: RecordedRoundContext,
+	uncapAsked = false,
+): Verdict {
+	return new Adjudication({
+		findings,
+		manifest: pieces.account.checks,
+		checks: pieces.checks,
+		config: policies,
+		allowSkip: pieces.account.allowSkip,
+		// The host caps a finding no verifier judged when it asked about it, or when its lens ran only at levels that do
+		// not verify. A finding it dismissed is neither, so a dismissal that does not count here leaves it uncapped.
+		verificationRan: (report, defect) =>
+			(!uncapAsked && pieces.asked.has(defect.id)) || unverifiedAt(verifies, report),
+		...(context.seenBefore === undefined ? {} : { seenBefore: context.seenBefore }),
+		revision: context.revision,
+	}).adjudicate();
 }
 
 // The lenses the policy defines for the revision's paths, as the host's review loaded them; none when they fail to load,
@@ -356,8 +429,8 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 			const { by, reason, at, trigger, sighting, frontier } = record.payload as DismissalPayload;
 			if (frontier === undefined) return [];
 			const since = roundsSince(set, round, frontier);
-			if (since === undefined) return [];
 			const { id, key, supersedes } = record;
+			if ("unknown" in since) return [{ unjudged: { finding: key, record: id, round: since.unknown } }];
 			// A round always names its revision, as the record's own check requires.
 			const moved = [round, ...since].find((each) => each.revision !== sighting.revision);
 			if (moved !== undefined)
@@ -386,9 +459,14 @@ function dismissalsOf(set: RecordSet, round: SharedRecord): PendingDismissal[] {
 // The rounds of `round`'s changeset whose sightings test a dismissal whose writer held `frontier`, `round` among them
 // unless the writer held it: every round of the changeset in the set outside `frontier`, in the set's ID order and
 // whatever its place, so a round another host wrote, which the writer never met, ends or reopens it on time.
-// `undefined` when a tested round, or `round`, names a record the set does not hold, or follows a round that neither the
-// set nor the writer held, since what that round cited is unknown. That is the one thing `before` still decides.
-function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly string[]): SharedRecord[] | undefined {
+// `unknown` names the first of `round` and the tested rounds that names a record the set does not hold, or follows a
+// round that neither the set nor the writer held, since what that round cited is unknown. That is the one thing
+// `before` still decides.
+function roundsSince(
+	set: RecordSet,
+	round: SharedRecord,
+	frontier: readonly string[],
+): SharedRecord[] | { readonly unknown: string } {
 	const rounds = new Map(
 		set
 			.records()
@@ -397,10 +475,10 @@ function roundsSince(set: RecordSet, round: SharedRecord, frontier: readonly str
 	);
 	const held = new Set(frontier);
 	const tested = [...rounds.values()].filter((each) => !held.has(each.id));
-	const known = [round, ...tested].every(
-		(each) => set.missing(each).length === 0 && each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
+	const unknown = [round, ...tested].find(
+		(each) => set.missing(each).length > 0 || !each.manifest()!.before.every((id) => held.has(id) || rounds.has(id)),
 	);
-	return known ? tested : undefined;
+	return unknown === undefined ? tested : { unknown: unknown.id };
 }
 
 // The proving hunks of a revision that changes `files`, as a lens cites them.
