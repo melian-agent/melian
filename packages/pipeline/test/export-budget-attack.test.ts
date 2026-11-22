@@ -18,6 +18,7 @@ import {
 	recordLimit,
 	reviewPayloads,
 	SharedRecord,
+	sharedCopyTrimmed,
 	snippetHash,
 	TierAccount,
 } from "@melian-agent/core";
@@ -318,6 +319,42 @@ describe("the adjudication commit's measure", () => {
 			measure,
 		);
 		expect(current!.built).toBe("measured");
+	});
+
+	it("notes each check that ran whose shared copy was trimmed, after any reason it gives, and no other", async () => {
+		const { input } = await verified();
+		const checks: typeof input.checks = [
+			{ name: "guardrails", status: "ran" },
+			{ name: "static.biome", status: "ran", reason: "Biome read 2 files." },
+			{ name: "static.tsc", status: "failed", reason: "tsc failed." },
+			{ name: "decisions.supersession", status: "ran" },
+		];
+		const started = await startAdjudication(
+			harness,
+			{ ...input, checks },
+			[],
+			undefined,
+			undefined,
+			false,
+			undefined,
+			context,
+			() => ({ built: "measured", trimmed: ["guardrails", "static.biome", "static.tsc"] }),
+		);
+		const task = await harness.getTask(started!.task, context);
+		expect((task!.input as unknown as typeof input).checks).toEqual([
+			{ name: "guardrails", status: "ran", reason: sharedCopyTrimmed },
+			{ name: "static.biome", status: "ran", reason: `Biome read 2 files.; ${sharedCopyTrimmed}` },
+			{ name: "static.tsc", status: "failed", reason: "tsc failed." },
+			{ name: "decisions.supersession", status: "ran" },
+		]);
+	});
+
+	it("adjudicates the checks it is given when it measures nothing", async () => {
+		const { input } = await verified();
+		const started = await startAdjudication(harness, input, [], undefined, undefined, false, undefined, context);
+		const task = await harness.getTask(started!.task, context);
+		expect((task!.input as unknown as typeof input).checks).toEqual([{ name: "guardrails", status: "ran" }]);
+		expect(started!.built).toBeUndefined();
 	});
 
 	it("leaves the commit unmade when the measure throws, the cleared verifications and the index with it", async () => {

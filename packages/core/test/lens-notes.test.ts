@@ -1,5 +1,12 @@
-import { Adjudication, type CheckRecord, defaultConfig, Rendering, Verdict } from "@melian-agent/core";
-import { expect, it } from "vitest";
+import {
+	Adjudication,
+	type CheckRecord,
+	defaultConfig,
+	Rendering,
+	sharedCopyTrimmed,
+	Verdict,
+} from "@melian-agent/core";
+import { describe, expect, it } from "vitest";
 
 const note = "Callers unavailable for src/a.ts: directory-scoped name is ambiguous";
 const checks: CheckRecord[] = [
@@ -74,4 +81,39 @@ it("keeps an empty stored note and accepts records without a reason or legacy ra
 	expect(empty.lensNotes()).toEqual([{ reason: "", checks: ["lens.correctness"] }]);
 	const { ran: _, ...legacy } = empty.toJSON();
 	expect(Verdict.from(legacy).lensNotes()).toEqual([]);
+});
+
+describe("a check whose shared copy was trimmed", () => {
+	const trimmed = new Adjudication({
+		findings: [],
+		manifest: [],
+		checks: [
+			{ name: "guardrails", status: "ran", reason: sharedCopyTrimmed },
+			{ name: "static.biome", status: "ran", reason: `Biome read 2 files.; ${sharedCopyTrimmed}` },
+			{ name: "lens.tests", status: "ran", level: "deep", reason: note },
+			{ name: "lens.contracts", status: "ran", level: "quick" },
+		],
+		config: defaultConfig,
+	}).adjudicate();
+
+	it("names each such check once, without --notes", () => {
+		const text = trimmed.render();
+		expect(text).toContain(`\n\n  guardrails, static.biome: ${sharedCopyTrimmed}\n\n`);
+		expect(text.split(sharedCopyTrimmed)).toHaveLength(2);
+		expect(text).not.toContain(note);
+	});
+
+	it("shows the note once with --notes, among the other notes", () => {
+		const text = trimmed.render(new Rendering({ notes: true }));
+		expect(text.split(sharedCopyTrimmed)).toHaveLength(2);
+		expect(text).toContain(`  guardrails, static.biome: ${sharedCopyTrimmed}`);
+		expect(text).toContain(`  lens.tests: ${note}`);
+	});
+
+	it("is not named for a verdict whose checks were not trimmed, or that holds no ran list", () => {
+		expect(verdict.render()).not.toContain(sharedCopyTrimmed);
+		expect(verdict.render()).not.toContain("\n\n  : ");
+		const { ran: _, ...legacy } = trimmed.toJSON();
+		expect(Verdict.from(legacy).render()).not.toContain(sharedCopyTrimmed);
+	});
 });

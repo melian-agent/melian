@@ -917,9 +917,7 @@ export class Verdict {
 		const trimmed = (this.ran ?? []).filter(({ reason }) => reason?.split("; ").includes(sharedCopyTrimmed));
 		// Two hosts must not read different findings for one round without being told, so this shows without --notes.
 		if (trimmed.length > 0 && !rendering.notes)
-			parts.push(
-				`  ${trimmed.map(({ name }) => visibleText(name)).join(", ")}: ${prose(sharedCopyTrimmed, "    ")}`,
-			);
+			parts.push(`  ${trimmed.map(({ name }) => visibleText(name)).join(", ")}: ${sharedCopyTrimmed}`);
 		if (rendering.notes)
 			parts.push(
 				...this.lensNotes().map(
