@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { moduleHashes, producerModules } from "./code-hashes.ts";
-import { Install } from "./installed-packages.ts";
+import { Install, maxInstallDirectories } from "./installed-packages.ts";
 
 /**
  * The version of the code that decides `producer`'s result: a SHA-256 over the recorded path and hash of each module its
@@ -24,9 +24,10 @@ let install: Install | undefined;
 /**
  * Melian's own install, every copy and link beneath the root Node resolves Melian's imports from, so a key holding its
  * digest moves with any package any producer could reach. Read once a process, on first use, since the install does not
- * change under a running review. Throws for an install Melian cannot read.
+ * change under a running review. An install past the bound, as a global one beside other tools can be, reads as
+ * unidentified, so a review runs and reuses nothing. Throws for an install Melian cannot read.
  */
 export function melianInstall(): Install {
-	install ??= Install.read(import.meta.url);
+	install ??= Install.read(import.meta.url, maxInstallDirectories, "unidentified");
 	return install;
 }

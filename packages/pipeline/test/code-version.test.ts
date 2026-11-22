@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 const table = vi.hoisted(() => ({
@@ -44,16 +47,51 @@ describe("melianInstall", () => {
 		const { melianInstall } = await import("../src/code-version.ts");
 		const first = melianInstall();
 		expect(melianInstall()).toBe(first);
-		expect(read.mock.calls).toEqual([[new URL("../src/code-version.ts", import.meta.url).href]]);
+		expect(read.mock.calls).toEqual([
+			[new URL("../src/code-version.ts", import.meta.url).href, 50_000, "unidentified"],
+		]);
 		expect(first.digest).toBe(Install.read(new URL("../src/code-version.ts", import.meta.url).href).digest);
 	});
 
-	it("fails for Melian's own install past the bound, where a reviewed repository's is unidentified", async () => {
-		vi.resetModules();
-		const { Install } = await import("../src/installed-packages.ts");
-		const read = Install.read.bind(Install);
-		vi.spyOn(Install, "read").mockImplementation((from, _limit, ...rest) => read(from, 3, ...rest));
-		const { melianInstall } = await import("../src/code-version.ts");
-		expect(() => melianInstall()).toThrow("Melian cannot key its install: it holds more than 3 directories.");
+	// A global install puts Melian beside other tools under one node_modules, so the bound counts packages not Melian's.
+	describe("whose outermost root holds more than the bound", () => {
+		// The root's node_modules and its three packages: four directories.
+		const scratchInstall = () => {
+			const root = realpathSync(mkdtempSync(join(tmpdir(), "melian-own-install-")));
+			for (const name of ["a", "b", "c"]) {
+				mkdirSync(join(root, "node_modules", name), { recursive: true });
+				writeFileSync(join(root, "node_modules", name, "package.json"), JSON.stringify({ name, version: "1.0.0" }));
+			}
+			writeFileSync(join(root, "node_modules", "a", "index.js"), "");
+			return { root, module: join(root, "node_modules", "a", "index.js") };
+		};
+		const melianInstallAt = async (limit: number) => {
+			vi.resetModules();
+			const { Install } = await import("../src/installed-packages.ts");
+			const read = Install.read.bind(Install);
+			const { root, module } = scratchInstall();
+			vi.spyOn(Install, "read").mockImplementation((_from, _limit, ...rest) => read(module, limit, ...rest));
+			const { melianInstall } = await import("../src/code-version.ts");
+			return { install: () => melianInstall(), root };
+		};
+
+		it("reads Melian's install whole at the bound", async () => {
+			const { install, root } = await melianInstallAt(4);
+			try {
+				expect(install()).toMatchObject({ identified: true, unrecognised: [] });
+				expect(install().entries).toHaveLength(3);
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
+		});
+
+		it("leaves Melian's install unidentified one past the bound, so a review runs and reuses nothing", async () => {
+			const { install, root } = await melianInstallAt(3);
+			try {
+				expect(install()).toMatchObject({ identified: false, unrecognised: ["."] });
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
+		});
 	});
 });
