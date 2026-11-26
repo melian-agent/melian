@@ -21,13 +21,16 @@ import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 // So the runner records exit 0 only when the probe's own exit handler, which no signal runs, said 0 on fd 4; otherwise
 // it records an ending with no record of how. A probe that writes 0 there itself gains no ending it could not exit with.
 // The runner keeps three characters of fd 4, enough to tell `0\n` from anything longer, so a flood cannot grow it.
+// The conditions go in NODE_OPTIONS, not flags, so a node the probe starts resolves under them too. Their pattern
+// admits no space, so joining them with one keeps each whole.
 function runnerSource(conditions: readonly string[]): string {
-	const flags = conditions.map((condition) => `${JSON.stringify(`--conditions=${condition}`)}, `).join("");
+	const options = conditions.map((condition) => `--conditions=${condition}`).join(" ");
+	const env = options === "" ? "" : `, env: { ...process.env, NODE_OPTIONS: ${JSON.stringify(options)} }`;
 	return [
 		`import { spawn } from "node:child_process";`,
 		`import { writeSync } from "node:fs";`,
 		`import { fileURLToPath } from "node:url";`,
-		`const probe = spawn(process.execPath, [${flags}"--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
+		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"]${env} });`,
 		`const exited = probe.stdio[4];`,
 		`let said = "";`,
 		`exited.setEncoding("utf8").on("data", (chunk) => { said = (said + chunk).slice(0, 3); }).on("error", () => {});`,

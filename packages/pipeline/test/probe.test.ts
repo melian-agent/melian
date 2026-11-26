@@ -1959,8 +1959,28 @@ describe("a probe's git and Node conditions", () => {
 			try {
 				const root = dirname(probe.policy.write[0]!);
 				expect(readFileSync(join(root, "probe", "run.mjs"), "utf8")).toContain(
-					'["--conditions=probe-src", "--conditions=other", "--import", ',
+					'NODE_OPTIONS: "--conditions=probe-src --conditions=other"',
 				);
+				const result = await probe.run();
+				expect([result.exitCode, result.output]).toEqual([0, "source\n"]);
+			} finally {
+				await probe.close();
+			}
+		});
+
+		it("resolves under the policy's conditions in a node process the probe starts", async () => {
+			const { sandbox } = passthrough();
+			const parent = [
+				'import { execFileSync } from "node:child_process";',
+				'import { fileURLToPath } from "node:url";',
+				'const child = fileURLToPath(new URL("./child.mjs", import.meta.url));',
+				'process.stdout.write(execFileSync(process.execPath, [child], { encoding: "utf8" }));',
+			].join("\n");
+			const probe = await Probe.open(
+				{ script: parent, files: [{ path: "child.mjs", text: script }] },
+				options(sandbox, { conditions: ["probe-src", "other"] }),
+			);
+			try {
 				const result = await probe.run();
 				expect([result.exitCode, result.output]).toEqual([0, "source\n"]);
 			} finally {
