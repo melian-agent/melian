@@ -3,6 +3,7 @@
 		"scripts/codex-sandboxed.test.mjs",
 		"packages/pipeline/test/mutation-process-real.test.ts",
 		"packages/pipeline/test/probe-sandbox.test.ts",
+		"packages/pipeline/test/probe-git-sandbox.test.ts",
 		"packages/cli/test/probe.test.ts",
 		"packages/pipeline/test/probe-keychain.test.ts",
 		"packages/pipeline/test/probe-endings.test.ts",
@@ -13,6 +14,7 @@
 	"skipped": [
 		"packages/core/test/secrets.test.ts",
 		"packages/core/test/worktree-spelling.test.ts",
+		"packages/pipeline/test/probe-git.test.ts",
 		"packages/pipeline/test/probe-links-independent.test.ts"
 	],
 	"allowed": [

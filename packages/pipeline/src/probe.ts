@@ -1,14 +1,16 @@
 import { execFile } from "node:child_process";
 import { constants, existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
-import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, mkdtemp, open as openFile, rm, rmdir, symlink, writeFile } from "node:fs/promises";
 import { homedir, constants as osConstants, platform, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { SandboxManager } from "@anthropic-ai/sandbox-runtime";
+import { probeConditions } from "@melian-agent/core";
 import type { WriterTrust } from "./checks.ts";
 import { backgroundContext, createNodeExecutionEnv } from "./harness.ts";
 import { linkDependencies } from "./link-dependencies.ts";
+import { type HostAsk, type ProbeGit, probeGit } from "./probe-git.ts";
 import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 
 // The runner the sandbox executes is the probe's parent. It writes how the probe's own process ended to fd 3, because a
@@ -19,12 +21,16 @@ import { closeGraceMs, ProbeProcess } from "./probe-process.ts";
 // So the runner records exit 0 only when the probe's own exit handler, which no signal runs, said 0 on fd 4; otherwise
 // it records an ending with no record of how. A probe that writes 0 there itself gains no ending it could not exit with.
 // The runner keeps three characters of fd 4, enough to tell `0\n` from anything longer, so a flood cannot grow it.
-function runnerSource(): string {
+// The conditions go in NODE_OPTIONS, not flags, so a node the probe starts resolves under them too. Their pattern
+// admits no space, so joining them with one keeps each whole.
+function runnerSource(conditions: readonly string[]): string {
+	const options = conditions.map((condition) => `--conditions=${condition}`).join(" ");
+	const env = options === "" ? "" : `, env: { ...process.env, NODE_OPTIONS: ${JSON.stringify(options)} }`;
 	return [
 		`import { spawn } from "node:child_process";`,
 		`import { writeSync } from "node:fs";`,
 		`import { fileURLToPath } from "node:url";`,
-		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"] });`,
+		`const probe = spawn(process.execPath, ["--import", new URL("./${watchdogName}", import.meta.url).href, fileURLToPath(new URL("./${scriptName}", import.meta.url))], { stdio: ["ignore", "inherit", "inherit", "ignore", "pipe"]${env} });`,
 		`const exited = probe.stdio[4];`,
 		`let said = "";`,
 		`exited.setEncoding("utf8").on("data", (chunk) => { said = (said + chunk).slice(0, 3); }).on("error", () => {});`,
@@ -91,6 +97,8 @@ export const probeLimits = {
 	files: 64,
 	fileBytes: 1_048_576,
 	path: 200,
+	/** The Node conditions a probe's process resolves under, and the longest name of one. */
+	conditions: { count: probeConditions.count, length: probeConditions.length },
 	/** How long starting the sandbox (open and wrap) may take, apart from the probe's own time limit. */
 	setup: 120_000,
 	/** What `probe.read` may copy into the tree, across all its entries; past any of them the probe is refused. */
@@ -139,6 +147,8 @@ export interface ProbeSandbox {
 	readonly kind: string;
 	/** Why a probe cannot run here, or `undefined` when it can. */
 	unavailable(): string | undefined;
+	/** Where a probe finds git, asked of the host before the sandbox starts. Without it, git is whatever `PATH` finds. */
+	git?(): Promise<ProbeGit>;
 	open(): Promise<void>;
 	/** The argv that runs `command` under `policy`, with no network. */
 	wrap(command: string, policy: ProbePolicy): Promise<readonly string[]>;
@@ -174,6 +184,8 @@ export interface ProbeOptions {
 	readonly timeout?: number;
 	/** Bytes of standard output and standard error, together; {@link probeLimits} sets the default and the bound. */
 	readonly outputLimit?: number;
+	/** The base policy's `probe.conditions`: the Node conditions the probe's process resolves packages under. */
+	readonly conditions?: readonly string[];
 	readonly sandbox?: ProbeSandbox;
 }
 
@@ -214,6 +226,19 @@ const scriptName = "probe.mjs";
 const watchdogName = "watchdog.mjs";
 const runnerName = "run.mjs";
 const startedName = "started";
+// The probe's folder links the tree's install here, so a bare import from probe.mjs resolves as one from the tree does.
+const installName = "node_modules";
+const gitName = "git";
+// Creates a repository in the probe's temporary directory with the git on its PATH, as a probe's own git call would.
+const gitScript = [
+	`import { spawnSync } from "node:child_process";`,
+	`import { tmpdir } from "node:os";`,
+	`import { join } from "node:path";`,
+	`const ran = spawnSync("git", ["init", "--quiet", join(tmpdir(), "repository")], { stdio: ["ignore", "inherit", "inherit"] });`,
+	"if (ran.error !== undefined) console.error(ran.error.message);",
+	"process.exit(ran.status ?? 1);",
+	"",
+].join("\n");
 
 // The operating system's programs and libraries, which Node and a shell need to start. They hold no user's data.
 const systemReads: Readonly<Record<"darwin" | "linux", readonly string[]>> = {
@@ -516,7 +541,7 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	const files = input.files ?? [];
 	if (files.length > probeLimits.files)
 		throw new ProbeError("invalidProbe", `a probe has at most ${probeLimits.files} files`);
-	const seen = new Set<string>([scriptName, runnerName, watchdogName]);
+	const seen = new Set<string>([scriptName, runnerName, watchdogName, installName]);
 	let bytes = 0;
 	for (const file of files) {
 		const parts = file.path.split("/");
@@ -548,6 +573,17 @@ function validFiles(input: ProbeInput): readonly ProbeFile[] {
 	if (bytes > probeLimits.fileBytes)
 		throw new ProbeError("invalidProbe", `a probe's files hold at most ${probeLimits.fileBytes} bytes`);
 	return files;
+}
+
+function validConditions(conditions: readonly string[] | undefined): readonly string[] {
+	const given = conditions ?? [];
+	const { count, length } = probeLimits.conditions;
+	if (given.length > count || !given.every((each) => each.length <= length && probeConditions.pattern.test(each)))
+		throw new ProbeError(
+			"invalidProbe",
+			`a probe takes at most ${count} Node conditions, each at most ${length} characters of letters, digits and '@', '_', '.', '/', ':', '+' or '-', not starting with one of the last five`,
+		);
+	return given;
 }
 
 function leave(options: ProbeOptions): void {
@@ -641,9 +677,28 @@ function commandFor({ scratch, node, timeout }: { scratch: string; node: string;
 }
 
 // The environment a probe in `scratch` starts with. spawn leaves out a variable whose value is undefined.
-function environmentFor({ scratch, node, lang }: { scratch: string; node: string; lang: string | undefined }) {
+function environmentFor({
+	scratch,
+	node,
+	git,
+	lang,
+}: {
+	scratch: string;
+	node: string;
+	git: ProbeGit;
+	lang: string | undefined;
+}) {
 	const run = join(scratch, "run");
-	return { PATH: `${dirname(node)}:/usr/bin:/bin`, HOME: join(run, "home"), TMPDIR: join(run, "tmp"), LANG: lang };
+	const linked = "program" in git;
+	const path = [dirname(node), ...(linked ? [join(scratch, gitName)] : []), "/usr/bin", "/bin"].join(":");
+	const noSystem = "noSystem" in git;
+	return {
+		PATH: path,
+		HOME: join(run, "home"),
+		TMPDIR: join(run, "tmp"),
+		LANG: lang,
+		...(noSystem ? { GIT_CONFIG_NOSYSTEM: "1" } : {}),
+	};
 }
 
 /** The parts of sandbox-runtime's manager a probe uses. */
@@ -663,6 +718,7 @@ export class RuntimeSandbox implements ProbeSandbox {
 	readonly #name: string;
 	readonly #runtime: SandboxRuntime;
 	readonly #unshare: string | null;
+	readonly #ask: HostAsk | undefined;
 	// open and close run one at a time on the shared manager, so a reset can never complete after a newer open tears its
 	// session down. Each call waits for the ones before it, and a thrown step does not poison the chain.
 	readonly #sessions: { count: number; queue: Promise<void> };
@@ -671,9 +727,11 @@ export class RuntimeSandbox implements ProbeSandbox {
 		runtime: SandboxRuntime = SandboxManager,
 		name: string = platform(),
 		unshare: string | null = unsharePaths.find((path) => existsSync(path)) ?? null,
+		ask?: HostAsk,
 	) {
 		this.#runtime = runtime;
 		this.#unshare = unshare;
+		this.#ask = ask;
 		this.#sessions = sessionsOf.get(runtime) ?? { count: 0, queue: Promise.resolve() };
 		sessionsOf.set(runtime, this.#sessions);
 		this.#name = name;
@@ -691,6 +749,10 @@ export class RuntimeSandbox implements ProbeSandbox {
 		const { errors, warnings } = this.#runtime.checkDependencies();
 		const problems = [...errors, ...warnings];
 		return problems.length === 0 ? undefined : `sandbox-runtime cannot run here: ${problems.join("; ")}`;
+	}
+
+	git(): Promise<ProbeGit> {
+		return probeGit(this.platform, this.#ask);
 	}
 
 	#enqueue(step: () => Promise<void>): Promise<void> {
@@ -788,6 +850,7 @@ export class Probe {
 	readonly #timeout: number;
 	readonly #outputLimit: number;
 	readonly #sandbox: ProbeSandbox;
+	readonly #git: ProbeGit;
 	#closed = false;
 	#running = false;
 	// A wrap still running past its setup bound, released once it settles. close() waits for it before releasing the
@@ -799,12 +862,14 @@ export class Probe {
 		installs: readonly string[],
 		limits: { timeout: number; output: number },
 		sandbox: ProbeSandbox,
+		git: ProbeGit,
 	) {
 		this.#scratch = scratch;
 		this.#installs = installs;
 		this.#timeout = limits.timeout;
 		this.#outputLimit = limits.output;
 		this.#sandbox = sandbox;
+		this.#git = git;
 	}
 
 	/**
@@ -815,6 +880,7 @@ export class Probe {
 	static async open(input: ProbeInput, options: ProbeOptions): Promise<Probe> {
 		leave(options);
 		const files = validFiles(input);
+		const conditions = validConditions(options.conditions);
 		const limits = {
 			timeout: bounded("timeout", options.timeout, probeLimits.timeout),
 			output: bounded("outputLimit", options.outputLimit, probeLimits.output),
@@ -825,16 +891,25 @@ export class Probe {
 		const head = options.head === undefined ? undefined : planned(options.head);
 		const scratch = realpathSync(await mkdtemp(join(tmpdir(), "melian-probe-")));
 		let installs: readonly string[] = [];
+		let git: ProbeGit = { reads: [] };
 		try {
+			git = (await sandbox.git?.()) ?? git;
 			for (const path of ["probe", "run/home", "run/tmp", "tree"])
 				await mkdir(join(scratch, path), { recursive: true });
+			// The probe's PATH reaches git through this one link, so no neighbour of git's program is on it.
+			if ("program" in git) {
+				await mkdir(join(scratch, gitName));
+				await symlink(git.program, join(scratch, gitName, "git"));
+			}
 			if (head !== undefined) installs = await writeHead(head, join(scratch, "tree"));
 			await writeFile(join(scratch, "probe", scriptName), input.script);
 			// A watchdog inside the probe's Node process exits the probe at its own limit even if the Melian process dies
 			// and so never stops it. It is a backstop past Melian's own deadline, so a running Melian stops the probe
 			// first; a grandchild that reparents away from that process still escapes it, as the decision records.
 			await writeFile(join(scratch, "probe", watchdogName), watchdogSource(backstop(limits.timeout)));
-			await writeFile(join(scratch, "probe", runnerName), runnerSource());
+			await writeFile(join(scratch, "probe", runnerName), runnerSource(conditions));
+			if (existsSync(join(scratch, "tree", installName)))
+				await symlink(join("..", "tree", installName), join(scratch, "probe", installName));
 			for (const file of files) {
 				const target = join(scratch, "probe", ...file.path.split("/"));
 				await mkdir(dirname(target), { recursive: true });
@@ -855,7 +930,7 @@ export class Probe {
 			if (error instanceof ProbeError && error.code === "invalidProbe") throw error;
 			throw new ProbeError("sandboxUnavailable", `the probe could not start: ${String(error)}`, { cause: error });
 		}
-		return new Probe(scratch, installs, limits, sandbox);
+		return new Probe(scratch, installs, limits, sandbox, git);
 	}
 
 	/** The sandbox a probe runs under when its options name none. */
@@ -863,9 +938,23 @@ export class Probe {
 
 	/** Whether a probe can run on this machine, by running an empty one. */
 	static async availability(sandbox: ProbeSandbox = runtime): Promise<ProbeAvailability> {
+		return Probe.#tried("process.exit(0);\n", "an empty probe", sandbox);
+	}
+
+	/**
+	 * Whether a probe can run git on this machine, by running one that creates a repository in its temporary directory.
+	 * The probe runs under no variable of the reviewer's, so no `GIT_` variable reaches its git.
+	 */
+	static async gitAvailability(sandbox: ProbeSandbox = runtime): Promise<ProbeAvailability> {
+		const found = await sandbox.git?.();
+		if (found !== undefined && "unavailable" in found) return { available: false, reason: found.unavailable };
+		return Probe.#tried(gitScript, "a probe's git init", sandbox);
+	}
+
+	static async #tried(script: string, what: string, sandbox: ProbeSandbox): Promise<ProbeAvailability> {
 		try {
 			const probe = await Probe.open(
-				{ script: "process.exit(0);\n" },
+				{ script },
 				{ writer: { trusted: true, by: "reviewer" }, trustWriters: true, sandbox },
 			);
 			let result: ProbeResult;
@@ -876,7 +965,7 @@ export class Probe {
 				cleanup = await probe.close();
 			}
 			if (result.error !== undefined)
-				return { available: false, reason: `stopping an empty probe's processes failed: ${result.error}` };
+				return { available: false, reason: `stopping ${what}'s processes failed: ${result.error}` };
 			if (result.exitCode !== 0) {
 				const ended =
 					result.exitCode !== null
@@ -886,11 +975,11 @@ export class Probe {
 							: "ended with no record of how";
 				return {
 					available: false,
-					reason: `an empty probe ${ended}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
+					reason: `${what} ${ended}${result.output === "" ? "" : `: ${result.output.trim()}`}`,
 				};
 			}
 			if (!cleanup.removed)
-				return { available: false, reason: `an empty probe's scratch could not be removed: ${cleanup.reason}` };
+				return { available: false, reason: `${what}'s scratch could not be removed: ${cleanup.reason}` };
 			return { available: true };
 		} catch (error) {
 			return { available: false, reason: error instanceof Error ? error.message : String(error) };
@@ -907,8 +996,13 @@ export class Probe {
 			node: nodeReads(process.execPath),
 			npmrc: join(dirname(dirname(realpathSync(process.execPath))), "lib", "node_modules", "npm", "npmrc"),
 			runtime: runtimePackage(),
-			system: systemReads[platform].filter((path) => existsSync(path)),
+			system: [...systemReads[platform].filter((path) => existsSync(path)), ...this.#gitReads],
 		});
+	}
+
+	get #gitReads(): readonly string[] {
+		if (!("reads" in this.#git)) return [];
+		return "program" in this.#git ? [join(this.#scratch, gitName), ...this.#git.reads] : this.#git.reads;
 	}
 
 	/** Runs the probe once, within its time and output limits, and ends every process it started. */
@@ -951,7 +1045,12 @@ export class Probe {
 			);
 			child = ProbeProcess.start(argv, {
 				cwd: tree,
-				env: environmentFor({ scratch: this.#scratch, node, lang: process.env.LANG }),
+				env: environmentFor({
+					scratch: this.#scratch,
+					node,
+					git: this.#git,
+					lang: process.env.LANG,
+				}),
 				timeoutMs: this.#timeout,
 				record: (chunk) => {
 					record = Buffer.concat([record, chunk]).subarray(-recordLimit);

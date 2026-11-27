@@ -17,7 +17,7 @@ import {
 	main,
 	observeHost,
 	outcome,
-	probeRead,
+	probePolicy,
 	probeScript,
 	publicRoots,
 	recording,
@@ -143,6 +143,18 @@ describe("judge", () => {
 		expect(judge(r, withoutLang, argv, host())).toEqual([]);
 		r.environment = [...expectedEnvironment];
 		expect(judge(r, withoutLang, argv, host())).toEqual(["the probe's environment holds unexpected variables: LANG"]);
+	});
+
+	it("refuses NODE_OPTIONS when the plan expects none, and fails a probe that lacks it when the plan does", () => {
+		const r = report();
+		r.environment = [...expectedEnvironment, "NODE_OPTIONS"];
+		expect(judge(r, plan(), argv, host())).toEqual([
+			"the probe's environment holds unexpected variables: NODE_OPTIONS",
+		]);
+		const named = { ...plan(), environment: [...expectedEnvironment, "NODE_OPTIONS"] };
+		expect(judge(r, named, argv, host())).toEqual([]);
+		r.environment = [...expectedEnvironment];
+		expect(judge(r, named, argv, host())).toEqual(["the probe's environment lacks expected variables: NODE_OPTIONS"]);
 	});
 
 	it("names each expected variable the probe lacks", () => {
@@ -926,6 +938,7 @@ describe("containmentPlan", () => {
 		held: 9,
 		runtimeUrl: undefined,
 		lang: "C.UTF-8",
+		conditions: [],
 		listener: { tcp: { host: "10.1.0.4", port: 4100 }, udp: { host: "10.1.0.4", port: 4101 } },
 	};
 
@@ -991,6 +1004,13 @@ describe("containmentPlan", () => {
 		]);
 		expect(plan.environment).toEqual(expectedEnvironment.filter((name) => name !== "LANG"));
 		expect(expectedEnvironment).toContain("LANG");
+	});
+
+	it("expects NODE_OPTIONS exactly when the base names probe conditions", () => {
+		expect(expectedEnvironment).not.toContain("NODE_OPTIONS");
+		const named = containmentPlan({ ...input, conditions: ["@melian-agent/source"] });
+		expect(named.environment).toEqual([...expectedEnvironment, "NODE_OPTIONS"]);
+		expect(containmentPlan(input).environment).toEqual([...expectedEnvironment]);
 	});
 });
 
@@ -1165,7 +1185,12 @@ describe("main", () => {
 		};
 	}
 
-	async function mainWith(probes, read = async () => ["node_modules"], interfaces = networkInterfaces(), base = head) {
+	async function mainWith(
+		probes,
+		read = async () => ({ read: ["node_modules"], conditions: [] }),
+		interfaces = networkInterfaces(),
+		base = head,
+	) {
 		const root = mkdtempSync(join(tmpdir(), "melian-containment-main-"));
 		const saved = Object.fromEntries(
 			["HOME", "RUNNER_TEMP", "MELIAN_PROBE_POLICY_COMMIT", ...loginNames].map((name) => [name, process.env[name]]),
@@ -1198,6 +1223,7 @@ describe("main", () => {
 				segmentsKept: segments() === before.segments,
 				fdsKept: readdirSync("/proc/self/fd").length === before.fds,
 				head: options?.head,
+				conditions: options?.conditions,
 			};
 		} finally {
 			log.mockRestore();
@@ -1232,13 +1258,25 @@ describe("main", () => {
 				(root) => stoppedProbes(root, true),
 				async (checkout, commit) => {
 					asked.push([checkout, commit]);
-					return ["node_modules", "extra"];
+					return { read: ["node_modules", "extra"], conditions: [] };
 				},
 				undefined,
 				base,
 			);
 			expect(asked).toEqual([[process.cwd(), base]]);
 			expect(result.head).toEqual({ checkout: process.cwd(), commit: head, read: ["node_modules", "extra"] });
+			expect(result.conditions).toBeUndefined();
+		},
+	);
+
+	it.runIf(process.platform === "linux")(
+		"hands the probe the probe.conditions of the base the round names, as a round's probes get them",
+		async () => {
+			const result = await mainWith(
+				(root) => stoppedProbes(root, true),
+				async () => ({ read: ["node_modules"], conditions: ["@melian-agent/source", "development"] }),
+			);
+			expect(result.conditions).toEqual(["@melian-agent/source", "development"]);
 		},
 	);
 
@@ -1252,7 +1290,7 @@ describe("main", () => {
 			(root) => stoppedProbes(root, true),
 			async (...given) => {
 				asked.push(given);
-				return ["node_modules"];
+				return { read: ["node_modules"], conditions: [] };
 			},
 			undefined,
 			base,
@@ -1279,7 +1317,7 @@ describe("main", () => {
 			);
 			expect(result).toEqual({
 				code: 1,
-				logs: [["the policy's probe.read could not be read: bad melian.yaml\\u001b[2J"]],
+				logs: [["the policy's probe settings could not be read: bad melian.yaml\\u001b[2J"]],
 				left: [],
 				segmentsKept: true,
 				fdsKept: true,
@@ -1288,7 +1326,7 @@ describe("main", () => {
 		},
 	);
 
-	describe("probeRead", () => {
+	describe("probePolicy", () => {
 		const repos = [];
 		afterEach(() => {
 			for (const repo of repos.splice(0)) rmSync(repo, { recursive: true, force: true });
@@ -1309,19 +1347,24 @@ describe("main", () => {
 			git("add", ".");
 			git("commit", "--quiet", "-m", "policy");
 			const commit = git("rev-parse", "HEAD");
-			// The working tree changes after the commit, and probeRead reads the commit.
+			// The working tree changes after the commit, and probePolicy reads the commit.
 			writeFileSync(join(repo, "melian.yaml"), "probe:\n  read: [node_modules, uncommitted]\n");
 			return { repo, commit };
 		}
 
-		it("reads the committed policy's probe.read", async () => {
-			const { repo, commit } = commitWith({ "melian.yaml": "probe:\n  read: [node_modules, extra]\n" });
-			expect(await probeRead(repo, commit)).toEqual(["node_modules", "extra"]);
+		it("reads the committed policy's probe.read and probe.conditions", async () => {
+			const { repo, commit } = commitWith({
+				"melian.yaml": "probe:\n  read: [node_modules, extra]\n  conditions: ['@melian-agent/source']\n",
+			});
+			expect(await probePolicy(repo, commit)).toEqual({
+				read: ["node_modules", "extra"],
+				conditions: ["@melian-agent/source"],
+			});
 		});
 
 		it("reads the default when the commit sets none", async () => {
 			const { repo, commit } = commitWith({});
-			expect(await probeRead(repo, commit)).toEqual(["node_modules"]);
+			expect(await probePolicy(repo, commit)).toEqual({ read: ["node_modules"], conditions: [] });
 		});
 	});
 

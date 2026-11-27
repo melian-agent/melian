@@ -20,7 +20,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/comparison.ts": "1dce550182fa4e796ceab922817e24ef9c4f4c20823896ca10dd1e72e6116a7b",
 
-	"packages/core/src/config.ts": "dfffe1fdcc872ee66d8272ad6b03673fb75228f52e3178acba1e5b9878a8cefc",
+	"packages/core/src/config.ts": "a3e217b95b47694461ca5286fc4ccf0eaf0f8258390079e10146d93a2bde12a2",
 
 	"packages/core/src/coverage-artifacts.ts": "e917782d458832146c703ef0e8c35ce8b9eb3fb17d033721fdc28a5ab512aa4a",
 
@@ -44,7 +44,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/findings.ts": "36d88d78253ce5f01f3308a4220c585d5d74de4f5334d5381f7c81e16e582878",
 
-	"packages/core/src/git.ts": "5434745ec129e603e870c2aacfbeebb551dbd714033a8857e3f667c92a2b5fe1",
+	"packages/core/src/git.ts": "ab780bee79be2253aed96420c5947bd6db8ca2dbe4a9b63a1850e5b70603cbb9",
 
 	"packages/core/src/graph-coverage.ts": "9825e427c7e6dd961612861d7a0a570d1356ff1766f63ca52ddee1e4d62f72b8",
 
@@ -54,7 +54,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "471599ad5beff267ca596d3aad0d254c09466dbbfbf189adef6b60a1cd127bab",
+	"packages/core/src/index.ts": "4736ae3b866334ab1ce7bee441a03cf3f4c6c0497dccf51074af37bcc019fec0",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
@@ -196,11 +196,13 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/mutation-vitest.ts": "7a6be8ecf9901249038d3d4cdbd0e05ea58991a6e268287ab742077a686c9591",
 
+	"packages/pipeline/src/probe-git.ts": "a5b7d1a249b9a9f44593dcff15e375f6dc428f7fab385aa20b0ff0aae11b4226",
+
 	"packages/pipeline/src/probe-process.ts": "5d103d0852a228cc971bf2e50f53a8f28819dc232f09a1f6fa5ab4e9cf07f766",
 
-	"packages/pipeline/src/probe.ts": "1f773ae994d5db73c0e648851991aaed9860b5ed2ee0450b1500c4bada260cd0",
+	"packages/pipeline/src/probe.ts": "40052ac470b722e91983d3964bf37be73682dd75b64249f21facc8a1ed2fdb3e",
 
-	"packages/pipeline/src/probing.ts": "605ab54f2840dd39d56c6f1aebcb347227c6aa3b50b773c8396d6a74e5524985",
+	"packages/pipeline/src/probing.ts": "b81ee2cc3c90dfbb7381fe1b87c96bf5285333a8bafd728a09003a16b93b6c5d",
 
 	"packages/pipeline/src/publish.ts": "c2fb72bc237ae6967f787fb517c71dbf25801f07d81eb0916e05836e1c9a525a",
 
@@ -228,7 +230,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/tool-cache.ts": "a334b29aaf06402e68346e4aad1fd38a1c2a0fb39065aa3757cf18c4e2b69969",
 
-	"packages/pipeline/src/tool-provisioning.ts": "64b965c251c4414516de7f94444419c9147859502941ce7feb46a5645b437c2e",
+	"packages/pipeline/src/tool-provisioning.ts": "7d6608c820e59f31ee4ce02e1be4270a96b285790cac4d9f472ce8e4f6ba4cf9",
 
 	"packages/pipeline/src/untrusted.ts": "8cf13d2a40873d39f26ec76a8f310eda0b731f6aa3a8f849348414f169ced054",
 
@@ -433,6 +435,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/mutation-stderr.ts",
 
 		"packages/pipeline/src/mutation-vitest.ts",
+
+		"packages/pipeline/src/probe-git.ts",
 
 		"packages/pipeline/src/probe-process.ts",
 
@@ -657,6 +661,8 @@ export const producerModules: Readonly<Record<string, readonly string[]>> = {
 		"packages/pipeline/src/mutation-stderr.ts",
 
 		"packages/pipeline/src/mutation-vitest.ts",
+
+		"packages/pipeline/src/probe-git.ts",
 
 		"packages/pipeline/src/probe-process.ts",
 

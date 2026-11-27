@@ -131,14 +131,56 @@ describe.each(sourceKinds)("loadConfig from the %s", (kind) => {
 	});
 
 	it("lets a probe read the dependency install by default, and takes the root policy's list whole", async () => {
-		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["node_modules"] });
+		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["node_modules"], conditions: [] });
 		writeFiles(repo, { "melian.yaml": "probe: { read: [generated, dist/report.json] }\n" });
-		expect((await load("src/index.ts")).config.probe).toEqual({ read: ["generated", "dist/report.json"] });
+		expect((await load("src/index.ts")).config.probe).toEqual({
+			read: ["generated", "dist/report.json"],
+			conditions: [],
+		});
 	});
 
 	it("refuses a probe allowlist that is not a list of paths", async () => {
 		writeFiles(repo, { "melian.yaml": "probe: { read: [3] }\n" });
 		expect(await rejection(load("src/index.ts"))).toMatchObject({ code: "invalidValue", key: "probe.read.0" });
+	});
+
+	it("names no probe conditions by default, and takes the root policy's list beside the default allowlist", async () => {
+		expect((await load("src/index.ts")).config.probe.conditions).toEqual([]);
+		writeFiles(repo, { "melian.yaml": "probe: { conditions: ['@melian-agent/source', node-addons] }\n" });
+		expect((await load("src/index.ts")).config.probe).toEqual({
+			read: ["node_modules"],
+			conditions: ["@melian-agent/source", "node-addons"],
+		});
+	});
+
+	it("takes probe conditions at their count and length, and refuses one past either", async () => {
+		const many = (count: number) => Array.from({ length: count }, (_, i) => `c${i}`).join(", ");
+		writeFiles(repo, { "melian.yaml": `probe: { conditions: [${many(16)}, ${"a".repeat(100)}] }\n` });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({ code: "invalidValue", key: "probe.conditions" });
+		writeFiles(repo, { "melian.yaml": `probe: { conditions: [${many(15)}, ${"a".repeat(100)}] }\n` });
+		expect((await load("src/index.ts")).config.probe.conditions).toHaveLength(16);
+		writeFiles(repo, { "melian.yaml": `probe: { conditions: [${"a".repeat(101)}] }\n` });
+		expect(await rejection(load("src/index.ts"))).toMatchObject({ code: "invalidValue", key: "probe.conditions.0" });
+	});
+
+	it.each([["'-x'"], ["'--inspect'"], ["'a b'"], ["''"], ["'.source'"], ["'a=b'"]])(
+		"refuses the probe condition %s, which Node would read as something else",
+		async (condition) => {
+			writeFiles(repo, { "melian.yaml": `probe: { conditions: [ok, ${condition}] }\n` });
+			expect(await rejection(load("src/index.ts"))).toMatchObject({
+				code: "invalidValue",
+				key: "probe.conditions.1",
+			});
+		},
+	);
+
+	it("refuses probe conditions in a nested policy", async () => {
+		writeFiles(repo, { "services/melian.yaml": "probe: { conditions: [dev] }\n" });
+		expect(await rejection(load("services/api.ts"))).toMatchObject({
+			code: "invalidValue",
+			key: "probe",
+			file: "services/melian.yaml",
+		});
 	});
 
 	it("refuses a probe allowlist in a nested policy", async () => {

@@ -34,6 +34,7 @@ import {
 	type SandboxRuntime,
 	withBound,
 } from "../src/probe.ts";
+import type { ProbeGit } from "../src/probe-git.ts";
 import { closeGraceMs, ProbeProcess } from "../src/probe-process.ts";
 
 // Probe's own rules, on a sandbox that runs the command unconfined and records what it was asked. Every script here is
@@ -50,6 +51,7 @@ function passthrough(
 		open?: () => Promise<void>;
 		wrap?: (command: string, policy: ProbePolicy) => Promise<never>;
 		platform?: "darwin" | "linux";
+		git?: () => Promise<ProbeGit>;
 	} = {},
 ) {
 	const asked: { command: string; policy: ProbePolicy }[] = [];
@@ -67,6 +69,7 @@ function passthrough(
 		),
 		cleanup: vi.fn(),
 		close: vi.fn(async () => {}),
+		...(overrides.git === undefined ? {} : { git: vi.fn(overrides.git) }),
 	};
 	return { sandbox, asked };
 }
@@ -1545,6 +1548,19 @@ describe("RuntimeSandbox", () => {
 		expect(new RuntimeSandbox(fake, "linux", "/usr/bin/unshare").platform).toBe("linux");
 	});
 
+	it("finds git for its own platform, through the host it was given", async () => {
+		const asked: string[] = [];
+		const ask = async (file: string, args: readonly string[]) => {
+			asked.push([file, ...args].join(" "));
+			throw new Error("no developer tools");
+		};
+		expect(await new RuntimeSandbox(runtime().fake, "linux", "/usr/bin/unshare", ask).git()).toEqual({ reads: [] });
+		expect(await new RuntimeSandbox(runtime().fake, "darwin", null, ask).git()).toEqual({
+			unavailable: "git cannot be found for a probe: no developer tools",
+		});
+		expect(asked).toEqual(["xcode-select -p"]);
+	});
+
 	it("refuses Linux without unshare, before asking sandbox-runtime, and never needs it on macOS", () => {
 		const linux = runtime();
 		expect(new RuntimeSandbox(linux.fake, "linux", null).unavailable()).toBe(
@@ -1735,5 +1751,257 @@ describe("RuntimeSandbox", () => {
 			],
 			["cleanupAfterCommand"],
 		]);
+	});
+});
+
+describe("a probe's git and Node conditions", () => {
+	const developer = "/Library/Developer/CommandLineTools";
+	const found: ProbeGit = {
+		program: `${developer}/usr/bin/git`,
+		version: "git version 2.39.5 (Apple Git-154)",
+		reads: [
+			`${developer}/usr/bin/git`,
+			`${developer}/usr/libexec/git-core`,
+			`${developer}/usr/share/git-core`,
+			"/etc/gitconfig",
+		],
+	};
+
+	async function seen(sandbox: ProbeOptions["sandbox"], more: Partial<ProbeOptions> = {}) {
+		const script =
+			'import { readlinkSync } from "node:fs";\nconst entry = process.env.PATH.split(":")[1];\nconsole.log(process.env.PATH);\ntry { console.log(readlinkSync(entry + "/git")); } catch {}\n';
+		const probe = await Probe.open({ script }, options(sandbox, more));
+		try {
+			return { policy: probe.policy, result: await probe.run() };
+		} finally {
+			await probe.close();
+		}
+	}
+
+	const own = (text: string) => text.replaceAll(/\/melian-probe-[A-Za-z0-9]{6}\//g, "/scratch/");
+
+	it("puts a link to git's one program on PATH after Node's, and reads it and git's own paths after the system's", async () => {
+		const plain = await seen(passthrough().sandbox);
+		const { sandbox } = passthrough({ git: async () => found });
+		const { policy, result } = await seen(sandbox);
+		expect(sandbox.git).toHaveBeenCalledOnce();
+		const scratch = own(policy.read[0] ?? "").replace(/\/tree$/, "");
+		expect(policy.read.map(own)).toEqual([...plain.policy.read.map(own), `${scratch}/git`, ...found.reads]);
+		expect(own(result.output)).toBe(
+			`${dirname(process.execPath)}:${scratch}/git:/usr/bin:/bin\n${developer}/usr/bin/git\n`,
+		);
+		expect(plain.result.output).toBe(`${dirname(process.execPath)}:/usr/bin:/bin\n`);
+	});
+
+	it("reads nothing more, and keeps the plain PATH, where git cannot run in a probe", async () => {
+		const plain = await seen(passthrough().sandbox);
+		const { policy, result } = await seen(passthrough({ git: async () => ({ unavailable: "no git" }) }).sandbox);
+		expect(policy.read.map(own)).toEqual(plain.policy.read.map(own));
+		expect(result.output).toBe(plain.result.output);
+	});
+
+	it("links no git, and keeps the plain PATH, where git needs no grant, as on Linux", async () => {
+		const plain = await seen(passthrough().sandbox);
+		const { policy, result } = await seen(passthrough({ git: async () => ({ reads: [] }) }).sandbox);
+		expect(policy.read.map(own)).toEqual(plain.policy.read.map(own));
+		expect(result.output).toBe(plain.result.output);
+	});
+
+	it("tells the probe's git to skip the system configuration only when the host has none", async () => {
+		const env = async (git: ProbeGit) => {
+			const probe = await Probe.open(
+				{ script: "console.log(process.env.GIT_CONFIG_NOSYSTEM ?? 'unset');" },
+				options(passthrough({ git: async () => git }).sandbox),
+			);
+			try {
+				return (await probe.run()).output;
+			} finally {
+				await probe.close();
+			}
+		};
+		expect(await env({ ...found, noSystem: true })).toBe("1\n");
+		expect(await env(found)).toBe("unset\n");
+		expect(await env({ unavailable: "no git" })).toBe("unset\n");
+	});
+
+	it("says why git failed in its own words, without Node's stack", async () => {
+		const bin = mkdtempSync(join(tmpdir(), "melian-probe-fake-git-"));
+		try {
+			writeFileSync(join(bin, "git"), "#!/bin/sh\necho 'fatal: unable to access x' >&2\nexit 128\n", {
+				mode: 0o755,
+			});
+			const { sandbox } = passthrough({
+				git: async () => ({ program: join(bin, "git"), version: "git version 2.39.5 (Apple Git-154)", reads: [] }),
+			});
+			expect(await Probe.gitAvailability(sandbox)).toEqual({
+				available: false,
+				reason: "a probe's git init exited 128: fatal: unable to access x",
+			});
+		} finally {
+			rmSync(bin, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses a probe whose git lookup fails, and removes its scratch", async () => {
+		const { sandbox } = passthrough({
+			git: async () => {
+				throw new Error("xcrun hung");
+			},
+		});
+		const error = await refusal({ script: "" }, options(sandbox));
+		expect(error).toMatchObject({
+			code: "sandboxUnavailable",
+			message: "the probe could not start: Error: xcrun hung",
+		});
+		expect(sandbox.open).not.toHaveBeenCalled();
+		expect(left()).toEqual([]);
+	});
+
+	it.each([["node_modules"], ["NODE_MODULES"], ["node_modules/dep/index.js"]])(
+		"refuses the file path %j, where the probe's own install link goes",
+		async (path) => {
+			const { sandbox } = passthrough();
+			const error = await refusal({ script: "", files: [{ path, text: "" }] }, options(sandbox));
+			expect(error.code).toBe("invalidProbe");
+			expect(sandbox.open).not.toHaveBeenCalled();
+		},
+	);
+
+	it("takes conditions at their count and length and refuses one past either", async () => {
+		const { count, length } = probeLimits.conditions;
+		expect([count, length]).toEqual([16, 100]);
+		const { sandbox } = passthrough();
+		for (const conditions of [Array.from({ length: count }, (_, i) => `c${i}`), ["a".repeat(length)], []]) {
+			const probe = await Probe.open({ script: "" }, options(sandbox, { conditions }));
+			await probe.close();
+		}
+		for (const conditions of [Array.from({ length: count + 1 }, (_, i) => `c${i}`), ["a".repeat(length + 1)]]) {
+			const error = await refusal({ script: "" }, options(sandbox, { conditions }));
+			expect(error.code).toBe("invalidProbe");
+		}
+		expect(sandbox.open).toHaveBeenCalledTimes(3);
+	});
+
+	it.each([["-x"], ["--inspect"], ["a b"], [""], [".source"], ["a\nb"], ["a=b"]])(
+		"refuses the condition %j, which Node would read as something else",
+		async (condition) => {
+			const { sandbox } = passthrough();
+			const error = await refusal({ script: "" }, options(sandbox, { conditions: ["ok", condition] }));
+			expect(error.code).toBe("invalidProbe");
+			expect(sandbox.open).not.toHaveBeenCalled();
+		},
+	);
+
+	it("takes a scoped condition such as Melian's own", async () => {
+		const { sandbox } = passthrough();
+		const probe = await Probe.open({ script: "" }, options(sandbox, { conditions: ["@melian-agent/source"] }));
+		await probe.close();
+	});
+
+	it("says git can run in a probe once one has created a repository with it", async () => {
+		const { sandbox, asked } = passthrough({ git: async () => ({ reads: [] }) });
+		expect(await Probe.gitAvailability(sandbox)).toEqual({ available: true });
+		expect(asked).toHaveLength(1);
+	});
+
+	it("says why git cannot run in a probe when the host's lookup found none, and runs no probe", async () => {
+		const { sandbox } = passthrough({ git: async () => ({ unavailable: "xcrun: error: unable to find utility" }) });
+		expect(await Probe.gitAvailability(sandbox)).toEqual({
+			available: false,
+			reason: "xcrun: error: unable to find utility",
+		});
+		expect(sandbox.open).not.toHaveBeenCalled();
+	});
+
+	it("says why git cannot run in a probe when the probe's git fails", async () => {
+		const asked: string[] = [];
+		const { sandbox } = passthrough({
+			wrap: async (command) => {
+				asked.push(command);
+				return ["/bin/bash", "-c", `export PATH='${join(scratch, "no-git")}'; ${command}`] as never;
+			},
+		});
+		const found = await Probe.gitAvailability(sandbox);
+		expect(found).toEqual({
+			available: false,
+			reason: "a probe's git init exited 1: spawnSync git ENOENT",
+		});
+		expect(asked).toHaveLength(1);
+	});
+
+	it("asks the git lookup of a sandbox that has none for nothing, and runs the probe", async () => {
+		const { sandbox, asked } = passthrough();
+		expect(await Probe.gitAvailability(sandbox)).toEqual({ available: true });
+		expect(asked).toHaveLength(1);
+	});
+
+	describe("a bare import of a workspace package", () => {
+		beforeEach(() => {
+			const pkg = join(worktree, "packages", "pkg");
+			mkdirSync(join(pkg, "src"), { recursive: true });
+			writeFileSync(join(worktree, ".gitignore"), "node_modules\n");
+			writeFileSync(
+				join(pkg, "package.json"),
+				JSON.stringify({
+					name: "@scope/pkg",
+					type: "module",
+					exports: { ".": { "probe-src": "./src/index.js", default: "./dist/index.js" } },
+				}),
+			);
+			writeFileSync(join(pkg, "src", "index.js"), 'export const where = "source";\n');
+			mkdirSync(join(worktree, "node_modules", "@scope"), { recursive: true });
+			symlinkSync(join("..", "..", "packages", "pkg"), join(worktree, "node_modules", "@scope", "pkg"));
+			head = committed();
+		});
+
+		const script = 'const { where } = await import("@scope/pkg");\nconsole.log(where);\n';
+
+		it("resolves from the probe's own directory to the head's source under the policy's conditions", async () => {
+			const { sandbox } = passthrough();
+			const probe = await Probe.open({ script }, options(sandbox, { conditions: ["probe-src", "other"] }));
+			try {
+				const root = dirname(probe.policy.write[0]!);
+				expect(readFileSync(join(root, "probe", "run.mjs"), "utf8")).toContain(
+					'NODE_OPTIONS: "--conditions=probe-src --conditions=other"',
+				);
+				const result = await probe.run();
+				expect([result.exitCode, result.output]).toEqual([0, "source\n"]);
+			} finally {
+				await probe.close();
+			}
+		});
+
+		it("resolves under the policy's conditions in a node process the probe starts", async () => {
+			const { sandbox } = passthrough();
+			const parent = [
+				'import { execFileSync } from "node:child_process";',
+				'import { fileURLToPath } from "node:url";',
+				'const child = fileURLToPath(new URL("./child.mjs", import.meta.url));',
+				'process.stdout.write(execFileSync(process.execPath, [child], { encoding: "utf8" }));',
+			].join("\n");
+			const probe = await Probe.open(
+				{ script: parent, files: [{ path: "child.mjs", text: script }] },
+				options(sandbox, { conditions: ["probe-src", "other"] }),
+			);
+			try {
+				const result = await probe.run();
+				expect([result.exitCode, result.output]).toEqual([0, "source\n"]);
+			} finally {
+				await probe.close();
+			}
+		});
+
+		it("resolves to the package's built entry without them, which the head has not built", async () => {
+			const { sandbox } = passthrough();
+			const probe = await Probe.open({ script }, options(sandbox));
+			try {
+				const result = await probe.run();
+				expect(result.exitCode).not.toBe(0);
+				expect(result.output).toContain("ERR_MODULE_NOT_FOUND");
+				expect(result.output).toContain(join("@scope", "pkg", "dist", "index.js"));
+			} finally {
+				await probe.close();
+			}
+		});
 	});
 });

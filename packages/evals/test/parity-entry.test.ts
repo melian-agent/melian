@@ -73,7 +73,7 @@ it("measures with the host's probe availability, live models, the range runner, 
 	expect(availability).toHaveBeenCalledExactlyOnceWith();
 	expect(await runners.models()).toBe(fake.review);
 	expect(liveModels).toHaveBeenCalledExactlyOnceWith(process.cwd());
-	expect(runners.host()).toEqual({
+	expect(await runners.host()).toEqual({
 		platform: "darwin",
 		sandbox: "entry-sandbox",
 		sandboxVersion: expect.stringMatching(/^\d+\.\d+\.\d+/),

@@ -648,12 +648,19 @@ function sweepNotes(sweep: Sweep): string[] {
 // Runs an empty probe, so the line says whether one runs here, not only whether the parts are installed.
 async function probeCheck(): Promise<Check> {
 	const availability = await Probe.availability();
-	return availability.available
-		? { name: "probes", state: "ok", detail: "run under sandbox-runtime" }
+	if (!availability.available)
+		return {
+			name: "probes",
+			state: "warn",
+			detail: `cannot run here, so every probe is refused: ${visibleText(availability.reason)}`,
+		};
+	const git = await Probe.gitAvailability();
+	return git.available
+		? { name: "probes", state: "ok", detail: "run under sandbox-runtime, git included" }
 		: {
 				name: "probes",
 				state: "warn",
-				detail: `cannot run here, so every probe is refused: ${visibleText(availability.reason)}`,
+				detail: `run under sandbox-runtime, but git cannot run in one, so a probe that calls it fails: ${visibleText(git.reason)}`,
 			};
 }
 

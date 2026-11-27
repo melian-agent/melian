@@ -1,0 +1,641 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "01e4d7f471479e1cd3ca36b2f274c0ac48ff77e4",
+		"head": "07b59fe2e2b5da5dd32fd65a56ac99d3ea34bc94"
+	},
+	"claimsIn": [
+		"scripts/round-probe-containment.mjs"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+	"mutants": [
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 602,
+			"column": 15,
+			"endLine": 605,
+			"endColumn": 3,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "00becba96987ac4716c7085a3200ffca9e3f72dd99bca677b9e7f33031a994a7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries every route out, and counts only public roots that are not the probe's own as public"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 6,
+			"endLine": 603,
+			"endColumn": 81,
+			"mutatorName": "MethodExpression",
+			"replacement": "expectedEnvironment",
+			"status": "generated",
+			"id": "1061aac2219278c0129c72402cf0f1852855dfc003e5960123a67666a2c72c63",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 33,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "3938c3f93f5cbffc93ce6fc61f75ae33f04a029efeed7a8d928d5819c5bb224e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries every route out, and counts only public roots that are not the probe's own as public"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 43,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "ade9c13381e70ae1b0ba4a8664fa2f5a4b40cd5304dcc83a9474afa615201c43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 43,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "10ea29559fb57cd6f4fab0371df71daa448d9748990b942a41ff481fb0d33db7",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 43,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "LogicalOperator",
+			"replacement": "name !== \"LANG\" && lang !== undefined",
+			"status": "generated",
+			"id": "76e5eea7f95b2a28b9dae479456f58db1a0944286702c6f283ea38e6841722ea",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries every route out, and counts only public roots that are not the probe's own as public"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 43,
+			"endLine": 603,
+			"endColumn": 58,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "84bce5789c56c250a393ee1783014de78827c661174d752a4a755ead46039aee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 43,
+			"endLine": 603,
+			"endColumn": 58,
+			"mutatorName": "EqualityOperator",
+			"replacement": "name === \"LANG\"",
+			"status": "generated",
+			"id": "4228d660bacd2773dc291a5b7fdf1dcc74adf85df5b8d6c9d6a6cc54b3ecdd54",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries the Actions runtime's host when the runner names one, and expects LANG only when the host has it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 52,
+			"endLine": 603,
+			"endColumn": 58,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6bf6246b2a4d8ae51b492592816d1aae915913cb38066e441f8df76f9bc199ed"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 62,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "f0eb4d217a97c4054097ef4b90ddbd5a1c5e97929325dd25812a55faa195debc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries every route out, and counts only public roots that are not the probe's own as public"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 603,
+			"column": 62,
+			"endLine": 603,
+			"endColumn": 80,
+			"mutatorName": "EqualityOperator",
+			"replacement": "lang === undefined",
+			"status": "generated",
+			"id": "336b5ec84ae0beb849163c21998aaaa5281d38f745d3baed5349f91f7584643f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"tries every route out, and counts only public roots that are not the probe's own as public"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 7,
+			"endLine": 604,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "b17ee91187818d1483c83dd844c7cf51d509bd1a4d71680419887b12cfb9b684",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 7,
+			"endLine": 604,
+			"endColumn": 28,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "574465e3e9c73cf4bebbaa7fbc238dc2f241c48adeaf4521171e3517e1cfb8d9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 7,
+			"endLine": 604,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "conditions.length >= 0",
+			"status": "generated",
+			"id": "5b6f20cd74e4d8e07dfe8e82e2dd9a997220da18900d1c24f5b0d082ecdf82ab",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 7,
+			"endLine": 604,
+			"endColumn": 28,
+			"mutatorName": "EqualityOperator",
+			"replacement": "conditions.length <= 0",
+			"status": "generated",
+			"id": "a66b2b69e163d519feed857271951441bb8e0ccddda7a3ddb46aea355025bde9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 31,
+			"endLine": 604,
+			"endColumn": 47,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "faacf949268ffb0b790e2786a0a1b75bc54ea176c240b0da959f30822a9681ce",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 32,
+			"endLine": 604,
+			"endColumn": 46,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3eecc3bad97c7473dac7afa2b7094d6f0cd5b659f02c3a5d0b0b0e49c2416a2c"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 604,
+			"column": 50,
+			"endLine": 604,
+			"endColumn": 52,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "6d336059a9343eb2eb113fb8f9475b5ef33e94555ad2c5bc947df9366affaa43",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"containmentPlan",
+						"expects NODE_OPTIONS exactly when the base names probe conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 663,
+			"column": 58,
+			"endLine": 663,
+			"endColumn": 86,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "c3467c40fef652d5f6f9cbbefd5c4b17370ff5ddf4c54e969692b971723cc8ba",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"probePolicy",
+						"reads the committed policy's probe.read and probe.conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 663,
+			"column": 66,
+			"endLine": 663,
+			"endColumn": 76,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "3ac409b33019915186c490f6cda1927207a04aadea414de597cd26843b9e8bb6"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 663,
+			"column": 88,
+			"endLine": 663,
+			"endColumn": 91,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "79603706827bc8a1909e53470ac301e19e143d4a136c10d59f2ce269da74bf59"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 664,
+			"column": 8,
+			"endLine": 664,
+			"endColumn": 28,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "60866ca28302ee08019d5cbe334bab2f0ddf2ff72f5bc1466845283786ca4264",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"probePolicy",
+						"reads the committed policy's probe.read and probe.conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 695,
+			"column": 12,
+			"endLine": 695,
+			"endColumn": 28,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "765095ebcd530a8028855ad35afd1a6e28e905cc873d087e96028135827ffab3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.read of the base the round names, and probes the checkout's HEAD"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 696,
+			"column": 15,
+			"endLine": 696,
+			"endColumn": 37,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "fada06c54a2b61408cf93e984cff9af68188fc8adac19da3a208b478f93e6396",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.conditions of the base the round names, as a round's probes get them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 698,
+			"column": 2,
+			"endLine": 698,
+			"endColumn": 73,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "bad7d019fd100833436fabf8754bc0338584e1795b823af5dfc1385ef0c2f590",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"fails, escaped and before it plants anything, when the policy cannot be read"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 698,
+			"column": 6,
+			"endLine": 698,
+			"endColumn": 71,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "afcb45aab91fcb84cc909066f5a55fca5807b6d2a800e27f43cb2f9b2ae46f48"
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 733,
+			"column": 8,
+			"endLine": 733,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "95332d24815a717f8d57a334cb1d1a4daf6f438a1c1defa4caabc3ac68c19226",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.conditions of the base the round names, as a round's probes get them"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 733,
+			"column": 8,
+			"endLine": 733,
+			"endColumn": 31,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "2025dcb4631db0154120dfab0bb0adc2905a8162a04aa68f686cc605659a9b7a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.read of the base the round names, and probes the checkout's HEAD"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 733,
+			"column": 8,
+			"endLine": 733,
+			"endColumn": 31,
+			"mutatorName": "EqualityOperator",
+			"replacement": "conditions.length !== 0",
+			"status": "generated",
+			"id": "f2697b879d31dc07f4ba7b40a2ac86899a96c077a3d7743d6889412f71e162bf",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.read of the base the round names, and probes the checkout's HEAD"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "scripts/round-probe-containment.mjs",
+			"line": 733,
+			"column": 39,
+			"endLine": 733,
+			"endColumn": 53,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "4d3a8b7c7da84c63d9041b2079b99978d7565ccceb8a05a0ae7a0ab1da8c8f75",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "scripts/round-probe-containment.test.mjs",
+					"path": [
+						"main",
+						"hands the probe the probe.conditions of the base the round names, as a round's probes get them"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 30,
+	"omitted": 0,
+	"unmutated": []
+}

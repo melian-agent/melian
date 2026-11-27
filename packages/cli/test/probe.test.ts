@@ -263,6 +263,21 @@ fs.writeFileSync(stop + ".count", String(count));
 		expect(open).not.toHaveBeenCalled();
 	});
 
+	it("opens the probe under the base policy's probe.conditions, and never the head's", async () => {
+		writeFileSync(join(repo, "melian.yaml"), "probe:\n  conditions: [base-condition]\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "base policy");
+		gitIn(repo, "checkout", "--quiet", "-b", "head");
+		writeFileSync(join(repo, "melian.yaml"), "probe:\n  conditions: [head-condition]\n");
+		gitIn(repo, "add", "melian.yaml");
+		gitIn(repo, "commit", "--quiet", "-m", "head policy");
+		writeFileSync(join(dir, "probe.mjs"), "");
+		const open = vi.spyOn(pipeline.Probe, "open").mockRejectedValue(new pipeline.ProbeError("invalidProbe", "stop"));
+		await melian(["probe", "probes/first", "--trust-head"]);
+		expect(open).toHaveBeenCalledOnce();
+		expect(open.mock.calls[0]?.[1].conditions).toEqual(["base-condition"]);
+	});
+
 	it("fails as any other error does when the directory cannot be read", async () => {
 		writeFileSync(join(repo, "plain"), "");
 		expect(await melian(["probe", "plain", "--trust-head"])).toMatchObject({

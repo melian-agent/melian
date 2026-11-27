@@ -97,6 +97,7 @@ export {
 	type PreExistingCap,
 	parseResolution,
 	preExistingCapSchema,
+	probeConditions,
 	type RequiredFileRule,
 	type Resolution,
 	type ResolutionEntry,
@@ -459,6 +460,7 @@ export {
 	gitOutput,
 	gitOutputBytes,
 	stderrLimit,
+	withoutGitVariables,
 	withoutReplacements,
 } from "./git.ts";
 export {

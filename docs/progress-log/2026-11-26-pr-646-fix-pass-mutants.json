@@ -1,0 +1,252 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "ed6c43facfa67c4460a3b044bf7921c4d6a40fb0",
+		"head": "ac2a2b312975705ddb7fc5908bea7d741b1563d2"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probe.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 27,
+			"column": 32,
+			"endLine": 27,
+			"endColumn": 74,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "c2b72bc190c0a1af7bbd011ca3f862c64afb4c2c60936d3d5b030159b420201a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 27,
+			"column": 47,
+			"endLine": 27,
+			"endColumn": 74,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "85611d319fe4383ab82c8e9a329faae0b4eb51b2a2e3e719f5d5ae2dfdba635e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 27,
+			"column": 81,
+			"endLine": 27,
+			"endColumn": 84,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "cbc92cdfda1b63b415407977b6d7a1a944e910a471271c0733d9930b2ba76b1f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 13,
+			"endLine": 28,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "41607c9d520a9e82078a772513191c701caf1d6ddc4b8a7b30c431d1da9804b0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 13,
+			"endLine": 28,
+			"endColumn": 27,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "02c683738dc860b3d6c8d0c7d9c861a6e11888d2ec069825215117302682967e",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "An empty NODE_OPTIONS when no condition is named: the probe's environment holds none of its own, and node reads an empty one as no options."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 13,
+			"endLine": 28,
+			"endColumn": 27,
+			"mutatorName": "EqualityOperator",
+			"replacement": "options !== \"\"",
+			"status": "generated",
+			"id": "40d5844cb2111d1b93bb9c6640f1173cd807324d844246225d99c7fad72e5bc3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 25,
+			"endLine": 28,
+			"endColumn": 27,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "da02e7f0b03e41ff940bf9ccfac83e4d0d3cb032cfb3ff3a1cdebf4f276f60c2",
+			"claim": "equivalent",
+			"evidence": {
+				"reason": "An empty NODE_OPTIONS when no condition is named: the probe's environment holds none of its own, and node reads an empty one as no options."
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 30,
+			"endLine": 28,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "8efb4389c527c732098275e9a64d51670a009b83bd8a117d9df64b394ae51f99",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves to the package's built entry without them, which the head has not built"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 28,
+			"column": 35,
+			"endLine": 28,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "afa17723748c1e73cf3e4c4fcf34cbc4ffe1a3c7a6ce789950601fbea55c75ee",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe.ts",
+			"line": 33,
+			"column": 2,
+			"endLine": 33,
+			"endColumn": 237,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e1aacc5d4880e74c96a157ee9f38af3574c42f1aebd0c70d38eb5b3c3e677d29",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe.test.ts",
+					"path": [
+						"a probe's git and Node conditions",
+						"a bare import of a workspace package",
+						"resolves from the probe's own directory to the head's source under the policy's conditions"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 10,
+	"omitted": 0,
+	"unmutated": []
+}

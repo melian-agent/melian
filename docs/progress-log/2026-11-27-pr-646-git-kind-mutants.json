@@ -1,0 +1,287 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "818ce23c35b5c5002a5287f35e7e8ae30877ff7f",
+		"head": "da6c69e047849ffffa97e133ca3fa1455a45502e"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 205,
+			"column": 37,
+			"endLine": 205,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "53106361f8f16a37469419f276899a22cb7321c60ce16a94e1a7c14c4021f6c3"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 333,
+			"column": 19,
+			"endLine": 333,
+			"endColumn": 34,
+			"mutatorName": "OptionalChaining",
+			"replacement": "sandbox.git()",
+			"status": "generated",
+			"id": "47af860fefa82d2b04aa6f16b74948e3749c688267c6f87cb5bd8b52ed35428f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"keys no conditions where the base policy names none, as before they could be set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "90cfa331f67332cbc386bf0da32f822c821fbb28e61092ff2d2494ad4942fba5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"probes again when the host's git lookup changes its kind, and never when only its paths change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3fd70526c476d7fcc254fd9e4ebb3ac0671b085d680c201037ea92342a1c18f1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the kind of git a probe runs, never its paths: linked"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "git !== undefined || \"program\" in git",
+			"status": "generated",
+			"id": "e0f6c0dc570e27ca05bc3a970abcc93e02cf71b1ac28cf213e9febcfe49a49f2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"keys no conditions where the base policy names none, as before they could be set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "57674ab86fd4052c57b6ae01f2308f3ea90369a98925f3f07fb96992512bd92b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"keys no conditions where the base policy names none, as before they could be set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 2,
+			"endLine": 335,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "git === undefined",
+			"status": "generated",
+			"id": "13acc253c3ed67cb3aa956d48cce2a701218310f213a584761c054e98b9a2310",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"probes again when the host's git lookup changes its kind, and never when only its paths change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 23,
+			"endLine": 335,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2e075afd01a534e5789726479852b27ec54eacb2fe5bdf5d304e48fb9dc2bfb1"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 42,
+			"endLine": 335,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "afeb52befe41174bf9e91d9bfc03411b4712081e9e39bc2f3880cb41238c59e9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the kind of git a probe runs, never its paths: linked"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 49,
+			"endLine": 335,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "502ef8d6d8c2464c1b3e0ea54532c5938dfa1f578364b447605f5adbe1a427f1"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 69,
+			"endLine": 335,
+			"endColumn": 87,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "d0bf7b393104a7d3cba1dd79e038c016692fcffa147b08e687d62971cb004b55"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 335,
+			"column": 90,
+			"endLine": 335,
+			"endColumn": 98,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b888858ab2dbed25d82e40007e6f3e0176b5f0033ce9c0cf170cbe4d51f3d355"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 8,
+			"endLine": 336,
+			"endColumn": 100,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "a9b4a3ae3d4d386602686f4a9e20a695dce65b3adf0ab58818f43c41a022d190",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the host a probe runs on by its sandbox, the installed sandbox-runtime, and this process's Node"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 414,
+			"column": 32,
+			"endLine": 414,
+			"endColumn": 56,
+			"mutatorName": "LogicalOperator",
+			"replacement": "sandbox && Probe.sandbox",
+			"status": "generated",
+			"id": "2ba48c26c685e155a498a2851f2617e9f6fae5520dfb2d3ee0467d1218ca8dcb",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"runHeadProbe",
+						"runs a probe in a tree of the head, and removes the tree"
+					]
+				}
+			},
+			"survivorClasses": []
+		}
+	],
+	"total": 14,
+	"omitted": 0,
+	"unmutated": []
+}
