@@ -306,9 +306,10 @@ export type ProbingEnvironment = {
 };
 
 /**
- * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, and the CPU
- * architecture and version of the Node that runs it. A probing run's key holds it whole, so a run on another host, under
- * another Node, or under another release of the sandbox, runs again.
+ * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, the CPU
+ * architecture and version of the Node that runs it, and on macOS whether a probe's git runs, with or without its system
+ * configuration. A probing run's key holds it whole, so a run on another host, under another Node, under another release
+ * of the sandbox, or where git has come or gone, runs again.
  */
 export type ProbingHost = {
 	platform: ProbeSandbox["platform"];
@@ -316,17 +317,23 @@ export type ProbingHost = {
 	sandboxVersion: string;
 	arch: string;
 	node: string;
+	git?: "linked" | "linked-no-system";
 };
 
 // sandbox-runtime confines every probe a review runs; a test's own sandbox reports the installed release too.
 const sandboxVersion = installedVersion("@anthropic-ai/sandbox-runtime", import.meta.url);
 
 /** The host a probe runs on under `sandbox`. */
-export function probingHost(sandbox: ProbeSandbox): ProbingHost {
+export async function probingHost(sandbox: ProbeSandbox): Promise<ProbingHost> {
 	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
 	// it confines. Case folding is left out: a review reuses a probing run only from its own store, on its own host.
 	const { arch, node } = hostFacts();
-	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node };
+	// Only the kind of git's answer: its paths name the host's install. Where git is unavailable, as on every host before
+	// probes could run it, the field is absent, so those runs keep their keys.
+	const git = await sandbox.git?.();
+	const linked: Pick<ProbingHost, "git"> =
+		git !== undefined && "program" in git ? { git: "noSystem" in git ? "linked-no-system" : "linked" } : {};
+	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node, ...linked };
 }
 
 /** The probes a prober's conversation tried, by the ID each run_probe call took, and the result of each that ran. */
@@ -404,7 +411,7 @@ async function openHeadProbe(
 	limits: { readonly entries: number; readonly bytes: number; readonly listing: number },
 ): Promise<Probe> {
 	const commit = await boundedHead(revision.repoRoot, revision.head, limits);
-	const here = probingHost(sandbox ?? Probe.sandbox);
+	const here = await probingHost(sandbox ?? Probe.sandbox);
 	if (!isDeepStrictEqual(environment.host, here))
 		throw new Error(
 			`the probe was planned on ${JSON.stringify(environment.host)}, and this host is ${JSON.stringify(here)}`,

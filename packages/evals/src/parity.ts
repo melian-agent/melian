@@ -301,7 +301,7 @@ export interface ParityRunners {
 	/** The checkout's commit, refusing a checkout that holds uncommitted changes or one of `artefacts`. */
 	readonly commit: (artefacts: readonly string[]) => string;
 	/** The host this process's probes run on. */
-	readonly host: () => ProbingHost;
+	readonly host: () => ProbingHost | Promise<ProbingHost>;
 }
 
 function tokensInt(env: NodeJS.ProcessEnv, name: string): number {
@@ -654,7 +654,7 @@ async function measureHeld(
 		const availability = await runners.availability();
 		if (!availability.available) throw new Error(`Probes cannot run on this host: ${availability.reason}`);
 		const commit = runners.commit([out, env.MELIAN_EVAL_MISSES]);
-		const host = runners.host();
+		const host = await runners.host();
 		const identities = Object.fromEntries(
 			misses.map(({ miss, target }) => [
 				miss.name,

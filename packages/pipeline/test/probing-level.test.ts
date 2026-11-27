@@ -2203,7 +2203,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			writer: { trusted: true, by: "reviewer" } as const,
 			trustWriters: true,
 			read: [],
-			host: probingHost(unconfinedSandbox()),
+			host: await probingHost(unconfinedSandbox()),
 		};
 		// New probes it would run, or only the probe whose rerun already stands, which leaves the prune alone to decide.
 		const probes =
@@ -2260,7 +2260,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			writer: { trusted: true, by: "reviewer" } as const,
 			trustWriters: true,
 			read: [],
-			host: probingHost(unconfinedSandbox()),
+			host: await probingHost(unconfinedSandbox()),
 		};
 		// A second review sharing the lens task starts its own rerun task once the first's has ended, over the runs it stored.
 		const task = await root.commit(async (tx) => {
@@ -2306,7 +2306,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 			writer: { trusted: true, by: "reviewer" } as const,
 			trustWriters: true,
 			read: [],
-			host: probingHost(unconfinedSandbox()),
+			host: await probingHost(unconfinedSandbox()),
 		};
 		let taken: Promise<void> | undefined;
 		during = () => {
@@ -3995,6 +3995,39 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(environment.read).toEqual(["node_modules"]);
 		expect("conditions" in environment).toBe(conditions !== undefined);
 		expect(environment.conditions).toEqual(conditions);
+	});
+
+	it("probes again when the host's git lookup changes its kind, and never when only its paths change", async () => {
+		type Git = Awaited<ReturnType<NonNullable<ProbeSandbox["git"]>>>;
+		let git: Git = { unavailable: "no developer tools" };
+		const sandbox: ProbeSandbox = { ...unconfinedSandbox(), git: async () => git };
+		const fake = createFakeModels();
+		const planned = async (next: Git) => {
+			git = next;
+			const { run, requests } = await review({ planner: plan, prober: probing(failing) }, { fake, sandbox });
+			await run;
+			return requests[planner]?.length ?? 0;
+		};
+		const host = async () => {
+			const reviewer = harness!.harness;
+			const root = await reviewer.root(backgroundContext);
+			const reviews = Object.values((await reviewer.snapshot(ReviewIndex, root.id, backgroundContext))!.reviews);
+			const lensTask = await reviewer.getTask(reviews.at(-1)!.task as TaskId, backgroundContext);
+			const { lenses } = lensTask!.input as unknown as {
+				lenses: readonly { probe?: { environment: Probing.ProbingEnvironment } }[];
+			};
+			return lenses.find((each) => each.probe !== undefined)!.probe!.environment.host;
+		};
+		expect(await planned({ unavailable: "no developer tools" })).toBe(2);
+		// A host whose git is unavailable keys the five fields the code before git kinds wrote, so its runs still match.
+		expect(Object.keys(await host()).sort()).toEqual(["arch", "node", "platform", "sandbox", "sandboxVersion"]);
+		expect(await planned({ unavailable: "git before 2.42" })).toBe(0);
+		expect(await planned({ reads: [] })).toBe(0);
+		expect(await planned({ program: "/a/usr/bin/git", reads: ["/a/usr/bin/git"] })).toBe(2);
+		expect(await host()).toMatchObject({ git: "linked" });
+		expect(await planned({ program: "/b/usr/bin/git", reads: ["/b/usr/bin/git", "/b/share"] })).toBe(0);
+		expect(await planned({ program: "/a/usr/bin/git", reads: ["/a/usr/bin/git"], noSystem: true })).toBe(2);
+		expect(await host()).toMatchObject({ git: "linked-no-system" });
 	});
 
 	it("keeps only the reruns the revision's current claims rest on, however often a failed prober is run again", async () => {

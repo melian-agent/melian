@@ -47,7 +47,7 @@ A git before 2.42 has no `git var GIT_CONFIG_SYSTEM`, and a refused or failed lo
 
 ## Keys
 
-The conditions enter the probing environment, and so the lens request's key, only when the policy names one. A policy that names none keeps the key it had. Where the developer tools live is left out, as what the read paths hold is: it names the host's install, which a reinstall moves.
+The conditions enter the probing environment, and so the lens request's key, only when the policy names one. A policy that names none keeps the key it had. The host's git lookup enters the probing host by its kind alone, `linked` or `linked-no-system`, since it decides whether a probe's git runs at all, and the attach-key decision runs a probing run again when its grant or its host changes. The field is absent where git is unavailable and on Linux, so every earlier key holds. Where the developer tools live is left out, as what the read paths hold is: it names the host's install, which a reinstall moves. The round at 1584b2c1f found the kind missing, an input missing from the key, the first of the identity guideline's four failures; the coordinator chose to key it on 2026-11-27, and it is not a maintainer ruling.
 
 If git on some layout needs a library outside those directories, it fails in the probe, and `melian doctor` names git's error; the read is not widened for it.
 

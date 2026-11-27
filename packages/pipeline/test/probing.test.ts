@@ -69,7 +69,7 @@ const reviewer: ProbingEnvironment = {
 	writer: { trusted: true, by: "reviewer" },
 	trustWriters: true,
 	read: ["node_modules"],
-	host: probingHost(unconfinedSandbox()),
+	host: await probingHost(unconfinedSandbox()),
 };
 // What a probe left in this test's temporary directory, which nothing else writes.
 const left = () => readdirSync(tmpdir()).length;
@@ -143,6 +143,7 @@ describe("a head's bound", () => {
 		["sandbox release", { sandboxVersion: "0.0.1" }],
 		["CPU architecture", { arch: "elsewhere" }],
 		["Node version", { node: "0.0.1" }],
+		["git lookup", { git: "linked" }],
 	])(
 		"refuses a probe planned under another %s than the one it would run under, and runs nothing",
 		async (_, other) => {
@@ -159,16 +160,32 @@ describe("a head's bound", () => {
 		},
 	);
 
-	it("names the host a probe runs on by its sandbox, the installed sandbox-runtime, and this process's Node", () => {
+	it("names the host a probe runs on by its sandbox, the installed sandbox-runtime, and this process's Node", async () => {
 		const sandbox = unconfinedSandbox();
 		const pins = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).dependencies;
-		expect(probingHost(sandbox)).toEqual({
+		expect(await probingHost(sandbox)).toEqual({
 			platform: sandbox.platform,
 			sandbox: sandbox.kind,
 			sandboxVersion: pins["@anthropic-ai/sandbox-runtime"],
 			arch: process.arch,
 			node: process.versions.node,
 		});
+	});
+
+	it.each([
+		["linked", { program: "/d/usr/bin/git", reads: ["/d/usr/bin/git"] }, { git: "linked" }],
+		[
+			"linked-no-system",
+			{ program: "/d/usr/bin/git", reads: ["/d/usr/bin/git"], noSystem: true as const },
+			{ git: "linked-no-system" },
+		],
+		["absent where git is unavailable", { unavailable: "no developer tools" }, {}],
+		["absent on Linux, which reads git among the system's programs", { reads: [] }, {}],
+	])("names the kind of git a probe runs, never its paths: %s", async (_, git, kind) => {
+		const sandbox = { ...unconfinedSandbox(), git: async () => git };
+		const { git: _ignored, ...plain } = await probingHost(sandbox);
+		expect(await probingHost(sandbox)).toEqual({ ...plain, ...kind });
+		expect(plain).toEqual(await probingHost(unconfinedSandbox()));
 	});
 
 	it("refuses a head whose tree git cannot list, saying what git said", async () => {
@@ -705,6 +722,7 @@ describe("the fixed wording each role reads", () => {
 			probeEvidenceRenderings: "renders the probe evidence over fixed samples for the verifier's version",
 			openHeadProbe: "opens a probe on the head and says why it cannot",
 			sandboxVersion: "names the package whose installed release the probing host holds",
+			probingHost: "names the kind of git a probe runs, which keys the run and renders no prompt",
 		};
 		const path = fileURLToPath(new URL("../src/probing.ts", import.meta.url));
 		const program = HeadProgram.open(new Map([["probing.ts", readFileSync(path, "utf8")]]));

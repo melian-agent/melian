@@ -1632,7 +1632,7 @@ async function probeRefusal(
 			trustWriters: config.trust.writers,
 			read: [...config.probe.read],
 			...probeConditionsOf(config),
-			host: probingHost(sandbox),
+			host: await probingHost(sandbox),
 		},
 		sandbox,
 	);
@@ -2984,7 +2984,7 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 						timeout,
 						read: [...(await baseConfig()).probe.read],
 						...probeConditionsOf(await baseConfig()),
-						host: probingHost(probeSandboxOf(options)),
+						host: await probingHost(probeSandboxOf(options)),
 					},
 					...(lens.probesAs === undefined ? {} : { probesAs: lens.probesAs }),
 				},
