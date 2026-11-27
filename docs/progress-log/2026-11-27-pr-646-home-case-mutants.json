@@ -1,0 +1,34 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "ec833f1227a9db1f616edfe92c185c582f7dc4e4",
+    "head": "27dddb379b6c1fa6fc24ce86114c2fcfb3f08640"
+  },
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 199,
+      "column": 39,
+      "endLine": 199,
+      "endColumn": 105,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6fbfdeb8ffd4a756012885be3753b0fd9079616f0d56d809a0603b44f14eb4c8"
+    }
+  ],
+  "total": 1,
+  "omitted": 0,
+  "unmutated": []
+}
