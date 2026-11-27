@@ -10,16 +10,16 @@ Example: the maintainer's parity loop needed to know which defects each reviewer
 
 ## Choice
 
-The three reviews run first on one commit: the first head the builder pushes with its gate green. The builder starts all three together, pushes no fix until all three have reported, and names the commit in its report as the first reviewed head.
+The three reviews run first on one commit: the first head the builder pushes with its gate green, or with CI green on it where the gate cannot run. The builder starts all three together, pushes no fix until all three have reported, and names the commit in its report as the first reviewed head.
 
 After that head nothing changes. Each fix pass gets a Melian round, and the rules for when Codex's review and the review of record run again stand.
 
-After the merge, the coordinator has a Sonnet agent write the pull request's defect list for its comparison record: each distinct defect a reviewer raised on the first reviewed head, who raised it, and the commit that fixed it or the builder's answer disputing it. A finding that a later commit fixed, with a failing test first, counts as real. The coordinator spot-checks a sample.
+After the merge, the coordinator has a Sonnet agent draft the pull request's defect list for its comparison record: each distinct finding a reviewer raised on the first reviewed head, who raised it, and the commit that answered it or the builder's reply disputing it. The draft is evidence for adjudication, never the adjudication. Each finding is still judged valid, noise or duplicate as [the evals guideline](../guidelines/evals.md#comparisons) sets out, and [the shadow retirement rule](2026-10-06-shadow-retirement-merged-window.md) counts what it counted before: this decision changes neither.
 
 ## Why
 
-- The fix commits are an answer key nobody has to write. AGENTS.md already requires a failing test before a fix, so a fixed finding was a real defect at the head the test failed on.
-- All three reviews already run, so the comparison costs only the defect list, about a dollar a pull request.
+- The fix commits are evidence nobody has to write. AGENTS.md already requires a failing test before a fix, so a fixed finding comes with a test that failed at the reviewed head. That is strong evidence and not proof: Melian's own status makes a builder answer every acknowledge and blocking finding, so a builder may fix noise because fixing is cheaper than disputing. Melian's first round on this decision's own pull request raised exactly that, and the text changed to keep adjudication where it was.
+- All three reviews already run, so the comparison costs only the draft list, about a dollar a pull request, and the adjudication the rules already ask for.
 - Starting the three together is faster than running them in turn.
 - Ten such pull requests are also the window [the shadow retirement rule](2026-10-06-shadow-retirement-merged-window.md) asks for, measured on like for like.
 
