@@ -196,7 +196,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/mutation-vitest.ts": "7a6be8ecf9901249038d3d4cdbd0e05ea58991a6e268287ab742077a686c9591",
 
-	"packages/pipeline/src/probe-git.ts": "25ac49b68003d7c6aef77b2fa84dd1066f07f9aa34b234009a77dd9d90951d9c",
+	"packages/pipeline/src/probe-git.ts": "3afba6df1d13292e41eadd08338bcf11d9a4973ebd9cd3387c2952760bcf380a",
 
 	"packages/pipeline/src/probe-process.ts": "5d103d0852a228cc971bf2e50f53a8f28819dc232f09a1f6fa5ab4e9cf07f766",
 

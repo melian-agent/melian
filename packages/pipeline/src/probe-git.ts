@@ -49,7 +49,7 @@ export async function probeGit(
 				unavailable: `git's program ${git} is not an executable file inside the developer directory ${developer}`,
 			};
 		const exec = real(await answer(ask, git, ["--exec-path"]));
-		const share = join(dirname(dirname(git)), "share", "git-core");
+		const share = real(join(dirname(dirname(git)), "share", "git-core"));
 		const outside = [exec, share].find((path) => path === developer || !holds(developer, path));
 		if (outside !== undefined)
 			return { unavailable: `git's ${outside} lies outside the developer directory ${developer}` };

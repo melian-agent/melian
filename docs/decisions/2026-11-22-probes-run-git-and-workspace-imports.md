@@ -25,7 +25,7 @@ The maintainer accepted these reads on 2026-11-22. A probe's sandbox grants them
 1. The probe's own directory `<scratch>/git`, readable and not writable, holding one link named `git` to the program below. That directory is on the probe's `PATH` after Node's.
 2. The one git program the host names, `xcrun --find git` with links followed, checked to be an executable file inside the developer directory.
 3. git's exec path, `git --exec-path` with links followed.
-4. `share/git-core` beside the program's `bin`.
+4. `share/git-core` beside the program's `bin`, with links followed, so a link at it or at a directory above it is checked where it leads.
 5. The system configuration file that `git var GIT_CONFIG_SYSTEM` names, only where it exists, at its own path and at the path a link there leads to.
 
 Nothing else in the developer tools' `usr/bin` is granted or on the probe's `PATH`. Linux gains nothing.
@@ -39,6 +39,7 @@ The lookup refuses any answer that would widen the read past the developer tools
 - an answer that is not one absolute path;
 - a developer directory that holds or sits inside the reviewer's home, which `/` always does;
 - a git program, exec path or share directory that is not inside the developer directory, links followed, and an exec path or share directory that is the developer directory itself;
+- a share directory that does not exist, since its real path cannot be checked;
 - a git program that is not an executable file, which the developer directory, being a directory, never is;
 - a system configuration that is a directory, or that holds or sits inside the reviewer's home, at its path or through a link.
 

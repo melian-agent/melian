@@ -208,6 +208,26 @@ describe("probeGit", () => {
 			expect(await probeGit("darwin", host({ exec: link }).ask, home)).toEqual(refused);
 		});
 
+		it("a share directory inside the developer directory that links outside it", async () => {
+			const share = join(developer, "usr", "share", "git-core");
+			rmSync(share, { recursive: true });
+			symlinkSync(home, share);
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+		});
+
+		it("a share directory whose parent links outside the developer directory", async () => {
+			const outside = join(root, "elsewhere");
+			mkdirSync(join(outside, "git-core"), { recursive: true });
+			rmSync(join(developer, "usr", "share"), { recursive: true });
+			symlinkSync(outside, join(developer, "usr", "share"));
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+		});
+
+		it("a share directory that does not exist", async () => {
+			rmSync(join(developer, "usr", "share"), { recursive: true });
+			expect(await probeGit("darwin", host().ask, home)).toEqual(refused);
+		});
+
 		it("a git program that is not executable", async () => {
 			chmodSync(git, 0o644);
 			expect(await probeGit("darwin", host().ask, home)).toEqual({
