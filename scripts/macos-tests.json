@@ -14,6 +14,7 @@
 	"skipped": [
 		"packages/core/test/secrets.test.ts",
 		"packages/core/test/worktree-spelling.test.ts",
+		"packages/pipeline/test/probe-git.test.ts",
 		"packages/pipeline/test/probe-links-independent.test.ts"
 	],
 	"allowed": [
