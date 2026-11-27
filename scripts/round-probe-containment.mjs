@@ -49,6 +49,7 @@ export const publicRoots = [
 /**
  * Every variable a probe starts with: PATH, HOME and TMPDIR from Probe, LANG when the host has one, the shell's PWD,
  * OLDPWD and SHLVL, and those sandbox-runtime adds to reach its proxy, which allows no host. The set must match exactly.
+ * NODE_OPTIONS joins it when the base names probe conditions, as Probe then sets it.
  */
 export const expectedEnvironment = [
 	"ALL_PROXY",
@@ -586,6 +587,7 @@ export function containmentPlan({
 	held,
 	runtimeUrl,
 	lang,
+	conditions,
 	listener,
 }) {
 	const tree = policy.read[0];
@@ -597,7 +599,10 @@ export function containmentPlan({
 		shm,
 		shapes: Object.fromEntries(Object.entries(tokenShapes).map(([kind, shape]) => [kind, shape.source])),
 		// Probe passes the host's LANG on, so the probe holds it exactly when the host does.
-		environment: expectedEnvironment.filter((name) => name !== "LANG" || lang !== undefined),
+		environment: [
+			...expectedEnvironment.filter((name) => name !== "LANG" || lang !== undefined),
+			...(conditions.length > 0 ? ["NODE_OPTIONS"] : []),
+		],
 		readable: [join(tree, "package.json"), tree],
 		read: [
 			join(tree, "package.json"),
@@ -650,11 +655,13 @@ export function containmentPlan({
 }
 
 /**
- * The policy's `probe.read` at `commit`, the paths a round's probes read beyond the tracked tree. The round job checks out
- * its base, and check.yml the result that would merge, so each proves the policy its probes will run under.
+ * The policy's `probe` at `commit`: the paths a round's probes read beyond the tracked tree, and the Node conditions they
+ * run under. The round job checks out its base, and check.yml the result that would merge, so each proves the policy its
+ * probes will run under.
  */
-export async function probeRead(checkout, commit) {
-	return (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe.read;
+export async function probePolicy(checkout, commit) {
+	const { read, conditions } = (await loadConfig(checkout, { kind: "revision", commit }, ".")).config.probe;
+	return { read, conditions };
 }
 
 /** The id ipcmk printed for the segment it made, or "" when it printed none. */
@@ -666,7 +673,7 @@ export function shmId(made) {
  * Runs the containment probe through `probes`, Probe unless a test gives another, under the policy `read` returns and
  * against the host address `interfaces` hold, and returns the step's exit code.
  */
-export async function main(probes = Probe, read = probeRead, interfaces = networkInterfaces()) {
+export async function main(probes = Probe, read = probePolicy, interfaces = networkInterfaces()) {
 	const say = (line) => console.log(visibleText(line));
 	const available = await probes.availability();
 	if (!available.available) {
@@ -675,17 +682,20 @@ export async function main(probes = Probe, read = probeRead, interfaces = networ
 	}
 	const checkout = realpathSync(process.cwd());
 	const commit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: checkout, encoding: "utf8" }).trim();
-	// The round's probes run under the pull request's base policy, so the step proves that commit's probe.read.
+	// The round's probes run under the pull request's base policy, so the step proves that commit's probe.read and probe.conditions.
 	const base = process.env.MELIAN_PROBE_POLICY_COMMIT;
 	if (!/^[0-9a-f]{40}$/.test(base ?? "")) {
 		say(`the round named no base commit whose probe.read to prove: ${JSON.stringify(base)}`);
 		return 1;
 	}
 	let allowed;
+	let conditions;
 	try {
-		allowed = [...(await read(checkout, base))];
+		const policy = await read(checkout, base);
+		allowed = [...policy.read];
+		conditions = [...policy.conditions];
 	} catch (error) {
-		say(`the policy's probe.read could not be read: ${error.message}`);
+		say(`the policy's probe settings could not be read: ${error.message}`);
 		return 1;
 	}
 	const address = hostAddress(interfaces);
@@ -720,6 +730,7 @@ export async function main(probes = Probe, read = probeRead, interfaces = networ
 			},
 			{
 				head: { checkout, commit, read: allowed },
+				...(conditions.length === 0 ? {} : { conditions }),
 				writer: { trusted: true, by: "reviewer" },
 				trustWriters: true,
 				sandbox: recording(probes.sandbox, argv),
@@ -746,6 +757,7 @@ export async function main(probes = Probe, read = probeRead, interfaces = networ
 				held,
 				runtimeUrl: process.env.ACTIONS_RUNTIME_URL,
 				lang: process.env.LANG,
+				conditions,
 				listener: listener.targets(),
 			});
 			writeFileSync(plan.self, JSON.stringify(plan));
