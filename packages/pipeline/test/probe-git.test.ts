@@ -1,4 +1,13 @@
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	realpathSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -6,6 +15,18 @@ import { askHost, type HostAsk, probeGit } from "../src/probe-git.ts";
 
 // The attacking review of what the macOS git lookup lets a probe read. Each case gives the lookup a host whose answers
 // would widen the read past the developer tools and git's own configuration, and expects no read at all.
+
+function folds(): boolean {
+	const at = mkdtempSync(join(tmpdir(), "melian-probe-git-case-"));
+	try {
+		mkdirSync(join(at, "case"));
+		return existsSync(join(at, "CASE"));
+	} finally {
+		rmSync(at, { recursive: true, force: true });
+	}
+}
+
+const foldsCase = folds();
 
 let root: string;
 let developer: string;
@@ -155,6 +176,26 @@ describe("probeGit", () => {
 			writeFileSync(join(inside, "usr", "bin", "git"), "", { mode: 0o755 });
 			const ask = host({ developer: inside, git: join(inside, "usr", "bin", "git") }).ask;
 			expect(await probeGit("darwin", ask, home)).toEqual(refused);
+		});
+
+		// Only a filesystem that folds case can name the home in another case, so Linux skips this and the macOS job runs it.
+		it.runIf(foldsCase)("a developer directory inside the reviewer's home, named in another case", async () => {
+			const inside = join(home, "Applications", "Xcode.app", "Contents", "Developer");
+			for (const path of [
+				join(inside, "usr", "bin"),
+				join(inside, "usr", "libexec", "git-core"),
+				join(inside, "usr", "share", "git-core"),
+			])
+				mkdirSync(path, { recursive: true });
+			writeFileSync(join(inside, "usr", "bin", "git"), "", { mode: 0o755 });
+			const ask = host({
+				developer: inside,
+				git: join(inside, "usr", "bin", "git"),
+				exec: join(inside, "usr", "libexec", "git-core"),
+			}).ask;
+			expect(await probeGit("darwin", ask, join(root, "users", "REVIEWER"))).toEqual({
+				unavailable: expect.stringContaining("shares the reviewer's home"),
+			});
 		});
 
 		it("a developer directory that holds the reviewer's home", async () => {
