@@ -143,7 +143,7 @@ You see `not reviewed`, with the reason, when a configured check did not run; a 
 
 ## Bring your own models
 
-Melian does not sell you model access. You bring your own subscriptions and API keys, and decide which model does which job. A strong model takes the lenses and a cheap one triage. Routing is configurable per repository, and a repository's `melian.yaml` may commit the team's default routes. A contributor without a route's credentials gets the same model from a provider they do hold, or the nearest by price, and every check run that way says so. A route may also set a reasoning level with `thinking`, and Melian's own committed routes run the heavy tier and triage at `low`. Run `melian doctor` to see which model and reasoning level each tier would use, and from which credential. Stacking several credentials for one provider, rotating on a rate limit, arrives with the credential pool in milestone 3.
+Melian does not sell you model access. You bring your own subscriptions and API keys, and decide which model does which job. A strong model takes the lenses and a cheap one triage. Routing is configurable per repository, and a repository's `melian.yaml` may commit the team's default routes. A contributor without a route's credentials gets the same model from a provider they do hold, or the nearest by price, and every check run that way says so. A route may also set a reasoning level with `thinking`, and Melian's own committed routes run the heavy, medium and light tiers, and so triage, at `high`. Run `melian doctor` to see which model and reasoning level each tier would use, and from which credential. Stacking several credentials for one provider, rotating on a rate limit, arrives with the credential pool in milestone 3.
 
 ### Your credentials
 
