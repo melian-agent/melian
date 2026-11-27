@@ -56,6 +56,8 @@ The host's files stay out of the key, each for a written reason. Where the devel
 
 Two rounds in a row found an input missing from this key, the first of the identity guideline's four failures. The round at 1584b2c1f found the kind missing, and the round at 6edce45ac the version. The coordinator chose both fields and this rule on 2026-11-27; it is not a maintainer ruling. A third missing input this rule does not settle goes to the maintainer as a design question, not to another fix.
 
+The key and the probe's setup still ask the host about git in two separate lookups, and nothing checks that the answers agree, so a lookup that fails or changes between them can run a probe without git under a key that says it was linked. Node has the same gap: the key takes the running process's version, and the probe runs the file at Node's path. The maintainer read this on 2026-11-27, in the coordinator's session, and chose to land with the gap recorded; [issue #653](https://github.com/melian-agent/melian/issues/653) builds both from one lookup.
+
 If git on some layout needs a library outside those directories, it fails in the probe, and `melian doctor` names git's error; the read is not widened for it.
 
 ## What remains unproven
