@@ -3972,7 +3972,8 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		],
 	])("%s", async (_, policy, conditions) => {
 		withBasePolicy(policy);
-		const flags = 'console.log(JSON.stringify(process.execArgv.filter((arg) => arg.startsWith("--conditions="))));\n';
+		const flags =
+			'console.log(JSON.stringify((process.env.NODE_OPTIONS ?? "").split(" ").filter((arg) => arg.startsWith("--conditions="))));\n';
 		const { run, requests } = await review(
 			{
 				planner: plan,

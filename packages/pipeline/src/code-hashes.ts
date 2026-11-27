@@ -200,7 +200,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/probe-process.ts": "5d103d0852a228cc971bf2e50f53a8f28819dc232f09a1f6fa5ab4e9cf07f766",
 
-	"packages/pipeline/src/probe.ts": "1aa0822186c50702667eff5a75afc4e57011864d43a09fa6e3c49f5f8a389fd4",
+	"packages/pipeline/src/probe.ts": "40052ac470b722e91983d3964bf37be73682dd75b64249f21facc8a1ed2fdb3e",
 
 	"packages/pipeline/src/probing.ts": "6fcbf89ff90d5a47af7f1ab7d684febe59c3b8eebf63c6ffa00cae63e554e4e7",
 
