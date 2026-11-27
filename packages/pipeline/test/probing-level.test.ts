@@ -4002,6 +4002,7 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		let git: Git = { unavailable: "no developer tools" };
 		const sandbox: ProbeSandbox = { ...unconfinedSandbox(), git: async () => git };
 		const fake = createFakeModels();
+		const version = "git version 2.39.5 (Apple Git-154)";
 		const planned = async (next: Git) => {
 			git = next;
 			const { run, requests } = await review({ planner: plan, prober: probing(failing) }, { fake, sandbox });
@@ -4023,11 +4024,28 @@ describe("a level that probes", { timeout: 60_000 }, () => {
 		expect(Object.keys(await host()).sort()).toEqual(["arch", "node", "platform", "sandbox", "sandboxVersion"]);
 		expect(await planned({ unavailable: "git before 2.42" })).toBe(0);
 		expect(await planned({ reads: [] })).toBe(0);
-		expect(await planned({ program: "/a/usr/bin/git", reads: ["/a/usr/bin/git"] })).toBe(2);
-		expect(await host()).toMatchObject({ git: "linked" });
-		expect(await planned({ program: "/b/usr/bin/git", reads: ["/b/usr/bin/git", "/b/share"] })).toBe(0);
-		expect(await planned({ program: "/a/usr/bin/git", reads: ["/a/usr/bin/git"], noSystem: true })).toBe(2);
-		expect(await host()).toMatchObject({ git: "linked-no-system" });
+		expect(await planned({ program: "/a/usr/bin/git", version, reads: ["/a/usr/bin/git"] })).toBe(2);
+		expect(await host()).toMatchObject({ git: "linked", gitVersion: version });
+		expect(await planned({ program: "/b/usr/bin/git", version, reads: ["/b/usr/bin/git", "/b/share"] })).toBe(0);
+		expect(await planned({ program: "/a/usr/bin/git", version, reads: ["/a/usr/bin/git"], noSystem: true })).toBe(2);
+		expect(await host()).toMatchObject({ git: "linked-no-system", gitVersion: version });
+	});
+
+	it("probes again when only the version of the host's git changes", async () => {
+		type Git = Awaited<ReturnType<NonNullable<ProbeSandbox["git"]>>>;
+		let git: Git = { unavailable: "no developer tools" };
+		const sandbox: ProbeSandbox = { ...unconfinedSandbox(), git: async () => git };
+		const fake = createFakeModels();
+		const planned = async (next: Git) => {
+			git = next;
+			const { run, requests } = await review({ planner: plan, prober: probing(failing) }, { fake, sandbox });
+			await run;
+			return requests[planner]?.length ?? 0;
+		};
+		const at = (version: string): Git => ({ program: "/a/usr/bin/git", version, reads: ["/a/usr/bin/git"] });
+		expect(await planned(at("git version 2.39.5 (Apple Git-154)"))).toBe(2);
+		expect(await planned(at("git version 2.39.5 (Apple Git-154)"))).toBe(0);
+		expect(await planned(at("git version 2.50.1 (Apple Git-155)"))).toBe(2);
 	});
 
 	it("keeps only the reruns the revision's current claims rest on, however often a failed prober is run again", async () => {

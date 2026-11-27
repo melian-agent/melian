@@ -1758,6 +1758,7 @@ describe("a probe's git and Node conditions", () => {
 	const developer = "/Library/Developer/CommandLineTools";
 	const found: ProbeGit = {
 		program: `${developer}/usr/bin/git`,
+		version: "git version 2.39.5 (Apple Git-154)",
 		reads: [
 			`${developer}/usr/bin/git`,
 			`${developer}/usr/libexec/git-core`,
@@ -1829,7 +1830,9 @@ describe("a probe's git and Node conditions", () => {
 			writeFileSync(join(bin, "git"), "#!/bin/sh\necho 'fatal: unable to access x' >&2\nexit 128\n", {
 				mode: 0o755,
 			});
-			const { sandbox } = passthrough({ git: async () => ({ program: join(bin, "git"), reads: [] }) });
+			const { sandbox } = passthrough({
+				git: async () => ({ program: join(bin, "git"), version: "git version 2.39.5 (Apple Git-154)", reads: [] }),
+			});
 			expect(await Probe.gitAvailability(sandbox)).toEqual({
 				available: false,
 				reason: "a probe's git init exited 128: fatal: unable to access x",

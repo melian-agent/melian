@@ -46,6 +46,7 @@ it("leaves git unavailable, granting nothing, when the system configuration vani
 		["xcode-select -p", developer],
 		["xcrun --find git", git],
 		[`${git} --exec-path`, exec],
+		[`${git} --version`, "git version 2.39.5 (Apple Git-154)"],
 		[`${git} var GIT_CONFIG_SYSTEM`, config],
 	]);
 	const ask = async (file: string, args: readonly string[]) => {

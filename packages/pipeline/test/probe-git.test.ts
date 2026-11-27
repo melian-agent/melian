@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { askHost, type HostAsk, probeGit } from "../src/probe-git.ts";
+import { askHost, gitVersionLimit, type HostAsk, probeGit } from "../src/probe-git.ts";
 
 // The attacking review of what the macOS git lookup lets a probe read. Each case gives the lookup a host whose answers
 // would widen the read past the developer tools and git's own configuration, and expects no read at all.
@@ -33,6 +33,7 @@ let developer: string;
 let home: string;
 let git: string;
 let config: string;
+const version = "git version 2.39.5 (Apple Git-154)";
 
 beforeEach(() => {
 	root = realpathSync(mkdtempSync(join(tmpdir(), "melian-probe-git-")));
@@ -58,7 +59,7 @@ afterEach(() => {
 
 // A host that answers only the four questions the lookup asks, each with what `answers` gives it and the newline a
 // command ends its answer with.
-function host(answers: Partial<Record<"developer" | "git" | "exec" | "config", string | Error>> = {}): {
+function host(answers: Partial<Record<"developer" | "git" | "exec" | "version" | "config", string | Error>> = {}): {
 	ask: HostAsk;
 	asked: string[];
 } {
@@ -79,6 +80,7 @@ function host(answers: Partial<Record<"developer" | "git" | "exec" | "config", s
 			if (question === "xcrun --find git") return answer(answers.git ?? git);
 			if (question === `${real} --exec-path`)
 				return answer(answers.exec ?? join(developer, "usr", "libexec", "git-core"));
+			if (question === `${real} --version`) return answer(answers.version ?? version);
 			if (question === `${real} var GIT_CONFIG_SYSTEM`) return answer(answers.config ?? config);
 			return Promise.reject(new Error(`unexpected question: ${question}`));
 		},
@@ -89,6 +91,7 @@ describe("probeGit", () => {
 	it("grants git's one program, its exec path, its own files and its system configuration, and nothing else", async () => {
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
 			program: git,
+			version,
 			reads: [
 				git,
 				join(developer, "usr", "libexec", "git-core"),
@@ -108,6 +111,7 @@ describe("probeGit", () => {
 			"xcode-select -p",
 			"xcrun --find git",
 			`${git} --exec-path`,
+			`${git} --version`,
 			`${git} var GIT_CONFIG_SYSTEM`,
 		]);
 	});
@@ -120,6 +124,7 @@ describe("probeGit", () => {
 		const found = await probeGit("darwin", host({ config: join(root, "etc-link", "gitconfig") }).ask, home);
 		expect(found).toEqual({
 			program: git,
+			version,
 			reads: [
 				git,
 				join(developer, "usr", "libexec", "git-core"),
@@ -135,6 +140,7 @@ describe("probeGit", () => {
 		// The sandbox refuses an open of the absent file as not permitted, which git treats as fatal, as no such file is not.
 		expect(await probeGit("darwin", host().ask, home)).toEqual({
 			program: git,
+			version,
 			reads: [git, join(developer, "usr", "libexec", "git-core"), join(developer, "usr", "share", "git-core")],
 			noSystem: true,
 		});
@@ -153,6 +159,27 @@ describe("probeGit", () => {
 		const asked = host();
 		expect(await probeGit("linux", asked.ask, home)).toEqual({ reads: [] });
 		expect(asked.asked).toEqual([]);
+	});
+
+	it("keys git by its whole trimmed answer to --version, at the bound of 200 characters", async () => {
+		const longest = `git version ${"9".repeat(gitVersionLimit - "git version ".length)}`;
+		expect(longest).toHaveLength(200);
+		expect(await probeGit("darwin", host({ version: `  ${longest} ` }).ask, home)).toMatchObject({
+			program: git,
+			version: longest,
+		});
+	});
+
+	it.each([
+		["one character past the bound", `git version ${"9".repeat(gitVersionLimit - "git version ".length + 1)}`],
+		["nothing", ""],
+		["two lines", "git version 2.39.5\nApple Git-154"],
+		["a control character", "git version 2.39.5\u0007"],
+		["a failure", new Error("git --version exited 1")],
+	])("leaves git unavailable where --version answers %s", async (_, answer) => {
+		expect(await probeGit("darwin", host({ version: answer }).ask, home)).toEqual({
+			unavailable: expect.stringContaining("git cannot be found for a probe"),
+		});
 	});
 
 	describe("refuses a host whose answer would widen the read", () => {

@@ -308,8 +308,8 @@ export type ProbingEnvironment = {
 /**
  * The host a probe's result holds on: the sandbox's platform and kind, the installed sandbox-runtime release, the CPU
  * architecture and version of the Node that runs it, and on macOS whether a probe's git runs, with or without its system
- * configuration. A probing run's key holds it whole, so a run on another host, under another Node, under another release
- * of the sandbox, or where git has come or gone, runs again.
+ * configuration, and git's version. A probing run's key holds it whole, so a run on another host, under another Node,
+ * under another release of the sandbox, or where git has come, gone or changed release, runs again.
  */
 export type ProbingHost = {
 	platform: ProbeSandbox["platform"];
@@ -318,6 +318,7 @@ export type ProbingHost = {
 	arch: string;
 	node: string;
 	git?: "linked" | "linked-no-system";
+	gitVersion?: string;
 };
 
 // sandbox-runtime confines every probe a review runs; a test's own sandbox reports the installed release too.
@@ -328,11 +329,13 @@ export async function probingHost(sandbox: ProbeSandbox): Promise<ProbingHost> {
 	// A probe runs this process's own Node: Probe starts the realpath of process.execPath. The sandbox names the platform
 	// it confines. Case folding is left out: a review reuses a probing run only from its own store, on its own host.
 	const { arch, node } = hostFacts();
-	// Only the kind of git's answer: its paths name the host's install. Where git is unavailable, as on every host before
-	// probes could run it, the field is absent, so those runs keep their keys.
+	// The kind and version of git's answer, never its paths, which name the host's install. Where git is unavailable, as on
+	// every host before probes could run it, the fields are absent, so those runs keep their keys.
 	const git = await sandbox.git?.();
-	const linked: Pick<ProbingHost, "git"> =
-		git !== undefined && "program" in git ? { git: "noSystem" in git ? "linked-no-system" : "linked" } : {};
+	const linked: Pick<ProbingHost, "git" | "gitVersion"> =
+		git !== undefined && "program" in git
+			? { git: "noSystem" in git ? "linked-no-system" : "linked", gitVersion: git.version }
+			: {};
 	return { platform: sandbox.platform, sandbox: sandbox.kind, sandboxVersion, arch, node, ...linked };
 }
 

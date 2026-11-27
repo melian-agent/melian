@@ -9,7 +9,12 @@ import { promisify } from "node:util";
  * or why git cannot run in a probe on this host.
  */
 export type ProbeGit =
-	| { readonly program: string; readonly reads: readonly string[]; readonly noSystem?: true }
+	| {
+			readonly program: string;
+			readonly version: string;
+			readonly reads: readonly string[];
+			readonly noSystem?: true;
+	  }
 	| { readonly reads: readonly string[] }
 	| { readonly unavailable: string };
 
@@ -30,7 +35,8 @@ export const askHost: HostAsk = async (file, args) =>
  * its `PATH`, git's exec path, its `share/git-core` and its system configuration, each inside the developer directory
  * but the configuration, and none in the reviewer's home. The program's neighbours in the developer tools' `usr/bin` are
  * not granted. Where the configuration does not exist, `noSystem` tells the probe's git to skip it, since the sandbox
- * refuses an open of the absent file as not permitted, which git treats as fatal.
+ * refuses an open of the absent file as not permitted, which git treats as fatal. `version` is the program's own answer
+ * to `--version`, whole, which keys a probing run.
  */
 export async function probeGit(
 	platform: "darwin" | "linux",
@@ -53,10 +59,11 @@ export async function probeGit(
 		const outside = [exec, share].find((path) => path === developer || !holds(developer, path));
 		if (outside !== undefined)
 			return { unavailable: `git's ${outside} lies outside the developer directory ${developer}` };
+		const version = versionOf(await ask(git, ["--version"]), git);
 		const system = await answer(ask, git, ["var", "GIT_CONFIG_SYSTEM"]).catch((error: unknown) => {
 			throw new Error(`git var GIT_CONFIG_SYSTEM did not answer, as git before 2.42 does not: ${message(error)}`);
 		});
-		if (!existsSync(system)) return { program: git, reads: [git, exec, share], noSystem: true };
+		if (!existsSync(system)) return { program: git, version, reads: [git, exec, share], noSystem: true };
 		// A link at the configuration's path is followed to what it names, which the sandbox would read through it.
 		const systemReal = real(system);
 		const where = [system, systemReal].find(
@@ -64,7 +71,7 @@ export async function probeGit(
 		);
 		if (where !== undefined)
 			return { unavailable: `git's system configuration ${where} is not a file outside the home` };
-		return { program: git, reads: [...new Set([git, exec, share, system, systemReal])] };
+		return { program: git, version, reads: [...new Set([git, exec, share, system, systemReal])] };
 	} catch (error) {
 		return { unavailable: `git cannot be found for a probe: ${message(error)}` };
 	}
@@ -77,6 +84,19 @@ async function answer(ask: HostAsk, file: string, args: readonly string[]): Prom
 	if (path.includes("\n") || !isAbsolute(path))
 		throw new Error(`${[file, ...args].join(" ")} answered ${JSON.stringify(text)}, not one absolute path`);
 	return path;
+}
+
+// The longest answer to `--version` a probing run is keyed by; Apple's git answers in under 50 characters.
+export const gitVersionLimit = 200;
+
+// Git's one line, trimmed and otherwise unparsed, since only its identity keys the run.
+function versionOf(text: string, git: string): string {
+	const line = text.trim();
+	if (line.length === 0 || line.length > gitVersionLimit || /[\u0000-\u001f\u007f]/.test(line))
+		throw new Error(
+			`${git} --version answered ${text.length} characters, not one line of at most ${gitVersionLimit}`,
+		);
+	return line;
 }
 
 function real(path: string): string {
