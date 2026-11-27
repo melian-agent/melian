@@ -39,7 +39,7 @@ export async function probeGit(
 ): Promise<ProbeGit> {
 	if (platform === "linux") return { reads: [] };
 	try {
-		const reviewer = realpathSync(home);
+		const reviewer = real(home);
 		const developer = real(await answer(ask, "xcode-select", ["-p"]));
 		if (holds(developer, reviewer) || holds(reviewer, developer))
 			return { unavailable: `the developer directory ${developer} is the root or shares the reviewer's home` };
