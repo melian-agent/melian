@@ -371,7 +371,7 @@ describe("built-in lenses", () => {
 		expect(covered(nested)).toContain("design");
 	});
 
-	it("run Melian's design lens on its own route, at Codex's model and effort, and every quick level on Terra at low", async () => {
+	it("run Melian's design lens on its own route, at Codex's model and effort, and every quick level on Terra at high", async () => {
 		const melian = fileURLToPath(new URL("../../../", import.meta.url));
 		const own = ["melian.yaml", ...melianLensFiles(melian)];
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
@@ -408,7 +408,7 @@ describe("built-in lenses", () => {
 		);
 		const terra = {
 			model: "openai-codex/gpt-5.6-terra",
-			thinking: "low",
+			thinking: "high",
 			fallbacks: ["anthropic/claude-sonnet-5-5"],
 			accept: ["openai-codex/gpt-5.6-terra", "anthropic/claude-sonnet-5-5"],
 		};

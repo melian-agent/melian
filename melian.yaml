@@ -10,17 +10,17 @@ models:
   # quick level runs on light or medium, which route the same models at the same effort.
   light:
     model: openai-codex/gpt-5.6-terra
-    thinking: low
+    thinking: high
     fallbacks: [anthropic/claude-sonnet-5-5]
     accept: [openai-codex/gpt-5.6-terra, anthropic/claude-sonnet-5-5]
   heavy:
     model: openai-codex/gpt-6.1-sol
-    thinking: low
+    thinking: high
     fallbacks: [anthropic/claude-opus-5-5, openai/gpt-5.5]
     accept: [openai-codex/gpt-6.1-sol, anthropic/claude-opus-5-5, openai/gpt-5.5]
   medium:
     model: openai-codex/gpt-5.6-terra
-    thinking: low
+    thinking: high
     fallbacks: [anthropic/claude-sonnet-5-5]
     accept: [openai-codex/gpt-5.6-terra, anthropic/claude-sonnet-5-5]
   # Sonnet checks across families by default; Terra permits verification through a ChatGPT subscription.

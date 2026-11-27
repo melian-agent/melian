@@ -76,13 +76,13 @@ it("uses the chosen fallback tier's thinking for triage", async () => {
 	expect(received).toEqual(["high"]);
 });
 
-it("sends effort low in the lens and triage requests of the committed routes", async () => {
+it("sends effort high in the lens and triage requests of the committed routes", async () => {
 	const root = fileURLToPath(new URL("../../..", import.meta.url));
 	const committed = (await loadConfig(root, { kind: "worktree" }, ".")).config.models;
-	expect(committed.heavy?.thinking).toBe("low");
-	expect(committed.light?.thinking).toBe("low");
-	// The design lens has its own route, on Codex's model and effort, so medium repeats light's Terra route at low.
-	expect(committed.medium).toMatchObject({ model: "openai-codex/gpt-5.6-terra", thinking: "low" });
+	expect(committed.heavy?.thinking).toBe("high");
+	expect(committed.light?.thinking).toBe("high");
+	// The design lens has its own route, on Codex's model and effort, so medium repeats light's Terra route at high.
+	expect(committed.medium).toMatchObject({ model: "openai-codex/gpt-5.6-terra", thinking: "high" });
 	expect(committed.light).toMatchObject({ model: "openai-codex/gpt-5.6-terra" });
 	const config = {
 		...defaultConfig,
@@ -141,11 +141,11 @@ it("sends effort low in the lens and triage requests of the committed routes", a
 			telemetry.stages
 				.find((row) => row.name === stage)!
 				.usage!.requests!.map((request) => [request.reasoning.requested, request.reasoning.sent[0]]);
-		expect(efforts("melian.triage")).toEqual([["low", { reasoning: { effort: "low", role: "triage" } }]]);
-		expect(efforts("melian.lens").map(([requested]) => requested)).toEqual(["low", "low"]);
+		expect(efforts("melian.triage")).toEqual([["high", { reasoning: { effort: "high", role: "triage" } }]]);
+		expect(efforts("melian.lens").map(([requested]) => requested)).toEqual(["high", "high"]);
 		expect(efforts("melian.lens").map(([, sent]) => sent)).toEqual([
-			{ reasoning: { effort: "low", role: "lens" } },
-			{ reasoning: { effort: "low", role: "lens" } },
+			{ reasoning: { effort: "high", role: "lens" } },
+			{ reasoning: { effort: "high", role: "lens" } },
 		]);
 		const verifier = efforts("melian.verification.candidate");
 		expect(verifier.length).toBeGreaterThan(0);
