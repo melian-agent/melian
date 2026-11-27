@@ -1,6 +1,6 @@
 # The three reviews run first on one head
 
-Status: proposed by the coordinator on 2026-11-27 for the maintainer's ruling. The maintainer asked for the draft that day, in the coordinator's session; it is not a ruling until he agrees this pull request.
+Status: ruled by the maintainer on 2026-11-27, in the coordinator's session. The coordinator proposed it; the maintainer asked for the draft and agreed its text that day.
 
 ## Problem
 
