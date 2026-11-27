@@ -1,0 +1,789 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "6edce45ac7f5b40b1e0fbce81578a4d641820cb9",
+		"head": "922ca430b90e005a6bf5370fb3df319b24aae241"
+	},
+	"claimsIn": [
+		"packages/pipeline/src/probe-git.ts",
+		"packages/pipeline/src/probing.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+	"mutants": [
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 199,
+			"column": 39,
+			"endLine": 199,
+			"endColumn": 105,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "6fbfdeb8ffd4a756012885be3753b0fd9079616f0d56d809a0603b44f14eb4c8"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 205,
+			"column": 37,
+			"endLine": 205,
+			"endColumn": 103,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "53106361f8f16a37469419f276899a22cb7321c60ce16a94e1a7c14c4021f6c3"
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 62,
+			"column": 43,
+			"endLine": 62,
+			"endColumn": 56,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "af40707c7f259cd25bddd8c0386a7747a0d965f401743e28343703ee2b1adf1f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"asks the git that xcrun names, by its real path"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 62,
+			"column": 44,
+			"endLine": 62,
+			"endColumn": 55,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bcaebfcbd021ce5fb3591d0bdc3608ae2959c886a920b30d0def2bf21788ab8f"
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 6,
+			"endLine": 66,
+			"endColumn": 25,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "existsSync(system)",
+			"status": "generated",
+			"id": "1565b784156b186cf68e836c16635023fd6f18f4a161f9b42b2c629771b86e5c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 6,
+			"endLine": 66,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "00c14ace6c47203fa3400cf62c00335c058ef484b7b611364e27655d2f0f161d",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 6,
+			"endLine": 66,
+			"endColumn": 25,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "cec39b2ec9b4535fcda3ccffc7bf2c50c3f78cb4298c73f2f58ee0458812244b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants no system configuration that does not exist, and tells git to skip it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 34,
+			"endLine": 66,
+			"endColumn": 102,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "efa04f4e15aa7b32774fbb6b6a17f93e10af1a10b2b6070b697ad68e7f6e0913",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants no system configuration that does not exist, and tells git to skip it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 66,
+			"endLine": 66,
+			"endColumn": 84,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "f02d74ed89dcafe77e3a19fb33fcd22852f696509ce56a041bb4b60f769c4282",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants no system configuration that does not exist, and tells git to skip it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 66,
+			"column": 96,
+			"endLine": 66,
+			"endColumn": 100,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "false",
+			"status": "generated",
+			"id": "073ef58f857121f0a2f7fef928e7c98548f65a0c4e0f9f1b45384116c681a3bd",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants no system configuration that does not exist, and tells git to skip it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 74,
+			"column": 9,
+			"endLine": 74,
+			"endColumn": 95,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "5d6fcbd4ea43940750dc103f5974460d85b6224025f13c859c71805e0ede0f60",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 74,
+			"column": 41,
+			"endLine": 74,
+			"endColumn": 93,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "21a1d92fd7588b916434a3286c30ee46203cbbd855590031d88be3af302c5921",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 74,
+			"column": 53,
+			"endLine": 74,
+			"endColumn": 91,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "db5b0afc0600904e51ade7738d8f587c24070d69d522f244ac8891c52d4f62c2",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 93,
+			"column": 54,
+			"endLine": 100,
+			"endColumn": 1,
+			"mutatorName": "BlockStatement",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "6eacfd11b416cd790879d8064e07c352c9db481e034fd7f6e26e731c3e17588b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 94,
+			"column": 14,
+			"endLine": 94,
+			"endColumn": 25,
+			"mutatorName": "MethodExpression",
+			"replacement": "text",
+			"status": "generated",
+			"id": "3123e1dec186db6aade738a9e9b1d27aabeedd1f95dbe979e3eec8b795386085",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"keys git by its whole trimmed answer to --version, at the bound of 200 characters"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "37562b52d359a2dab3a4cc2f6f5c8217524820de1982d5028079447c7f3f55f8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 93,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "aea526f2a12e8e0e2cc24e89c7c5eeeb063bf20127a350114e5c9df2eec23cd0",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 93,
+			"mutatorName": "LogicalOperator",
+			"replacement": "(line.length === 0 || line.length > gitVersionLimit) && /[\\u0000-\\u001f\\u007f]/.test(line)",
+			"status": "generated",
+			"id": "58e2a37d98785a3ed2eb94f83ab3dcdc8b812b2fbc3bd4d5edfddda3900bf240",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "3e13609066d1a42316dde1f62f5c6aa502187b4f81d77508f422b64a658828ad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 55,
+			"mutatorName": "LogicalOperator",
+			"replacement": "line.length === 0 && line.length > gitVersionLimit",
+			"status": "generated",
+			"id": "34503732eff6fc2932ce1d514f2300514053be9b77ee119282c61e8e29223839",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 22,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8ca36eb6eb026d07de7ac014fb650cd8914d98cb4195616b4ffce5217884651a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers nothing"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 5,
+			"endLine": 95,
+			"endColumn": 22,
+			"mutatorName": "EqualityOperator",
+			"replacement": "line.length !== 0",
+			"status": "generated",
+			"id": "a654b19c7e232900ebf9e3c207ba0a47095722875082f4944662966d310db737",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 26,
+			"endLine": 95,
+			"endColumn": 55,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "8df2f0281fa9c0290d4b0650813ab85c8336954bfc9e5391f88c042c907feb02",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 26,
+			"endLine": 95,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "line.length >= gitVersionLimit",
+			"status": "generated",
+			"id": "429b437e5ee75815005c9abc9e2daf0129ecdb35d396e426ae5cccbb922faf2a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"keys git by its whole trimmed answer to --version, at the bound of 200 characters"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 26,
+			"endLine": 95,
+			"endColumn": 55,
+			"mutatorName": "EqualityOperator",
+			"replacement": "line.length <= gitVersionLimit",
+			"status": "generated",
+			"id": "b0d9a157c09115e4c3d1e5269fe2b8fb97ea2c3489fb17adaae2715dec145f1b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 95,
+			"column": 59,
+			"endLine": 95,
+			"endColumn": 82,
+			"mutatorName": "Regex",
+			"replacement": "/[^\\u0000-\\u001f\\u007f]/",
+			"status": "generated",
+			"id": "cf25e52534692c80c5cdae06b06a4573f168b2bbe6dcac499269b6d703814376",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"grants git's one program, its exec path, its own files and its system configuration, and nothing else"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 96,
+			"column": 2,
+			"endLine": 98,
+			"endColumn": 4,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "013867de2a87da8baee062a4fb03b9281fa0ad08b11d4f86cb4347bf04b42906",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probe-git.test.ts",
+					"path": [
+						"probeGit",
+						"leaves git unavailable where --version answers one character past the bound"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probe-git.ts",
+			"line": 97,
+			"column": 3,
+			"endLine": 97,
+			"endColumn": 100,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "bb514a65d06e728351a8f4bc77563cea0abbbc9e0e6167fb81db2cf558e9ffe0"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 2,
+			"endLine": 336,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "24eafe7a906ea122648382f17adb2edb70c5daca60ef41b011f096e3d53d7620",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"probes again when the host's git lookup changes its kind, and never when only its paths change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 2,
+			"endLine": 336,
+			"endColumn": 39,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "95f6df4fae1ea6889e1a6af5b315cd2c445af5b3f155a6332354825e8a2dca30",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the kind of git a probe runs, never its paths: linked"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 2,
+			"endLine": 336,
+			"endColumn": 39,
+			"mutatorName": "LogicalOperator",
+			"replacement": "git !== undefined || \"program\" in git",
+			"status": "generated",
+			"id": "e11f54ea246e2bc9ddf10711c113e3e88e5fc1e6a68ddd844a18fc0aa1872bed",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"keys no conditions where the base policy names none, as before they could be set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 2,
+			"endLine": 336,
+			"endColumn": 19,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5bd9ea99a2189899fd13a89034f48789ce662a94e492ab2416090a73747af3e8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"keys no conditions where the base policy names none, as before they could be set"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 2,
+			"endLine": 336,
+			"endColumn": 19,
+			"mutatorName": "EqualityOperator",
+			"replacement": "git === undefined",
+			"status": "generated",
+			"id": "393e7b3a7f990f71a9a684641c524df9547bbda49e14fc56f00e39eebbf24f2f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing-level.test.ts",
+					"path": [
+						"a level that probes",
+						"probes again when the host's git lookup changes its kind, and never when only its paths change"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 336,
+			"column": 23,
+			"endLine": 336,
+			"endColumn": 32,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "fd575cfdbe1076ecf9c70c669821f954b3f511097c62e5309b060b2c00d5587b"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 337,
+			"column": 5,
+			"endLine": 337,
+			"endColumn": 88,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "29aa5d094b01a5563121eb593565ddde0d8511e496558fcf2e52b6fd0c00a879",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/probing.test.ts",
+					"path": [
+						"a head's bound",
+						"names the kind of git a probe runs, never its paths: linked"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 337,
+			"column": 12,
+			"endLine": 337,
+			"endColumn": 22,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "79b5781fb54edacc61ce19fe1768626b7af74c04b66fd59223da54586d4df352"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 337,
+			"column": 32,
+			"endLine": 337,
+			"endColumn": 50,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "60f0e3ea529c393de95403b22501b32640c982a34338256bd3aa0b759d0bb16b"
+		},
+		{
+			"file": "packages/pipeline/src/probing.ts",
+			"line": 337,
+			"column": 53,
+			"endLine": 337,
+			"endColumn": 61,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9488a5c1dd07f73a5e831061a8bf15975ca5b04aa6b47b8c9fb354b36495185f"
+		}
+	],
+	"total": 38,
+	"omitted": 0,
+	"unmutated": []
+}
