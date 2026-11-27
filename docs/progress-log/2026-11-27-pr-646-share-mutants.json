@@ -1,0 +1,63 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "1584b2c1f28b61bc2a5ecd8522f7994cfaea475f",
+    "head": "eb9430087b9f35438fe408be168c85afd3d9310f"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/probe-git.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+  "mutants": [
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 199,
+      "column": 39,
+      "endLine": 199,
+      "endColumn": 105,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6fbfdeb8ffd4a756012885be3753b0fd9079616f0d56d809a0603b44f14eb4c8"
+    },
+    {
+      "file": "packages/pipeline/src/probe-git.ts",
+      "line": 52,
+      "column": 49,
+      "endLine": 52,
+      "endColumn": 56,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b12e89fef601906d75af47a1adb1be5631602a1c516c2d39f5cce67b8e9cbf1a"
+    },
+    {
+      "file": "packages/pipeline/src/probe-git.ts",
+      "line": 52,
+      "column": 58,
+      "endLine": 52,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "1d8255faba25dab5dbc2ce03a8345910c460cc5f2476ad38085c99f14dfa018e"
+    }
+  ],
+  "total": 3,
+  "omitted": 0,
+  "unmutated": []
+}
