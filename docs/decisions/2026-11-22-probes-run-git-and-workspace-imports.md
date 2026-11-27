@@ -1,6 +1,7 @@
 # Probes run git and import workspace packages
 
 Amends: [Probes run under sandbox-runtime](2026-11-07-probes-run-under-sandbox-runtime.md), the reads and the environment a probe starts with
+Amends: [A round probes in its own job, behind a containment check](2026-11-16-round-job-probes-behind-containment.md), what the step reads from the base policy
 
 Status: chosen by the builder for [issue #644](https://github.com/melian-agent/melian/issues/644), with its scope set by the coordinator on 2026-11-22. The maintainer accepted the widened read on macOS on 2026-11-22, in the coordinator's session, after the coordinator's host run at `8aa451e7`; [the record on pull request #646](https://github.com/melian-agent/melian/pull/646#issuecomment-7074034184) states it. The list under "What a probe may read on macOS" is what he accepted, in the order the code grants it, so a later widening shows as a change to it. The rest of this file is the builder's choice, not a ruling.
 
@@ -44,6 +45,8 @@ The lookup refuses any answer that would widen the read past the developer tools
 - a system configuration that is a directory, or that holds or sits inside the reviewer's home, at its path or through a link.
 
 The lookup also asks the program `--version`, with the same cleaned environment, and keeps its whole answer, trimmed and otherwise unparsed. An answer that is empty, longer than 200 characters, or holds a line break or another control character leaves git unavailable. A git before 2.42 has no `git var GIT_CONFIG_SYSTEM`, and a refused or failed lookup leaves git unavailable: the probe reads nothing more, and `melian doctor` warns on its `probes` line. Linux asks nothing, since git lives among the system's programs a probe already reads.
+
+The round's containment step proves the environment a round's probes get, so it reads the base's whole `probe` policy, `read` and `conditions`, not `probe.read` alone. It passes the conditions to the probe when the policy names any, and its exact environment check expects `NODE_OPTIONS` then, and refuses it otherwise. The Melian round at 01e4d7f47 found the step checking an environment without them.
 
 ## Keys
 
