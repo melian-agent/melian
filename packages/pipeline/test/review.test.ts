@@ -942,6 +942,25 @@ describe("reviewChangeset", () => {
 		);
 	});
 
+	it("keeps a lens's own melian/other-defect rule, and adds it no second time", async () => {
+		const own = "A defect this lens reports outside its other rules.";
+		const declaring = lenses.map((lens) =>
+			lens.name === "correctness"
+				? Lens.from({ ...lens.toJSON(), rules: [...lens.rules, { id: "melian/other-defect", description: own }] })
+				: lens,
+		);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		await review({ lenses: declaring });
+
+		const system = systemPromptOf(requests[correctness]![0]!);
+		expect(system).toContain(`- \`melian/other-defect\`: ${own}`);
+		expect(system).not.toContain("none of this lens's other rules fits");
+	});
+
 	it("refuses an injection attempt at a severity other than P1 from a lens whose severities leave it out", async () => {
 		const conventions = "You are the conventions reviewer";
 		const injection = {
