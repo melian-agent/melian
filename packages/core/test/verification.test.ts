@@ -294,6 +294,17 @@ describe("reports of one claim", () => {
 			expect(after(lowered, { ...lowered })).toEqual(lowered);
 		});
 
+		it("says a refused report's different answers are recorded when the stored report holds them all", () => {
+			const stored = { ...verification, matches: { [id]: "different", [other]: "same" } } as const;
+			const prefix =
+				"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason";
+			expect(refusal(stored, { ...plausible, matches: { [id]: "different", [other]: "same" } })).toBe(
+				`${prefix}; its different sameness answers are recorded`,
+			);
+			expect(refusal(stored, { ...plausible, matches: { [id]: "same", [other]: "same" } })).toBe(prefix);
+			expect(refusal(stored, plausible)).toBe(prefix);
+		});
+
 		it.each([
 			["a same answer over a stored different", { [id]: "different" }, { [id]: "same" }],
 			["a different answer already stored", { [id]: "different" }, { [id]: "different" }],

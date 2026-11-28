@@ -149,7 +149,11 @@ export class VerificationRecord {
 		)
 			return undefined;
 		const lowered = stored.lowered === undefined ? "" : `, lowered ${stored.lowered.from} to ${stored.lowered.to}`;
-		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason`;
+		// A replay of a report kept for its different answers alone finds them stored, so it says they were recorded.
+		const recorded = Object.values(report.matches ?? {}).includes("different")
+			? "; its different sameness answers are recorded"
+			: "";
+		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason${recorded}`;
 	}
 
 	/**

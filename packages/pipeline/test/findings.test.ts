@@ -1269,6 +1269,10 @@ describe("lowered sightings", () => {
 		const correction = { ...record, reason: "Another path.", matches: { [dismissed]: "different" } } as const;
 		await expect(judge(root, correction)).resolves.toBe(false);
 		const kept = { ...lowered, matches: { [dismissed]: "different" } };
+		// A replay of the correction finds its answer stored, and is refused with a message that says so.
+		await expect(judge(root, correction)).rejects.toThrow(
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason; its different sameness answers are recorded",
+		);
 		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(kept);
 		const version = await findingsVersion(harness, root.id, "rev1", context);
 		await expect(judge(root, { ...lowered, matches: { [dismissed]: "same" } })).resolves.toBe(true);
