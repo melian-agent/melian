@@ -2045,7 +2045,7 @@ describe("lowering a severity through report_verdict", () => {
 	});
 
 	const noHeadEvidence =
-		"a lowering requires evidence locations at the head naming the code that narrows the failure; nothing was recorded, so report this claim again with them, or without lower";
+		'a lowering requires evidence locations at the head naming the code that narrows the failure; nothing but its "different" sameness answers was recorded, so report this claim again with them, or without lower';
 
 	it("refuses a lowering with no evidence before it records anything", async () => {
 		const requests = reporting([{ reason: "First try.", lower: narrow }, { reason: "Traced it." }]);

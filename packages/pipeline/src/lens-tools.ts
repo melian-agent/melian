@@ -1255,11 +1255,6 @@ export const reportVerdict = defineTool({
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
 			throw new Error("a refuted verdict requires evidence locations naming the code that prevents the failure");
-		// Refused before anything is stored, so the verifier can send the report again with the lines that narrow it.
-		if (prepared.lower !== undefined && !(prepared.evidence ?? []).some(({ revision }) => revision !== "base"))
-			throw new Error(
-				"a lowering requires evidence locations at the head naming the code that narrows the failure; nothing was recorded, so report this claim again with them, or without lower",
-			);
 		return prepared;
 	},
 	replay: "safe",
@@ -1333,18 +1328,31 @@ export const reportVerdict = defineTool({
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
-				const whole = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
-					verdict: args.verdict,
-					reason: args.reason,
-					...(args.correction === undefined ? {} : { correction: args.correction }),
-					answers: { ...args.answers },
-					...(evidence.length === 0 ? {} : { evidence }),
-					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
-					...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
-					executor: "llm",
-					model: lens.model!,
-					version: lens.version,
-				});
+				// Kept to its different answers, so the verifier can send the report again with the lines that narrow it.
+				const headless = args.lower !== undefined && !evidence.some(({ revision }) => revision === "head");
+				const whole = await upsertVerification(
+					tx,
+					lens.review,
+					at,
+					claim.id,
+					claim.source,
+					{
+						verdict: args.verdict,
+						reason: args.reason,
+						...(args.correction === undefined ? {} : { correction: args.correction }),
+						answers: { ...args.answers },
+						...(evidence.length === 0 ? {} : { evidence }),
+						...(lowers
+							? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } }
+							: {}),
+						...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
+						executor: "llm",
+						model: lens.model!,
+						version: lens.version,
+					},
+					headless,
+				);
+				if (headless) return undefined;
 				if (!whole)
 					return [
 						'only its "different" sameness answers were kept: this claim is already judged at an equal or stronger verdict, so the first report stands with its reason',
@@ -1356,6 +1364,10 @@ export const reportVerdict = defineTool({
 					];
 				return [`lowered ${severity} to ${args.lower.severity}`];
 			}, context);
+			if (notes === undefined)
+				throw new Error(
+					'a lowering requires evidence locations at the head naming the code that narrows the failure; nothing but its "different" sameness answers was recorded, so report this claim again with them, or without lower',
+				);
 			return text(JSON.stringify(evidence), (body) =>
 				[`recorded verdict for ${args.claim}`, ...notes, quoteUntrusted("evidence", body, review.nonce)].join("\n"),
 			);

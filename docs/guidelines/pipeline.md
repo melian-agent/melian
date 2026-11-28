@@ -539,7 +539,7 @@ Each link stores an identity of the root's whole dismissal, a hash of its dismis
 
 ### Lowering
 
-`report_verdict` takes an optional `lower`, a severity and a reason, built in step 17, "The verifier lowers severity, and important pre-existing findings surface". A lowering with no evidence location at the head fails the call before anything is stored, and the error says nothing was recorded. Any other refused lowering never fails the call: the verdict is stored without it, and the result says why.
+`report_verdict` takes an optional `lower`, a severity and a reason, built in step 17, "The verifier lowers severity, and important pre-existing findings surface". A lowering with no evidence location at the head fails the call, and stores nothing but the report's `different` sameness answers, which the error says, so the verifier can report again and a `different` answer still wins. Any other refused lowering never fails the call: the verdict is stored without it, and the result says why.
 
 - The spawn commit reads each claim's stored sighting and writes the severity its lens reported on the claim's label line, `Claim c1 finding <id>, reported at P1`, outside the boundary. A lowering is one step from it, and the claim inside the boundary does not hold it.
 - The record stores the `code`, `guard` and `base` answers, and the evidence locations Melian read back, on every report. The answers change nothing.

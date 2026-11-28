@@ -10,7 +10,7 @@
 			},
 			"expectResult": [
 				"a lowering requires evidence locations at the head",
-				"nothing was recorded"
+				"nothing but its \"different\" sameness answers was recorded"
 			]
 		},
 		{

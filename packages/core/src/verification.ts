@@ -165,6 +165,14 @@ export class VerificationRecord {
 		if (stored === undefined) return report;
 		return this.whole(report) ? withDifferent(report, stored) : withDifferent(stored, report);
 	}
+
+	/**
+	 * The stored report with `report`'s `different` sameness answers, for a report refused whole, or `undefined` when
+	 * none is stored. A refused report still takes back no `same`.
+	 */
+	answers(report: Verification): Verification | undefined {
+		return this.stored === undefined ? undefined : withDifferent(this.stored, report);
+	}
 }
 
 const withDifferent = (kept: Verification, other: Verification): Verification => {
