@@ -945,6 +945,7 @@ describe("the verifier", () => {
 				model: `${fake.ref("judge").provider}/judge`,
 				correction: "Use the guarded value.",
 			});
+			expect(Object.hasOwn(result.findings[0]!.properties.verification!, "evidence")).toBe(verdict === "refuted");
 			expect(result.findings[0]!.properties.confidence).toBeUndefined();
 			expect(result.verdict.refuted?.length ?? 0).toBe(verdict === "refuted" ? 1 : 0);
 			expect(result.verdict.attention()).toHaveLength(verdict === "refuted" ? 0 : 1);
