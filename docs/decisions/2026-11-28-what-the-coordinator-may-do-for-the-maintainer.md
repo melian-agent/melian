@@ -3,6 +3,7 @@
 Status: ruled by the maintainer on 2026-11-28, in the coordinator's session. The coordinator listed the delegations below, which the maintainer had given one at a time since 2026-10-17, and asked whether to write them into the repository. He answered "yes".
 
 Amends: [When Melian cannot run, the maintainer overrides one commit](2026-10-23-melian-review-outage-procedure.md), who may post the override on a pull request's head: the coordinator too, under the four conditions below
+Amends: [A verifier cannot clear a protected objection without a maintainer](2026-10-17-trust-floor-exact-rule.md), who dismisses a refuted `melian/injection-attempt` finding: the coordinator may, only where every flagged line is Melian's own prompt text and identical to a line already on the default branch
 
 ## Problem
 
@@ -17,7 +18,7 @@ The coordinator may do these, and nothing else, in the maintainer's place:
 1. **Read a policy notice.** The coordinator may read a `policy-change-review` notice on a file whose change it has read, and record that read on the pull request. A builder may queue on that record as it would on the maintainer's.
 2. **Dismiss an equivalent mutant**, with a one-line reason that says why no input can tell the mutant from the code.
 3. **Dismiss a finding that restates a ruling**: one whose only objection is to a rule the maintainer has ruled on. The dismissal names the ruling's date and where it was given.
-4. **Dismiss a refuted injection flag on Melian's own prompt text**: a `melian/injection-attempt` finding the verifier refuted, where the flagged text is Melian's own prompt or its instructions for reviewers, and the coordinator has read the diff of that text and its meaning is unchanged.
+4. **Dismiss a refuted injection flag on Melian's own prompt text that only moved**: a `melian/injection-attempt` finding the verifier refuted, where every flagged line is Melian's own prompt or its instructions for reviewers and is identical to a line already on the default branch. The test is a comparison of text, never the coordinator's judgement of meaning: a flag on any line the change wrote or reworded stays the maintainer's. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
 5. **Post the override status** of [the outage procedure](2026-10-23-melian-review-outage-procedure.md) on a pull request's exact head, only when all four hold:
    - a `melian round` workflow run reviewed that head on the committed routes, finished, and its comment passes the check in AGENTS.md;
    - everything it raised above advisory is a policy notice on a file whose change the coordinator has read;
@@ -41,7 +42,7 @@ A coordinator's read is weaker than the maintainer's: it is an agent's, posted u
 ## The words of each delegation
 
 - Equivalent mutants and policy notices, 2026-10-17: "yes take the authority and run these".
-- Refuted injection flags on Melian's own prompts, 2026-11-20, when parking [pull request #590](https://github.com/melian-agent/melian/pull/590).
+- Refuted injection flags on Melian's own prompts, 2026-11-20, when parking [pull request #590](https://github.com/melian-agent/melian/pull/590). The coordinator kept no quote of his words that day. On 2026-11-28 he agreed the narrower rule above, identical text only, in place of the coordinator's judgement that the meaning was unchanged.
 - The override status, 2026-11-22: "I give you permission to run the override command yourself", then "you may post overrides for these conditions"; and on 2026-11-27, "permission stands".
 - Findings that restate a ruling, and the list as a whole, 2026-11-28: "yes".
 
