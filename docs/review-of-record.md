@@ -11,7 +11,7 @@ Start a fresh-context agent, never the session that built the change, with this 
 - `<head>`: the head SHA it reviews, which CI has already passed.
 - `<model>`: Opus 5.5 when the change touches a trust surface, otherwise Sonnet 5.5. A trust surface is anything that decides what code runs with credentials, what a head can read or write, who may post or dismiss, what blocks a merge, or what survives a crash or a second host. Sandboxes, workflows, tokens, the store, the lease, and the verdict and its status all count.
 
-Run it after Codex's adversarial review and the first Melian round, as AGENTS.md's order says. Post its report in a pull request comment headed `Builder agent: Review of record at <head>`, with the JSON block it returns, unchanged. Fix each finding as any review finding is fixed: a failing test first, then the fix, and name the fix commit in the next report. A finding the builder disputes is answered on the pull request, never dropped.
+Run it on the first reviewed head, beside Codex's adversarial review and the first Melian round, as AGENTS.md's Three reviews before ready says, and before any fix is pushed. Post its report in a pull request comment headed `Builder agent: Review of record at <head>`, with the JSON block it returns, unchanged. Fix each finding as any review finding is fixed: a failing test first, then the fix, and name the fix commit in the next report. A finding the builder disputes is answered on the pull request, never dropped.
 
 The coordinator checks that the base and head in the report match a round's, then imports the JSON against that round, `melian compare "#<n>" --round <id> --from file:<path>`, and spot-checks a sample of reviews rather than running them.
 
