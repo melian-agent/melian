@@ -2,8 +2,8 @@
 
 Status: agreed by the maintainer on 2026-11-28, in the coordinator's session ("agree to both changes"), for [issue #657](https://github.com/melian-agent/melian/issues/657).
 
-Amends: [2026-10-13-re-scope-held-for-the-compiler.md](2026-10-13-re-scope-held-for-the-compiler.md), its section "What survives: conflicting reports"
-Amends: [2026-10-06-verifier-task-scope.md](2026-10-06-verifier-task-scope.md), what a weaker report within one task does
+Amends: [2026-10-13-re-scope-held-for-the-compiler.md](2026-10-13-re-scope-held-for-the-compiler.md), its sections "What survives: conflicting reports" and "Goldens", for the conflicting reports and the lowering refused for want of evidence
+Amends: [2026-11-08-restore-verifier-clauses.md](2026-11-08-restore-verifier-clauses.md), the strongest-verdict rule it restores from the verifier task-scope and conflicting-reports decisions
 
 Choice:
 
@@ -11,6 +11,8 @@ Choice:
 2. `report_verdict` refuses a lowering with no evidence location at the head before anything is stored, and says that nothing was recorded, so the verifier can send the report again with evidence, or without the lowering.
 
 The old rule is replaced. Under it, a later report at an equal verdict replaced the stored one whole when it was unlowered, so it could undo a lowering and overwrite the reason. It was written for a second judgement of the claim, and it was being met by placeholders.
+
+The goldens of conflicting reports change with it. Both orders now pair a lowered confirmed report with an unlowered plausible one, which leave the claim lowered either way: the weaker is refused after the stronger, and the stronger replaces the weaker before it. A replay after each report shows a replayed report taken and an equal plain report refused. The lowering refused for want of evidence is reported again without the lowering, and the lens's severity stands.
 
 ## Problem
 

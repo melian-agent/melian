@@ -143,11 +143,12 @@ describe("the lower argument of report_verdict", () => {
 
 	it("says what the argument must be before the tool runs", () => {
 		const prepare = reportVerdict.prepareArguments!;
-		expect(prepare({ ...report, lower })).toEqual({ ...report, lower });
-		expect(() => prepare({ ...report, lower: { ...lower, reason: "x".repeat(2001) } })).toThrow(
+		const cited = { ...report, evidence: [{ file: "src/user.ts", line: 7, role: "context" }] };
+		expect(prepare({ ...cited, lower })).toEqual({ ...cited, lower });
+		expect(() => prepare({ ...cited, lower: { ...lower, reason: "x".repeat(2001) } })).toThrow(
 			/It takes an optional lower \{ severity, reason \}: \/lower\/reason /,
 		);
-		expect(() => prepare({ ...report, lower: { ...lower, from: "P1" } })).toThrow(
+		expect(() => prepare({ ...cited, lower: { ...lower, from: "P1" } })).toThrow(
 			/optional lower \{ severity, reason \}/,
 		);
 	});

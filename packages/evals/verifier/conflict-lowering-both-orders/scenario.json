@@ -17,7 +17,7 @@
 			}
 		},
 		{
-			"verdict": "confirmed",
+			"verdict": "plausible",
 			"reason": "Traced parseRecord from run, and other callers may come."
 		}
 	],
@@ -26,12 +26,13 @@
 		{
 			"status": "findings",
 			"blocking": false,
-			"severity": "P2",
+			"severity": "P3",
+			"originalSeverity": "P2",
 			"cause": "introduced",
-			"resolution": "acknowledge",
+			"resolution": "advisory",
 			"verdict": "confirmed",
-			"lowered": false,
-			"notRendered": [
+			"lowered": true,
+			"rendered": [
 				"lowered from"
 			]
 		}

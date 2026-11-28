@@ -39,23 +39,30 @@
 		},
 		{
 			"verdict": "confirmed",
-			"reason": "Traced parseRecord from run, and other callers may come."
+			"reason": "Traced parseRecord from run, and other callers may come.",
+			"expectResult": [
+				"this claim is already judged confirmed, lowered P2 to P3, and a later report of it is taken only at a stronger verdict"
+			]
 		},
 		{
 			"verdict": "confirmed",
-			"reason": "Traced parseRecord from run, and other callers may come."
+			"reason": "Traced parseRecord from run, and other callers may come.",
+			"expectResult": [
+				"this claim is already judged confirmed, lowered P2 to P3, and a later report of it is taken only at a stronger verdict"
+			]
 		}
 	],
 	"expected": [
 		{
 			"status": "findings",
 			"blocking": false,
-			"severity": "P2",
+			"severity": "P3",
+			"originalSeverity": "P2",
 			"cause": "introduced",
-			"resolution": "acknowledge",
+			"resolution": "advisory",
 			"verdict": "confirmed",
-			"lowered": false,
-			"notRendered": [
+			"lowered": true,
+			"rendered": [
 				"lowered from"
 			]
 		}
