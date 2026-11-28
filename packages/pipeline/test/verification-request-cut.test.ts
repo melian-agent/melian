@@ -35,9 +35,9 @@ describe("verificationRequest's cut of probe evidence", () => {
 	// record of how and one that exited 125, so a verification stored before it is asked once more. A request whose
 	// evidence fits also holds the sandbox release its probe environment names.
 	it("keys a request with no probe evidence, and one whose evidence fits with the sandbox release its probe environment names", () => {
-		expect(keyOf(plain).key).toBe("9b509e9cd8c5d16c340532510c2f29e2da580ca68b8a8a04340d802b5b1daab8");
-		expect(keyOf(fitting).key).toBe("1f54f199998d2bbab842bc8a7c7dc49bad3bb228294013f188c3c1f4a0f10228");
-		expect(keyOf(plain, fitting).key).toBe("5b12635600ff21aaeb4d6cec1803c15602df01bc1549f269f9d9576fb2df3247");
+		expect(keyOf(plain).key).toBe("3f01e24f95e84cde75341e3d471f821dc1442535b1ec274c2e40470dd29c2896");
+		expect(keyOf(fitting).key).toBe("86fe77ab08a202b726da977f2f0ab18fed29979ed762dede4f168e059f47a823");
+		expect(keyOf(plain, fitting).key).toBe("baf89bdaf9e322e3126f1566863445ac31ffa60b476cc0c6e15d379e11d0dd5c");
 		expect(keyOf(plain, fitting).request).not.toHaveProperty("cuts");
 	});
 

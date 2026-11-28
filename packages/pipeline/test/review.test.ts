@@ -903,6 +903,64 @@ describe("reviewChangeset", () => {
 		]);
 	});
 
+	it("accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities", async () => {
+		const otherDefect = {
+			...nullDeref,
+			rule: "melian/other-defect",
+			explanation: {
+				what: "The export drops the user's middle name.",
+				why: "The change formats only the first and last names.",
+				fix: "Include the middle name.",
+			},
+		};
+		const requests = scriptConversations(fake, [
+			{
+				match: correctness,
+				replies: [
+					call("report_finding", { ...otherDefect, severity: "P3" }),
+					call("report_finding", { ...otherDefect, rule: "melian/made-up" }),
+					call("report_finding", otherDefect),
+					fauxAssistantMessage("Done."),
+				],
+			},
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		const findings = await review();
+
+		const results = requests[correctness]!.slice(1).map((messages) => toolResults(messages).at(-1));
+		expect(results[0]).toContain("Tool call blocked: severity P3 is outside this lens's severities: P0, P1, P2");
+		expect(results[1]).toContain(
+			"Tool call blocked: rule melian/made-up is not one of this lens's rules: null-dereference (",
+		);
+		expect(results[2]).toMatch(/^recorded finding [0-9a-f]{16} as introduced\n/);
+		expect(findings.map((finding) => [finding.ruleId, finding.properties.severity])).toEqual([
+			["melian/other-defect", "P1"],
+		]);
+		expect(systemPromptOf(requests[correctness]![0]!)).toContain(
+			"- `melian/other-defect`: A real defect in the change that none of this lens's other rules fits.",
+		);
+	});
+
+	it("keeps a lens's own melian/other-defect rule, and adds it no second time", async () => {
+		const own = "A defect this lens reports outside its other rules.";
+		const declaring = lenses.map((lens) =>
+			lens.name === "correctness"
+				? Lens.from({ ...lens.toJSON(), rules: [...lens.rules, { id: "melian/other-defect", description: own }] })
+				: lens,
+		);
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+		]);
+
+		await review({ lenses: declaring });
+
+		const system = systemPromptOf(requests[correctness]![0]!);
+		expect(system).toContain(`- \`melian/other-defect\`: ${own}`);
+		expect(system).not.toContain("none of this lens's other rules fits");
+	});
+
 	it("refuses an injection attempt at a severity other than P1 from a lens whose severities leave it out", async () => {
 		const conventions = "You are the conventions reviewer";
 		const injection = {
@@ -1994,7 +2052,7 @@ describe("reviewChangeset", () => {
 			expect(prompt).toContain(
 				"- `trust-boundary`, in these files only: A value an author or outside party controls",
 			);
-			expect(prompt).toContain("report them under your own rules in every other file.");
+			expect(prompt).toContain("A lens whose entry lists files reviews only those of your files.");
 			// The standards stay this lens's own unless conventions reviews every one of its files.
 			expect(prompt).toContain(
 				"The repository's own conventions. A change that breaks one is a finding; cite the file.",

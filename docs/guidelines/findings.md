@@ -69,6 +69,19 @@ A refutation is protected when the refuted claim came from `lens.trust-boundary`
 
 When Melian is unsure, it says what it read and what it did not find, then how to settle it: "Melian read `writeOrder` and `syncOrder`. It found no other writer of `posId`. If one exists, this finding stands; if not, dismiss it." That sentence replaces every "may".
 
+## The severity scale
+
+Every lens rates a finding by what happens once the change is merged, never by how sure it is or how much the code matters. The lens instructions carry the scale, and the verifier lowers by one step a finding whose own scenario does not meet its level, as [the decision of 2026-11-28](../decisions/2026-11-28-lenses-report-every-real-defect.md) sets out.
+
+- **P0.** It loses or corrupts stored data, leaks a secret, or runs code an outside party supplied, on an input the code meets in ordinary use.
+- **P1.** A concrete input makes merged code lose data, expose what it must protect, approve or pass what it must refuse, or stop working for its users.
+- **P2.** A real wrong result that is narrower: it needs an unusual input or state, has a workaround, or misleads without losing anything. A missing test for a guard on trust or stored data is P2 too.
+- **P3.** Any other missing test, a wrong message or document, a case that fails safely, or a design concern.
+
+## A defect no rule fits
+
+A lens reports every real defect it meets, whichever lens would own it. When none of its own rules fits, it reports under `melian/other-defect`, a rule Melian defines for every lens, as it defines `melian/injection-attempt`. The review adds both to every lens's rules, the policy section lists them with their descriptions, and the policy hook accepts them. A finding under `melian/other-defect` keeps to the lens's own severities; only an injection attempt at P1 passes outside them. It reads like any other finding: the rule segment names `melian/other-defect`, and the check segment names the lens that reported it. A golden's expectation matches file and rule, so a golden whose defect a lens may report this way lists the rule among its `alternativeRules`.
+
 ## Severity and tone
 
 - **P0 and P1.** The first sentence is the consequence: money, data, access or availability. No preamble. Give the scenario in full, then the fix.

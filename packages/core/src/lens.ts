@@ -26,6 +26,7 @@ import { plural, visibleText } from "./render.ts";
 import { openSource, type RepositorySource, SourceError, type SourceReader } from "./source.ts";
 import type { StandardsSection } from "./standards.ts";
 import type { LevelBand, TriageChoice } from "./triage.ts";
+import { otherDefectRuleId } from "./verification.ts";
 
 const strict = { additionalProperties: false } as const;
 const text = Type.String({ minLength: 1 });
@@ -714,13 +715,13 @@ const reportingRules = `## Failure scenario and evidence
 
 Every \`report_finding\` call needs both. A call without them is refused.
 
-- \`failureScenario\`: the concrete input, state, or sequence of calls that makes the code fail, and the wrong outcome it produces, in at most ${maxFailureScenarioLength} characters. Name values and results: "\`parsePort("")\` returns \`NaN\`, and \`listen(NaN)\` binds a random port", not "may fail for some inputs". If you cannot name one from the code you read, do not report the finding.
+- \`failureScenario\`: the concrete input, state, or sequence of calls that makes the code fail, and the wrong outcome it produces, in at most ${maxFailureScenarioLength} characters. Name values and results: "\`parsePort("")\` returns \`NaN\`, and \`listen(NaN)\` binds a random port", not "may fail for some inputs". If you could not trace it to its end, say which step you could not trace and what would settle it.
 - \`evidence\`: one or more locations, \`{ file, line, endLine, role }\`, holding the code the claim rests on. \`role\` is \`cause\` for the code that brings the failure about, and \`context\` for code the claim reads but does not blame, such as a caller or the guard that is missing. Add \`revision: "base"\` for lines this change deleted, numbered as in the base commit; a location is at head otherwise. Melian reads the code at each location itself, so never quote it. A location spans at most ${maxEvidenceLines} lines. To find the base line numbers of deleted code, read the file with \`read_file\` and \`revision: "base"\`.
 - The result of \`report_finding\` quotes the first line of each evidence location as Melian read it. If one is not the code you meant, call \`report_finding\` again for the same file, line, and rule with the right locations; it replaces your earlier report.
 - A finding outside the change counts as caused by it only when one of its \`cause\` locations overlaps lines the change added, modified, or deleted, or any line of another file it renamed without editing, named by its old path with \`revision: "base"\` or by its new path. That counts only for a finding in a file the change edited or left alone: when the change only moved the finding's own file, no rename makes the finding caused by the change, not even a sibling moved with it. Otherwise it is recorded as pre-existing, and never blocks.`;
 
 const readingScopes: Readonly<Record<LensReads, string>> = {
-	hunks: "Reading scope: the hunks. Review the lines this change added, modified, or deleted; read the code around them only to confirm a defect in them.",
+	hunks: "Reading scope: the hunks. Review the lines this change added, modified, or deleted; and read the code around them, their callers and whatever consumes what they produce.",
 	functions:
 		'Reading scope: the hunks and the functions around them. Review the whole function, method, or top-level block that holds each hunk at the head revision, and all of it: a defect on a line the change left alone, inside a function it edited, is the change\'s to answer for. Cite the changed line that makes it so as a `cause` location. The change may carry the function around a hunk of a TypeScript file under "Enclosing functions". For every hunk with no such block, read the whole function, method, or top-level block with `read_file`, whatever the reason: a file in another language, a function listed as not shown, code outside any function, or a file or limit the prompt says it left out.',
 };
@@ -766,10 +767,30 @@ function unquoted(): never {
 	throw new TypeError("renderInstructions needs a quote for a neighbour's list of files");
 }
 
-const handoffsIntro =
-	"These lenses review this change beside you. Each owns the defects listed against it: leave them to it, and do not report them under your own rules.";
-const partialHandoffs =
-	"A lens whose entry lists files reviews only those of your files: leave its defects to it in those files, and report them under your own rules in every other file.";
+const suspicions =
+	"Report a suspicion too: a failure you believe the code permits but could not trace to its end. Give it the same concrete failure scenario, and say in the explanation which step you could not trace and what would settle it. A verifier judges every finding after you and can read all the code, so never hold a finding back for want of proof, or because it is outside your focus.";
+
+const severityScale: readonly (readonly [Severity, string])[] = [
+	[
+		"P0",
+		"it loses or corrupts stored data, leaks a secret, or runs code an outside party supplied, on an input the code meets in ordinary use.",
+	],
+	[
+		"P1",
+		"a concrete input makes merged code lose data, expose what it must protect, approve or pass what it must refuse, or stop working for its users.",
+	],
+	[
+		"P2",
+		"a real wrong result that is narrower: it needs an unusual input or state, has a workaround, or misleads without losing anything; and a missing test for a guard on trust or stored data.",
+	],
+	[
+		"P3",
+		"any other missing test, a wrong message, comment or document, an unhandled case that fails safely, and a design or maintenance concern.",
+	],
+];
+
+const handoffsIntro = `These lenses review this change beside you, each with its own focus, listed here. Let your own focus decide what you read. Report every real defect you meet while reading, whichever lens it would belong to: under one of your own rules when one fits, and otherwise under \`${otherDefectRuleId}\`.`;
+const partialHandoffs = "A lens whose entry lists files reviews only those of your files.";
 
 /**
  * A lens with its layering and defaults resolved, ready to run as a conversation: a runtime view over its
@@ -1195,12 +1216,32 @@ export class Lens {
 	#policy(level: LensLevel): string {
 		return [
 			"## Rules, severities, and budget",
-			"Report every finding under one of these rule IDs, written exactly as here. A defect no rule fits is not yours to report.",
+			[
+				`Report every finding under one of these rule IDs, written exactly as here, or under \`${otherDefectRuleId}\` when the defect is real and no rule here fits it.`,
+				// A planner and a prober cannot report a suspicion, and nothing judges a finding at a level that does not verify.
+				...(level.verify && level.probe === undefined ? [suspicions] : []),
+			].join(" "),
+			this.#scale(),
 			this.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
 			`Severities you may report: ${this.severities.join(", ")}.`,
 			renderBudget(level.budget),
 			readingScopes[level.reads],
 			reportingRules,
 		].join("\n\n");
+	}
+
+	// The severity scale, of the severities this lens may report alone, so it never asks for one the hook refuses.
+	#scale(): string {
+		const rated = severityScale.filter(([severity]) => this.severities.includes(severity));
+		const lowest = rated.at(-1)?.[0];
+		const lower =
+			this.severities.includes("P1") && lowest !== undefined && lowest !== "P1" && lowest !== "P0"
+				? `: a later reader holds a merge for P1, so P1 on a small defect costs more than ${lowest} on it.`
+				: ".";
+		return [
+			"Rate each finding by what happens once the change is merged, never by how sure you are or how much the code matters.",
+			...rated.map(([severity, meaning]) => `${severity}: ${meaning}`),
+			`When two levels fit, choose the lower${lower}`,
+		].join(" ");
 	}
 }

@@ -1,0 +1,430 @@
+{
+  "melianMutants": 2,
+  "range": {
+    "base": "f152c74dc2a12ea5fe10189d0d983af8bd2a71cc",
+    "head": "50fc3d5df9fdbc9ffe619cc78b88cde94219858c"
+  },
+  "claimsIn": [
+    "packages/pipeline/src/review.ts",
+    "packages/pipeline/src/verification-instructions.ts"
+  ],
+  "adapters": [
+    {
+      "name": "typescript",
+      "version": "1",
+      "toolVersion": "10.0.0",
+      "source": "checkout"
+    }
+  ],
+  "installation": "4301379cdd08be6e57d6b25a4c76b5aca214e21302e0b44a275604aa323eeac0",
+  "mutants": [
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 724,
+      "column": 8,
+      "endLine": 724,
+      "endColumn": 179,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "7325c889afd21c966448f3944259749272d2c3d8aafc00f1329b4aa620e826d7"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 770,
+      "column": 22,
+      "endLine": 770,
+      "endColumn": 319,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "294f6db4b448ce001b13116d686a242e5bd647cca80bb505b15341953c77366d"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 771,
+      "column": 24,
+      "endLine": 771,
+      "endColumn": 90,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "8f469e91507badb9e2a8a2163935c03c0d5853fee7f7e755aed46d47cee33894"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 1197,
+      "column": 3,
+      "endLine": 1197,
+      "endColumn": 540,
+      "mutatorName": "StringLiteral",
+      "replacement": "``",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0c16e5e630f7adfe9ca6c46f50b0486bb10f5448465fb7681c4c3cfceb750dd8"
+    },
+    {
+      "file": "packages/core/src/lens.ts",
+      "line": 1198,
+      "column": 3,
+      "endLine": 1198,
+      "endColumn": 861,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "02546b37c8ef699b2e929094cf0e383bee8307483c9f5f36851eb5cc64974a8b"
+    },
+    {
+      "file": "packages/core/src/verification.ts",
+      "line": 80,
+      "column": 33,
+      "endLine": 80,
+      "endColumn": 54,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "6f64ee9606d8aa0deea4d4ff24821dce3b939929fe8aee584a64f286c201faa3"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 57,
+      "column": 31,
+      "endLine": 57,
+      "endColumn": 97,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "3f1aeeae7853514958e8d483fa95b6be8a5c48dc578599f2d6bb19f020b0f906"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 61,
+      "column": 30,
+      "endLine": 61,
+      "endColumn": 96,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "70f3d26cb1d6edbc19473b0dc61822603c68b881e6c004d15305f2e4e9c23064"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 121,
+      "column": 38,
+      "endLine": 121,
+      "endColumn": 104,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "2f91e7c3b3ec4148f63a669ca035941cf619057ad9b61656b070311f51e3c46e"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 235,
+      "column": 39,
+      "endLine": 235,
+      "endColumn": 105,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0dc5d73d50774d2f2ee7711bb8cb9bf1d6124cf14cb9b1ca3c947e69d1dede55"
+    },
+    {
+      "file": "packages/pipeline/src/code-hashes.ts",
+      "line": 238,
+      "column": 2,
+      "endLine": 238,
+      "endColumn": 68,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "938bca6926e10def2526373ef141e67876e2a176355fb4d2763b7e1736dca0fd"
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2954,
+      "column": 16,
+      "endLine": 2959,
+      "endColumn": 3,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "1311993fcb511c7e600d922b7a54b2155a0ad2693979150492c22baeb5675f4e",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2956,
+      "column": 6,
+      "endLine": 2958,
+      "endColumn": 4,
+      "mutatorName": "MethodExpression",
+      "replacement": "[otherDefectRule, injectionAttemptRule]",
+      "status": "generated",
+      "id": "b926b929fb76efb9118558871b366d22be23e7d357de890daee93e981ab8010a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "keeps a lens's own melian/other-defect rule, and adds it no second time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2956,
+      "column": 6,
+      "endLine": 2956,
+      "endColumn": 45,
+      "mutatorName": "ArrayDeclaration",
+      "replacement": "[]",
+      "status": "generated",
+      "id": "d286288e065fbbb6ed35cd0937b19b3e054099f96627ca843970c3c1db5f4630",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "seeded-default"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 4,
+      "endLine": 2957,
+      "endColumn": 65,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "fb7020cf05db1c80ea976713c6629c8763d620988f070af1c2c3a1a6e848a041",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 16,
+      "endLine": 2957,
+      "endColumn": 65,
+      "mutatorName": "BooleanLiteral",
+      "replacement": "lens.rules.some(rule => rule.id === melian.id)",
+      "status": "generated",
+      "id": "043b7d1d4a61df8c7c237c3f5d89793dd893d1683ea0c7231fc48187e5f3fa3a",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 17,
+      "endLine": 2957,
+      "endColumn": 65,
+      "mutatorName": "MethodExpression",
+      "replacement": "lens.rules.every(rule => rule.id === melian.id)",
+      "status": "generated",
+      "id": "bfa3f770c3f77f73cd43ceebdeaecee615b12e8a376c75b620b9926954c7899b",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "keeps a lens's own melian/other-defect rule, and adds it no second time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "some-every"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 33,
+      "endLine": 2957,
+      "endColumn": 64,
+      "mutatorName": "ArrowFunction",
+      "replacement": "() => undefined",
+      "status": "generated",
+      "id": "65b8e9969be6397e972676b17a143820c457e22b083388fbc2397f7be58ad647",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "keeps a lens's own melian/other-defect rule, and adds it no second time"
+          ]
+        }
+      },
+      "survivorClasses": []
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 43,
+      "endLine": 2957,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "true",
+      "status": "generated",
+      "id": "0e74ac3e927a39b171b936d6ab7a348880b60b2ff032cbea1c92ea8f9b46d527",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 43,
+      "endLine": 2957,
+      "endColumn": 64,
+      "mutatorName": "ConditionalExpression",
+      "replacement": "false",
+      "status": "generated",
+      "id": "188edb050a75f38c6bfec29c812a993158802ed9fdcaef1ec4b06d1c38ee6721",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "keeps a lens's own melian/other-defect rule, and adds it no second time"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "compound-condition"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/review.ts",
+      "line": 2957,
+      "column": 43,
+      "endLine": 2957,
+      "endColumn": 64,
+      "mutatorName": "EqualityOperator",
+      "replacement": "rule.id !== melian.id",
+      "status": "generated",
+      "id": "aadee492ba0c1a865905d15c6285218693df2cf9ccb6d8cb3706e57be7e47498",
+      "claim": "killed",
+      "evidence": {
+        "test": {
+          "file": "packages/pipeline/test/review.test.ts",
+          "path": [
+            "reviewChangeset",
+            "accepts a real defect under melian/other-defect from a lens whose rules leave it out, within the lens's severities"
+          ]
+        }
+      },
+      "survivorClasses": [
+        "negative-test"
+      ]
+    },
+    {
+      "file": "packages/pipeline/src/verification-instructions.ts",
+      "line": 47,
+      "column": 1,
+      "endLine": 47,
+      "endColumn": 907,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "b73c84bd4c6b8f4ae63a4e62dd1e39a759ab4cc267f2a02280091e7a94bb0b5e"
+    },
+    {
+      "file": "packages/pipeline/src/verification-instructions.ts",
+      "line": 52,
+      "column": 1,
+      "endLine": 52,
+      "endColumn": 1005,
+      "mutatorName": "StringLiteral",
+      "replacement": "\"\"",
+      "status": "ignored",
+      "ignoredBy": "config",
+      "statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+      "id": "0afa9a6cbc8667a0bf448522eb161638400322944f49c00cff9e57f60a04feca"
+    }
+  ],
+  "total": 23,
+  "omitted": 0,
+  "unmutated": []
+}

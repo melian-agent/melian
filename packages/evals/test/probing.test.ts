@@ -2181,6 +2181,8 @@ describe("measureProbing", { timeout: 60_000 }, () => {
 			expect(await measured(correctness, "lens", "fail-open")).toEqual(accepted);
 			expect(await measured(correctness, "whole", "fail-open")).toEqual(undeclared("fail-open"));
 			expect(await measured(correctness, "whole", "wrong-result")).toEqual(accepted);
+			expect(await measured(correctness, "whole", "melian/other-defect")).toEqual(accepted);
+			expect(await measured(correctness, "lens", "melian/other-defect")).toEqual(accepted);
 			const boundary = tiered("boundary", "tiers:\n  full: [lens.trust-boundary]\n");
 			expect(await measured(boundary, "lens", "wrong-result")).toEqual(undeclared("wrong-result"));
 			const uncovered = tiered(

@@ -625,6 +625,7 @@ export {
 	Lowering,
 	type LoweringFields,
 	loweringSchema,
+	otherDefectRuleId,
 	type StoredLowering,
 	type StoredVerificationState,
 	trustFloorChecks,
