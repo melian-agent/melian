@@ -1,0 +1,114 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "cf10d7fec07623630a1f9afcf4f924744fb59e87",
+		"head": "75f2750a4a5b8490ae861de4336f45173c626d4b"
+	},
+	"claimsIn": [
+		"packages/core/src/verification.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 153,
+			"column": 33,
+			"endLine": 153,
+			"endColumn": 53,
+			"mutatorName": "LogicalOperator",
+			"replacement": "report.matches && {}",
+			"status": "generated",
+			"id": "aeffa3eda041ad1276974a9ab16cbec77f07e7912de0819776e56f287214f506",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"sameness answers",
+						"says a refused report's different answers are recorded when the stored report holds them all"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 153,
+			"column": 64,
+			"endLine": 153,
+			"endColumn": 75,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "4d9b4790ca327465bea0874ec6c46bad1986227c7d11533519567e7181090f0a"
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 154,
+			"column": 5,
+			"endLine": 154,
+			"endColumn": 52,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "f68227691b9fd18d187eaccd9ae06179f92fd7374ee35ba4cc93085fce7ad442"
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 155,
+			"column": 5,
+			"endLine": 155,
+			"endColumn": 7,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "54cb2044cc7fec1e1149985771545ed9c4ca8692d741d6711a7bb86b1a398a1a"
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 156,
+			"column": 9,
+			"endLine": 156,
+			"endColumn": 228,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "1b710be7f0eebce6ccc8afc78dd2a23a39c3f918779f7356fe63cd3581d6f920"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 121,
+			"column": 38,
+			"endLine": 121,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2f91e7c3b3ec4148f63a669ca035941cf619057ad9b61656b070311f51e3c46e"
+		}
+	],
+	"total": 6,
+	"omitted": 0,
+	"unmutated": []
+}
