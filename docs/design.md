@@ -112,6 +112,8 @@ Built in milestone 1, except levels and the five backlog lenses, built in milest
 
 Details: [docs/design/lenses.md](design/lenses.md).
 
+A lens reviews as the review of record does. It first learns what the change promises, from the guidelines, decisions and tests the change touches, then attacks each promise. It reports every real defect it meets, whichever lens would own it: under one of its own rules when one fits, and otherwise under `melian/other-defect`, a rule Melian defines for every lens beside `melian/injection-attempt`. It reports a suspicion it could not trace to its end too, saying which step it could not trace, and leaves the proof to the verifier. Hand-offs describe each neighbour's focus and no longer tell a lens to leave a defect to it. Every lens rates a finding on one severity scale, by what happens once the change is merged: P0 loses or corrupts stored data, leaks a secret or runs an outside party's code in ordinary use; P1 makes merged code lose data, expose what it must protect, approve what it must refuse, or stop working; P2 is a narrower real wrong result, or a missing test for a guard on trust or stored data; P3 is any other missing test, a wrong message or document, a case that fails safely, or a design concern. [the decision of 2026-11-28](decisions/2026-11-28-lenses-report-every-real-defect.md) records why: on five merged pull requests the rewrite raised the share of reviewers' defects Melian found from 35% to 50%, and the scale kept blocking findings where `main` had them.
+
 ### The lens backlog
 
 Built in milestone 2 step 3.
@@ -152,6 +154,8 @@ Problem: the verifier keeps a finding or drops it, and nothing in between. A len
 Example: a lens reports a P2 on a parse call that fails for one malformed input. The verifier confirms it, and finds that the only caller validates that input first. The finding is real, so it is not refuted. It stays P2, and the author must acknowledge a failure that needs a second defect to appear. In [the CodeRabbit sample](research/2026-10-12-coderabbit-categories.md), authors dismissed 15% of major findings and 4% of minor ones.
 
 Solution: the verifier may lower a severity one step, and never raise it. The verification record stores the `code`, `guard`, and `base` answers, the evidence locations Melian read back, and, for an accepted lowering, the original severity, the lowered one, and the verifier's reason. The findings document and the verdict document each rose a version for it.
+
+The verifier also lowers, by the same one step, a finding rated above what its own scenario costs on the lenses' severity scale, such as a missing test or a wrong document reported at P1, as [the decision of 2026-11-28](decisions/2026-11-28-lenses-report-every-real-defect.md) sets out. A document that describes a behaviour never refutes a claim that the behaviour breaks something that reads it; the verifier judges the outcome the claim names.
 
 Lowering has a floor and a fence:
 
