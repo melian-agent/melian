@@ -767,6 +767,28 @@ function unquoted(): never {
 	throw new TypeError("renderInstructions needs a quote for a neighbour's list of files");
 }
 
+const suspicions =
+	"Report a suspicion too: a failure you believe the code permits but could not trace to its end. Give it the same concrete failure scenario, and say in the explanation which step you could not trace and what would settle it. A verifier judges every finding after you and can read all the code, so never hold a finding back for want of proof, or because it is outside your focus.";
+
+const severityScale: readonly (readonly [Severity, string])[] = [
+	[
+		"P0",
+		"it loses or corrupts stored data, leaks a secret, or runs code an outside party supplied, on an input the code meets in ordinary use.",
+	],
+	[
+		"P1",
+		"a concrete input makes merged code lose data, expose what it must protect, approve or pass what it must refuse, or stop working for its users.",
+	],
+	[
+		"P2",
+		"a real wrong result that is narrower: it needs an unusual input or state, has a workaround, or misleads without losing anything; and a missing test for a guard on trust or stored data.",
+	],
+	[
+		"P3",
+		"any other missing test, a wrong message, comment or document, an unhandled case that fails safely, and a design or maintenance concern.",
+	],
+];
+
 const handoffsIntro = `These lenses review this change beside you, each with its own focus, listed here. Let your own focus decide what you read. Report every real defect you meet while reading, whichever lens it would belong to: under one of your own rules when one fits, and otherwise under \`${otherDefectRuleId}\`.`;
 const partialHandoffs = "A lens whose entry lists files reviews only those of your files.";
 
@@ -1194,13 +1216,32 @@ export class Lens {
 	#policy(level: LensLevel): string {
 		return [
 			"## Rules, severities, and budget",
-			`Report every finding under one of these rule IDs, written exactly as here, or under \`${otherDefectRuleId}\` when the defect is real and no rule here fits it. Report a suspicion too: a failure you believe the code permits but could not trace to its end. Give it the same concrete failure scenario, and say in the explanation which step you could not trace and what would settle it. A verifier judges every finding after you and can read all the code, so never hold a finding back for want of proof, or because it is outside your focus.`,
-			"Rate each finding by what happens once the change is merged, never by how sure you are or how much the code matters. P0: it loses or corrupts stored data, leaks a secret, or runs code an outside party supplied, on an input the code meets in ordinary use. P1: a concrete input makes merged code lose data, expose what it must protect, approve or pass what it must refuse, or stop working for its users. P2: a real wrong result that is narrower: it needs an unusual input or state, has a workaround, or misleads without losing anything; and a missing test for a guard on trust or stored data. P3: any other missing test, a wrong message, comment or document, an unhandled case that fails safely, and a design or maintenance concern. When two levels fit, choose the lower: a later reader holds a merge for P1, so P1 on a small defect costs more than P3 on it.",
+			[
+				`Report every finding under one of these rule IDs, written exactly as here, or under \`${otherDefectRuleId}\` when the defect is real and no rule here fits it.`,
+				// A planner and a prober cannot report a suspicion, and nothing judges a finding at a level that does not verify.
+				...(level.verify && level.probe === undefined ? [suspicions] : []),
+			].join(" "),
+			this.#scale(),
 			this.rules.map((rule) => `- \`${rule.id}\`: ${rule.description}`).join("\n"),
 			`Severities you may report: ${this.severities.join(", ")}.`,
 			renderBudget(level.budget),
 			readingScopes[level.reads],
 			reportingRules,
 		].join("\n\n");
+	}
+
+	// The severity scale, of the severities this lens may report alone, so it never asks for one the hook refuses.
+	#scale(): string {
+		const rated = severityScale.filter(([severity]) => this.severities.includes(severity));
+		const lowest = rated.at(-1)?.[0];
+		const lower =
+			this.severities.includes("P1") && lowest !== undefined && lowest !== "P1" && lowest !== "P0"
+				? `: a later reader holds a merge for P1, so P1 on a small defect costs more than ${lowest} on it.`
+				: ".";
+		return [
+			"Rate each finding by what happens once the change is merged, never by how sure you are or how much the code matters.",
+			...rated.map(([severity, meaning]) => `${severity}: ${meaning}`),
+			`When two levels fit, choose the lower${lower}`,
+		].join(" ");
 	}
 }

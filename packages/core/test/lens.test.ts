@@ -1740,6 +1740,59 @@ describe("Lens.renderInstructions", () => {
 		expect(() => design!.renderPolicy("deep")).toThrow(expect.objectContaining({ code: "unknownLevel" }));
 	});
 
+	it("asks for suspicions only at a level whose findings a verifier judges and no probe plans", async () => {
+		const always =
+			"Report every finding under one of these rule IDs, written exactly as here, or under `melian/other-defect` when the defect is real and no rule here fits it.";
+		const suspicion =
+			"Report a suspicion too: a failure you believe the code permits but could not trace to its end. Give it the same concrete failure scenario, and say in the explanation which step you could not trace and what would settle it. A verifier judges every finding after you and can read all the code, so never hold a finding back for want of proof, or because it is outside your focus.";
+		writeFiles(repo, {
+			".melian/lenses/correctness/LENS.md": lensFile([
+				...probing,
+				"levels:",
+				"  deep: { tier: heavy, probe: { prober: light, timeout: 5000 } }",
+			]),
+		});
+		const [correctness] = named(await Lens.builtins(), "correctness");
+		for (const level of ["careful", "deep"] as const)
+			expect(correctness!.renderPolicy(level)).toContain(`${always} ${suspicion}`);
+		const quick = correctness!.renderPolicy("quick");
+		expect(quick).toContain(always);
+		expect(quick).not.toContain("Report a suspicion");
+		expect(quick).not.toContain("A verifier judges");
+		const [probes] = named(await Lens.load(repo, { kind: "worktree" }, ["src/index.ts"]), "correctness");
+		expect(probes!.renderPolicy("careful")).toContain(suspicion);
+		for (const rendered of [probes!.renderPolicy("deep"), probes!.renderInstructions([], "deep")]) {
+			expect(rendered).toContain(always);
+			expect(rendered).not.toContain("Report a suspicion");
+			expect(rendered).not.toContain("A verifier judges");
+		}
+	});
+
+	it("rates findings on the scale of the severities the lens may report", async () => {
+		const lenses = await Lens.builtins();
+		const scale = (name: string) => {
+			const policy = named(lenses, name)[0]!.renderPolicy("careful");
+			return policy.slice(
+				policy.indexOf("Rate each finding"),
+				policy.indexOf("\n\n", policy.indexOf("Rate each finding")),
+			);
+		};
+		const correctness = scale("correctness");
+		for (const severity of ["P0: ", "P1: ", "P2: "]) expect(correctness).toContain(severity);
+		expect(correctness).not.toContain("P3");
+		expect(correctness).toContain("so P1 on a small defect costs more than P2 on it.");
+		const tests = scale("tests");
+		expect(tests).not.toContain("P0: ");
+		for (const severity of ["P1: ", "P2: ", "P3: "]) expect(tests).toContain(severity);
+		expect(tests).toContain("so P1 on a small defect costs more than P3 on it.");
+		const conventions = scale("conventions");
+		expect(conventions).not.toContain("P0");
+		expect(conventions).not.toContain("P1");
+		expect(conventions).toContain("P2: ");
+		expect(conventions).toContain("P3: ");
+		expect(conventions).toContain("When two levels fit, choose the lower.");
+	});
+
 	it("renders the level's budget and reading scope, careful unless named", async () => {
 		const [correctness] = named(await Lens.load(repo, { kind: "worktree" }, []), "correctness");
 		const careful = correctness!.renderInstructions([]);
