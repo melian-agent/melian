@@ -3,6 +3,8 @@
 Status: ruled by the maintainer on 2026-11-28, in the coordinator's session. The coordinator listed the delegations below, which the maintainer had given one at a time since 2026-10-17, and asked whether to write them into the repository. He answered "yes".
 
 Amends: [When Melian cannot run, the maintainer overrides one commit](2026-10-23-melian-review-outage-procedure.md), who may post the override on a pull request's head: the coordinator too, under the four conditions below
+Amends: [An unresolved acknowledgement fails the status, as built](2026-10-17-acknowledge-status-exact-rule.md), what clears a blocking policy notice: the coordinator's override too, under the four conditions below, where it said only a stored dismissal
+Amends: [An Actions round sets melian/review](2026-11-07-actions-round-sets-melian-review.md), what a blocking policy notice needs: a fix, a dismissal through a host round, or the coordinator's override under the four conditions below
 Amends: [A verifier cannot clear a protected objection without a maintainer](2026-10-17-trust-floor-exact-rule.md), who dismisses a refuted `melian/injection-attempt` finding: the coordinator may, only where every flagged line is Melian's own prompt text and identical to a line already on the default branch
 
 ## Problem
@@ -19,11 +21,13 @@ The coordinator may do these, and nothing else, in the maintainer's place:
 2. **Dismiss an equivalent mutant**, with a one-line reason that says why no input can tell the mutant from the code.
 3. **Dismiss a finding that restates a ruling**: one whose only objection is to a rule the maintainer has ruled on. The dismissal names the ruling's date and where it was given.
 4. **Dismiss a refuted injection flag on Melian's own prompt text that only moved**: a `melian/injection-attempt` finding the verifier refuted, where every flagged line is Melian's own prompt or its instructions for reviewers and is identical to a line already on the default branch. The test is a comparison of text, never the coordinator's judgement of meaning: a flag on any line the change wrote or reworded stays the maintainer's. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
-5. **Post the override status** of [the outage procedure](2026-10-23-melian-review-outage-procedure.md) on a pull request's exact head, only when all four hold:
-   - a `melian round` workflow run reviewed that head on the committed routes, finished, and its comment passes the check in AGENTS.md;
-   - everything it raised above advisory is a policy notice on a file whose change the coordinator has read;
+5. **Post the override status** of [the outage procedure](2026-10-23-melian-review-outage-procedure.md) on a pull request's exact head. This is a new use of that status, not an outage: Melian ran, and the only thing that blocks is a policy notice. It is allowed only when all four hold:
+   - a `melian round` workflow run reviewed that head on the committed routes, its comment passes the check in AGENTS.md, and its verdict reads `passed` or `findings` with no check left unrun. A round that reads `not reviewed`, or that lists any check as not run, is never overridden by the coordinator;
+   - everything it raised above advisory is a policy notice on a file whose change the coordinator has read, and none of those files is under `.github/workflows/` or is the root `melian.yaml`. A notice on a workflow, which can hold a login, or on the root policy, which decides what blocks, stays the maintainer's;
    - CI is green on that head;
    - the coordinator read the head and the full merge base immediately before posting, and the description ends `; base <40-character merge base>`.
+
+   The outage procedure's own checks before posting still apply: the queue mode, and no other open pull request sharing the head. The coordinator never posts the override on a pull request it wrote. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
 
 Every such act is posted beginning "Coordinator:", says which of these five it is, and never says the maintainer did it.
 
