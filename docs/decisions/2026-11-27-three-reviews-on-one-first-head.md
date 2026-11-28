@@ -2,6 +2,9 @@
 
 Status: ruled by the maintainer on 2026-11-27, in the coordinator's session. The coordinator proposed it; the maintainer asked for the draft and agreed its text that day.
 
+Amends: [Builders run their own reviews](2026-11-05-builders-run-their-own-reviews.md), when Codex's review runs: once, on the first reviewed head, where it said before the first round and after each fix pass
+Amends: [Builders run the review of record](2026-11-08-builders-run-the-review-of-record.md), when the review of record runs: on the first reviewed head, beside the other two, where it said after Codex's review and the first Melian round
+
 ## Problem
 
 Every pull request gets Codex's adversarial review, a Melian round and the Claude review of record. AGENTS.md ran them one after another: Codex first, then its fixes, then a round, then its fixes, then the review of record. Each reviewer saw different code. A defect Codex found was fixed before Melian's round ran, so the round could neither find it nor miss it.
@@ -31,4 +34,8 @@ After the merge, the coordinator has a Sonnet agent draft the pull request's def
 
 ## What does not change
 
-The review of record's brief, its independence and its model. Who runs each review. The rules for marking a pull request ready and queueing it.
+The review of record's brief, its independence and its model. Who runs each review. The rules for marking a pull request ready and queueing it. The coordinator's spot check and its remedy: a review of record the spot check finds steered, run on the wrong model, or short of what the brief requires is void, and a fresh one runs on the same first reviewed head. That is no second review of a reviewed change, since the void one reviewed nothing that counts; this reading of the ruling is the coordinator's.
+
+## What this retires
+
+Taking Codex's review and the review of record off fix commits is a partial retirement of both, ruled by the maintainer outside [the shadow retirement rule](2026-10-06-shadow-retirement-merged-window.md). That rule's measured criterion, ten merged pull requests at recall 0.75 or better, still decides when Codex's review stops running on the first head.
