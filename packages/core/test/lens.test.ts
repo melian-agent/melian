@@ -130,7 +130,7 @@ describe("built-in lenses", () => {
 	it("keep their versions, and the version melian.yaml's tier and paths give one", async () => {
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "dfda64f02cf4",
+			contracts: "ddc01e738059",
 			conventions: "1815e2aee9b9",
 			correctness: "db6064a349cc",
 			design: "3d5ce78f8354",
@@ -255,7 +255,7 @@ describe("built-in lenses", () => {
 		writeFiles(repo, Object.fromEntries(own.map((path) => [path, readFileSync(join(melian, path), "utf8")])));
 		const lenses = await Lens.load(repo, { kind: "worktree" }, []);
 		expect(Object.fromEntries(lenses.map((lens) => [lens.name, lens.version]))).toEqual({
-			contracts: "c1e7445a73b1",
+			contracts: "09a0bf9fe994",
 			conventions: "17f43d8215aa",
 			correctness: "a0085e56a418",
 			design: "c4f3a3fada61",
@@ -268,7 +268,7 @@ describe("built-in lenses", () => {
 		const { config } = await loadConfig(repo, { kind: "worktree" }, ".");
 		const selected = Lens.select(lenses, config, ["src/index.ts"]);
 		expect(Object.fromEntries(selected.map(({ lens }) => [lens.name, lens.version]))).toEqual({
-			contracts: "2f843fe69aeb",
+			contracts: "c09178f321f7",
 			conventions: "6e869581ce38",
 			correctness: "4626a63d4275",
 			design: "d9ac6602d3d9",
