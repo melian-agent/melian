@@ -17,7 +17,7 @@ Example: on [pull request #662](https://github.com/melian-agent/melian/pull/662)
 
 The coordinator may do these, and nothing else, in the maintainer's place:
 
-1. **Read a policy notice.** The coordinator may read a `policy-change-review` notice on a file whose change it has read, and record that read on the pull request. A builder may queue on that record as it would on the maintainer's.
+1. **Read a policy notice.** The coordinator may read a `policy-change-review` notice on a file whose change it has read, and record that read on the pull request. A builder may queue on that record as it would on the maintainer's. Two limits keep the coordinator from widening its own authority. It never reads a notice on a pull request it wrote. And on AGENTS.md it may read the notice only when the change adds entries under Learnings and touches no other line of the file; any other change to AGENTS.md, this delegation's own lines included, is the maintainer's to read. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
 2. **Dismiss an equivalent mutant**, with a one-line reason that says why no input can tell the mutant from the code.
 3. **Dismiss a finding that restates a ruling**: one whose only objection is to a rule the maintainer has ruled on, when the finding does not block and is not one the trust floor protects. The protected kinds are a finding from `lens.trust-boundary` or `lens.tests`, an `untested-behaviour` finding and a `melian/injection-attempt` finding; whether one of those is only a restatement is the maintainer's to judge. The dismissal names the ruling's date and where it was given. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
 4. **Dismiss a refuted injection flag on Melian's own prompt text that only moved**: a `melian/injection-attempt` finding the verifier refuted, where every flagged line is Melian's own prompt or its instructions for reviewers and is identical to a line already on the default branch. The test is a comparison of text, never the coordinator's judgement of meaning: a flag on any line the change wrote or reworded stays the maintainer's. The maintainer ruled this on 2026-11-28, in the coordinator's session, after the first round on this decision's own pull request.
@@ -31,7 +31,7 @@ The coordinator may do these, and nothing else, in the maintainer's place:
 
 Every such act is posted beginning "Coordinator:", says which of these five it is, and never says the maintainer did it.
 
-Everything else stays the maintainer's. An acknowledge finding from a lens needs his read. A blocking finding from a lens needs a fix or his agreement to dismiss. A mutant that is not equivalent, an injection flag on any other text, and a new ruling are his. The override on a merge group's commit stays his.
+Everything else stays the maintainer's. A change to this decision is his to read. An acknowledge finding from a lens needs his read. A blocking finding from a lens needs a fix or his agreement to dismiss. A mutant that is not equivalent, an injection flag on any other text, and a new ruling are his. The override on a merge group's commit stays his.
 
 ## Why
 
