@@ -294,6 +294,21 @@ describe("reports of one claim", () => {
 			expect(after(lowered, { ...lowered })).toEqual(lowered);
 		});
 
+		it("keeps the standing report's own reason and evidence, and none of the other's", () => {
+			const at = (startLine: number) => [
+				{ file: "src/run.ts", startLine, role: "context" as const, revision: "head" as const, snippet: "run()" },
+			];
+			const weaker = { ...plausible, evidence: at(3) };
+			const stronger = { ...lowered, evidence: at(9) };
+			expect(after(weaker, stronger)).toEqual(stronger);
+			expect(after(stronger, weaker)).toEqual(stronger);
+			expect(after({ ...weaker, matches: { [id]: "different" } }, stronger)).toEqual({
+				...stronger,
+				matches: { [id]: "different" },
+			});
+			expect(after(weaker, lowered)).not.toHaveProperty("evidence");
+		});
+
 		it("says a refused report's different answers are recorded when the stored report holds them all", () => {
 			const stored = { ...verification, matches: { [id]: "different", [other]: "same" } } as const;
 			const prefix =
