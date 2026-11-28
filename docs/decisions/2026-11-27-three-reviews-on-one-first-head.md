@@ -12,7 +12,7 @@ Example: the maintainer's parity loop needed to know which defects each reviewer
 
 The three reviews run first on one commit: the first head the builder pushes with its gate green, or with CI green on it where the gate cannot run. The builder starts all three together, pushes no fix until all three have reported, and names the commit in its report as the first reviewed head.
 
-After that head nothing changes. Each fix pass gets a Melian round, and the rules for when Codex's review and the review of record run again stand.
+After that head, each fix pass gets a Melian round and nothing else. Codex's review and the review of record run once, on the first reviewed head. The maintainer ruled this on 2026-11-28, in the coordinator's session: "we've reached a level of recall that I'm satisfied with only using All 3 models for that first code review to build up our parity database. Following fixes, lets just use the melian review." The cost is accepted: no reviewer but Melian reads a fix commit, where Codex's review used to run after each fix pass and the review of record, running last, used to read most of them.
 
 After the merge, the coordinator has a Sonnet agent draft the pull request's defect list for its comparison record: each distinct finding a reviewer raised on the first reviewed head, who raised it, and the commit that answered it or the builder's reply disputing it. The draft is evidence for adjudication, never the adjudication. Each finding is still judged valid, noise or duplicate as [the evals guideline](../guidelines/evals.md#comparisons) sets out, and [the shadow retirement rule](2026-10-06-shadow-retirement-merged-window.md) counts what it counted before: this decision changes neither.
 
