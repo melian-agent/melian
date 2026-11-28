@@ -284,6 +284,22 @@ describe("reports of one claim", () => {
 			expect(answers(verification, lowered)).toEqual(verification);
 		});
 
+		it("keeps a weaker stored report whole under a refused stronger one, adding only its different answer", () => {
+			const stored = {
+				...plausible,
+				lowered: { from: "P1", to: "P2", reason: "One caller." },
+				evidence: [{ file: "src/a.ts", startLine: 1, role: "cause", revision: "head", snippet: "x" }],
+				matches: { [id]: "same" },
+			} as const;
+			const report = {
+				...verification,
+				reason: "Read further.",
+				lowered: { from: "P1", to: "P2", reason: "No head lines." },
+				matches: { [id]: "different" },
+			} as const;
+			expect(new VerificationRecord(stored).answers(report)).toEqual({ ...stored, matches: { [id]: "different" } });
+		});
+
 		it("records a different answer the first report did not give", () => {
 			expect(refusal(verification, { ...plausible, matches: { [id]: "different" } })).toBeUndefined();
 			expect(after(verification, { ...plausible, matches: { [id]: "different" } })).toEqual({
