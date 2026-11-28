@@ -1058,26 +1058,26 @@ export async function upsertVerification(
 	id: string,
 	source: FindingSource,
 	verification: Verification,
-): Promise<Verification> {
+): Promise<void> {
 	const state = await tx.doc(FindingsDocument, root);
 	const record = state.items[id];
 	const producer = producerKey(source);
 	if (record?.sightings[revision]?.[producer] === undefined) throw new Error("the claim no longer has a sighting");
 	const before = record.verifications?.[revision]?.[producer] ?? {};
 	const previous = before[verification.version];
-	// Runs in the report's commit, replay included, so a later equal report never weakens a stored one.
-	const kept = new VerificationRecord(previous).after(verification);
-	if (JSON.stringify(previous) === JSON.stringify(kept)) return kept;
+	// Runs in the report's commit, so a refused report writes nothing, and a replay finds its own report stored.
+	const refusal = new VerificationRecord(previous).refusal(verification);
+	if (refusal !== undefined) throw new Error(refusal);
+	if (JSON.stringify(previous) === JSON.stringify(verification)) return;
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
 		[revision]: {
 			...record.verifications?.[revision],
-			[producer]: { ...rest, [verification.version]: kept },
+			[producer]: { ...rest, [verification.version]: verification },
 		},
 	};
 	bump(state, [revision]);
-	return kept;
 }
 
 export async function sightingVerification(

@@ -1255,6 +1255,11 @@ export const reportVerdict = defineTool({
 		const prepared = args as ReportVerdictInput;
 		if (prepared.verdict === "refuted" && (prepared.evidence?.length ?? 0) === 0)
 			throw new Error("a refuted verdict requires evidence locations naming the code that prevents the failure");
+		// Refused before anything is stored, so the verifier can send the report again with the lines that narrow it.
+		if (prepared.lower !== undefined && !(prepared.evidence ?? []).some(({ revision }) => revision !== "base"))
+			throw new Error(
+				"a lowering requires evidence locations at the head naming the code that narrows the failure; nothing was recorded, so report this claim again with them, or without lower",
+			);
 		return prepared;
 	},
 	replay: "safe",
@@ -1328,7 +1333,7 @@ export const reportVerdict = defineTool({
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
-				const kept = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
+				await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
 					verdict: args.verdict,
 					reason: args.reason,
 					...(args.correction === undefined ? {} : { correction: args.correction }),
@@ -1341,17 +1346,11 @@ export const reportVerdict = defineTool({
 					version: lens.version,
 				});
 				if (args.lower === undefined) return [];
-				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
-				const stands = kept.lowered?.to ?? severity;
 				if (refusedLowering !== undefined)
 					return [
-						`lowering refused, and the claim stands at ${stands}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
+						`lowering refused, and the claim stands at ${severity}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
 					];
-				return [
-					kept.lowered === undefined
-						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`
-						: `lowered ${severity} to ${stands}`,
-				];
+				return [`lowered ${severity} to ${args.lower.severity}`];
 			}, context);
 			return text(JSON.stringify(evidence), (body) =>
 				[`recorded verdict for ${args.claim}`, ...notes, quoteUntrusted("evidence", body, review.nonce)].join("\n"),

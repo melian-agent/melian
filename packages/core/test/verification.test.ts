@@ -216,54 +216,44 @@ describe("reports of one claim", () => {
 		reason: "Narrow.",
 		lowered: { from: "P1", to: "P2", reason: "One caller." },
 	} as const;
-	const after = (stored: Verification | undefined, report: Verification) =>
-		new VerificationRecord(stored).after(report);
+	const plausible = { ...verification, verdict: "plausible", reason: "Needs a run." } as const;
+	const refuted = { ...verification, verdict: "refuted", reason: "A guard." } as const;
+	const refusal = (stored: Verification | undefined, report: Verification) =>
+		new VerificationRecord(stored).refusal(report);
 
-	it("takes the first report, and lets the stronger verdict win whole in either order", () => {
-		expect(after(undefined, lowered)).toEqual(lowered);
-		const plausible = { ...verification, verdict: "plausible" } as const;
-		expect(after(plausible, lowered)).toEqual(lowered);
-		expect(after(lowered, plausible)).toEqual(lowered);
-		const refuted = { ...verification, verdict: "refuted" } as const;
-		expect(after(refuted, plausible)).toEqual(plausible);
-		expect(after(plausible, refuted)).toEqual(plausible);
+	it("takes the first report, and the same report again, as a replay sends it", () => {
+		expect(refusal(undefined, lowered)).toBeUndefined();
+		expect(refusal(lowered, { ...lowered })).toBeUndefined();
 	});
 
-	it("keeps the higher severity on equal verdicts, in either order", () => {
-		expect(after(lowered, verification)).toEqual(verification);
-		expect(after(verification, lowered)).toEqual(verification);
+	it("takes a later report only at a stronger verdict", () => {
+		expect(refusal(plausible, lowered)).toBeUndefined();
+		expect(refusal(refuted, plausible)).toBeUndefined();
+		expect(refusal(refuted, verification)).toBeUndefined();
 	});
 
-	it("keeps the winning report whole, with its own reason and evidence and none of the other's", () => {
-		const at = (startLine: number) => [
-			{ file: "src/run.ts", startLine, role: "context" as const, revision: "head" as const, snippet: "run()" },
-		];
-		const plain = { ...verification, reason: "Other callers may come.", evidence: at(3) };
-		const narrowed = { ...lowered, evidence: at(9) };
-		expect(after(narrowed, plain)).toEqual(plain);
-		expect(after(plain, narrowed)).toEqual(plain);
-		const bare = { ...verification, reason: "No evidence cited." };
-		expect(after(narrowed, bare)).toEqual(bare);
-		expect(after(bare, narrowed)).not.toHaveProperty("evidence");
-		const stronger = { ...narrowed, verdict: "confirmed" } as const;
-		const weaker = { ...plain, verdict: "plausible" } as const;
-		expect(after(weaker, stronger)).toEqual(stronger);
-		expect(after(stronger, weaker)).toEqual(stronger);
+	it.each([
+		["an equal verdict with another reason", verification, { ...verification, reason: "Duplicate placeholder." }],
+		["an equal verdict that drops the lowering", lowered, verification],
+		["an equal verdict that adds a lowering", verification, lowered],
+		[
+			"an equal verdict with other sameness answers",
+			verification,
+			{ ...verification, matches: { "0123456789abcdef": "same" } },
+		],
+		["a weaker verdict", lowered, plausible],
+		["a refutation of a plausible claim", plausible, refuted],
+	] as const)("refuses %s, so the first report stands", (_, stored, report) => {
+		expect(refusal(stored, report)).toContain(`this claim is already judged ${stored.verdict}`);
 	});
 
-	it("takes a later report's sameness answers, whichever verdict wins", () => {
-		const root = "0123456789abcdef";
-		const first = { ...verification, matches: { [root]: "same" } } as const;
-		const later = { ...verification, verdict: "plausible", matches: { [root]: "different" } } as const;
-		expect(after(first, later)).toEqual({ ...first, matches: { [root]: "different" } });
-		expect(after(first, verification)).toStrictEqual(verification);
-	});
-
-	it("lets a later equal report that weakens nothing replace the reason", () => {
-		const again = { ...lowered, reason: "Narrow, again." };
-		expect(after(lowered, again)).toEqual(again);
-		const plain = { ...verification, reason: "Traced again." };
-		expect(after(verification, plain)).toEqual(plain);
+	it("names the stored lowering in the refusal", () => {
+		expect(refusal(lowered, verification)).toBe(
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+		);
+		expect(refusal(verification, lowered)).toBe(
+			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+		);
 	});
 });
 

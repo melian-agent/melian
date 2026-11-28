@@ -122,21 +122,16 @@ export class VerificationRecord {
 	}
 
 	/**
-	 * The record after `report` arrives. The stronger verdict wins whole. On equal verdicts the record keeps the higher
-	 * severity, with the reason and evidence of the report that gave it, so a later equal report never weakens a stored
-	 * one, in either order. Sameness answers are the latest report's, since each one answers every dismissed finding.
+	 * Why `report` cannot follow the stored report of its claim, or `undefined` when it may: none is stored, `report` is
+	 * the stored report again, as a replay sends it, or its verdict is stronger. Otherwise the first report stands whole,
+	 * so a second call cannot overwrite its reason or undo its lowering.
 	 */
-	after(report: Verification): Verification {
-		const kept = this.#stronger(report);
-		return report.matches === undefined ? kept : { ...kept, matches: report.matches };
-	}
-
-	#stronger(report: Verification): Verification {
+	refusal(report: Verification): string | undefined {
 		const { stored } = this;
-		if (stored === undefined) return report;
-		if (verdictStrength[stored.verdict] !== verdictStrength[report.verdict])
-			return verdictStrength[stored.verdict] > verdictStrength[report.verdict] ? stored : report;
-		return stored.lowered === undefined && report.lowered !== undefined ? stored : report;
+		if (stored === undefined || JSON.stringify(stored) === JSON.stringify(report)) return undefined;
+		if (verdictStrength[report.verdict] > verdictStrength[stored.verdict]) return undefined;
+		const lowered = stored.lowered === undefined ? "" : `, lowered ${stored.lowered.from} to ${stored.lowered.to}`;
+		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason`;
 	}
 }
 
