@@ -2257,6 +2257,29 @@ describe("lowering a severity through report_verdict", () => {
 		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
 	});
 
+	// Issue #657: on pull request #597 a verifier's second call for one claim stored "Duplicate placeholder".
+	it("keeps a claim's first reason when the verifier reports the claim again at the same verdict", async () => {
+		reporting([
+			{ reason: "Traced the null through both callers." },
+			{ reason: "Duplicate placeholder; see the lowered report." },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties.verification?.reason).toBe("Traced the null through both callers.");
+	});
+
+	it("keeps a claim's first lowering when the verifier reports the claim again unlowered at the same verdict", async () => {
+		reporting([
+			{ reason: "Traced it; the caller narrows it.", evidence: cited, lower: narrow },
+			{ reason: "Duplicate placeholder; see the lowered report." },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(findings[0]!.properties.verification).toMatchObject({
+			reason: "Traced it; the caller narrows it.",
+			lowered: { from: "P1", to: "P2", reason: narrow.reason },
+		});
+	});
+
 	it("reads the table in force at the finding's own path for the fence, not the root's", async () => {
 		writeFileSync(join(repo, "src", "melian.yaml"), "resolution:\n  P2: silent\n");
 		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: cited, lower: narrow });
