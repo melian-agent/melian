@@ -1050,7 +1050,7 @@ export async function clearVerifications(
 	if (cleared) bump(state, [revision]);
 }
 
-// Returns the record the claim holds once `verification` has met any stored one, which may be the stored one.
+// Throws, writing nothing, when `verification` cannot follow the claim's stored report.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
