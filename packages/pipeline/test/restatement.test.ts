@@ -825,6 +825,53 @@ describe("a dismissal carrying to a restatement", () => {
 		expect(state!.inherited?.[Revision.key(await revision())]).toBeUndefined();
 	});
 
+	// Pull request #658's round: under the first-report rule a verifier could not take back a same answer.
+	it("leaves a restatement live when the verifier answers same and then different at the same verdict", async () => {
+		await dismissedRoot();
+		pushElsewhere("other");
+		const reports = (messages: Messages) =>
+			messages.filter(
+				(message) =>
+					message.role === "assistant" &&
+					message.content.some((block) => block.type === "toolCall" && block.name === "report_verdict"),
+			).length;
+		const firstRequest = (messages: Messages) =>
+			messages.filter((message) => message.role !== "assistant" && message.role !== "toolResult");
+		// Answers every dismissed finding with `answer`, as a fresh call does, with the tool results left out.
+		const verdicts = (messages: Messages, answer: string, reason: string) => {
+			const prompt = systemPromptOf(messages);
+			const dismissed = [...prompt.matchAll(/Dismissed d1 finding ([0-9a-f]{16})/g)].map((m) => [m[1]!, answer]);
+			const claims = [...prompt.matchAll(/Claim c[1-9][0-9]* finding ([0-9a-f]+)/g)].map((m) => m[1]!);
+			const matches = Object.fromEntries(dismissed) as Record<string, "same" | "different">;
+			return Object.fromEntries(claims.map((id) => [id, { verdict: "confirmed" as const, reason, matches }]));
+		};
+		const verify = (messages: Messages) => {
+			if (reports(messages) === 0) return scriptVerifier(messages, verdicts(messages, "same", "The same defect."));
+			if (reports(messages) === 1)
+				return scriptVerifier(firstRequest(messages), verdicts(messages, "different", "It fails on another path."));
+			return fauxAssistantMessage("Done.");
+		};
+		const requests = scriptConversations(fake, [
+			{ match: correctness, replies: [report(restatement), fauxAssistantMessage("Done.")] },
+			{ match: contracts, replies: [fauxAssistantMessage("Done.")] },
+			{ match: verifierMarker, replies: [verify, verify, verify, verify] },
+		]);
+		const second = await review();
+		expect(second.verdict.attention()).toHaveLength(1);
+		expect(second.verdict.dismissed).toEqual([]);
+		const state = await harness.snapshot(FindingsDocument, (await harness.root(context)).id, context);
+		expect(state!.inherited?.[Revision.key(await revision())]).toBeUndefined();
+		expect(second.verdict.attention()[0]!.properties.verification?.reason).toBe("The same defect.");
+		const results = requests[verifierMarker]!.flat()
+			.filter((message) => message.role === "toolResult")
+			.map(textOf);
+		expect(results).toContainEqual(
+			expect.stringMatching(
+				/^recorded verdict for c1\nonly its "different" sameness answers were kept: this claim is already judged at an equal or stronger verdict, so the first report stands with its reason\n/,
+			),
+		);
+	});
+
 	it("only proposes a P1 restatement of a root dismissed at the P2 it was lowered to", async () => {
 		const lowering = (messages: Messages) => {
 			const [id] = [...systemPromptOf(messages).matchAll(/Claim c1 finding ([0-9a-f]+)/g)].map((m) => m[1]!);

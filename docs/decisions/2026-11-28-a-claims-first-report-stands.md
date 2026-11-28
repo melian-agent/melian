@@ -1,14 +1,16 @@
 # A claim's first report stands unless a stronger verdict follows
 
-Status: agreed by the maintainer on 2026-11-28, in the coordinator's session ("agree to both changes"), for [issue #657](https://github.com/melian-agent/melian/issues/657).
+Status: agreed by the maintainer on 2026-11-28, in the coordinator's session ("agree to both changes"), for [issue #657](https://github.com/melian-agent/melian/issues/657). Its rule that `different` wins was ruled by the maintainer on 2026-11-28, in the coordinator's session ("A").
 
 Amends: [2026-10-13-re-scope-held-for-the-compiler.md](2026-10-13-re-scope-held-for-the-compiler.md), its sections "What survives: conflicting reports" and "Goldens", for the conflicting reports and the lowering refused for want of evidence
 Amends: [2026-11-08-restore-verifier-clauses.md](2026-11-08-restore-verifier-clauses.md), the strongest-verdict rule it restores from the verifier task-scope and conflicting-reports decisions
+Amends: [2026-11-08-dismissal-carries-to-restatement.md](2026-11-08-dismissal-carries-to-restatement.md), for which of a claim's reports gives the sameness answer that decides inheritance
 
 Choice:
 
-1. `report_verdict` refuses a second report of a claim unless its verdict is stronger than the stored one. A replay of the stored report is taken. Otherwise the first report stands whole: its reason, its evidence, its sameness answers and its lowering. A stronger later verdict still replaces the first report whole, its lowering included, as before. The refusal says which verdict is stored and any lowering it holds.
-2. `report_verdict` refuses a lowering with no evidence location at the head before anything is stored, and says that nothing was recorded, so the verifier can send the report again with evidence, or without the lowering.
+1. `report_verdict` refuses a second report of a claim unless its verdict is stronger than the stored one. A replay of the stored report is taken. Otherwise the first report stands: its reason, its evidence, its sameness answers and its lowering. A stronger later verdict still replaces the first report, its lowering included, as before. The refusal says which verdict is stored and any lowering it holds.
+2. A sameness answer of `different`, from any report of the claim, wins over `same`, so an answer may move from same to different and never back. A later report at an equal or weaker verdict that answers `different` where the stored report did not is taken for that answer alone, and the tool says so; the rest of the first report stands. A stronger report that answers `same` where a stored report answered `different` keeps `different`. The maintainer ruled this on 2026-11-28, in the coordinator's session ("A"), on the round's finding that a first `same` could not be taken back.
+3. `report_verdict` refuses a lowering with no evidence location at the head before anything is stored, and says that nothing was recorded, so the verifier can send the report again with evidence, or without the lowering.
 
 The old rule is replaced. Under it, a later report at an equal verdict replaced the stored one whole when it was unlowered, so it could undo a lowering and overwrite the reason. It was written for a second judgement of the claim, and it was being met by placeholders.
 
@@ -24,6 +26,7 @@ Example: on [pull request #597](https://github.com/melian-agent/melian/pull/597)
 
 - The first report is the verifier's judgement. A second call at the same verdict adds no judgement, and keeping the first is the only way its reason survives. A stronger verdict is a changed judgement and still wins, so a verifier that read further and found the claim real can say so.
 - A refused lowering used to arrive only in the answer, after the unlowered report was stored, and then rule 1 would keep that unlowered report. Refusing before the write keeps the verifier's one report a fair one: it learns what is missing while it can still send it.
+- `different` wins because a `same` answer carries a human's dismissal to a live finding and takes it out of the blocking set. Under the first rule alone, a verifier that answered `same`, read further and answered `different` could not undo the first answer, and at confirmed nothing could: the finding inherited the dismissal against the verifier's last judgement. Letting `different` win keeps [the dismissal decision](2026-11-08-dismissal-carries-to-restatement.md)'s fail-closed path, where a `different` answer leaves the finding live. A `same` after a `different` still cannot carry the dismissal.
 - The verifier still cannot lower by a second call at the same verdict, which [the re-scope decision](2026-10-13-re-scope-held-for-the-compiler.md) required: that call is refused now, where before it lost to the stored unlowered report.
 
 ## What this gives up

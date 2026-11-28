@@ -247,12 +247,70 @@ describe("reports of one claim", () => {
 		expect(refusal(stored, report)).toContain(`this claim is already judged ${stored.verdict}`);
 	});
 
+	describe("sameness answers", () => {
+		const id = "0123456789abcdef";
+		const other = "fedcba9876543210";
+		const after = (stored: Verification | undefined, report: Verification) =>
+			new VerificationRecord(stored).after(report);
+		const whole = (stored: Verification | undefined, report: Verification) =>
+			new VerificationRecord(stored).whole(report);
+
+		it("keeps the first report whole, and only a later different answer, at an equal or weaker verdict", () => {
+			const stored = { ...lowered, matches: { [id]: "same", [other]: "same" } } as const;
+			for (const report of [
+				{ ...verification, reason: "Another path.", matches: { [id]: "different", [other]: "same" } },
+				{ ...refuted, matches: { [id]: "different" } },
+			] as const) {
+				expect(refusal(stored, report)).toBeUndefined();
+				expect(whole(stored, report)).toBe(false);
+				expect(after(stored, report)).toEqual({ ...lowered, matches: { [id]: "different", [other]: "same" } });
+			}
+		});
+
+		it("records a different answer the first report did not give", () => {
+			expect(refusal(verification, { ...plausible, matches: { [id]: "different" } })).toBeUndefined();
+			expect(after(verification, { ...plausible, matches: { [id]: "different" } })).toEqual({
+				...verification,
+				matches: { [id]: "different" },
+			});
+		});
+
+		it("keeps a stored different answer under a stronger report that answers same", () => {
+			const stored = { ...plausible, matches: { [id]: "different", [other]: "same" } } as const;
+			const report = { ...verification, matches: { [id]: "same", [other]: "same" } } as const;
+			expect(whole(stored, report)).toBe(true);
+			const kept = after(stored, report);
+			expect(kept).toEqual({ ...verification, matches: { [id]: "different", [other]: "same" } });
+			expect(refusal(kept, report)).toBeUndefined();
+			expect(whole(kept, report)).toBe(true);
+			expect(after(kept, report)).toEqual(kept);
+		});
+
+		it("takes a stronger or first report as it is when no different answer is stored", () => {
+			expect(after(undefined, lowered)).toEqual(lowered);
+			expect(after(plausible, lowered)).toEqual(lowered);
+			expect(after({ ...plausible, matches: { [id]: "same" } }, lowered)).toEqual(lowered);
+			expect(after(lowered, { ...lowered })).toEqual(lowered);
+		});
+
+		it.each([
+			["a same answer over a stored different", { [id]: "different" }, { [id]: "same" }],
+			["a different answer already stored", { [id]: "different" }, { [id]: "different" }],
+			["a new same answer", undefined, { [id]: "same" }],
+		] as const)("refuses %s at an equal verdict", (_, stored, report) => {
+			const first = stored === undefined ? verification : { ...verification, matches: stored };
+			expect(refusal(first, { ...verification, reason: "Again.", matches: report })).toContain(
+				"this claim is already judged confirmed",
+			);
+		});
+	});
+
 	it("names the stored lowering in the refusal", () => {
 		expect(refusal(lowered, verification)).toBe(
-			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
 		expect(refusal(verification, lowered)).toBe(
-			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
 	});
 });

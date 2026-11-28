@@ -1050,7 +1050,8 @@ export async function clearVerifications(
 	if (cleared) bump(state, [revision]);
 }
 
-// Throws, writing nothing, when `verification` cannot follow the claim's stored report.
+// Throws, writing nothing, when `verification` cannot follow the claim's stored report. False when only its `different`
+// sameness answers were kept.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
@@ -1058,7 +1059,7 @@ export async function upsertVerification(
 	id: string,
 	source: FindingSource,
 	verification: Verification,
-): Promise<void> {
+): Promise<boolean> {
 	const state = await tx.doc(FindingsDocument, root);
 	const record = state.items[id];
 	const producer = producerKey(source);
@@ -1066,18 +1067,21 @@ export async function upsertVerification(
 	const before = record.verifications?.[revision]?.[producer] ?? {};
 	const previous = before[verification.version];
 	// Runs in the report's commit, so a refused report writes nothing, and a replay finds its own report stored.
-	const refusal = new VerificationRecord(previous).refusal(verification);
+	const stored = new VerificationRecord(previous);
+	const refusal = stored.refusal(verification);
 	if (refusal !== undefined) throw new Error(refusal);
-	if (JSON.stringify(previous) === JSON.stringify(verification)) return;
+	const kept = stored.after(verification);
+	if (JSON.stringify(previous) === JSON.stringify(kept)) return stored.whole(verification);
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
 		[revision]: {
 			...record.verifications?.[revision],
-			[producer]: { ...rest, [verification.version]: verification },
+			[producer]: { ...rest, [verification.version]: kept },
 		},
 	};
 	bump(state, [revision]);
+	return stored.whole(verification);
 }
 
 export async function sightingVerification(

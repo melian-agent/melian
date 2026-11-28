@@ -1333,7 +1333,7 @@ export const reportVerdict = defineTool({
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
-				await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
+				const whole = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
 					verdict: args.verdict,
 					reason: args.reason,
 					...(args.correction === undefined ? {} : { correction: args.correction }),
@@ -1345,6 +1345,10 @@ export const reportVerdict = defineTool({
 					model: lens.model!,
 					version: lens.version,
 				});
+				if (!whole)
+					return [
+						'only its "different" sameness answers were kept: this claim is already judged at an equal or stronger verdict, so the first report stands with its reason',
+					];
 				if (args.lower === undefined) return [];
 				if (refusedLowering !== undefined)
 					return [

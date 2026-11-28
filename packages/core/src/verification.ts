@@ -122,18 +122,51 @@ export class VerificationRecord {
 	}
 
 	/**
-	 * Why `report` cannot follow the stored report of its claim, or `undefined` when it may: none is stored, `report` is
-	 * the stored report again, as a replay sends it, or its verdict is stronger. Otherwise the first report stands whole,
-	 * so a second call cannot overwrite its reason or undo its lowering.
+	 * Whether `report` replaces the stored report: none is stored, `report` is it again, as a replay sends it, or its
+	 * verdict is stronger.
+	 */
+	whole(report: Verification): boolean {
+		const { stored } = this;
+		return (
+			stored === undefined ||
+			JSON.stringify(stored) === JSON.stringify(withDifferent(report, stored)) ||
+			verdictStrength[report.verdict] > verdictStrength[stored.verdict]
+		);
+	}
+
+	/**
+	 * Why `report` cannot follow the stored report of its claim, or `undefined` when it may: it replaces the stored
+	 * report, or it answers `different` for a dismissed finding the stored report did not. Otherwise the first report
+	 * stands, so a second call cannot overwrite its reason or undo its lowering.
 	 */
 	refusal(report: Verification): string | undefined {
 		const { stored } = this;
-		if (stored === undefined || JSON.stringify(stored) === JSON.stringify(report)) return undefined;
-		if (verdictStrength[report.verdict] > verdictStrength[stored.verdict]) return undefined;
+		if (stored === undefined || this.whole(report)) return undefined;
+		if (
+			Object.entries(report.matches ?? {}).some(
+				([id, answer]) => answer === "different" && stored.matches?.[id] !== "different",
+			)
+		)
+			return undefined;
 		const lowered = stored.lowered === undefined ? "" : `, lowered ${stored.lowered.from} to ${stored.lowered.to}`;
-		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason`;
+		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason`;
+	}
+
+	/**
+	 * The record that stands once `refusal` takes `report`: `report` when it replaces the stored report, and the stored
+	 * report otherwise. A `different` sameness answer from either wins, so no report takes one back.
+	 */
+	after(report: Verification): Verification {
+		const { stored } = this;
+		if (stored === undefined) return report;
+		return this.whole(report) ? withDifferent(report, stored) : withDifferent(stored, report);
 	}
 }
+
+const withDifferent = (kept: Verification, other: Verification): Verification => {
+	const different = Object.entries(other.matches ?? {}).filter(([, answer]) => answer === "different");
+	return different.length === 0 ? kept : { ...kept, matches: { ...kept.matches, ...Object.fromEntries(different) } };
+};
 
 /** The questions both verification executors answer for each claim. */
 export const verificationQuestions: readonly ChoiceQuestion[] = [

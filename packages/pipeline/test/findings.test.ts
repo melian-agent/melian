@@ -1261,6 +1261,24 @@ describe("lowered sightings", () => {
 		}
 	});
 
+	it("takes a later different sameness answer over a stored same, at an equal verdict, and never takes it back", async () => {
+		const dismissed = "0123456789abcdef";
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, { ...lowered, matches: { [dismissed]: "same" } });
+		const correction = { ...record, reason: "Another path.", matches: { [dismissed]: "different" } } as const;
+		await expect(judge(root, correction)).resolves.toBe(false);
+		const kept = { ...lowered, matches: { [dismissed]: "different" } };
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(kept);
+		const version = await findingsVersion(harness, root.id, "rev1", context);
+		await expect(judge(root, { ...lowered, matches: { [dismissed]: "same" } })).resolves.toBe(true);
+		await expect(
+			judge(root, { ...lowered, reason: "Same after all.", matches: { [dismissed]: "same" } }),
+		).rejects.toThrow("this claim is already judged confirmed");
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(kept);
+	});
+
 	it("keeps the acknowledgement of a pre-existing finding at the next revision, so a preExisting cap asks once", async () => {
 		const { harness, root } = await open(createMemoryStorage());
 		const old = Finding.create({ ...input, severity: "P0", cause: "pre-existing", resolution: undefined });

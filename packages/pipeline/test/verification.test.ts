@@ -2189,7 +2189,7 @@ describe("lowering a severity through report_verdict", () => {
 		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
 		expect(findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(resultOf(requests)).toContain(
-			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
 		expect(resultOf(requests)).not.toContain("recorded verdict");
 	});
@@ -2297,7 +2297,7 @@ describe("lowering a severity through report_verdict", () => {
 		expect(findings[0]!.properties.severity).toBe("P1");
 		expect(findings[0]!.properties.verification).not.toHaveProperty("lowered");
 		expect(resultOf(requests)).toContain(
-			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict, so the first report stands with its reason",
+			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
 		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
 	});
