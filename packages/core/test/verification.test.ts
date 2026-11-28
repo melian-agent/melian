@@ -257,10 +257,11 @@ describe("reports of one claim", () => {
 
 		it("keeps the first report whole, and only a later different answer, at an equal or weaker verdict", () => {
 			const stored = { ...lowered, matches: { [id]: "same", [other]: "same" } } as const;
-			for (const report of [
+			const reports: Verification[] = [
 				{ ...verification, reason: "Another path.", matches: { [id]: "different", [other]: "same" } },
 				{ ...refuted, matches: { [id]: "different" } },
-			] as const) {
+			];
+			for (const report of reports) {
 				expect(refusal(stored, report)).toBeUndefined();
 				expect(whole(stored, report)).toBe(false);
 				expect(after(stored, report)).toEqual({ ...lowered, matches: { [id]: "different", [other]: "same" } });
