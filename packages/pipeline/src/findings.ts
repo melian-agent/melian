@@ -1050,7 +1050,8 @@ export async function clearVerifications(
 	if (cleared) bump(state, [revision]);
 }
 
-// Returns the record the claim holds once `verification` has met any stored one, which may be the stored one.
+// Throws, writing nothing, when `verification` cannot follow the claim's stored report. False when only its `different`
+// sameness answers were kept. `answersOnly` keeps only those, refuses nothing, and its caller reads no answer.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
@@ -1058,16 +1059,20 @@ export async function upsertVerification(
 	id: string,
 	source: FindingSource,
 	verification: Verification,
-): Promise<Verification> {
+	answersOnly = false,
+): Promise<boolean> {
 	const state = await tx.doc(FindingsDocument, root);
 	const record = state.items[id];
 	const producer = producerKey(source);
 	if (record?.sightings[revision]?.[producer] === undefined) throw new Error("the claim no longer has a sighting");
 	const before = record.verifications?.[revision]?.[producer] ?? {};
 	const previous = before[verification.version];
-	// Runs in the report's commit, replay included, so a later equal report never weakens a stored one.
-	const kept = new VerificationRecord(previous).after(verification);
-	if (JSON.stringify(previous) === JSON.stringify(kept)) return kept;
+	// Runs in the report's commit, so a refused report writes nothing, and a replay finds its own report stored.
+	const stored = new VerificationRecord(previous);
+	const refusal = answersOnly ? undefined : stored.refusal(verification);
+	if (refusal !== undefined) throw new Error(refusal);
+	const kept = answersOnly ? stored.answers(verification) : stored.after(verification);
+	if (kept === undefined || JSON.stringify(previous) === JSON.stringify(kept)) return stored.whole(verification);
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
@@ -1077,7 +1082,7 @@ export async function upsertVerification(
 		},
 	};
 	bump(state, [revision]);
-	return kept;
+	return stored.whole(verification);
 }
 
 export async function sightingVerification(

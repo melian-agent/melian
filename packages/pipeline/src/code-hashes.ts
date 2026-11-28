@@ -118,7 +118,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/triage.ts": "0ba40a436bf9c621eb93ded35bcd9b8b80da65ac65894e3610b6925f6db03beb",
 
-	"packages/core/src/verification.ts": "9e476b273834ee99fb8fe395417f74521351e6ddfc9a33b8f4383517a75acddc",
+	"packages/core/src/verification.ts": "42578d80e5328f58b738f93ffb48dfb578477688c9fcf697bf7d94dd6a59a2f9",
 
 	"packages/decisions/src/decision-files-error.ts": "d0d4c6bc8ed5dc1905f241bc85a19d20550857277f8fb7e33f452bb40bf92772",
 
@@ -162,7 +162,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/errors.ts": "62f87457efc1a4a2cae468ee9cfc08991a42d6e9789960ae3da799ace7f3437f",
 
-	"packages/pipeline/src/findings.ts": "b42e3492a37248c74744edf4c6fe1852c14454d232a19af4be39756f03c0ca9f",
+	"packages/pipeline/src/findings.ts": "1f0fb423a6e913e00fbb632f3fc5c3466b8dfa24ef3c51c375142c0d22e4f4bd",
 
 	"packages/pipeline/src/graph-cache.ts": "e1e730c5a1f86852d9159f67664b36abc5fc69fad4c9bf56595e99289d194039",
 
@@ -174,7 +174,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/installed-version.ts": "5ed4bb5a70f85509a7e5fc0c91434a1810c2139d448878caae41336152ca4b46",
 
-	"packages/pipeline/src/lens-tools.ts": "668c2f779f7ccc9d696e0fb2f34c08cd4129b9c8ac0dd7e3808567e611a6238a",
+	"packages/pipeline/src/lens-tools.ts": "c8884f8fd921147ce3bdd3bd41ff78fe1436728106ff2003f6e5d0c9f32accf8",
 
 	"packages/pipeline/src/link-dependencies.ts": "81e454dfff8c83528569ad7da7da8172c0f5c64db3ed8f45d77121c2fcff39b2",
 

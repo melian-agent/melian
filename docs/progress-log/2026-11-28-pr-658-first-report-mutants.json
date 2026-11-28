@@ -1,0 +1,1002 @@
+{
+	"melianMutants": 2,
+	"range": {
+		"base": "f152c74dc2a12ea5fe10189d0d983af8bd2a71cc",
+		"head": "2947dccb00bd199c86ab9c79450d491651ff5070"
+	},
+	"claimsIn": [
+		"packages/core/src/verification.ts",
+		"packages/pipeline/src/findings.ts",
+		"packages/pipeline/src/lens-tools.ts"
+	],
+	"adapters": [
+		{
+			"name": "typescript",
+			"version": "1",
+			"toolVersion": "10.0.0",
+			"source": "checkout"
+		}
+	],
+	"installation": "699b038a2ae5c4b93c7c931c3bc812dac0354a60bddc869a73b767216eafcd77",
+	"mutants": [
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 6,
+			"endLine": 131,
+			"endColumn": 79,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "47207276867b3a709b64b0ee40bdad16a904fe4bb2302697970b1557aa14c26e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"refuses an equal verdict with another reason, so the first report stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 6,
+			"endLine": 131,
+			"endColumn": 79,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "44d995a727767bbcba33ef4d5ff796ce1209d19faa95d515b580bec3385e14c1",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes the first report, and the same report again, as a replay sends it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 6,
+			"endLine": 131,
+			"endColumn": 79,
+			"mutatorName": "LogicalOperator",
+			"replacement": "stored === undefined && JSON.stringify(stored) === JSON.stringify(report)",
+			"status": "generated",
+			"id": "52f90164b41b4470d3c9d2c4c98fd329059060ade34aec8712598821b64aec74",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes the first report, and the same report again, as a replay sends it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 6,
+			"endLine": 131,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "e5f143af43f4e071afb2dd26ce4f0ddacbfe8de360df58e1b61d80deea9c496c",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes the first report, and the same report again, as a replay sends it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 6,
+			"endLine": 131,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stored !== undefined",
+			"status": "generated",
+			"id": "7ced2d49b08f3fa3a8b1497b6a84571de7d18fe1b995cd756fba5104eb31cd04",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes the first report, and the same report again, as a replay sends it"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 30,
+			"endLine": 131,
+			"endColumn": 79,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "c49326f1aa2d52139c6f619971abef79fc046507b01be75a16d765142ba96f17",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes the first report, and the same report again, as a replay sends it"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 131,
+			"column": 30,
+			"endLine": 131,
+			"endColumn": 79,
+			"mutatorName": "EqualityOperator",
+			"replacement": "JSON.stringify(stored) !== JSON.stringify(report)",
+			"status": "generated",
+			"id": "90f9b6b51e78d9c8a2c813bce65599a7e1148ef7fd5b0cf0195d047e3e2514d8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"refuses an equal verdict with another reason, so the first report stands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 132,
+			"column": 6,
+			"endLine": 132,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "5da6cd6e64bd91cdc2e65edff785fe1503577d98ec1fe9504d765d18f86eff7a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"refuses an equal verdict with another reason, so the first report stands"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 132,
+			"column": 6,
+			"endLine": 132,
+			"endColumn": 71,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9e5e7d9f60e1160741b46e56e6b2227e2f3e28a71fe2b6c22d40ea86c02a0cef",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes a later report only at a stronger verdict"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 132,
+			"column": 6,
+			"endLine": 132,
+			"endColumn": 71,
+			"mutatorName": "EqualityOperator",
+			"replacement": "verdictStrength[report.verdict] >= verdictStrength[stored.verdict]",
+			"status": "generated",
+			"id": "2fb1870810d9a56d60bc979b36ffb3c6b15dd795813b53b6f4e72b2624b2e0ad",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"refuses an equal verdict with another reason, so the first report stands"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 132,
+			"column": 6,
+			"endLine": 132,
+			"endColumn": 71,
+			"mutatorName": "EqualityOperator",
+			"replacement": "verdictStrength[report.verdict] <= verdictStrength[stored.verdict]",
+			"status": "generated",
+			"id": "25dd1fd8faaf24014ea8fd6d217d27d3870fae4f4b5eed5952d150b0d984684e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"takes a later report only at a stronger verdict"
+					]
+				}
+			},
+			"survivorClasses": [
+				"numeric-bound"
+			]
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 133,
+			"column": 18,
+			"endLine": 133,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "40e4266ff43e49366840e4db28d02bfaa20ee05ba30880eadafb853fd78c63ca",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"names the stored lowering in the refusal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 133,
+			"column": 18,
+			"endLine": 133,
+			"endColumn": 46,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b8097b99693298add439cc14e5b9c79443b5099ef370ab712cbb3362bf1652d3",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"names the stored lowering in the refusal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 133,
+			"column": 18,
+			"endLine": 133,
+			"endColumn": 46,
+			"mutatorName": "EqualityOperator",
+			"replacement": "stored.lowered !== undefined",
+			"status": "generated",
+			"id": "5af62d05a539293cb3eb0a1b758328352e54ca9c3a41d570f8b7601286725f53",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/core/test/verification.test.ts",
+					"path": [
+						"reports of one claim",
+						"names the stored lowering in the refusal"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 133,
+			"column": 49,
+			"endLine": 133,
+			"endColumn": 51,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"Stryker was here!\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "9583510f39064ba80d5de8e0fd683fc6097594e0cd2af55cb36058ae6043afec"
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 133,
+			"column": 54,
+			"endLine": 133,
+			"endColumn": 112,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "db67a6151e2ad5c31e74417aca92ac8831813998ad9aa3cd5af80177611cde96"
+		},
+		{
+			"file": "packages/core/src/verification.ts",
+			"line": 134,
+			"column": 9,
+			"endLine": 134,
+			"endColumn": 173,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "b09e6b46f899c0816fcb892bad960f144b0ee74ab553588a40cf2a210f99b94b"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 121,
+			"column": 38,
+			"endLine": 121,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "2f91e7c3b3ec4148f63a669ca035941cf619057ad9b61656b070311f51e3c46e"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 165,
+			"column": 38,
+			"endLine": 165,
+			"endColumn": 104,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "781392b42c069a820285782cc135b9bef50c3f2a40c51d22b9cbf7049698139d"
+		},
+		{
+			"file": "packages/pipeline/src/code-hashes.ts",
+			"line": 177,
+			"column": 40,
+			"endLine": 177,
+			"endColumn": 106,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "0cc4680e302b8312963696b39f941fb8b602dce5b655c4c46decd0c708360293"
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1070,
+			"column": 5,
+			"endLine": 1070,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "16e05adf639ccfcf65f0bfc5b64e96725a475974976c0afe9df56c30c38486ae",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1070,
+			"column": 5,
+			"endLine": 1070,
+			"endColumn": 26,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "7103b37922c1569a0a94d543c446b68693971bb1674592415e464e40f8d5da46",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a weaker later report, and keeps the first report's lowering"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1070,
+			"column": 5,
+			"endLine": 1070,
+			"endColumn": 26,
+			"mutatorName": "EqualityOperator",
+			"replacement": "refusal === undefined",
+			"status": "generated",
+			"id": "3b35f6158f087a2fb0043001c3b79fdfe2e233742b2ee22f81bf833dc094e8a4",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1070,
+			"column": 28,
+			"endLine": 1070,
+			"endColumn": 53,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "cfe57f3f83af112053390b9b701119baa785a3d558c983c7b26a6f32c99bb59a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a weaker later report, and keeps the first report's lowering"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1071,
+			"column": 5,
+			"endLine": 1071,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6a0379df7d0d134c5e346299786aab7fe07cd40796ff597f447fcebb205c9b4f",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lets a stronger later verdict replace the first report whole, its lowering included"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1071,
+			"column": 5,
+			"endLine": 1071,
+			"endColumn": 62,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "b0232c33f74f2d2cb2a50efea284fa03aa6d58bdf9308fef5521891b5418ce51",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/findings.test.ts",
+					"path": [
+						"lowered sightings",
+						"keeps a claim's first report when an equal report disagrees, in either order, and takes its replay"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1071,
+			"column": 5,
+			"endLine": 1071,
+			"endColumn": 62,
+			"mutatorName": "EqualityOperator",
+			"replacement": "JSON.stringify(previous) !== JSON.stringify(verification)",
+			"status": "generated",
+			"id": "07140852f3135a44bc66e152b207c1df52ba085f877b92f47c34aba0d48b42c8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/findings.ts",
+			"line": 1077,
+			"column": 15,
+			"endLine": 1077,
+			"endColumn": 64,
+			"mutatorName": "ObjectLiteral",
+			"replacement": "{}",
+			"status": "generated",
+			"id": "7fc428e78cc705cfdf9053e55e83e0304307e0fe4ef2be9ec74ecc2394a77f55",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 6,
+			"endLine": 1259,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6f7decf9052936ec6457352c655f471eb1389c49c27001fe0f9628acd8d4c895",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 6,
+			"endLine": 1259,
+			"endColumn": 108,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "bc31101cd4c8b27097e90d25209c0ff45444df8bb650ed51736beed099e04c06",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a lowering with no evidence before it records anything"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 6,
+			"endLine": 1259,
+			"endColumn": 108,
+			"mutatorName": "LogicalOperator",
+			"replacement": "prepared.lower !== undefined || !(prepared.evidence ?? []).some(({\n  revision\n}) => revision !== \"base\")",
+			"status": "generated",
+			"id": "8228b2c7bdd803d487626d6fde3a86da8bfac65db209f0d4dc67190d66b2ce89",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 6,
+			"endLine": 1259,
+			"endColumn": 34,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "6bf584dd3c3c55427bd96b0270fab5a321e9bc0dbfb08cca34a6d67381ca77fc",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a lowering with no evidence before it records anything"
+					]
+				}
+			},
+			"survivorClasses": [
+				"compound-condition"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 6,
+			"endLine": 1259,
+			"endColumn": 34,
+			"mutatorName": "EqualityOperator",
+			"replacement": "prepared.lower === undefined",
+			"status": "generated",
+			"id": "f3ad7cfcc75107d40f5e1c71d10b030cd38f88430427748210062073e034cd9a",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a lowering with no evidence before it records anything"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 38,
+			"endLine": 1259,
+			"endColumn": 108,
+			"mutatorName": "BooleanLiteral",
+			"replacement": "(prepared.evidence ?? []).some(({\n  revision\n}) => revision !== \"base\")",
+			"status": "generated",
+			"id": "24d713aaaa6ac527bbaff8a11ae481683d107979d4fba4296693925cf6c1e1c9",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 39,
+			"endLine": 1259,
+			"endColumn": 108,
+			"mutatorName": "MethodExpression",
+			"replacement": "(prepared.evidence ?? []).every(({\n  revision\n}) => revision !== \"base\")",
+			"status": "generated",
+			"id": "40472e5efbe90bfa0201366b489cb6b0aeec47deeb434ce520884771808fdcd8",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"takes a lowering only with evidence at the head: a head location beside a deleted base one"
+					]
+				}
+			},
+			"survivorClasses": [
+				"some-every"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 40,
+			"endLine": 1259,
+			"endColumn": 63,
+			"mutatorName": "LogicalOperator",
+			"replacement": "prepared.evidence && []",
+			"status": "generated",
+			"id": "3cc66234f961a5804f1220571dba1d0aef4ae55db5bdf8a185833f3d6403c8de",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": [
+				"nullish-logical"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 61,
+			"endLine": 1259,
+			"endColumn": 63,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[\"Stryker was here\"]",
+			"status": "generated",
+			"id": "1663e9f4fb093bf57c252de186dde14ba3b04b8bacad0c6a89bd76bf556846f5",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a lowering with no evidence before it records anything"
+					]
+				}
+			},
+			"survivorClasses": [
+				"seeded-default"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 70,
+			"endLine": 1259,
+			"endColumn": 107,
+			"mutatorName": "ArrowFunction",
+			"replacement": "() => undefined",
+			"status": "generated",
+			"id": "5cfce0574a921ed797b2cbcfbe3b286dcfbb201b9796b1e98dfd570e03761be6",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 88,
+			"endLine": 1259,
+			"endColumn": 107,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "true",
+			"status": "generated",
+			"id": "e7642b9f82789ec739c567fc81e25691992bfd4996b9201a47405860f90dfd31",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"takes a lowering only with evidence at the head: only base lines the change deleted"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 88,
+			"endLine": 1259,
+			"endColumn": 107,
+			"mutatorName": "ConditionalExpression",
+			"replacement": "false",
+			"status": "generated",
+			"id": "9b9763366084e4dcd5238c6ff03aed7af4ce2853eff30a416720b539d2914446",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 88,
+			"endLine": 1259,
+			"endColumn": 107,
+			"mutatorName": "EqualityOperator",
+			"replacement": "revision === \"base\"",
+			"status": "generated",
+			"id": "87d35acc82daaf94ba89ffcc90bd16653c48e9fc11a511b292acd07bbae16518",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1259,
+			"column": 101,
+			"endLine": 1259,
+			"endColumn": 107,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "28eab73c4b4ddba6dd537602045bb1b4207077258a0eda62284e08164af0cace"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1260,
+			"column": 3,
+			"endLine": 1262,
+			"endColumn": 5,
+			"mutatorName": "CallExpression",
+			"replacement": ";",
+			"status": "generated",
+			"id": "a6db8bb3258b2e1b3c66645d70a90424f7bbad15bbd9a8afcfc06df4ed99d08e",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"refuses a lowering with no evidence before it records anything"
+					]
+				}
+			},
+			"survivorClasses": []
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1261,
+			"column": 4,
+			"endLine": 1261,
+			"endColumn": 175,
+			"mutatorName": "StringLiteral",
+			"replacement": "\"\"",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "48e1215602dd3213829415ed764b75a0a5fa8a315c1617c68b255276b2181946"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1351,
+			"column": 6,
+			"endLine": 1351,
+			"endColumn": 147,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "e4cce3a283a20713ab18a5f8407d9eedae0117c519fccdaa8ac4e9b45c2cdd65"
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1353,
+			"column": 11,
+			"endLine": 1353,
+			"endColumn": 60,
+			"mutatorName": "ArrayDeclaration",
+			"replacement": "[]",
+			"status": "generated",
+			"id": "23832605b85a97c7b5722ca036b87ecf07f22d1f2437d8e889d1e6ebf6b9507b",
+			"claim": "killed",
+			"evidence": {
+				"test": {
+					"file": "packages/pipeline/test/verification.test.ts",
+					"path": [
+						"lowering a severity through report_verdict",
+						"lowers a confirmed claim one step, and stores the answers and the evidence it read back"
+					]
+				}
+			},
+			"survivorClasses": [
+				"dropped-value"
+			]
+		},
+		{
+			"file": "packages/pipeline/src/lens-tools.ts",
+			"line": 1353,
+			"column": 12,
+			"endLine": 1353,
+			"endColumn": 59,
+			"mutatorName": "StringLiteral",
+			"replacement": "``",
+			"status": "ignored",
+			"ignoredBy": "config",
+			"statusReason": "Ignored because of excluded mutation \"StringLiteral\"",
+			"id": "492d0263bc31d42325205ee611774a2e19acaf5300c630b862472597ee217a8e"
+		}
+	],
+	"total": 47,
+	"omitted": 0,
+	"unmutated": []
+}

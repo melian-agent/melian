@@ -240,7 +240,8 @@ describe("the findings document", () => {
 			model: "fake/judge",
 			version: "1",
 		});
-		await Promise.all(
+		// Whichever commits first, the stronger report stands: it replaces a weaker one, and refuses one after it.
+		await Promise.allSettled(
 			[stronger, weaker].map((value) =>
 				root.commit(
 					(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(value)),
@@ -252,10 +253,12 @@ describe("the findings document", () => {
 			stronger,
 		);
 		const version = await findingsVersion(harness, root.id, "rev1", context);
-		await root.commit(
-			(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(weaker)),
-			context,
-		);
+		await expect(
+			root.commit(
+				(tx) => upsertVerification(tx, root.id, "rev1", evalFinding.id, input.source, verdict(weaker)),
+				context,
+			),
+		).rejects.toThrow(`this claim is already judged ${stronger}`);
 		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
 		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification?.verdict).toBe(
 			stronger,
@@ -1240,28 +1243,44 @@ describe("lowered sightings", () => {
 		expect(finding!.properties.originalSeverity).toBeUndefined();
 	});
 
-	it("leaves a claim unlowered when an equal report disagrees, in either order, and on replay", async () => {
-		const weaker = lowered;
-		for (const order of [
-			[weaker, record],
-			[record, weaker],
+	it("keeps a claim's first report when an equal report disagrees, in either order, and takes its replay", async () => {
+		for (const [first, second] of [
+			[lowered, record],
+			[record, lowered],
 		]) {
 			const { harness, root } = await open(createMemoryStorage());
 			await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
-			for (const report of order) {
-				await judge(root, report);
-				const version = await findingsVersion(harness, root.id, "rev1", context);
-				await judge(root, { ...report });
-				expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
-			}
-			const [finding] = await readFindings(harness, root.id, "rev1", context);
-			expect(finding!.properties.verification).toEqual(record);
-			expect(finding!.properties).toMatchObject({ severity: "P1", cause: "introduced" });
+			await judge(root, first!);
 			const version = await findingsVersion(harness, root.id, "rev1", context);
-			await judge(root, order[0]!);
+			await judge(root, { ...first! });
+			await expect(judge(root, second!)).rejects.toThrow("this claim is already judged confirmed");
 			expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
-			expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(record);
+			const [finding] = await readFindings(harness, root.id, "rev1", context);
+			expect(finding!.properties.verification).toEqual(first);
+			expect(finding!.properties).toMatchObject({ severity: first === lowered ? "P2" : "P1", cause: "introduced" });
 		}
+	});
+
+	it("takes a later different sameness answer over a stored same, at an equal verdict, and never takes it back", async () => {
+		const dismissed = "0123456789abcdef";
+		const { harness, root } = await open(createMemoryStorage());
+		await root.commit((tx) => upsertFinding(tx, root.id, evalFinding, "rev1"), context);
+		await judge(root, { ...lowered, matches: { [dismissed]: "same" } });
+		const correction = { ...record, reason: "Another path.", matches: { [dismissed]: "different" } } as const;
+		await expect(judge(root, correction)).resolves.toBe(false);
+		const kept = { ...lowered, matches: { [dismissed]: "different" } };
+		// A replay of the correction finds its answer stored, and is refused with a message that says so.
+		await expect(judge(root, correction)).rejects.toThrow(
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason; its different sameness answers are recorded",
+		);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(kept);
+		const version = await findingsVersion(harness, root.id, "rev1", context);
+		await expect(judge(root, { ...lowered, matches: { [dismissed]: "same" } })).resolves.toBe(true);
+		await expect(
+			judge(root, { ...lowered, reason: "Same after all.", matches: { [dismissed]: "same" } }),
+		).rejects.toThrow("this claim is already judged confirmed");
+		expect(await findingsVersion(harness, root.id, "rev1", context)).toBe(version);
+		expect((await readFindings(harness, root.id, "rev1", context))[0]!.properties.verification).toEqual(kept);
 	});
 
 	it("keeps the acknowledgement of a pre-existing finding at the next revision, so a preExisting cap asks once", async () => {

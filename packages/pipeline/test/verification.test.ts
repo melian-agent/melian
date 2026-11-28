@@ -945,6 +945,7 @@ describe("the verifier", () => {
 				model: `${fake.ref("judge").provider}/judge`,
 				correction: "Use the guarded value.",
 			});
+			expect(Object.hasOwn(result.findings[0]!.properties.verification!, "evidence")).toBe(verdict === "refuted");
 			expect(result.findings[0]!.properties.confidence).toBeUndefined();
 			expect(result.verdict.refuted?.length ?? 0).toBe(verdict === "refuted" ? 1 : 0);
 			expect(result.verdict.attention()).toHaveLength(verdict === "refuted" ? 0 : 1);
@@ -2008,6 +2009,11 @@ describe("lowering a severity through report_verdict", () => {
 	}
 	const resultOf = (requests: ReturnType<typeof judging>) =>
 		textOf(requests.at(-1)!.findLast((message) => message.role === "toolResult")!);
+	const resultsOf = (requests: ReturnType<typeof judging>) =>
+		requests
+			.at(-1)!
+			.filter((message) => message.role === "toolResult")
+			.map((message) => textOf(message));
 	const narrow = { severity: "P2", reason: "The only caller checks for a manager first." };
 	const cited = [{ file: "src/user.ts", line: 6, role: "context" as const }];
 
@@ -2039,9 +2045,12 @@ describe("lowering a severity through report_verdict", () => {
 		expect(resultOf(requests)).toContain('label="evidence"');
 	});
 
-	it("records the verdict and leaves the lens's severity when the fence refuses the lowering", async () => {
-		const requests = judging({ verdict: "confirmed", reason: "Traced it.", lower: narrow });
-		const { findings, verdict } = await review();
+	const noHeadEvidence =
+		'a lowering requires evidence locations at the head naming the code that narrows the failure; nothing but its "different" sameness answers was recorded, so report this claim again with them, or without lower';
+
+	it("refuses a lowering with no evidence before it records anything", async () => {
+		const requests = reporting([{ reason: "First try.", lower: narrow }, { reason: "Traced it." }]);
+		const { findings } = await review();
 		expect(findings[0]!.properties.severity).toBe("P1");
 		expect(findings[0]!.properties.verification).toEqual({
 			verdict: "confirmed",
@@ -2051,10 +2060,26 @@ describe("lowering a severity through report_verdict", () => {
 			model: "faux/judge",
 			version: verifierVersion,
 		});
-		expect(verdict.blocking).toBe(true);
-		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure. No further lowering of this claim will be taken at this verdict.\n",
-		);
+		expect(resultsOf(requests)).toEqual([
+			expect.stringContaining(noHeadEvidence),
+			expect.stringMatching(/^recorded verdict for c1\n<untrusted-/),
+		]);
+		expect(resultsOf(requests)[0]).not.toContain("recorded verdict");
+	});
+
+	// Issue #657: the verifier learned of the refusal only after its report was stored, and its retry was refused.
+	it("takes the verifier's report again after it refused a lowering for want of evidence", async () => {
+		const requests = reporting([
+			{ reason: "First try.", lower: narrow },
+			{ reason: "Traced it; the caller narrows it.", evidence: cited, lower: narrow },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(findings[0]!.properties.verification?.reason).toBe("Traced it; the caller narrows it.");
+		expect(resultsOf(requests)).toEqual([
+			expect.stringContaining(noHeadEvidence),
+			expect.stringMatching(/^recorded verdict for c1\nlowered P1 to P2\n/),
+		]);
 	});
 
 	it.each([
@@ -2077,15 +2102,14 @@ describe("lowering a severity through report_verdict", () => {
 			true,
 		],
 	] as const)("takes a lowering only with evidence at the head: %s", async (_, evidence, lowers) => {
-		const requests = judging({ verdict: "confirmed", reason: "Traced it.", evidence: [...evidence], lower: narrow });
+		const requests = reporting([
+			{ evidence: [...evidence], lower: narrow },
+			...(lowers ? [] : [{ evidence: [...evidence] }]),
+		]);
 		const { findings } = await review();
 		expect(findings[0]!.properties.severity).toBe(lowers ? "P2" : "P1");
 		expect(findings[0]!.properties.verification?.evidence).toHaveLength(evidence.length);
-		expect(resultOf(requests)).toContain(
-			lowers
-				? "lowered P1 to P2"
-				: "lowering refused, and the claim stands at P1: a lowering needs evidence locations at the head naming the code that narrows the failure.",
-		);
+		expect(resultsOf(requests)[0]).toContain(lowers ? "lowered P1 to P2" : noHeadEvidence);
 	});
 
 	// An ordinary rule, not the injection rule: nothing in Melian reads the claim's words, so they lower nothing.
@@ -2157,16 +2181,37 @@ describe("lowering a severity through report_verdict", () => {
 		])[verifierMarker]!;
 	}
 
-	it("says where the claim stands when a refused lowering follows one a stronger report already made", async () => {
+	it("refuses a weaker later report, and keeps the first report's lowering", async () => {
 		const requests = reporting([
 			{ evidence: cited, lower: narrow },
 			{ verdict: "plausible", evidence: cited, lower: { severity: "P3", reason: "Narrower still." } },
 		]);
 		const { findings } = await review();
 		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(findings[0]!.properties.verification?.verdict).toBe("confirmed");
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering refused, and the claim stands at P2: a lowering is one step, P1 to P2 or P2 to P3; P1 to P3 is not. No further lowering of this claim will be taken at this verdict.\n",
+			"this claim is already judged confirmed, lowered P1 to P2, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
+		expect(resultOf(requests)).not.toContain("recorded verdict");
+	});
+
+	it("lets a stronger later verdict replace the first report whole, its lowering included", async () => {
+		const requests = reporting([
+			{ verdict: "plausible", reason: "Needs a run.", evidence: cited, lower: narrow },
+			{ reason: "Traced it to the crash." },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties.severity).toBe("P1");
+		expect(findings[0]!.properties.originalSeverity).toBeUndefined();
+		expect(findings[0]!.properties.verification).toMatchObject({
+			verdict: "confirmed",
+			reason: "Traced it to the crash.",
+		});
+		expect(findings[0]!.properties.verification).not.toHaveProperty("lowered");
+		expect(resultsOf(requests)).toEqual([
+			expect.stringMatching(/^recorded verdict for c1\nlowered P1 to P2\n/),
+			expect.stringMatching(/^recorded verdict for c1\n<untrusted-/),
+		]);
 	});
 
 	it("shows the verifier the severity each lens reported, on the label line Melian writes for every claim", async () => {
@@ -2247,14 +2292,42 @@ describe("lowering a severity through report_verdict", () => {
 		expect(findings[0]!.properties).toMatchObject({ severity: "P1", cause: "introduced" });
 	});
 
-	it("says a lowering was not kept when an equal report already holds the claim at the lens's severity", async () => {
+	it("refuses a lowering that an equal later report asks for, so the claim stays at the lens's severity", async () => {
 		const requests = reporting([{}, { evidence: cited, lower: narrow }]);
 		const { findings } = await review();
 		expect(findings[0]!.properties.severity).toBe("P1");
+		expect(findings[0]!.properties.verification).not.toHaveProperty("lowered");
 		expect(resultOf(requests)).toContain(
-			"recorded verdict for c1\nlowering not kept, and the claim stands at P1: the stored report of this claim holds it there\n",
+			"this claim is already judged confirmed, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason",
 		);
 		expect(resultOf(requests)).not.toContain("lowered P1 to P2");
+	});
+
+	// Issue #657: on pull request #597 a verifier's second call for one claim stored "Duplicate placeholder".
+	it("keeps a claim's first reason when the verifier reports the claim again at the same verdict", async () => {
+		const requests = reporting([
+			{ reason: "Traced the null through both callers." },
+			{ reason: "Duplicate placeholder; see the lowered report." },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties.verification?.reason).toBe("Traced the null through both callers.");
+		expect(resultsOf(requests)).toEqual([
+			expect.stringMatching(/^recorded verdict for c1\n/),
+			expect.stringContaining("this claim is already judged confirmed, and a later report of it"),
+		]);
+	});
+
+	it("keeps a claim's first lowering when the verifier reports the claim again unlowered at the same verdict", async () => {
+		reporting([
+			{ reason: "Traced it; the caller narrows it.", evidence: cited, lower: narrow },
+			{ reason: "Duplicate placeholder; see the lowered report." },
+		]);
+		const { findings } = await review();
+		expect(findings[0]!.properties).toMatchObject({ severity: "P2", originalSeverity: "P1" });
+		expect(findings[0]!.properties.verification).toMatchObject({
+			reason: "Traced it; the caller narrows it.",
+			lowered: { from: "P1", to: "P2", reason: narrow.reason },
+		});
 	});
 
 	it("reads the table in force at the finding's own path for the fence, not the root's", async () => {

@@ -122,23 +122,63 @@ export class VerificationRecord {
 	}
 
 	/**
-	 * The record after `report` arrives. The stronger verdict wins whole. On equal verdicts the record keeps the higher
-	 * severity, with the reason and evidence of the report that gave it, so a later equal report never weakens a stored
-	 * one, in either order. Sameness answers are the latest report's, since each one answers every dismissed finding.
+	 * Whether `report` replaces the stored report: none is stored, `report` is it again, as a replay sends it, or its
+	 * verdict is stronger.
 	 */
-	after(report: Verification): Verification {
-		const kept = this.#stronger(report);
-		return report.matches === undefined ? kept : { ...kept, matches: report.matches };
+	whole(report: Verification): boolean {
+		const { stored } = this;
+		return (
+			stored === undefined ||
+			JSON.stringify(stored) === JSON.stringify(withDifferent(report, stored)) ||
+			verdictStrength[report.verdict] > verdictStrength[stored.verdict]
+		);
 	}
 
-	#stronger(report: Verification): Verification {
+	/**
+	 * Why `report` cannot follow the stored report of its claim, or `undefined` when it may: it replaces the stored
+	 * report, or it answers `different` for a dismissed finding the stored report did not. Otherwise the first report
+	 * stands, so a second call cannot overwrite its reason or undo its lowering.
+	 */
+	refusal(report: Verification): string | undefined {
+		const { stored } = this;
+		if (stored === undefined || this.whole(report)) return undefined;
+		if (
+			Object.entries(report.matches ?? {}).some(
+				([id, answer]) => answer === "different" && stored.matches?.[id] !== "different",
+			)
+		)
+			return undefined;
+		const lowered = stored.lowered === undefined ? "" : `, lowered ${stored.lowered.from} to ${stored.lowered.to}`;
+		// A replay of a report kept for its different answers alone finds them stored, so it says they were recorded.
+		const recorded = Object.values(report.matches ?? {}).includes("different")
+			? "; its different sameness answers are recorded"
+			: "";
+		return `this claim is already judged ${stored.verdict}${lowered}, and a later report of it is taken only at a stronger verdict or for a different sameness answer it lacks, so the first report stands with its reason${recorded}`;
+	}
+
+	/**
+	 * The record that stands once `refusal` takes `report`: `report` when it replaces the stored report, and the stored
+	 * report otherwise. A `different` sameness answer from either wins, so no report takes one back.
+	 */
+	after(report: Verification): Verification {
 		const { stored } = this;
 		if (stored === undefined) return report;
-		if (verdictStrength[stored.verdict] !== verdictStrength[report.verdict])
-			return verdictStrength[stored.verdict] > verdictStrength[report.verdict] ? stored : report;
-		return stored.lowered === undefined && report.lowered !== undefined ? stored : report;
+		return this.whole(report) ? withDifferent(report, stored) : withDifferent(stored, report);
+	}
+
+	/**
+	 * The stored report with `report`'s `different` sameness answers, for a report refused whole, or `undefined` when
+	 * none is stored. A refused report still takes back no `same`.
+	 */
+	answers(report: Verification): Verification | undefined {
+		return this.stored === undefined ? undefined : withDifferent(this.stored, report);
 	}
 }
+
+const withDifferent = (kept: Verification, other: Verification): Verification => {
+	const different = Object.entries(other.matches ?? {}).filter(([, answer]) => answer === "different");
+	return different.length === 0 ? kept : { ...kept, matches: { ...kept.matches, ...Object.fromEntries(different) } };
+};
 
 /** The questions both verification executors answer for each claim. */
 export const verificationQuestions: readonly ChoiceQuestion[] = [

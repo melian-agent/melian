@@ -235,13 +235,13 @@ describe("the scenario goldens of the verifier corpus", { timeout: 60_000 }, () 
 		const first = { ...golden.scenario.reports[0]!, expectResult: ["lowered P2 to P3"] };
 		const second = { ...golden.scenario.reports[1]!, expectResult: ["no report says this"] };
 		const marked = { ...golden, scenario: { ...golden.scenario, reports: [first, second] } };
+		// Confirmed and lowered first, the weaker plausible report that follows is refused, and its result says so.
 		expect((await runScenarioGolden(marked)).resultMismatches).toEqual([
-			expect.stringContaining('report 2 returned "recorded verdict for c1'),
+			expect.stringMatching(/^report 2 returned .*this claim is already judged confirmed, lowered P2 to P3/),
 		]);
-		// Reversed, the plain report comes first, so the lowering that follows it is not kept, and its result says so.
+		// Reversed, the plausible report comes first and is taken, and the stronger lowering replaces it.
 		expect((await runScenarioGolden(marked, true)).resultMismatches).toEqual([
 			expect.stringContaining('report 1 returned "recorded verdict for c1'),
-			expect.stringContaining('report 2 returned "recorded verdict for c1\\nlowering not kept'),
 		]);
 	});
 

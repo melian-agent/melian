@@ -151,6 +151,25 @@ describe("recording restatement links", () => {
 		expect(await derive([oldRoot.id])).toBe(false);
 	});
 
+	// Pull request #658's round: a first report's same answer stood against a later different, and the finding inherited.
+	it("links nothing once a claim answers different after answering same at the same verdict", async () => {
+		await seed();
+		await judge(first.id, correctness, { [oldRoot.id]: "same" });
+		await judge(second.id, contracts, { [oldRoot.id]: "same" });
+		await commit((tx) =>
+			upsertVerification(tx, root, at, second.id, contracts, {
+				verdict: "confirmed",
+				reason: "It fails on another path.",
+				matches: { [oldRoot.id]: "different" },
+				executor: "llm",
+				model: "faux/judge",
+				version: "v1",
+			}),
+		);
+		await derive([oldRoot.id]);
+		expect(await links()).toBeUndefined();
+	});
+
 	it("needs a same answer from each merged claim: one different, or one missing, links nothing", async () => {
 		await seed();
 		await judge(first.id, correctness, { [oldRoot.id]: "same" });

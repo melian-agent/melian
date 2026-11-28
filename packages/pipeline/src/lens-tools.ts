@@ -1328,31 +1328,46 @@ export const reportVerdict = defineTool({
 								executor: "llm",
 							}).refusal();
 				const lowers = args.lower !== undefined && refusedLowering === undefined;
-				const kept = await upsertVerification(tx, lens.review, at, claim.id, claim.source, {
-					verdict: args.verdict,
-					reason: args.reason,
-					...(args.correction === undefined ? {} : { correction: args.correction }),
-					answers: { ...args.answers },
-					...(evidence.length === 0 ? {} : { evidence }),
-					...(lowers ? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } } : {}),
-					...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
-					executor: "llm",
-					model: lens.model!,
-					version: lens.version,
-				});
+				// Kept to its different answers, so the verifier can send the report again with the lines that narrow it.
+				const headless = args.lower !== undefined && !evidence.some(({ revision }) => revision === "head");
+				const whole = await upsertVerification(
+					tx,
+					lens.review,
+					at,
+					claim.id,
+					claim.source,
+					{
+						verdict: args.verdict,
+						reason: args.reason,
+						...(args.correction === undefined ? {} : { correction: args.correction }),
+						answers: { ...args.answers },
+						...(evidence.length === 0 ? {} : { evidence }),
+						...(lowers
+							? { lowered: { from: severity, to: args.lower!.severity, reason: args.lower!.reason } }
+							: {}),
+						...(listed.length === 0 ? {} : { matches: { ...args.matches } }),
+						executor: "llm",
+						model: lens.model!,
+						version: lens.version,
+					},
+					headless,
+				);
+				if (headless) return undefined;
+				if (!whole)
+					return [
+						'only its "different" sameness answers were kept: this claim is already judged at an equal or stronger verdict, so the first report stands with its reason',
+					];
 				if (args.lower === undefined) return [];
-				// The record decides where the claim stands: a stored report may hold it lowered, or at the lens's severity.
-				const stands = kept.lowered?.to ?? severity;
 				if (refusedLowering !== undefined)
 					return [
-						`lowering refused, and the claim stands at ${stands}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
+						`lowering refused, and the claim stands at ${severity}: ${refusedLowering}. No further lowering of this claim will be taken at this verdict.`,
 					];
-				return [
-					kept.lowered === undefined
-						? `lowering not kept, and the claim stands at ${stands}: the stored report of this claim holds it there`
-						: `lowered ${severity} to ${stands}`,
-				];
+				return [`lowered ${severity} to ${args.lower.severity}`];
 			}, context);
+			if (notes === undefined)
+				throw new Error(
+					'a lowering requires evidence locations at the head naming the code that narrows the failure; nothing but its "different" sameness answers was recorded, so report this claim again with them, or without lower',
+				);
 			return text(JSON.stringify(evidence), (body) =>
 				[`recorded verdict for ${args.claim}`, ...notes, quoteUntrusted("evidence", body, review.nonce)].join("\n"),
 			);
