@@ -160,6 +160,7 @@ Milestone 2 runs on three lanes of work and a fixed review loop. Read this befor
 - Codex tasks that edit run through `scripts/codex-sandboxed.sh`, from a linked worktree in the worktrees folder. Its seatbelt lets the task commit to its own branch, and the Learnings below set out what it cannot do. Codex's companion `task --write` can edit and test but not commit, because its sandbox denies writes under `.git`.
 - The design lens is to replace Codex's adversarial review. Both run on the first reviewed head of every pull request until Codex's review meets [the shadow retirement rule](docs/decisions/2026-10-06-shadow-retirement-merged-window.md) and the maintainer retires it.
 - The builder runs Codex's adversarial review and its own Melian rounds, as Three reviews before ready says, and marks its pull request ready and queues it, as Ready and queued says. The coordinator runs the round a dismissal or the comparison record needs.
+- The coordinator may do two things in the maintainer's place, and nothing else, and neither on a pull request it wrote: dismiss an equivalent mutant, and dismiss a refuted injection flag on a line of Melian's own prompt text that the change only moved. Every policy notice is the maintainer's to read, the override status of the outage procedure is his to post, and a finding that restates a ruling is his to dismiss. For each, the coordinator sends him one message that quotes the change or the finding, and records his answer on the pull request. [The decision](docs/decisions/2026-11-28-what-the-coordinator-may-do-for-the-maintainer.md) says why.
 
 ### The loop for one step
 
@@ -255,7 +256,7 @@ The builder marks its own pull request ready and queues it with `gh pr merge --m
 
 - CI is green on the exact head. Confirm the run with `gh run view <id> --json headSha`.
 - The last Melian round set `melian/review` to `success` on that head.
-- If that round raised acknowledge findings, the builder asked the maintainer in its own session to read them, and recorded the maintainer's read on the pull request. Policy notices on configuration files are by design once a maintainer has read them.
+- If that round raised acknowledge findings, the builder asked the maintainer in its own session to read them, and recorded the maintainer's read on the pull request. Policy notices on configuration files are by design once a maintainer has read them. The coordinator's read of a policy notice never stands in for the maintainer's, by [the delegation decision](docs/decisions/2026-11-28-what-the-coordinator-may-do-for-the-maintainer.md); the builder asks through the coordinator, who takes the changed lines to him.
 
 A blocking finding still needs a fix, or a dismissal through a host round.
 
