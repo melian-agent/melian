@@ -2033,7 +2033,7 @@ describe("reviewChangeset", () => {
 			expect(prompt).toContain(
 				"- `trust-boundary`, in these files only: A value an author or outside party controls",
 			);
-			expect(prompt).toContain("report them under your own rules in every other file.");
+			expect(prompt).toContain("A lens whose entry lists files reviews only those of your files.");
 			// The standards stay this lens's own unless conventions reviews every one of its files.
 			expect(prompt).toContain(
 				"The repository's own conventions. A change that breaks one is a finding; cite the file.",

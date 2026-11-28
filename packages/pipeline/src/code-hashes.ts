@@ -54,11 +54,11 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/host.ts": "ad98a4088b5f8d90e49f8d5f786dc829b73f63179dd29b0ded4eaa79570c38cc",
 
-	"packages/core/src/index.ts": "4736ae3b866334ab1ce7bee441a03cf3f4c6c0497dccf51074af37bcc019fec0",
+	"packages/core/src/index.ts": "6fb16666bebc25ba9596118812ece2052f46c9eade8dcb867aadc902f7cc06b3",
 
 	"packages/core/src/lease.ts": "1cb397fc53982d08fad19e8ec54a8032bb30e3c7d7720e9582b0458a2f1bfa4a",
 
-	"packages/core/src/lens.ts": "5b9ea9cf0f80d2d183c3bdfacbe5262b5363d55a9ccddf6682a00564edc4b748",
+	"packages/core/src/lens.ts": "ba5e51a9729ff84aafadb89ae17db3f9d1a986b23701b5f7e65a5f5007917b42",
 
 	"packages/core/src/line-map.ts": "119eb57464d532345d3ec58f1e2a6c2f702174afb9e396dd7eafc51b2cf19f41",
 
@@ -118,7 +118,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/core/src/triage.ts": "0ba40a436bf9c621eb93ded35bcd9b8b80da65ac65894e3610b6925f6db03beb",
 
-	"packages/core/src/verification.ts": "9e476b273834ee99fb8fe395417f74521351e6ddfc9a33b8f4383517a75acddc",
+	"packages/core/src/verification.ts": "e12f9075cc58464c5886cb275991c6df113f0b2590d52a017f897becca98807a",
 
 	"packages/decisions/src/decision-files-error.ts": "d0d4c6bc8ed5dc1905f241bc85a19d20550857277f8fb7e33f452bb40bf92772",
 
@@ -232,10 +232,10 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/tool-provisioning.ts": "7d6608c820e59f31ee4ce02e1be4270a96b285790cac4d9f472ce8e4f6ba4cf9",
 
-	"packages/pipeline/src/untrusted.ts": "8cf13d2a40873d39f26ec76a8f310eda0b731f6aa3a8f849348414f169ced054",
+	"packages/pipeline/src/untrusted.ts": "b780dcef80cb5053a06354b1359565aacfe77881a137c49d53f58990c78ba44a",
 
 	"packages/pipeline/src/verification-instructions.ts":
-		"1394f83c0f8a5d5263c0994c14bac22a897821582dec9a210c7a970b46c131d4",
+		"01b530843d2f6f328417e431ec35a5e7f4999847661c6f4cfd327166a4e29f68",
 
 	"packages/pipeline/src/verification-waves.ts": "740c08b81e6f8702862577142c05ab655f0e151c42f996eec530296bbbabb881",
 };
