@@ -193,7 +193,7 @@ import { PrepareSpans } from "./spans.ts";
 import { StaticProof } from "./static-proof.ts";
 import { exportedWalkthrough, SummaryTask, summarizeExtension } from "./summarize.ts";
 import { triageRequest } from "./triage-request.ts";
-import { injectionAttemptRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
+import { injectionAttemptRule, otherDefectRule, quoteUntrusted, reviewNonce } from "./untrusted.ts";
 import {
 	candidateKey,
 	startVerification,
@@ -2949,10 +2949,14 @@ export async function reviewChangeset(request: ReviewOptions): Promise<Review> {
 		}
 		notes.set(`${lens.name}@${lens.version}`, noted);
 		leading.set(`${lens.name}@${lens.version}`, unrunnable.get(lens)?.length ?? 0);
-		// Every lens may report an injection attempt, so the policy section never names a rule the hook refuses.
-		const rules = lens.rules.some((rule) => rule.id === injectionAttemptRule.id)
-			? lens.rules
-			: [...lens.rules, injectionAttemptRule];
+		// Every lens may report an injection attempt and a defect none of its rules fits, so the policy section never
+		// names a rule the hook refuses.
+		const rules = [
+			...lens.rules,
+			...[otherDefectRule, injectionAttemptRule].filter(
+				(melian) => !lens.rules.some((rule) => rule.id === melian.id),
+			),
+		];
 		const ruled = Lens.from({ ...lens.toJSON(), rules });
 		const decisions = lens.name === "design" ? await spans.time("design.decisions", loadDecisions) : undefined;
 		const designSections =
