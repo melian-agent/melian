@@ -9,7 +9,6 @@ import { tmpdir } from "node:os";
 import * as nodePath from "node:path";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import * as nodeUrl from "node:url";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as core from "@melian-agent/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,10 +38,6 @@ vi.mock("node:fs/promises", async (original) => {
 vi.mock("node:path", async (original) => {
 	const actual = await original<typeof nodePath>();
 	return { ...actual, relative: vi.fn(actual.relative) };
-});
-vi.mock("node:url", async (original) => {
-	const actual = await original<typeof nodeUrl>();
-	return { ...actual, fileURLToPath: vi.fn(actual.fileURLToPath) };
 });
 vi.mock("@melian-agent/core", async (original) => {
 	const actual = await original<typeof core>();
@@ -108,7 +103,6 @@ afterEach(() => {
 	vi.mocked(childProcess.execFile).mockReset();
 	vi.mocked(childProcess.spawnSync).mockReset();
 	vi.mocked(nodePath.relative).mockReset();
-	vi.mocked(nodeUrl.fileURLToPath).mockReset();
 	vi.mocked(nodeFs.realpath).mockReset();
 	vi.mocked(nodeFs.writeFile).mockReset();
 	vi.mocked(nodeFs.rm).mockReset();
@@ -2056,19 +2050,10 @@ import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 
 		}
 	});
 	it("rejects a fallback entry inside a reviewed tree even when its manifest is outside it", async () => {
-		// Melian's own install must hold the entry, and a fixture written into the checkout's node_modules changes the key
-		// every other test process reads from it, so Melian is placed in a scratch tree for this test.
-		const melian = await mkdtemp(join(tmpdir(), "melian-install-"));
-		const external = join(melian, "node_modules", "melian-review");
-		const actual = vi.mocked(nodeUrl.fileURLToPath).getMockImplementation()!;
-		vi.mocked(nodeUrl.fileURLToPath).mockImplementation((url, options) =>
-			String(url).endsWith("/src/mutation-enumeration.ts")
-				? join(melian, "src", "mutation-enumeration.ts")
-				: actual(url, options),
-		);
+		const external = await mkdtemp(join(process.cwd(), "node_modules/melian-review-"));
 		try {
 			const nested = join(external, "repo");
-			await mkdir(nested, { recursive: true });
+			await mkdir(nested);
 			gitIn(nested, "init", "-q");
 			writeFiles(external, {
 				"package.json": JSON.stringify({
@@ -2094,7 +2079,7 @@ import {writeFileSync} from 'node:fs'; writeFileSync(${JSON.stringify(marker)}, 
 			vi.mocked(nodeModule.createRequire).mockReturnValue(require);
 			await expect(TypeScriptMutationAdapter.open(nested)).rejects.toMatchObject({ code: "instrumenter" });
 		} finally {
-			await rm(melian, { recursive: true, force: true });
+			await rm(external, { recursive: true, force: true });
 		}
 	});
 	it("ends a missing-manifest walk at the filesystem root", { timeout: 5000 }, async () => {
