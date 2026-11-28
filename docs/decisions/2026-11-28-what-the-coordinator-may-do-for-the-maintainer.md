@@ -4,7 +4,7 @@ Status: ruled by the maintainer on 2026-11-28, in the coordinator's session. The
 
 Amends: [When Melian cannot run, the maintainer overrides one commit](2026-10-23-melian-review-outage-procedure.md), who may post the override on a pull request's head: the coordinator too, under the four conditions below
 Amends: [An unresolved acknowledgement fails the status, as built](2026-10-17-acknowledge-status-exact-rule.md), what clears a blocking policy notice: the coordinator's override too, under the four conditions below, where it said only a stored dismissal
-Amends: [An Actions round sets melian/review](2026-11-07-actions-round-sets-melian-review.md), what a blocking policy notice needs: a fix, a dismissal through a host round, or the coordinator's override under the four conditions below
+Amends: [An Actions round sets melian/review, and builders queue](2026-11-07-actions-round-sets-melian-review.md), what a blocking policy notice needs: a fix, a dismissal through a host round, or the coordinator's override under the four conditions below
 Amends: [A verifier cannot clear a protected objection without a maintainer](2026-10-17-trust-floor-exact-rule.md), who dismisses a refuted `melian/injection-attempt` finding: the coordinator may, only where every flagged line is Melian's own prompt text and identical to a line already on the default branch
 
 ## Problem
