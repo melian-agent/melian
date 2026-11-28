@@ -8,6 +8,7 @@ import {
 	type FindingEvidence,
 	type FindingSource,
 	gitEnvironment,
+	injectionAttemptRuleId,
 	Lens,
 	type LensLevels,
 	type LensTier,
@@ -15,6 +16,7 @@ import {
 	loadConfig,
 	type MelianConfig,
 	type MemberClaim,
+	otherDefectRuleId,
 	parseModelReference,
 	RevisionError,
 	type RevisionErrorCode,
@@ -380,7 +382,9 @@ export class Miss {
 		const reviewing = review === "lens" ? `the ${probingLens} lens` : `a lens in ${whose} full tier`;
 		if (covering.length === 0)
 			return refused("file uncovered", `${whose} policy does not let ${reviewing} review ${this.file}`);
-		const declares = (lens: Lens, rule: string) => lens.rules.some(({ id }) => id === rule);
+		// The review adds these two rules to every lens that lacks them.
+		const runtime = [otherDefectRuleId, injectionAttemptRuleId];
+		const declares = (lens: Lens, rule: string) => runtime.includes(rule) || lens.rules.some(({ id }) => id === rule);
 		// Each mode checks the spelling against the whole tier, so one misses file serves both.
 		const undeclared = this.rules.find((rule) => !reviewable.some((lens) => declares(lens, rule)));
 		if (undeclared !== undefined)
