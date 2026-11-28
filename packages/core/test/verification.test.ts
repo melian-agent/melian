@@ -285,18 +285,18 @@ describe("reports of one claim", () => {
 		});
 
 		it("keeps a weaker stored report whole under a refused stronger one, adding only its different answer", () => {
-			const stored = {
+			const stored: Verification = {
 				...plausible,
 				lowered: { from: "P1", to: "P2", reason: "One caller." },
 				evidence: [{ file: "src/a.ts", startLine: 1, role: "cause", revision: "head", snippet: "x" }],
 				matches: { [id]: "same" },
-			} as const;
-			const report = {
+			};
+			const report: Verification = {
 				...verification,
 				reason: "Read further.",
 				lowered: { from: "P1", to: "P2", reason: "No head lines." },
 				matches: { [id]: "different" },
-			} as const;
+			};
 			expect(new VerificationRecord(stored).answers(report)).toEqual({ ...stored, matches: { [id]: "different" } });
 		});
 
