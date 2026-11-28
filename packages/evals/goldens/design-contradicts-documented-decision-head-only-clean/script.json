@@ -68,7 +68,7 @@
             "severity": "P2",
             "explanation": {
               "what": "`uploadRetries` is three where the decision says at most two.",
-              "why": "The decision \"Uploads retry at most twice\" says: \"A failed upload retries at most twice.\" `src/upload.ts` retries three times.",
+              "why": "The decision \"Uploads retry at most twice\" says: \"Proposed: a failed upload retries at most twice.\" `src/upload.ts` retries three times.",
               "fix": "Lower `uploadRetries` to two."
             },
             "failureScenario": "An upload fails four times in a row. `src/upload.ts` retries it three times, one more than the decision allows.",

@@ -1,3 +1,5 @@
 # conventions-clean
 
 Seeded from finding 7 of the [comparison record](../../comparisons/2026-10-03-pr-10.md) for [pull request #10](https://github.com/melian-agent/melian/pull/10): the progress-log entry lacked links. This is the clean counterpart of every conventions golden: the change keeps each rule in its `AGENTS.md`, and carries choices a reviewer might word or shape differently that no rule addresses, so a review must report nothing.
+
+`toTsv` is for reading a receipt with `cut` or `awk`, which run nothing a field holds. As first written it was for pasting into a spreadsheet and passed a name through, so a receipt item named `=1+1` became a formula there: a real defect a live lens rightly reported. Writing such a name behind an apostrophe still let a quoted name, `"=1+1"`, become a formula once the spreadsheet stripped its quotes. So [issue #663](https://github.com/melian-agent/melian/issues/663) made the change clean in fact by giving `toTsv` a reader that runs nothing; `toCsv` keeps the shape the base already had.
