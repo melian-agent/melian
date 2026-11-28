@@ -1051,7 +1051,7 @@ export async function clearVerifications(
 }
 
 // Throws, writing nothing, when `verification` cannot follow the claim's stored report. False when only its `different`
-// sameness answers were kept, as they always are for a report refused whole, `answersOnly`.
+// sameness answers were kept. `answersOnly` keeps only those, refuses nothing, and its caller reads no answer.
 export async function upsertVerification(
 	tx: Tx,
 	root: ConversationId,
@@ -1072,8 +1072,7 @@ export async function upsertVerification(
 	const refusal = answersOnly ? undefined : stored.refusal(verification);
 	if (refusal !== undefined) throw new Error(refusal);
 	const kept = answersOnly ? stored.answers(verification) : stored.after(verification);
-	if (kept === undefined || JSON.stringify(previous) === JSON.stringify(kept))
-		return !answersOnly && stored.whole(verification);
+	if (kept === undefined || JSON.stringify(previous) === JSON.stringify(kept)) return stored.whole(verification);
 	const { [verification.version]: _, ...rest } = before;
 	record.verifications = {
 		...record.verifications,
@@ -1083,7 +1082,7 @@ export async function upsertVerification(
 		},
 	};
 	bump(state, [revision]);
-	return !answersOnly && stored.whole(verification);
+	return stored.whole(verification);
 }
 
 export async function sightingVerification(

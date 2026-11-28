@@ -162,7 +162,7 @@ export const moduleHashes: Readonly<Record<string, string>> = {
 
 	"packages/pipeline/src/errors.ts": "62f87457efc1a4a2cae468ee9cfc08991a42d6e9789960ae3da799ace7f3437f",
 
-	"packages/pipeline/src/findings.ts": "0295bb380e08e38856614f73d28512a8f24bc6e75682f93e9cca4fcc522f8bf4",
+	"packages/pipeline/src/findings.ts": "1f0fb423a6e913e00fbb632f3fc5c3466b8dfa24ef3c51c375142c0d22e4f4bd",
 
 	"packages/pipeline/src/graph-cache.ts": "e1e730c5a1f86852d9159f67664b36abc5fc69fad4c9bf56595e99289d194039",
 

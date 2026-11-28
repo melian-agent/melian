@@ -268,6 +268,22 @@ describe("reports of one claim", () => {
 			}
 		});
 
+		it("keeps only a refused report's different answers, and nothing when no report is stored", () => {
+			const answers = (stored: Verification | undefined, report: Verification) =>
+				new VerificationRecord(stored).answers(report);
+			const report = {
+				...lowered,
+				reason: "Another path.",
+				matches: { [id]: "different", [other]: "same" },
+			} as const;
+			expect(answers(undefined, report)).toBeUndefined();
+			expect(answers({ ...verification, matches: { [other]: "different" } }, report)).toEqual({
+				...verification,
+				matches: { [id]: "different", [other]: "different" },
+			});
+			expect(answers(verification, lowered)).toEqual(verification);
+		});
+
 		it("records a different answer the first report did not give", () => {
 			expect(refusal(verification, { ...plausible, matches: { [id]: "different" } })).toBeUndefined();
 			expect(after(verification, { ...plausible, matches: { [id]: "different" } })).toEqual({
