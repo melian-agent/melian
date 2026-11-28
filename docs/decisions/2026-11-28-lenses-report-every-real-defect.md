@@ -1,6 +1,8 @@
 # Lenses report every real defect they meet, on a severity scale
 
-Amends: [Hand-offs hold per file](2026-10-05-per-file-hand-offs.md), what a hand-off tells the lens to do
+Amends: [Restore the lens-boundaries clauses that partial supersessions retired](2026-11-08-restore-lens-boundaries-clauses.md), what a hand-off tells the lens to do
+
+That decision restates the hand-off clauses of [the per-file hand-offs decision](2026-10-05-per-file-hand-offs.md) and [the boundaries decision](2026-10-04-lens-backlog-boundaries.md), which are no longer active themselves.
 
 Status: agreed by the maintainer on 2026-11-28, in the coordinator's session ("655 looks good, go ahead"), for [issue #655](https://github.com/melian-agent/melian/issues/655).
 
